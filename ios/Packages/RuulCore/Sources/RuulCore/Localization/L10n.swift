@@ -1192,6 +1192,17 @@ public enum L10n {
         public static let proposeReferenceMandateEmpty    = LocalizedStringResource("decisions.propose.reference.mandate.empty",    defaultValue: "No hay mandatos activos para revocar.")
         public static let proposeReferenceUnsupportedHint = LocalizedStringResource("decisions.propose.reference.unsupported",      defaultValue: "Selecciona el elemento afectado al confirmar la decisión.")
 
+        // Membership decision target state (V2-G2 sub-slice 4)
+        public static let proposeReferenceMembershipSection       = LocalizedStringResource("decisions.propose.reference.membership.section", defaultValue: "¿Qué miembro?")
+        public static let proposeReferenceMembershipEmpty         = LocalizedStringResource("decisions.propose.reference.membership.empty",   defaultValue: "No hay miembros activos para esta decisión.")
+        public static let proposeMembershipTargetStateSection     = LocalizedStringResource("decisions.propose.membership.target_state.section", defaultValue: "¿A qué estado pasa?")
+        public static let proposeMembershipTargetStateRequired    = LocalizedStringResource("decisions.propose.membership.target_state.required", defaultValue: "Elige a qué estado pasa el miembro.")
+        public static let proposeMembershipTargetStateHint        = LocalizedStringResource("decisions.propose.membership.target_state.hint", defaultValue: "Cuando se apruebe, el miembro pasará a este estado automáticamente.")
+        public static let membershipTargetActive                  = LocalizedStringResource("decisions.membership_target.active",     defaultValue: "Activo")
+        public static let membershipTargetSuspended               = LocalizedStringResource("decisions.membership_target.suspended",  defaultValue: "Suspendido")
+        public static let membershipTargetExpelled                = LocalizedStringResource("decisions.membership_target.expelled",   defaultValue: "Expulsado")
+        public static let membershipTargetInactive                = LocalizedStringResource("decisions.membership_target.inactive",   defaultValue: "Inactivo")
+
         // Vote sheet
         public static let voteTitle          = LocalizedStringResource("decisions.vote.title",         defaultValue: "Tu voto")
         public static let voteConfirm        = LocalizedStringResource("decisions.vote.confirm",       defaultValue: "Confirmar voto")

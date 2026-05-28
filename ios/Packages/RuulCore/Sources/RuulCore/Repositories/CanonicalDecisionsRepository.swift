@@ -37,6 +37,7 @@ public struct CanonicalDecisionsRepository: Sendable {
         legitimacySource: LegitimacySource,
         referenceKind: String? = nil,
         referenceId: UUID? = nil,
+        metadata: [String: String]? = nil,
         options: [StartVoteParams.OptionDraft]?
     ) async throws -> UUID {
         let input = StartVoteParams(
@@ -48,7 +49,8 @@ public struct CanonicalDecisionsRepository: Sendable {
             legitimacySource: legitimacySource.rawValue,
             referenceKind: referenceKind,
             referenceId: referenceId,
-            options: (options?.isEmpty ?? true) ? nil : options
+            options: (options?.isEmpty ?? true) ? nil : options,
+            metadata: metadata
         )
         return try await rpc.startVote(input)
     }

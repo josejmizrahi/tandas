@@ -56,11 +56,12 @@ public final class DecisionsStore {
     private var isInternallySettingLegitimacy: Bool = false
     public var draftType: DecisionType = .proposal {
         didSet {
-            // Switching type wipes the reference pick — the previous
-            // entity (a sanction, a mandate) is no longer relevant for
-            // the new decision shape.
+            // Switching type wipes the reference pick + per-type
+            // metadata — the previous entity (a sanction, a mandate)
+            // or membership target state is no longer relevant.
             if oldValue != draftType {
                 draftReferenceId = nil
+                draftMembershipTargetState = nil
             }
         }
     }
@@ -69,6 +70,11 @@ public final class DecisionsStore {
     /// kind is derived from the type (no separate picker); the id is
     /// picked from the relevant active list (sanctions / mandates).
     public var draftReferenceId: UUID?
+    /// V2-G2 sub-slice 4 — for `decision_type='membership'` the
+    /// proposer must specify the target state (active / suspended /
+    /// expelled / inactive). This persists to `metadata.target_state`
+    /// and finalize_vote dispatches set_membership_state with it.
+    public var draftMembershipTargetState: MembershipDecisionTargetState? = nil
     public var draftOptions: [DraftOption] = []
     public private(set) var draftErrorMessage: String?
 
@@ -77,6 +83,23 @@ public final class DecisionsStore {
     /// alongside `canSaveDraftDecision`.
     public var draftNeedsReferencePick: Bool {
         draftType.requiredReferenceKind != nil && draftReferenceId == nil
+    }
+
+    /// V2-G2 sub-slice 4 — membership type also needs a target state
+    /// before the CTA fires, otherwise finalize_vote would skip its
+    /// handler with a missing target_state.
+    public var draftNeedsMembershipTargetState: Bool {
+        draftType == .membership && draftMembershipTargetState == nil
+    }
+
+    /// Composed `metadata` jsonb payload for the current draft. Today
+    /// only membership decisions populate it; future handlers can add
+    /// more keys here.
+    public var draftMetadata: [String: String]? {
+        if draftType == .membership, let target = draftMembershipTargetState {
+            return ["target_state": target.rawValue]
+        }
+        return nil
     }
 
     public struct DraftOption: Identifiable, Equatable, Sendable {
@@ -188,6 +211,7 @@ public final class DecisionsStore {
         draftLegitimacyAutoSync = true
         draftType = .proposal
         draftReferenceId = nil
+        draftMembershipTargetState = nil
         draftOptions = []
         draftErrorMessage = nil
         isProposePresented = true
@@ -204,6 +228,7 @@ public final class DecisionsStore {
     public var canSaveDraftDecision: Bool {
         !draftTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !draftNeedsReferencePick
+            && !draftNeedsMembershipTargetState
     }
 
     @discardableResult
@@ -228,6 +253,13 @@ public final class DecisionsStore {
             draftErrorMessage = String(localized: L10n.Decisions.proposeReferenceRequired)
             return false
         }
+        // V2-G2 sub-slice 4 — membership type also needs the target
+        // state; without it the backend handler skips silently and the
+        // decision goes nowhere.
+        if draftNeedsMembershipTargetState {
+            draftErrorMessage = String(localized: L10n.Decisions.proposeMembershipTargetStateRequired)
+            return false
+        }
         let payload: [StartVoteParams.OptionDraft]? = cleanedOptions.isEmpty
             ? nil
             : cleanedOptions.map { StartVoteParams.OptionDraft(label: $0, body: nil) }
@@ -241,6 +273,7 @@ public final class DecisionsStore {
                 legitimacySource: draftLegitimacySource,
                 referenceKind: draftType.requiredReferenceKind,
                 referenceId: draftReferenceId,
+                metadata: draftMetadata,
                 options: payload
             )
             await refresh(groupId: groupId)
@@ -261,6 +294,7 @@ public final class DecisionsStore {
         draftLegitimacyAutoSync = true
         draftType = .proposal
         draftReferenceId = nil
+        draftMembershipTargetState = nil
         draftOptions = []
         draftErrorMessage = nil
     }

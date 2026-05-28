@@ -253,7 +253,8 @@ public struct GroupSettingsView: View {
                     container.deepLinkRouter.apply(link)
                 },
                 sanctionsStore: container.sanctionsStore,
-                mandatesStore: container.mandatesStore
+                mandatesStore: container.mandatesStore,
+                membersStore: container.membersStore
             )
         case .disputes:
             DisputesListView(store: container.disputesStore, groupId: group.id)

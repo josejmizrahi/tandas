@@ -1662,6 +1662,11 @@ public struct StartVoteParams: Encodable, Sendable, Equatable {
     public let pReferenceKind: String?
     public let pReferenceId: UUID?
     public let pOptions: [OptionDraft]?
+    /// V2-G2 sub-slice 4 — jsonb-shaped metadata persisted to
+    /// `group_decisions.metadata`. Used today by finalize_vote's
+    /// membership handler (`target_state` key); future handlers
+    /// (rule_change, budget) will read their own keys here.
+    public let pMetadata: [String: String]?
 
     public struct OptionDraft: Encodable, Sendable, Equatable {
         public let label: String
@@ -1687,6 +1692,7 @@ public struct StartVoteParams: Encodable, Sendable, Equatable {
         case pReferenceKind    = "p_reference_kind"
         case pReferenceId      = "p_reference_id"
         case pOptions          = "p_options"
+        case pMetadata         = "p_metadata"
     }
 
     public init(
@@ -1703,7 +1709,8 @@ public struct StartVoteParams: Encodable, Sendable, Equatable {
         committeeOnly: Bool = false,
         referenceKind: String? = nil,
         referenceId: UUID? = nil,
-        options: [OptionDraft]? = nil
+        options: [OptionDraft]? = nil,
+        metadata: [String: String]? = nil
     ) {
         self.pGroupId = groupId
         self.pTitle = title
@@ -1719,11 +1726,12 @@ public struct StartVoteParams: Encodable, Sendable, Equatable {
         self.pReferenceKind = referenceKind
         self.pReferenceId = referenceId
         self.pOptions = options
+        self.pMetadata = metadata
     }
 
     /// Emit every key explicitly; nil optionals become JSON null so
     /// PostgREST overload resolution stays deterministic for the
-    /// 14-arg signature.
+    /// 15-arg signature.
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(pGroupId, forKey: .pGroupId)
@@ -1740,6 +1748,7 @@ public struct StartVoteParams: Encodable, Sendable, Equatable {
         try c.encodeOrNil(pReferenceKind, forKey: .pReferenceKind)
         try c.encodeOrNil(pReferenceId, forKey: .pReferenceId)
         try c.encodeOrNil(pOptions, forKey: .pOptions)
+        try c.encodeOrNil(pMetadata, forKey: .pMetadata)
     }
 }
 

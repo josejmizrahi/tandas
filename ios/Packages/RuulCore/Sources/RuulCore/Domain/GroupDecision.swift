@@ -310,7 +310,43 @@ public enum DecisionType: String, Codable, CaseIterable, Identifiable, Sendable,
         case .mandateRevoke:  return "mandate_revoke"
         case .mandateGrant:   return "mandate_grant"
         case .dissolution:    return "dissolution"
+        case .membership:     return "membership"
         default:              return nil
+        }
+    }
+}
+
+/// V2-G2 sub-slice 4 — target state a `decision_type='membership'`
+/// proposes to apply when finalize_vote passes. Mirrors the canonical
+/// `group_memberships.status` values the backend `set_membership_state`
+/// RPC accepts.
+public enum MembershipDecisionTargetState: String, Codable, CaseIterable, Identifiable, Sendable, Hashable {
+    case active
+    case suspended
+    case expelled
+    case inactive
+
+    public var id: String { rawValue }
+
+    public static let displayOrder: [MembershipDecisionTargetState] = [
+        .active, .suspended, .expelled, .inactive
+    ]
+
+    public var label: LocalizedStringResource {
+        switch self {
+        case .active:    return L10n.Decisions.membershipTargetActive
+        case .suspended: return L10n.Decisions.membershipTargetSuspended
+        case .expelled:  return L10n.Decisions.membershipTargetExpelled
+        case .inactive:  return L10n.Decisions.membershipTargetInactive
+        }
+    }
+
+    public var systemImageName: String {
+        switch self {
+        case .active:    return "checkmark.circle"
+        case .suspended: return "pause.circle"
+        case .expelled:  return "xmark.circle"
+        case .inactive:  return "minus.circle"
         }
     }
 }

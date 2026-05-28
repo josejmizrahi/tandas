@@ -205,6 +205,56 @@ struct DecisionsStoreTests {
         })
     }
 
+    @Test("Membership decision requires target_state metadata (V2-G2 sub-slice 4)")
+    func membershipDecisionRequiresTargetState() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftTitle = "Suspender a X"
+        store.draftType = .membership
+        store.draftReferenceId = UUID()
+        // Without target_state, cannot save.
+        #expect(store.draftNeedsMembershipTargetState)
+        #expect(store.canSaveDraftDecision == false)
+
+        store.draftMembershipTargetState = .suspended
+        #expect(store.draftNeedsMembershipTargetState == false)
+        #expect(store.canSaveDraftDecision)
+    }
+
+    @Test("Switching away from membership clears target_state (V2-G2 sub-slice 4)")
+    func switchingTypeClearsMembershipTargetState() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftType = .membership
+        store.draftMembershipTargetState = .expelled
+        store.draftType = .proposal
+        #expect(store.draftMembershipTargetState == nil)
+    }
+
+    @Test("saveDraftDecision forwards metadata target_state to start_vote (V2-G2 sub-slice 4)")
+    func saveDraftDecisionForwardsMetadata() async {
+        let (store, mock) = await makeStore()
+        let memberId = UUID()
+        store.beginProposing()
+        store.draftTitle = "Reactivar"
+        store.draftType = .membership
+        store.draftReferenceId = memberId
+        store.draftMembershipTargetState = .active
+
+        let ok = await store.saveDraftDecision(groupId: groupId)
+        #expect(ok)
+        let recorded = await mock.recorded
+        #expect(recorded.contains { call in
+            if case .startVote(let input) = call {
+                return input.pDecisionType == "membership"
+                    && input.pReferenceKind == "membership"
+                    && input.pReferenceId == memberId
+                    && input.pMetadata == ["target_state": "active"]
+            }
+            return false
+        })
+    }
+
     @Test("saveDraftDecision rejects sanction_appeal without a picked reference")
     func saveDraftRejectsMissingReference() async {
         let (store, mock) = await makeStore()

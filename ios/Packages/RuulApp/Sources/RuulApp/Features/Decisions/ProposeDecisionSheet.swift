@@ -14,6 +14,7 @@ public struct ProposeDecisionSheet: View {
     /// don't need entity references can omit them.
     let sanctionsStore: SanctionsStore?
     let mandatesStore: MandatesStore?
+    let membersStore: MembersStore?
 
     @Environment(\.dismiss) private var dismiss
     @State private var isSaving: Bool = false
@@ -22,12 +23,14 @@ public struct ProposeDecisionSheet: View {
         store: DecisionsStore,
         groupId: UUID,
         sanctionsStore: SanctionsStore? = nil,
-        mandatesStore: MandatesStore? = nil
+        mandatesStore: MandatesStore? = nil,
+        membersStore: MembersStore? = nil
     ) {
         self.store = store
         self.groupId = groupId
         self.sanctionsStore = sanctionsStore
         self.mandatesStore = mandatesStore
+        self.membersStore = membersStore
     }
 
     public var body: some View {
@@ -59,6 +62,8 @@ public struct ProposeDecisionSheet: View {
                     await sanctionsStore?.refreshIfNeeded(groupId: groupId)
                 case .mandateGrant, .mandateRevoke:
                     await mandatesStore?.refreshIfNeeded(groupId: groupId)
+                case .membership:
+                    await membersStore?.refreshIfNeeded(groupId: groupId)
                 default:
                     break
                 }
@@ -188,6 +193,9 @@ public struct ProposeDecisionSheet: View {
             sanctionsReferenceSection
         case .mandateGrant, .mandateRevoke:
             mandatesReferenceSection
+        case .membership:
+            membershipReferenceSection
+            membershipTargetStateSection
         case .dissolution:
             unsupportedReferenceHint
         default:
@@ -252,6 +260,57 @@ public struct ProposeDecisionSheet: View {
         let principal = String(localized: mandate.principalType.label)
         let type = String(localized: mandate.type.label)
         Label("\(principal) · \(type)", systemImage: mandate.type.systemImageName)
+    }
+
+    @ViewBuilder
+    private var membershipReferenceSection: some View {
+        Section {
+            let rows = membersStore?.items.filter {
+                $0.kind == .membership && $0.membershipId != nil
+            } ?? []
+            if rows.isEmpty {
+                Text(L10n.Decisions.proposeReferenceMembershipEmpty)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker(selection: $store.draftReferenceId) {
+                    Text(String(localized: L10n.Decisions.voteOptionNoneRow)).tag(UUID?.none)
+                    ForEach(rows, id: \.id) { item in
+                        Label(item.displayName, systemImage: "person.crop.circle")
+                            .tag(UUID?.some(item.membershipId!))
+                    }
+                } label: {
+                    EmptyView()
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+        } header: {
+            Text(L10n.Decisions.proposeReferenceMembershipSection)
+        }
+    }
+
+    @ViewBuilder
+    private var membershipTargetStateSection: some View {
+        Section {
+            Picker(selection: $store.draftMembershipTargetState) {
+                Text(String(localized: L10n.Decisions.voteOptionNoneRow))
+                    .tag(MembershipDecisionTargetState?.none)
+                ForEach(MembershipDecisionTargetState.displayOrder) { state in
+                    Label(state.label, systemImage: state.systemImageName)
+                        .tag(MembershipDecisionTargetState?.some(state))
+                }
+            } label: {
+                EmptyView()
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            Text(L10n.Decisions.proposeMembershipTargetStateHint)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } header: {
+            Text(L10n.Decisions.proposeMembershipTargetStateSection)
+        }
     }
 
     @ViewBuilder

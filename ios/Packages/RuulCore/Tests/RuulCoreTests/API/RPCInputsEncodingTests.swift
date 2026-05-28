@@ -665,7 +665,7 @@ struct RPCInputsEncodingTests {
 
     // MARK: - Decisions / Voting (Primitiva 16, C1)
 
-    @Test("start_vote encodes all 14 keys and emits nil optionals as JSON null")
+    @Test("start_vote encodes all 15 keys and emits nil optionals as JSON null")
     func startVoteEncoding() throws {
         let gid = UUID()
         let dict = try encode(StartVoteParams(
@@ -689,9 +689,25 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_quorum_pct"] is NSNull)
         #expect(dict["p_reference_kind"] is NSNull)
         #expect(dict["p_reference_id"] is NSNull)
+        #expect(dict["p_metadata"] is NSNull)
         let options = dict["p_options"] as? [[String: Any]]
         #expect(options?.count == 2)
         #expect(options?.first?["label"] as? String == "Sí")
+    }
+
+    @Test("start_vote forwards typed metadata (V2-G2 sub-slice 4)")
+    func startVoteMetadataRoundtrip() throws {
+        let dict = try encode(StartVoteParams(
+            groupId: UUID(),
+            title: "X",
+            decisionType: "membership",
+            method: "majority",
+            referenceKind: "membership",
+            referenceId: UUID(),
+            metadata: ["target_state": "suspended"]
+        ))
+        let metadata = dict["p_metadata"] as? [String: Any]
+        #expect(metadata?["target_state"] as? String == "suspended")
     }
 
     @Test("cast_vote encodes optional option_id + reason as JSON null")
