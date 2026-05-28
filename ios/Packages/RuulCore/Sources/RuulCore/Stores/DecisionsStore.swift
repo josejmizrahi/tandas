@@ -54,9 +54,30 @@ public final class DecisionsStore {
     /// Guards re-entrant updates from method→legitimacy auto-sync so
     /// the legitimacy didSet doesn't disable auto-sync.
     private var isInternallySettingLegitimacy: Bool = false
-    public var draftType: DecisionType = .proposal
+    public var draftType: DecisionType = .proposal {
+        didSet {
+            // Switching type wipes the reference pick — the previous
+            // entity (a sanction, a mandate) is no longer relevant for
+            // the new decision shape.
+            if oldValue != draftType {
+                draftReferenceId = nil
+            }
+        }
+    }
+    /// V2-G2 sub-slice 3 — the entity this decision is about, when
+    /// `draftType.requiredReferenceKind` is non-nil. The reference
+    /// kind is derived from the type (no separate picker); the id is
+    /// picked from the relevant active list (sanctions / mandates).
+    public var draftReferenceId: UUID?
     public var draftOptions: [DraftOption] = []
     public private(set) var draftErrorMessage: String?
+
+    /// Convenience: true when the chosen type binds to an entity AND
+    /// the proposer hasn't picked one yet. The propose CTA uses this
+    /// alongside `canSaveDraftDecision`.
+    public var draftNeedsReferencePick: Bool {
+        draftType.requiredReferenceKind != nil && draftReferenceId == nil
+    }
 
     public struct DraftOption: Identifiable, Equatable, Sendable {
         public let id: UUID
@@ -166,6 +187,7 @@ public final class DecisionsStore {
         draftLegitimacySource = LegitimacySource.defaultFor(method: .majority)
         draftLegitimacyAutoSync = true
         draftType = .proposal
+        draftReferenceId = nil
         draftOptions = []
         draftErrorMessage = nil
         isProposePresented = true
@@ -181,6 +203,7 @@ public final class DecisionsStore {
 
     public var canSaveDraftDecision: Bool {
         !draftTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !draftNeedsReferencePick
     }
 
     @discardableResult
@@ -197,6 +220,14 @@ public final class DecisionsStore {
             draftErrorMessage = String(localized: L10n.Decisions.proposeOptionTooFew)
             return false
         }
+        // V2-G2 sub-slice 3 — reject save when the type requires a
+        // reference (sanction/mandate) but the proposer hasn't picked
+        // one. The UI gates the button on `canSaveDraftDecision`, so
+        // hitting this branch should be rare, but it's defensive.
+        if draftNeedsReferencePick {
+            draftErrorMessage = String(localized: L10n.Decisions.proposeReferenceRequired)
+            return false
+        }
         let payload: [StartVoteParams.OptionDraft]? = cleanedOptions.isEmpty
             ? nil
             : cleanedOptions.map { StartVoteParams.OptionDraft(label: $0, body: nil) }
@@ -208,6 +239,8 @@ public final class DecisionsStore {
                 decisionType: draftType,
                 method: draftMethod,
                 legitimacySource: draftLegitimacySource,
+                referenceKind: draftType.requiredReferenceKind,
+                referenceId: draftReferenceId,
                 options: payload
             )
             await refresh(groupId: groupId)
@@ -227,6 +260,7 @@ public final class DecisionsStore {
         draftLegitimacySource = LegitimacySource.defaultFor(method: .majority)
         draftLegitimacyAutoSync = true
         draftType = .proposal
+        draftReferenceId = nil
         draftOptions = []
         draftErrorMessage = nil
     }

@@ -298,6 +298,21 @@ public enum DecisionType: String, Codable, CaseIterable, Identifiable, Sendable,
         case .other:                                               return .discussion
         }
     }
+
+    /// V2-G2 sub-slice 3 — when the decision type ties to a specific
+    /// entity (a sanction to appeal, a mandate to revoke, etc.), this
+    /// returns the canonical `reference_kind` string the backend
+    /// `finalize_vote` switch uses to dispatch its outcome handler.
+    /// `nil` means "open-ended decision, no entity required".
+    public var requiredReferenceKind: String? {
+        switch self {
+        case .sanctionAppeal: return "sanction"
+        case .mandateRevoke:  return "mandate_revoke"
+        case .mandateGrant:   return "mandate_grant"
+        case .dissolution:    return "dissolution"
+        default:              return nil
+        }
+    }
 }
 
 /// One of the four ballot values a member can cast. Mirrors

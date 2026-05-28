@@ -251,7 +251,9 @@ public struct GroupSettingsView: View {
                 groupId: group.id,
                 onSelectReference: { link in
                     container.deepLinkRouter.apply(link)
-                }
+                },
+                sanctionsStore: container.sanctionsStore,
+                mandatesStore: container.mandatesStore
             )
         case .disputes:
             DisputesListView(store: container.disputesStore, groupId: group.id)

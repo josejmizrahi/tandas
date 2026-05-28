@@ -158,6 +158,67 @@ struct DecisionsStoreTests {
         #expect(store.draftLegitimacySource == .committee)
     }
 
+    @Test("draftType.sanctionAppeal requires a draftReferenceId (V2-G2 sub-slice 3)")
+    func draftTypeRequiresReference() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftTitle = "Apelo"
+        store.draftType = .sanctionAppeal
+        #expect(store.draftNeedsReferencePick)
+        #expect(store.canSaveDraftDecision == false)
+
+        store.draftReferenceId = UUID()
+        #expect(store.draftNeedsReferencePick == false)
+        #expect(store.canSaveDraftDecision)
+    }
+
+    @Test("Switching draftType clears any prior reference id (V2-G2 sub-slice 3)")
+    func switchingTypeClearsReference() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftType = .sanctionAppeal
+        store.draftReferenceId = UUID()
+        // Switch to a type with no required reference.
+        store.draftType = .proposal
+        #expect(store.draftReferenceId == nil)
+    }
+
+    @Test("saveDraftDecision forwards reference_kind + id to start_vote (V2-G2 sub-slice 3)")
+    func saveDraftDecisionForwardsReference() async {
+        let (store, mock) = await makeStore()
+        let sanctionId = UUID()
+        store.beginProposing()
+        store.draftTitle = "Apelación"
+        store.draftType = .sanctionAppeal
+        store.draftReferenceId = sanctionId
+
+        let ok = await store.saveDraftDecision(groupId: groupId)
+        #expect(ok)
+        let recorded = await mock.recorded
+        #expect(recorded.contains { call in
+            if case .startVote(let input) = call {
+                return input.pReferenceKind == "sanction"
+                    && input.pReferenceId == sanctionId
+                    && input.pDecisionType == "sanction_appeal"
+            }
+            return false
+        })
+    }
+
+    @Test("saveDraftDecision rejects sanction_appeal without a picked reference")
+    func saveDraftRejectsMissingReference() async {
+        let (store, mock) = await makeStore()
+        store.beginProposing()
+        store.draftTitle = "X"
+        store.draftType = .sanctionAppeal
+        // No draftReferenceId set.
+        let ok = await store.saveDraftDecision(groupId: groupId)
+        #expect(ok == false)
+        let recorded = await mock.recorded
+        let calls = recorded.filter { if case .startVote = $0 { return true } else { return false } }
+        #expect(calls.isEmpty)
+    }
+
     @Test("saveDraftDecision forwards draftLegitimacySource to start_vote (V2-G1)")
     func saveDraftDecisionForwardsLegitimacy() async {
         let (store, mock) = await makeStore()

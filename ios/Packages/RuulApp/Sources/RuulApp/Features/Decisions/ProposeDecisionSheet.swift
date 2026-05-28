@@ -8,13 +8,26 @@ import RuulCore
 public struct ProposeDecisionSheet: View {
     @Bindable var store: DecisionsStore
     let groupId: UUID
+    /// V2-G2 sub-slice 3 — optional stores that the reference picker
+    /// uses to populate its options for `sanction_appeal` /
+    /// `mandate_revoke`. Optional so previews and call sites that
+    /// don't need entity references can omit them.
+    let sanctionsStore: SanctionsStore?
+    let mandatesStore: MandatesStore?
 
     @Environment(\.dismiss) private var dismiss
     @State private var isSaving: Bool = false
 
-    public init(store: DecisionsStore, groupId: UUID) {
+    public init(
+        store: DecisionsStore,
+        groupId: UUID,
+        sanctionsStore: SanctionsStore? = nil,
+        mandatesStore: MandatesStore? = nil
+    ) {
         self.store = store
         self.groupId = groupId
+        self.sanctionsStore = sanctionsStore
+        self.mandatesStore = mandatesStore
     }
 
     public var body: some View {
@@ -25,6 +38,7 @@ public struct ProposeDecisionSheet: View {
                 methodSection
                 legitimacySection
                 typeSection
+                referencePickerSection
                 optionsSection
                 if let message = store.draftErrorMessage, !message.isEmpty {
                     Section {
@@ -36,6 +50,19 @@ public struct ProposeDecisionSheet: View {
             }
             .navigationTitle(L10n.Decisions.proposeTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .task(id: store.draftType) {
+                // Lazy-refresh the relevant entity list when the type
+                // changes so the picker has fresh rows. Avoids forcing
+                // the caller to pre-load both stores upfront.
+                switch store.draftType {
+                case .sanctionAppeal:
+                    await sanctionsStore?.refreshIfNeeded(groupId: groupId)
+                case .mandateGrant, .mandateRevoke:
+                    await mandatesStore?.refreshIfNeeded(groupId: groupId)
+                default:
+                    break
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: L10n.Decisions.proposeCancel)) {
@@ -145,6 +172,94 @@ public struct ProposeDecisionSheet: View {
                 .foregroundStyle(.secondary)
         } header: {
             Text(L10n.Decisions.proposeTypeSection)
+        }
+    }
+
+    /// V2-G2 sub-slice 3 — only rendered when the type binds to a
+    /// specific entity. For `sanction_appeal` lists active sanctions
+    /// from `SanctionsStore`; for `mandate_grant` / `mandate_revoke`
+    /// lists active mandates from `MandatesStore`. Other reference
+    /// kinds (`dissolution`) fall back to an informative hint until a
+    /// later sub-slice ships the entity-specific picker.
+    @ViewBuilder
+    private var referencePickerSection: some View {
+        switch store.draftType {
+        case .sanctionAppeal:
+            sanctionsReferenceSection
+        case .mandateGrant, .mandateRevoke:
+            mandatesReferenceSection
+        case .dissolution:
+            unsupportedReferenceHint
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var sanctionsReferenceSection: some View {
+        Section {
+            let rows = sanctionsStore?.sanctions ?? []
+            if rows.isEmpty {
+                Text(L10n.Decisions.proposeReferenceSanctionEmpty)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker(selection: $store.draftReferenceId) {
+                    Text(String(localized: L10n.Decisions.voteOptionNoneRow)).tag(UUID?.none)
+                    ForEach(rows) { sanction in
+                        Label(sanction.reason, systemImage: "exclamationmark.shield")
+                            .tag(UUID?.some(sanction.id))
+                    }
+                } label: {
+                    EmptyView()
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+        } header: {
+            Text(L10n.Decisions.proposeReferenceSanctionSection)
+        }
+    }
+
+    @ViewBuilder
+    private var mandatesReferenceSection: some View {
+        Section {
+            let rows = mandatesStore?.mandates ?? []
+            if rows.isEmpty {
+                Text(L10n.Decisions.proposeReferenceMandateEmpty)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker(selection: $store.draftReferenceId) {
+                    Text(String(localized: L10n.Decisions.voteOptionNoneRow)).tag(UUID?.none)
+                    ForEach(rows) { mandate in
+                        mandateRow(for: mandate)
+                            .tag(UUID?.some(mandate.id))
+                    }
+                } label: {
+                    EmptyView()
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+        } header: {
+            Text(L10n.Decisions.proposeReferenceMandateSection)
+        }
+    }
+
+    @ViewBuilder
+    private func mandateRow(for mandate: GroupMandate) -> some View {
+        let principal = String(localized: mandate.principalType.label)
+        let type = String(localized: mandate.type.label)
+        Label("\(principal) · \(type)", systemImage: mandate.type.systemImageName)
+    }
+
+    @ViewBuilder
+    private var unsupportedReferenceHint: some View {
+        Section {
+            Text(L10n.Decisions.proposeReferenceUnsupportedHint)
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
     }
 

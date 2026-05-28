@@ -11,17 +11,26 @@ public struct DecisionsListView: View {
     /// `DecisionDetailView`. Optional so previews and surfaces that
     /// don't need cross-primitive navigation can pass nil.
     let onSelectReference: ((DeepLink) -> Void)?
+    /// V2-G2 sub-slice 3 — stores the ProposeDecisionSheet picker uses
+    /// when the chosen decision type binds to a specific entity
+    /// (sanction_appeal / mandate_revoke / mandate_grant).
+    let sanctionsStore: SanctionsStore?
+    let mandatesStore: MandatesStore?
 
     @State private var filter: DecisionFilter = .open
 
     public init(
         store: DecisionsStore,
         groupId: UUID,
-        onSelectReference: ((DeepLink) -> Void)? = nil
+        onSelectReference: ((DeepLink) -> Void)? = nil,
+        sanctionsStore: SanctionsStore? = nil,
+        mandatesStore: MandatesStore? = nil
     ) {
         self.store = store
         self.groupId = groupId
         self.onSelectReference = onSelectReference
+        self.sanctionsStore = sanctionsStore
+        self.mandatesStore = mandatesStore
     }
 
     public var body: some View {
@@ -44,7 +53,12 @@ public struct DecisionsListView: View {
             }
         }
         .sheet(isPresented: $store.isProposePresented) {
-            ProposeDecisionSheet(store: store, groupId: groupId)
+            ProposeDecisionSheet(
+                store: store,
+                groupId: groupId,
+                sanctionsStore: sanctionsStore,
+                mandatesStore: mandatesStore
+            )
         }
         .sheet(isPresented: $store.isVotePresented) {
             VoteSheet(store: store, groupId: groupId)

@@ -1183,6 +1183,14 @@ public enum L10n {
         public static let proposeOptionPlaceholder = LocalizedStringResource("decisions.propose.option.placeholder", defaultValue: "Etiqueta")
         public static let proposeTitleRequired = LocalizedStringResource("decisions.propose.title.required", defaultValue: "Escribe un título.")
         public static let proposeOptionTooFew = LocalizedStringResource("decisions.propose.option.too_few", defaultValue: "Necesitas al menos dos opciones, o déjalo vacío para Sí/No/Abstención.")
+        public static let proposeReferenceRequired = LocalizedStringResource("decisions.propose.reference.required", defaultValue: "Elige a qué se refiere esta decisión.")
+
+        // Propose-side reference picker (V2-G2 sub-slice 3)
+        public static let proposeReferenceSanctionSection = LocalizedStringResource("decisions.propose.reference.sanction.section", defaultValue: "¿Qué sanción?")
+        public static let proposeReferenceSanctionEmpty   = LocalizedStringResource("decisions.propose.reference.sanction.empty",   defaultValue: "No hay sanciones activas para apelar.")
+        public static let proposeReferenceMandateSection  = LocalizedStringResource("decisions.propose.reference.mandate.section",  defaultValue: "¿Qué mandato?")
+        public static let proposeReferenceMandateEmpty    = LocalizedStringResource("decisions.propose.reference.mandate.empty",    defaultValue: "No hay mandatos activos para revocar.")
+        public static let proposeReferenceUnsupportedHint = LocalizedStringResource("decisions.propose.reference.unsupported",      defaultValue: "Selecciona el elemento afectado al confirmar la decisión.")
 
         // Vote sheet
         public static let voteTitle          = LocalizedStringResource("decisions.vote.title",         defaultValue: "Tu voto")
