@@ -506,6 +506,9 @@ public enum L10n {
         public static let statusVerified     = LocalizedStringResource("contributions.status.verified",    defaultValue: "Verificada")
         public static let statusRejected     = LocalizedStringResource("contributions.status.rejected",    defaultValue: "Rechazada")
         public static let statusRewarded     = LocalizedStringResource("contributions.status.rewarded",    defaultValue: "Reconocida")
+
+        public static let verifyAction       = LocalizedStringResource("contributions.verify",             defaultValue: "Aceptar")
+        public static let rejectAction       = LocalizedStringResource("contributions.reject",             defaultValue: "Rechazar")
     }
 
     public enum Mandates {

@@ -50,6 +50,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case revokeMandate(input: RevokeMandateParams)
         case groupContributionsActive(groupId: UUID, membershipId: UUID?, resourceId: UUID?)
         case logContribution(input: LogContributionParams)
+        case verifyContribution(input: VerifyContributionParams)
         case groupReputationEvents(groupId: UUID, limit: Int)
         case recordReputationEvent(input: RecordReputationEventParams)
         case myProfile
@@ -157,6 +158,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var revokeMandateStub: Result<Void, RuulError> = .success(())
     private var groupContributionsActiveStub: Result<[GroupContribution], RuulError> = .success([])
     private var logContributionStub: Result<UUID, RuulError> = .success(UUID())
+    private var verifyContributionStub: Result<Void, RuulError> = .success(())
     private var groupReputationEventsStub: Result<[GroupReputationEvent], RuulError> = .success([])
     private var recordReputationEventStub: Result<GroupReputationEvent, RuulError> = .success(
         GroupReputationEvent(id: UUID(), groupId: UUID(), subjectMembershipId: UUID(), kind: .other)
@@ -247,6 +249,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setRevokeMandateStub(_ stub: Result<Void, RuulError>) { revokeMandateStub = stub }
     func setGroupContributionsActiveStub(_ stub: Result<[GroupContribution], RuulError>) { groupContributionsActiveStub = stub }
     func setLogContributionStub(_ stub: Result<UUID, RuulError>) { logContributionStub = stub }
+    func setVerifyContributionStub(_ stub: Result<Void, RuulError>) { verifyContributionStub = stub }
     func setGroupReputationEventsStub(_ stub: Result<[GroupReputationEvent], RuulError>) { groupReputationEventsStub = stub }
     func setRecordReputationEventStub(_ stub: Result<GroupReputationEvent, RuulError>) { recordReputationEventStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
@@ -494,6 +497,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func logContribution(_ input: LogContributionParams) async throws -> UUID {
         recorded.append(.logContribution(input: input))
         return try logContributionStub.get()
+    }
+
+    func verifyContribution(_ input: VerifyContributionParams) async throws {
+        recorded.append(.verifyContribution(input: input))
+        try verifyContributionStub.get()
     }
 
     func groupReputationEvents(groupId: UUID, limit: Int) async throws -> [GroupReputationEvent] {

@@ -153,4 +153,31 @@ public final class ContributionsStore {
     }
 
     public func clearError() { errorMessage = nil }
+
+    /// Calls `verify_contribution` and refreshes the active list. The
+    /// backend enforces `contribution.verify` perm + self-check; on
+    /// failure the message is surfaced via `errorMessage` and the row
+    /// stays as `claimed`.
+    @discardableResult
+    public func verify(
+        contributionId: UUID,
+        outcome: ContributionVerifyOutcome,
+        note: String? = nil,
+        groupId: UUID,
+        membershipId: UUID? = nil,
+        resourceId: UUID? = nil
+    ) async -> Bool {
+        do {
+            try await repository.verify(
+                contributionId: contributionId,
+                outcome: outcome,
+                note: note
+            )
+            await refresh(groupId: groupId, membershipId: membershipId, resourceId: resourceId)
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
 }

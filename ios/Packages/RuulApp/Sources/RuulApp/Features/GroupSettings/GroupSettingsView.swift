@@ -230,7 +230,11 @@ public struct GroupSettingsView: View {
         case .resources:
             ResourcesListView(store: container.resourcesStore, groupId: group.id)
         case .contributions:
-            ContributionsListView(store: container.contributionsStore, groupId: group.id)
+            ContributionsListView(
+                store: container.contributionsStore,
+                groupId: group.id,
+                myMembershipId: group.membershipId
+            )
         case .decisions:
             DecisionsListView(store: container.decisionsStore, groupId: group.id)
         case .disputes:

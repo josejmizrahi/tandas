@@ -2,9 +2,8 @@ import Foundation
 
 /// Foundation-scope repository for Primitiva 9 (Contribuciones).
 /// Reads via `group_contributions_active(...)`; writes via
-/// `log_contribution`. Verify path lives on the backend
-/// (`contribution.verify` perm) and lands with a dedicated review
-/// surface — Foundation does not expose it here.
+/// `log_contribution` (self-claim) and `verify_contribution`
+/// (third-party flip a `verified` / `rejected`).
 public struct CanonicalContributionsRepository: Sendable {
     private let rpc: any RuulRPCClient
 
@@ -58,4 +57,27 @@ public struct CanonicalContributionsRepository: Sendable {
         )
         return try await rpc.logContribution(input)
     }
+
+    public func verify(
+        contributionId: UUID,
+        outcome: ContributionVerifyOutcome,
+        note: String? = nil
+    ) async throws {
+        let trimNote = note.flatMap {
+            let t = $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? nil : t
+        }
+        let input = VerifyContributionParams(
+            contributionId: contributionId,
+            outcome: outcome.rawValue,
+            note: trimNote
+        )
+        try await rpc.verifyContribution(input)
+    }
+}
+
+/// Wire value the backend accepts on `verify_contribution.p_outcome`.
+public enum ContributionVerifyOutcome: String, Sendable, Equatable {
+    case verified
+    case rejected
 }

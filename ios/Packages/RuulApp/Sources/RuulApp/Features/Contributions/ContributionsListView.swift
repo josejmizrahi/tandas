@@ -3,22 +3,30 @@ import RuulCore
 
 /// Full list of contributions (Primitiva 9) for a group. Grouped by
 /// `contribution_type` in canonical display order. Toolbar add =
-/// log self-claim. Read-only beyond logging — verify lands later.
+/// log self-claim. Swipe leading/trailing = verify/reject (backend
+/// gates by `contribution.verify` + self-check, so the UI shows the
+/// actions for any claimed row that I didn't author and surfaces a
+/// `UserFacingError` if my role doesn't have the permission).
 public struct ContributionsListView: View {
     @Bindable var store: ContributionsStore
     let groupId: UUID
+    let myMembershipId: UUID?
     /// Optional filters threaded into the read RPC. nil = group-wide.
     let filterMembershipId: UUID?
     let filterResourceId: UUID?
 
+    @State private var alertMessage: String?
+
     public init(
         store: ContributionsStore,
         groupId: UUID,
+        myMembershipId: UUID? = nil,
         filterMembershipId: UUID? = nil,
         filterResourceId: UUID? = nil
     ) {
         self.store = store
         self.groupId = groupId
+        self.myMembershipId = myMembershipId
         self.filterMembershipId = filterMembershipId
         self.filterResourceId = filterResourceId
     }
@@ -44,8 +52,47 @@ public struct ContributionsListView: View {
         .sheet(isPresented: $store.isLogPresented) {
             LogContributionSheet(store: store, groupId: groupId)
         }
+        .alert(
+            "No se pudo verificar",
+            isPresented: Binding(
+                get: { alertMessage != nil },
+                set: { if !$0 { alertMessage = nil } }
+            ),
+            presenting: alertMessage
+        ) { _ in
+            Button("OK", role: .cancel) { alertMessage = nil }
+        } message: { message in
+            Text(message)
+        }
         .task {
             await store.refreshIfNeeded(groupId: groupId, membershipId: filterMembershipId, resourceId: filterResourceId)
+        }
+    }
+
+    /// Verify-row eligibility: only `claimed` rows that I didn't
+    /// author. Other statuses are terminal; the backend will reject
+    /// self-verify but UX-wise the swipe shouldn't appear.
+    private func canVerify(_ contribution: GroupContribution) -> Bool {
+        guard contribution.status == .claimed else { return false }
+        if let myMembershipId, contribution.membershipId == myMembershipId {
+            return false
+        }
+        return true
+    }
+
+    private func performVerify(_ contribution: GroupContribution, outcome: ContributionVerifyOutcome) {
+        Task {
+            let ok = await store.verify(
+                contributionId: contribution.id,
+                outcome: outcome,
+                groupId: groupId,
+                membershipId: filterMembershipId,
+                resourceId: filterResourceId
+            )
+            if !ok {
+                alertMessage = store.errorMessage
+                store.clearError()
+            }
         }
     }
 
@@ -99,6 +146,32 @@ public struct ContributionsListView: View {
                 Section {
                     ForEach(bucket) { contribution in
                         row(for: contribution)
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                if canVerify(contribution) {
+                                    Button {
+                                        performVerify(contribution, outcome: .verified)
+                                    } label: {
+                                        Label(
+                                            String(localized: L10n.Contributions.verifyAction),
+                                            systemImage: "checkmark.seal"
+                                        )
+                                    }
+                                    .tint(.green)
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                if canVerify(contribution) {
+                                    Button {
+                                        performVerify(contribution, outcome: .rejected)
+                                    } label: {
+                                        Label(
+                                            String(localized: L10n.Contributions.rejectAction),
+                                            systemImage: "xmark.circle"
+                                        )
+                                    }
+                                    .tint(.red)
+                                }
+                            }
                     }
                 } header: {
                     Label(type.label, systemImage: type.systemImageName)
@@ -115,11 +188,7 @@ public struct ContributionsListView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                 Spacer()
-                if contribution.isVerified {
-                    Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(.green)
-                        .font(.caption)
-                }
+                statusBadge(for: contribution.status)
             }
             if let title = contribution.title, !title.isEmpty,
                let desc = contribution.description, !desc.isEmpty {
@@ -152,6 +221,26 @@ public struct ContributionsListView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func statusBadge(for status: ContributionStatus) -> some View {
+        let (fg, bg, icon): (Color, Color, String) = {
+            switch status {
+            case .claimed:  return (.orange, .orange.opacity(0.18), "hourglass")
+            case .verified: return (.green,  .green.opacity(0.18),  "checkmark.seal.fill")
+            case .rejected: return (.red,    .red.opacity(0.18),    "xmark.circle.fill")
+            case .rewarded: return (.purple, .purple.opacity(0.18), "rosette")
+            }
+        }()
+        HStack(spacing: 4) {
+            Image(systemName: icon).font(.caption2.weight(.semibold))
+            Text(status.label).font(.caption2.weight(.medium))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(Capsule().fill(bg))
+        .foregroundStyle(fg)
     }
 
     @ViewBuilder

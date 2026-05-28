@@ -365,6 +365,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func verifyContribution(_ input: VerifyContributionParams) async throws {
+        do {
+            _ = try await client.rpc("verify_contribution", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Mandates (Primitiva 23, B4)
 
     public func groupMandatesActive(groupId: UUID) async throws -> [GroupMandate] {

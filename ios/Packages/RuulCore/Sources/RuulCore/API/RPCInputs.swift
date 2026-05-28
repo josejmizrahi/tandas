@@ -627,6 +627,31 @@ public struct LogContributionParams: Encodable, Sendable, Equatable, Hashable {
     }
 }
 
+public struct VerifyContributionParams: Encodable, Sendable, Equatable, Hashable {
+    public let pContributionId: UUID
+    public let pOutcome: String
+    public let pNote: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pContributionId = "p_contribution_id"
+        case pOutcome        = "p_outcome"
+        case pNote           = "p_note"
+    }
+
+    public init(contributionId: UUID, outcome: String, note: String? = nil) {
+        self.pContributionId = contributionId
+        self.pOutcome = outcome
+        self.pNote = note
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pContributionId, forKey: .pContributionId)
+        try c.encode(pOutcome, forKey: .pOutcome)
+        try c.encodeOrNil(pNote, forKey: .pNote)
+    }
+}
+
 // MARK: - Mandates (Primitiva 23, B4)
 
 public struct GroupMandatesActiveParams: Encodable, Sendable {

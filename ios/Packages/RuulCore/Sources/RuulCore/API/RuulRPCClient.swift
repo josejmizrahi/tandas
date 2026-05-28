@@ -150,6 +150,13 @@ public protocol RuulRPCClient: Sendable {
     /// claimed). Requires `contribution.record`. Returns the new id.
     func logContribution(_ input: LogContributionParams) async throws -> UUID
 
+    /// `verify_contribution(p_contribution_id, p_outcome, p_note)` —
+    /// flips a `claimed` contribution to `verified` or `rejected`.
+    /// Requires `contribution.verify`. Verifier must not be the
+    /// contribution subject (server-side check). On `verified`, the
+    /// backend appends a `contribution_recognized` reputation event.
+    func verifyContribution(_ input: VerifyContributionParams) async throws
+
     // MARK: - Mandates (Primitiva 23, B4)
 
     /// `group_mandates_active(p_group_id)` — currently-active mandates
