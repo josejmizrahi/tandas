@@ -31,6 +31,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupResourcesActive(groupId: UUID)
         case createGroupResource(input: CreateGroupResourceInput)
         case archiveGroupResource(input: ArchiveGroupResourceInput)
+        case setResourceOwnership(input: SetResourceOwnershipParams)
         case groupFoundationStatus(groupId: UUID)
         case groupDecisionRules(groupId: UUID)
         case setDecisionRules(input: SetDecisionRulesInput)
@@ -125,6 +126,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         GroupResource(id: UUID(), groupId: UUID(), resourceType: .other, name: "")
     )
     private var archiveGroupResourceStub: Result<Void, RuulError> = .success(())
+    private var setResourceOwnershipStub: Result<Void, RuulError> = .success(())
     private var groupFoundationStatusStub: Result<GroupFoundationStatus, RuulError> = .success(
         GroupFoundationStatus(
             groupId: UUID(),
@@ -230,6 +232,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupResourcesActiveStub(_ stub: Result<[GroupResource], RuulError>) { groupResourcesActiveStub = stub }
     func setCreateGroupResourceStub(_ stub: Result<GroupResource, RuulError>) { createGroupResourceStub = stub }
     func setArchiveGroupResourceStub(_ stub: Result<Void, RuulError>) { archiveGroupResourceStub = stub }
+    func setSetResourceOwnershipStub(_ stub: Result<Void, RuulError>) { setResourceOwnershipStub = stub }
     func setGroupFoundationStatusStub(_ stub: Result<GroupFoundationStatus, RuulError>) { groupFoundationStatusStub = stub }
     func setGroupDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { groupDecisionRulesStub = stub }
     func setSetDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { setDecisionRulesStub = stub }
@@ -391,6 +394,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {
         recorded.append(.archiveGroupResource(input: input))
         try archiveGroupResourceStub.get()
+    }
+
+    func setResourceOwnership(_ input: SetResourceOwnershipParams) async throws {
+        recorded.append(.setResourceOwnership(input: input))
+        try setResourceOwnershipStub.get()
     }
 
     func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {

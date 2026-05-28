@@ -12,14 +12,21 @@ import RuulCore
 /// per `doctrine_group_space_situational`.
 public struct ResourceDetailView: View {
     @Bindable var store: ResourcesStore
+    @Bindable var membersStore: MembersStore
     let groupId: UUID
     let resource: GroupResource
 
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirmingArchive: Bool = false
 
-    public init(store: ResourcesStore, groupId: UUID, resource: GroupResource) {
+    public init(
+        store: ResourcesStore,
+        membersStore: MembersStore,
+        groupId: UUID,
+        resource: GroupResource
+    ) {
         self.store = store
+        self.membersStore = membersStore
         self.groupId = groupId
         self.resource = resource
     }
@@ -50,6 +57,13 @@ public struct ResourceDetailView: View {
             Button(role: .cancel) {} label: { Text(L10n.Resources.cancel) }
         } message: {
             Text(L10n.Resources.archiveConfirmMessage)
+        }
+        .sheet(isPresented: $store.isTransferPresented) {
+            TransferOwnershipSheet(
+                store: store,
+                membersStore: membersStore,
+                groupId: groupId
+            )
         }
     }
 
@@ -155,6 +169,11 @@ public struct ResourceDetailView: View {
     @ViewBuilder
     private var actionsSection: some View {
         Section(L10n.ResourceDetail.actionsSection) {
+            Button {
+                store.beginTransferring(resource)
+            } label: {
+                Label(L10n.ResourceDetail.transferAction, systemImage: "arrow.left.arrow.right")
+            }
             Button(role: .destructive) {
                 isConfirmingArchive = true
             } label: {

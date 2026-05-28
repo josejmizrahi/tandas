@@ -260,6 +260,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func setResourceOwnership(_ input: SetResourceOwnershipParams) async throws {
+        do {
+            _ = try await client.rpc("set_resource_ownership", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Foundation status
 
     public func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {

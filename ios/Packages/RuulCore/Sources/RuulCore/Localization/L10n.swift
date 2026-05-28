@@ -727,6 +727,18 @@ public enum L10n {
         public static let activityPlaceholder = LocalizedStringResource("resource_detail.activity.placeholder", defaultValue: "Próximamente: aquí aparecerá la actividad reciente del recurso.")
         public static let actionsSection     = LocalizedStringResource("resource_detail.section.actions",    defaultValue: "Acciones")
         public static let archiveAction      = LocalizedStringResource("resource_detail.action.archive",     defaultValue: "Archivar recurso")
+        public static let transferAction     = LocalizedStringResource("resource_detail.action.transfer",    defaultValue: "Transferir propiedad")
+    }
+
+    public enum TransferOwnership {
+        public static let title              = LocalizedStringResource("transfer_ownership.title",            defaultValue: "Transferir propiedad")
+        public static let kindSection        = LocalizedStringResource("transfer_ownership.section.kind",     defaultValue: "Pasa a")
+        public static let memberSection      = LocalizedStringResource("transfer_ownership.section.member",   defaultValue: "Miembro")
+        public static let memberPlaceholder  = LocalizedStringResource("transfer_ownership.member.placeholder", defaultValue: "Elige a quién")
+        public static let noteSection        = LocalizedStringResource("transfer_ownership.section.note",     defaultValue: "Motivo (opcional)")
+        public static let notePlaceholder    = LocalizedStringResource("transfer_ownership.note.placeholder", defaultValue: "Por qué cambia la propiedad…")
+        public static let save               = LocalizedStringResource("transfer_ownership.save",             defaultValue: "Transferir")
+        public static let cancel             = LocalizedStringResource("transfer_ownership.cancel",           defaultValue: "Cancelar")
     }
 
     public enum MoneyDashboard {

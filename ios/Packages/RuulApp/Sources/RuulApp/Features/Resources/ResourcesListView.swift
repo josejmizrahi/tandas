@@ -7,12 +7,14 @@ import RuulCore
 /// confirmation dialog.
 public struct ResourcesListView: View {
     @Bindable var store: ResourcesStore
+    @Bindable var membersStore: MembersStore
     let groupId: UUID
 
     @State private var toArchive: GroupResource?
 
-    public init(store: ResourcesStore, groupId: UUID) {
+    public init(store: ResourcesStore, membersStore: MembersStore, groupId: UUID) {
         self.store = store
+        self.membersStore = membersStore
         self.groupId = groupId
     }
 
@@ -38,7 +40,7 @@ public struct ResourcesListView: View {
             CreateResourceView(store: store, groupId: groupId)
         }
         .navigationDestination(for: GroupResource.self) { resource in
-            ResourceDetailView(store: store, groupId: groupId, resource: resource)
+            ResourceDetailView(store: store, membersStore: membersStore, groupId: groupId, resource: resource)
         }
         .confirmationDialog(
             Text(L10n.Resources.archiveConfirmTitle),

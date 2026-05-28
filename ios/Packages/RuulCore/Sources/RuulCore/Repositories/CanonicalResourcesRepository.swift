@@ -48,6 +48,28 @@ public struct CanonicalResourcesRepository: Sendable {
             ArchiveGroupResourceInput(pResourceId: resourceId, pReason: trimmed)
         )
     }
+
+    public func transferOwnership(
+        resourceId: UUID,
+        ownershipKind: ResourceOwnershipKind,
+        ownerMembershipId: UUID? = nil,
+        note: String? = nil
+    ) async throws {
+        var metadata: [String: String] = [:]
+        if let trimmed = note?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank {
+            metadata["note"] = trimmed
+        }
+        try await rpc.setResourceOwnership(
+            SetResourceOwnershipParams(
+                resourceId: resourceId,
+                ownershipKind: ownershipKind.rawValue,
+                ownerMembershipId: ownershipKind == .member ? ownerMembershipId : nil,
+                metadata: metadata
+            )
+        )
+    }
 }
 
 private extension String {

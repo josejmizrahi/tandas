@@ -96,6 +96,12 @@ public protocol RuulRPCClient: Sendable {
     /// generic backend error.
     func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws
 
+    /// `set_resource_ownership(...)` — switches `ownership_kind` (and
+    /// optionally `owner_membership_id`) on an existing resource.
+    /// Requires `resources.transfer`. Records a `resource.ownership_changed`
+    /// system event.
+    func setResourceOwnership(_ input: SetResourceOwnershipParams) async throws
+
     // MARK: - Foundation status
 
     /// `group_foundation_status(p_group_id)` — per-primitive readiness

@@ -228,7 +228,11 @@ public struct GroupSettingsView: View {
         case .groupProfile:
             GroupProfileView(container: container, group: group)
         case .resources:
-            ResourcesListView(store: container.resourcesStore, groupId: group.id)
+            ResourcesListView(
+                store: container.resourcesStore,
+                membersStore: container.membersStore,
+                groupId: group.id
+            )
         case .contributions:
             ContributionsListView(
                 store: container.contributionsStore,

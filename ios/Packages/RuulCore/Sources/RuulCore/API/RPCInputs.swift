@@ -627,6 +627,40 @@ public struct LogContributionParams: Encodable, Sendable, Equatable, Hashable {
     }
 }
 
+public struct SetResourceOwnershipParams: Encodable, Sendable, Equatable, Hashable {
+    public let pResourceId: UUID
+    public let pOwnershipKind: String
+    public let pOwnerMembershipId: UUID?
+    public let pMetadata: [String: String]
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId        = "p_resource_id"
+        case pOwnershipKind     = "p_ownership_kind"
+        case pOwnerMembershipId = "p_owner_membership_id"
+        case pMetadata          = "p_metadata"
+    }
+
+    public init(
+        resourceId: UUID,
+        ownershipKind: String,
+        ownerMembershipId: UUID? = nil,
+        metadata: [String: String] = [:]
+    ) {
+        self.pResourceId = resourceId
+        self.pOwnershipKind = ownershipKind
+        self.pOwnerMembershipId = ownerMembershipId
+        self.pMetadata = metadata
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pResourceId, forKey: .pResourceId)
+        try c.encode(pOwnershipKind, forKey: .pOwnershipKind)
+        try c.encodeOrNil(pOwnerMembershipId, forKey: .pOwnerMembershipId)
+        try c.encode(pMetadata, forKey: .pMetadata)
+    }
+}
+
 public struct VerifyContributionParams: Encodable, Sendable, Equatable, Hashable {
     public let pContributionId: UUID
     public let pOutcome: String

@@ -21,6 +21,13 @@ public final class ResourcesStore {
     public var draftOwnerMembershipId: UUID?
     public var draftCustodianMembershipId: UUID?
 
+    /// Drives the `TransferOwnershipSheet` for an existing resource.
+    public var isTransferPresented: Bool = false
+    public var transferResourceId: UUID?
+    public var transferKind: ResourceOwnershipKind = .group
+    public var transferOwnerMembershipId: UUID?
+    public var transferNote: String = ""
+
     private let repository: CanonicalResourcesRepository
     private var loadedGroupId: UUID?
 
@@ -140,4 +147,50 @@ public final class ResourcesStore {
     }
 
     public func clearError() { errorMessage = nil }
+
+    // MARK: - Transfer ownership
+
+    public func beginTransferring(_ resource: GroupResource) {
+        transferResourceId = resource.id
+        transferKind = resource.ownershipKind
+        transferOwnerMembershipId = resource.ownerMembershipId
+        transferNote = ""
+        errorMessage = nil
+        isTransferPresented = true
+    }
+
+    public var canSaveTransfer: Bool {
+        guard transferResourceId != nil else { return false }
+        if transferKind == .member, transferOwnerMembershipId == nil { return false }
+        return true
+    }
+
+    @discardableResult
+    public func saveTransfer(groupId: UUID) async -> Bool {
+        guard let resourceId = transferResourceId else {
+            errorMessage = "No hay recurso seleccionado."
+            return false
+        }
+        if transferKind == .member, transferOwnerMembershipId == nil {
+            errorMessage = "Elige a quién pasa la propiedad."
+            return false
+        }
+        do {
+            try await repository.transferOwnership(
+                resourceId: resourceId,
+                ownershipKind: transferKind,
+                ownerMembershipId: transferOwnerMembershipId,
+                note: transferNote
+            )
+            await refresh(groupId: groupId)
+            isTransferPresented = false
+            transferResourceId = nil
+            transferOwnerMembershipId = nil
+            transferNote = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
 }
