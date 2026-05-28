@@ -184,4 +184,13 @@ private struct PurposeStubClient: RuulRPCClient, @unchecked Sendable {
     }
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
+    func listDecisionsActive(groupId: UUID) async throws -> [GroupDecisionSummary] { [] }
+    func listDecisionsHistory(groupId: UUID, limit: Int) async throws -> [GroupDecisionSummary] { [] }
+    func decisionDetail(decisionId: UUID) async throws -> GroupDecisionDetail {
+        GroupDecisionDetail(id: decisionId, groupId: UUID(), title: "")
+    }
+    func startVote(_ input: StartVoteParams) async throws -> UUID { UUID() }
+    func castVote(_ input: CastVoteParams) async throws -> UUID { UUID() }
+    func finalizeVote(decisionId: UUID) async throws -> String { "passed" }
+    func cancelVote(_ input: CancelVoteParams) async throws {}
 }

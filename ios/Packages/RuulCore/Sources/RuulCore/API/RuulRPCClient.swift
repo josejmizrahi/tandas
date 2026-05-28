@@ -237,6 +237,40 @@ public protocol RuulRPCClient: Sendable {
                                 subjectMembershipId: UUID,
                                 limit: Int) async throws -> [GroupReputationEvent]
 
+    // MARK: - Decisions / Voting (Primitiva 16, C1)
+
+    /// `list_decisions_active(p_group_id)` — open decisions for a group,
+    /// pre-joined with tally + caller's current vote. Active-member gate.
+    func listDecisionsActive(groupId: UUID) async throws -> [GroupDecisionSummary]
+
+    /// `list_decisions_history(p_group_id, p_limit)` — closed decisions
+    /// (passed / rejected / cancelled) ordered by `decided_at DESC`,
+    /// capped server-side. Active-member gate.
+    func listDecisionsHistory(groupId: UUID, limit: Int) async throws -> [GroupDecisionSummary]
+
+    /// `decision_detail(p_decision_id)` — single jsonb with options +
+    /// tally + caller's most recent vote. Active-member gate.
+    func decisionDetail(decisionId: UUID) async throws -> GroupDecisionDetail
+
+    /// `start_vote(...)` — opens a new decision in `open` state.
+    /// Requires permission `decisions.create`. Returns the decision id.
+    func startVote(_ input: StartVoteParams) async throws -> UUID
+
+    /// `cast_vote(p_decision_id, p_option_id, p_vote_value, p_reason)`
+    /// — append-only ballot. Active-member gate (permission check is
+    /// implicit via membership). Returns the inserted row id.
+    func castVote(_ input: CastVoteParams) async throws -> UUID
+
+    /// `finalize_vote(p_decision_id)` — closes a decision and writes
+    /// the outcome. Returns the new status string (`passed` /
+    /// `rejected` / `no_quorum` / pre-existing status when already
+    /// closed).
+    func finalizeVote(decisionId: UUID) async throws -> String
+
+    /// `cancel_vote(p_decision_id, p_reason)` — cancels an open
+    /// decision without computing tally. Requires `decisions.resolve`.
+    func cancelVote(_ input: CancelVoteParams) async throws
+
     // MARK: - Profile
 
     /// `my_profile() returns public.profiles`. Backend creates a blank

@@ -54,6 +54,13 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case recordReputationEvent(input: RecordReputationEventParams)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
+        case listDecisionsActive(groupId: UUID)
+        case listDecisionsHistory(groupId: UUID, limit: Int)
+        case decisionDetail(decisionId: UUID)
+        case startVote(input: StartVoteParams)
+        case castVote(input: CastVoteParams)
+        case finalizeVote(decisionId: UUID)
+        case cancelVote(input: CancelVoteParams)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -132,6 +139,15 @@ final actor MockRuulRPCClient: RuulRPCClient {
     )
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
+    private var listDecisionsActiveStub: Result<[GroupDecisionSummary], RuulError> = .success([])
+    private var listDecisionsHistoryStub: Result<[GroupDecisionSummary], RuulError> = .success([])
+    private var decisionDetailStub: Result<GroupDecisionDetail, RuulError> = .success(
+        GroupDecisionDetail(id: UUID(), groupId: UUID(), title: "")
+    )
+    private var startVoteStub: Result<UUID, RuulError> = .success(UUID())
+    private var castVoteStub: Result<UUID, RuulError> = .success(UUID())
+    private var finalizeVoteStub: Result<String, RuulError> = .success("passed")
+    private var cancelVoteStub: Result<Void, RuulError> = .success(())
 
     init() {}
 
@@ -181,6 +197,13 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setRecordReputationEventStub(_ stub: Result<GroupReputationEvent, RuulError>) { recordReputationEventStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
+    func setListDecisionsActiveStub(_ stub: Result<[GroupDecisionSummary], RuulError>) { listDecisionsActiveStub = stub }
+    func setListDecisionsHistoryStub(_ stub: Result<[GroupDecisionSummary], RuulError>) { listDecisionsHistoryStub = stub }
+    func setDecisionDetailStub(_ stub: Result<GroupDecisionDetail, RuulError>) { decisionDetailStub = stub }
+    func setStartVoteStub(_ stub: Result<UUID, RuulError>) { startVoteStub = stub }
+    func setCastVoteStub(_ stub: Result<UUID, RuulError>) { castVoteStub = stub }
+    func setFinalizeVoteStub(_ stub: Result<String, RuulError>) { finalizeVoteStub = stub }
+    func setCancelVoteStub(_ stub: Result<Void, RuulError>) { cancelVoteStub = stub }
 
     // MARK: - RuulRPCClient
 
@@ -413,5 +436,40 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile {
         recorded.append(.updateMyProfile(input: input))
         return try updateMyProfileStub.get()
+    }
+
+    func listDecisionsActive(groupId: UUID) async throws -> [GroupDecisionSummary] {
+        recorded.append(.listDecisionsActive(groupId: groupId))
+        return try listDecisionsActiveStub.get()
+    }
+
+    func listDecisionsHistory(groupId: UUID, limit: Int) async throws -> [GroupDecisionSummary] {
+        recorded.append(.listDecisionsHistory(groupId: groupId, limit: limit))
+        return try listDecisionsHistoryStub.get()
+    }
+
+    func decisionDetail(decisionId: UUID) async throws -> GroupDecisionDetail {
+        recorded.append(.decisionDetail(decisionId: decisionId))
+        return try decisionDetailStub.get()
+    }
+
+    func startVote(_ input: StartVoteParams) async throws -> UUID {
+        recorded.append(.startVote(input: input))
+        return try startVoteStub.get()
+    }
+
+    func castVote(_ input: CastVoteParams) async throws -> UUID {
+        recorded.append(.castVote(input: input))
+        return try castVoteStub.get()
+    }
+
+    func finalizeVote(decisionId: UUID) async throws -> String {
+        recorded.append(.finalizeVote(decisionId: decisionId))
+        return try finalizeVoteStub.get()
+    }
+
+    func cancelVote(_ input: CancelVoteParams) async throws {
+        recorded.append(.cancelVote(input: input))
+        try cancelVoteStub.get()
     }
 }

@@ -981,6 +981,187 @@ public struct UpdateMyProfileInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Decisions / Voting (Primitiva 16, C1)
+
+public struct ListDecisionsActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+public struct ListDecisionsHistoryParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pLimit: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pLimit   = "p_limit"
+    }
+
+    public init(groupId: UUID, limit: Int = 50) {
+        self.pGroupId = groupId
+        self.pLimit = limit
+    }
+}
+
+public struct DecisionDetailParams: Encodable, Sendable {
+    public let pDecisionId: UUID
+    enum CodingKeys: String, CodingKey { case pDecisionId = "p_decision_id" }
+    public init(decisionId: UUID) { self.pDecisionId = decisionId }
+}
+
+/// Wraps the canonical `start_vote(...)` signature. Foundation only
+/// exposes the small set of fields the propose sheet collects;
+/// scheduling + reference linking are left as backend defaults.
+public struct StartVoteParams: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pTitle: String
+    public let pBody: String?
+    public let pDecisionType: String
+    public let pMethod: String
+    public let pLegitimacySource: String
+    public let pOpensAt: Date?
+    public let pClosesAt: Date?
+    public let pThresholdPct: Decimal?
+    public let pQuorumPct: Decimal?
+    public let pCommitteeOnly: Bool
+    public let pReferenceKind: String?
+    public let pReferenceId: UUID?
+    public let pOptions: [OptionDraft]?
+
+    public struct OptionDraft: Encodable, Sendable, Equatable {
+        public let label: String
+        public let body: String?
+        public init(label: String, body: String? = nil) {
+            self.label = label
+            self.body = body
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId          = "p_group_id"
+        case pTitle            = "p_title"
+        case pBody             = "p_body"
+        case pDecisionType     = "p_decision_type"
+        case pMethod           = "p_method"
+        case pLegitimacySource = "p_legitimacy_source"
+        case pOpensAt          = "p_opens_at"
+        case pClosesAt         = "p_closes_at"
+        case pThresholdPct     = "p_threshold_pct"
+        case pQuorumPct        = "p_quorum_pct"
+        case pCommitteeOnly    = "p_committee_only"
+        case pReferenceKind    = "p_reference_kind"
+        case pReferenceId      = "p_reference_id"
+        case pOptions          = "p_options"
+    }
+
+    public init(
+        groupId: UUID,
+        title: String,
+        body: String? = nil,
+        decisionType: String = "proposal",
+        method: String = "majority",
+        legitimacySource: String = "majority",
+        opensAt: Date? = nil,
+        closesAt: Date? = nil,
+        thresholdPct: Decimal? = nil,
+        quorumPct: Decimal? = nil,
+        committeeOnly: Bool = false,
+        referenceKind: String? = nil,
+        referenceId: UUID? = nil,
+        options: [OptionDraft]? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pTitle = title
+        self.pBody = body
+        self.pDecisionType = decisionType
+        self.pMethod = method
+        self.pLegitimacySource = legitimacySource
+        self.pOpensAt = opensAt
+        self.pClosesAt = closesAt
+        self.pThresholdPct = thresholdPct
+        self.pQuorumPct = quorumPct
+        self.pCommitteeOnly = committeeOnly
+        self.pReferenceKind = referenceKind
+        self.pReferenceId = referenceId
+        self.pOptions = options
+    }
+
+    /// Emit every key explicitly; nil optionals become JSON null so
+    /// PostgREST overload resolution stays deterministic for the
+    /// 14-arg signature.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pTitle, forKey: .pTitle)
+        try c.encodeOrNil(pBody, forKey: .pBody)
+        try c.encode(pDecisionType, forKey: .pDecisionType)
+        try c.encode(pMethod, forKey: .pMethod)
+        try c.encode(pLegitimacySource, forKey: .pLegitimacySource)
+        try c.encodeOrNil(pOpensAt, forKey: .pOpensAt)
+        try c.encodeOrNil(pClosesAt, forKey: .pClosesAt)
+        try c.encodeOrNil(pThresholdPct, forKey: .pThresholdPct)
+        try c.encodeOrNil(pQuorumPct, forKey: .pQuorumPct)
+        try c.encode(pCommitteeOnly, forKey: .pCommitteeOnly)
+        try c.encodeOrNil(pReferenceKind, forKey: .pReferenceKind)
+        try c.encodeOrNil(pReferenceId, forKey: .pReferenceId)
+        try c.encodeOrNil(pOptions, forKey: .pOptions)
+    }
+}
+
+public struct CastVoteParams: Encodable, Sendable, Equatable {
+    public let pDecisionId: UUID
+    public let pOptionId: UUID?
+    public let pVoteValue: String?
+    public let pReason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pDecisionId = "p_decision_id"
+        case pOptionId   = "p_option_id"
+        case pVoteValue  = "p_vote_value"
+        case pReason     = "p_reason"
+    }
+
+    public init(decisionId: UUID, optionId: UUID? = nil, voteValue: String? = nil, reason: String? = nil) {
+        self.pDecisionId = decisionId
+        self.pOptionId = optionId
+        self.pVoteValue = voteValue
+        self.pReason = reason
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pDecisionId, forKey: .pDecisionId)
+        try c.encodeOrNil(pOptionId, forKey: .pOptionId)
+        try c.encodeOrNil(pVoteValue, forKey: .pVoteValue)
+        try c.encodeOrNil(pReason, forKey: .pReason)
+    }
+}
+
+public struct FinalizeVoteParams: Encodable, Sendable {
+    public let pDecisionId: UUID
+    enum CodingKeys: String, CodingKey { case pDecisionId = "p_decision_id" }
+    public init(decisionId: UUID) { self.pDecisionId = decisionId }
+}
+
+public struct CancelVoteParams: Encodable, Sendable, Equatable {
+    public let pDecisionId: UUID
+    public let pReason: String?
+    enum CodingKeys: String, CodingKey {
+        case pDecisionId = "p_decision_id"
+        case pReason     = "p_reason"
+    }
+    public init(decisionId: UUID, reason: String? = nil) {
+        self.pDecisionId = decisionId
+        self.pReason = reason
+    }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pDecisionId, forKey: .pDecisionId)
+        try c.encodeOrNil(pReason, forKey: .pReason)
+    }
+}
+
 public struct ListMemberPermissionsParams: Encodable, Sendable {
     public let pGroupId: UUID
     public let pUserId: UUID?

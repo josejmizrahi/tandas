@@ -686,6 +686,115 @@ public enum L10n {
         public static let amountRequired = LocalizedStringResource("pay_sanction.amount.required", defaultValue: "Escribe un monto mayor a cero.")
     }
 
+    public enum Decisions {
+        public static let title              = LocalizedStringResource("decisions.title",              defaultValue: "Decisiones")
+        public static let menuLink           = LocalizedStringResource("decisions.menu",               defaultValue: "Decisiones")
+        public static let emptyTitle         = LocalizedStringResource("decisions.empty.title",        defaultValue: "Sin decisiones abiertas")
+        public static let emptyDescription   = LocalizedStringResource("decisions.empty.description",  defaultValue: "Abre una para que el grupo decida.")
+        public static let errorTitle         = LocalizedStringResource("decisions.error.title",        defaultValue: "No pudimos cargar las decisiones")
+        public static let retry              = LocalizedStringResource("decisions.retry",              defaultValue: "Reintentar")
+        public static let addButton          = LocalizedStringResource("decisions.add",                defaultValue: "Abrir decisión")
+        public static let countSingular      = LocalizedStringResource("decisions.count.singular",     defaultValue: "1 decisión abierta")
+
+        public static let sectionOpen        = LocalizedStringResource("decisions.section.open",       defaultValue: "Abiertas")
+        public static let sectionHistory     = LocalizedStringResource("decisions.section.history",    defaultValue: "Cerradas")
+        public static let filterOpen         = LocalizedStringResource("decisions.filter.open",        defaultValue: "Abiertas")
+        public static let filterHistory      = LocalizedStringResource("decisions.filter.history",     defaultValue: "Cerradas")
+
+        public static let voteButton         = LocalizedStringResource("decisions.vote.button",        defaultValue: "Votar")
+        public static let changeVoteButton   = LocalizedStringResource("decisions.vote.change",        defaultValue: "Cambiar mi voto")
+        public static let finalizeButton     = LocalizedStringResource("decisions.finalize",           defaultValue: "Cerrar votación")
+        public static let cancelDecisionButton = LocalizedStringResource("decisions.cancel_decision",  defaultValue: "Cancelar decisión")
+        public static let myVoteLabel        = LocalizedStringResource("decisions.my_vote",            defaultValue: "Mi voto")
+        public static let myVoteNone         = LocalizedStringResource("decisions.my_vote.none",       defaultValue: "Aún no votas en esta decisión.")
+        public static let proposedBy         = LocalizedStringResource("decisions.proposed_by",        defaultValue: "Abrió")
+        public static let closesAtLabel      = LocalizedStringResource("decisions.closes_at",          defaultValue: "Cierra")
+        public static let openEnded          = LocalizedStringResource("decisions.open_ended",         defaultValue: "Sin cierre programado")
+        public static let decidedAtLabel     = LocalizedStringResource("decisions.decided_at",         defaultValue: "Decidida")
+        public static let methodLabel        = LocalizedStringResource("decisions.method.label",       defaultValue: "Método")
+        public static let typeLabel          = LocalizedStringResource("decisions.type.label",         defaultValue: "Tipo")
+
+        public static let tallySection       = LocalizedStringResource("decisions.section.tally",      defaultValue: "Resultado")
+        public static let tallyNoVotes       = LocalizedStringResource("decisions.tally.empty",        defaultValue: "Aún no hay votos.")
+        public static let optionsSection     = LocalizedStringResource("decisions.section.options",    defaultValue: "Opciones")
+        public static let bodySection        = LocalizedStringResource("decisions.section.body",       defaultValue: "Detalle")
+        public static let bodyEmpty          = LocalizedStringResource("decisions.body.empty",         defaultValue: "Sin detalles adicionales.")
+        public static let resultSection      = LocalizedStringResource("decisions.section.result",     defaultValue: "Resolución")
+
+        // Propose sheet
+        public static let proposeTitle       = LocalizedStringResource("decisions.propose.title",      defaultValue: "Abrir decisión")
+        public static let proposeButton      = LocalizedStringResource("decisions.propose.button",     defaultValue: "Abrir")
+        public static let proposeCancel      = LocalizedStringResource("decisions.propose.cancel",     defaultValue: "Cancelar")
+        public static let proposeTitleLabel  = LocalizedStringResource("decisions.propose.title.label", defaultValue: "Título")
+        public static let proposeTitlePlaceholder = LocalizedStringResource("decisions.propose.title.placeholder", defaultValue: "Ej. ¿Subimos la cuota de mayo?")
+        public static let proposeBodyLabel   = LocalizedStringResource("decisions.propose.body.label", defaultValue: "Detalles")
+        public static let proposeBodyPlaceholder = LocalizedStringResource("decisions.propose.body.placeholder", defaultValue: "Explica brevemente la decisión…")
+        public static let proposeMethodSection = LocalizedStringResource("decisions.propose.method.section", defaultValue: "Método de decisión")
+        public static let proposeTypeSection = LocalizedStringResource("decisions.propose.type.section", defaultValue: "Tipo de decisión")
+        public static let proposeOptionsSection = LocalizedStringResource("decisions.propose.options.section", defaultValue: "Opciones")
+        public static let proposeOptionsHint = LocalizedStringResource("decisions.propose.options.hint", defaultValue: "Si no agregas opciones, se usará Sí / No / Abstención.")
+        public static let proposeAddOption   = LocalizedStringResource("decisions.propose.add_option", defaultValue: "Agregar opción")
+        public static let proposeOptionPlaceholder = LocalizedStringResource("decisions.propose.option.placeholder", defaultValue: "Etiqueta")
+        public static let proposeTitleRequired = LocalizedStringResource("decisions.propose.title.required", defaultValue: "Escribe un título.")
+        public static let proposeOptionTooFew = LocalizedStringResource("decisions.propose.option.too_few", defaultValue: "Necesitas al menos dos opciones, o déjalo vacío para Sí/No/Abstención.")
+
+        // Vote sheet
+        public static let voteTitle          = LocalizedStringResource("decisions.vote.title",         defaultValue: "Tu voto")
+        public static let voteConfirm        = LocalizedStringResource("decisions.vote.confirm",       defaultValue: "Confirmar voto")
+        public static let voteCancel         = LocalizedStringResource("decisions.vote.cancel",        defaultValue: "Cancelar")
+        public static let voteValueSection   = LocalizedStringResource("decisions.vote.value.section", defaultValue: "Voto")
+        public static let voteOptionSection  = LocalizedStringResource("decisions.vote.option.section", defaultValue: "Opción")
+        public static let voteOptionNoneRow  = LocalizedStringResource("decisions.vote.option.none",   defaultValue: "Sin opción específica")
+        public static let voteReasonSection  = LocalizedStringResource("decisions.vote.reason.section", defaultValue: "Razón (opcional)")
+        public static let voteReasonPlaceholder = LocalizedStringResource("decisions.vote.reason.placeholder", defaultValue: "Comentario público")
+        public static let voteValueRequired  = LocalizedStringResource("decisions.vote.value.required", defaultValue: "Elige una opción de voto.")
+
+        // Statuses + outcomes
+        public static let statusDraft     = LocalizedStringResource("decisions.status.draft",     defaultValue: "Borrador")
+        public static let statusOpen      = LocalizedStringResource("decisions.status.open",      defaultValue: "Abierta")
+        public static let statusPassed    = LocalizedStringResource("decisions.status.passed",    defaultValue: "Aprobada")
+        public static let statusRejected  = LocalizedStringResource("decisions.status.rejected",  defaultValue: "Rechazada")
+        public static let statusCancelled = LocalizedStringResource("decisions.status.cancelled", defaultValue: "Cancelada")
+
+        public static let outcomePassed     = LocalizedStringResource("decisions.outcome.passed",     defaultValue: "Aprobada")
+        public static let outcomeRejected   = LocalizedStringResource("decisions.outcome.rejected",   defaultValue: "Rechazada")
+        public static let outcomeNoQuorum   = LocalizedStringResource("decisions.outcome.no_quorum",  defaultValue: "Sin quórum")
+        public static let outcomeCancelled  = LocalizedStringResource("decisions.outcome.cancelled",  defaultValue: "Cancelada")
+
+        // Methods
+        public static let methodMajority           = LocalizedStringResource("decisions.method.majority",            defaultValue: "Mayoría simple")
+        public static let methodMajoritySubtitle   = LocalizedStringResource("decisions.method.majority.subtitle",   defaultValue: "Gana la opción con más votos a favor.")
+        public static let methodSupermajority      = LocalizedStringResource("decisions.method.supermajority",       defaultValue: "Supermayoría")
+        public static let methodSupermajoritySubtitle = LocalizedStringResource("decisions.method.supermajority.subtitle", defaultValue: "Pasa con dos tercios.")
+        public static let methodUnanimity          = LocalizedStringResource("decisions.method.unanimity",           defaultValue: "Unanimidad")
+        public static let methodUnanimitySubtitle  = LocalizedStringResource("decisions.method.unanimity.subtitle",  defaultValue: "Todos a favor.")
+        public static let methodConsensus          = LocalizedStringResource("decisions.method.consensus",           defaultValue: "Consenso")
+        public static let methodConsensusSubtitle  = LocalizedStringResource("decisions.method.consensus.subtitle",  defaultValue: "Buscar acuerdo amplio.")
+        public static let methodConsent            = LocalizedStringResource("decisions.method.consent",             defaultValue: "Consentimiento")
+        public static let methodConsentSubtitle    = LocalizedStringResource("decisions.method.consent.subtitle",    defaultValue: "Pasa si nadie bloquea.")
+        public static let methodOther              = LocalizedStringResource("decisions.method.other",               defaultValue: "Otro")
+        public static let methodOtherSubtitle      = LocalizedStringResource("decisions.method.other.subtitle",      defaultValue: "Método personalizado.")
+
+        // Types
+        public static let typeProposal     = LocalizedStringResource("decisions.type.proposal",     defaultValue: "Propuesta")
+        public static let typeRule         = LocalizedStringResource("decisions.type.rule",         defaultValue: "Sobre una regla")
+        public static let typeSanction     = LocalizedStringResource("decisions.type.sanction",     defaultValue: "Sobre una sanción")
+        public static let typeMandate      = LocalizedStringResource("decisions.type.mandate",      defaultValue: "Sobre un mandato")
+        public static let typeDissolution  = LocalizedStringResource("decisions.type.dissolution",  defaultValue: "Sobre disolución")
+        public static let typeOther        = LocalizedStringResource("decisions.type.other",        defaultValue: "Otro")
+
+        // Vote values
+        public static let voteYes     = LocalizedStringResource("decisions.vote_value.yes",     defaultValue: "A favor")
+        public static let voteNo      = LocalizedStringResource("decisions.vote_value.no",      defaultValue: "En contra")
+        public static let voteAbstain = LocalizedStringResource("decisions.vote_value.abstain", defaultValue: "Abstención")
+        public static let voteBlock   = LocalizedStringResource("decisions.vote_value.block",   defaultValue: "Bloquear")
+
+        // Default option labels used when propose sheet leaves options empty
+        public static let defaultOptionYes     = LocalizedStringResource("decisions.default_option.yes",     defaultValue: "Sí")
+        public static let defaultOptionNo      = LocalizedStringResource("decisions.default_option.no",      defaultValue: "No")
+        public static let defaultOptionAbstain = LocalizedStringResource("decisions.default_option.abstain", defaultValue: "Abstención")
+    }
+
     public enum Invite {
         public static let title                = LocalizedStringResource("invite.title",                 defaultValue: "Invitar a alguien")
         public static let contactSection       = LocalizedStringResource("invite.section.contact",       defaultValue: "Contacto")

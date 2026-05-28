@@ -127,7 +127,9 @@ stream con 5 clusters per `doctrine_group_space_situational`).
   - Primitiva 14 Disputes parcial (DisputesListView + DisputeSanctionSheet
     via swipe en SanctionsListView; falta DisputeDetailView/Open/Resolve)
   - Primitiva 15 Entry/Exit (leave group)
-  - Primitiva 16 Decisions parcial (decision_rules sí; votes UI faltante)
+  - Primitiva 16 Decisions/Voting completo (votes UI + propose/cast/
+    finalize/cancel; mig `20260527160000` agregó list_decisions_active /
+    list_decisions_history / decision_detail)
   - Primitiva 19 Accounting (Money block + record_expense/settlement)
   - Primitiva 22 Legitimacy parcial (default_style en decision_rules)
 - **Páginas con stores wired listas para usar**:
@@ -568,7 +570,9 @@ Marcar cada slice cerrado:
 - [ ] B6 RitualsListView + CreateRitualSheet (Primitiva 21)
 - [ ] B7 NotificationsSettingsView + GroupPrivacyView
 - [ ] B8 DissolveGroupConfirmation (Primitiva 25)
-- [ ] C1 Decisions/Voting (Primitiva 16) — votes UI, decision_rules ✅
+- [x] C1 Decisions/Voting (Primitiva 16) — votes UI completo
+      (mig `20260527160000` + Domain + Store + DecisionsListView +
+      DecisionDetailView + ProposeDecisionSheet + VoteSheet)
 - [ ] C2 Disputes UI completo (Primitiva 14) — parcial: list + dispute
       sanction sheet listos; faltan DisputeDetailView + open generic +
       mediation/resolve

@@ -609,6 +609,63 @@ struct RPCInputsEncodingTests {
         #expect((dict["p_limit"] as? Int) == 100)
     }
 
+    // MARK: - Decisions / Voting (Primitiva 16, C1)
+
+    @Test("start_vote encodes all 14 keys and emits nil optionals as JSON null")
+    func startVoteEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(StartVoteParams(
+            groupId: gid,
+            title: "Pizza",
+            body: nil,
+            decisionType: "proposal",
+            method: "majority",
+            options: [StartVoteParams.OptionDraft(label: "Sí"), StartVoteParams.OptionDraft(label: "No")]
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_title"] as? String == "Pizza")
+        #expect(dict["p_body"] is NSNull)
+        #expect(dict["p_decision_type"] as? String == "proposal")
+        #expect(dict["p_method"] as? String == "majority")
+        #expect(dict["p_legitimacy_source"] as? String == "majority")
+        #expect(dict["p_committee_only"] as? Bool == false)
+        #expect(dict["p_opens_at"] is NSNull)
+        #expect(dict["p_closes_at"] is NSNull)
+        #expect(dict["p_threshold_pct"] is NSNull)
+        #expect(dict["p_quorum_pct"] is NSNull)
+        #expect(dict["p_reference_kind"] is NSNull)
+        #expect(dict["p_reference_id"] is NSNull)
+        let options = dict["p_options"] as? [[String: Any]]
+        #expect(options?.count == 2)
+        #expect(options?.first?["label"] as? String == "Sí")
+    }
+
+    @Test("cast_vote encodes optional option_id + reason as JSON null")
+    func castVoteEncoding() throws {
+        let did = UUID()
+        let dict = try encode(CastVoteParams(decisionId: did, optionId: nil, voteValue: "yes", reason: nil))
+        #expect(dict["p_decision_id"] as? String == did.uuidString)
+        #expect(dict["p_vote_value"] as? String == "yes")
+        #expect(dict["p_option_id"] is NSNull)
+        #expect(dict["p_reason"] is NSNull)
+    }
+
+    @Test("finalize_vote / cancel_vote / list_decisions encode minimally")
+    func decisionsAuxEncoding() throws {
+        let did = UUID()
+        let fd = try encode(FinalizeVoteParams(decisionId: did))
+        #expect(fd["p_decision_id"] as? String == did.uuidString)
+
+        let cancelled = try encode(CancelVoteParams(decisionId: did, reason: "ya no aplica"))
+        #expect(cancelled["p_reason"] as? String == "ya no aplica")
+
+        let active = try encode(ListDecisionsActiveParams(groupId: did))
+        #expect(active.keys.sorted() == ["p_group_id"])
+
+        let history = try encode(ListDecisionsHistoryParams(groupId: did, limit: 25))
+        #expect(history["p_limit"] as? Int == 25)
+    }
+
     @Test("record_reputation_event encodes required keys + null reason when omitted")
     func recordReputationEventDefaults() throws {
         let gid = UUID(); let sub = UUID()

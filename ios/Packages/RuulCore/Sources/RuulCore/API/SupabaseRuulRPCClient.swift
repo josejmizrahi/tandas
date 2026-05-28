@@ -522,6 +522,77 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Decisions / Voting (Primitiva 16, C1)
+
+    public func listDecisionsActive(groupId: UUID) async throws -> [GroupDecisionSummary] {
+        let params = ListDecisionsActiveParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("list_decisions_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func listDecisionsHistory(groupId: UUID, limit: Int) async throws -> [GroupDecisionSummary] {
+        let params = ListDecisionsHistoryParams(groupId: groupId, limit: limit)
+        do {
+            return try await client
+                .rpc("list_decisions_history", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func decisionDetail(decisionId: UUID) async throws -> GroupDecisionDetail {
+        let params = DecisionDetailParams(decisionId: decisionId)
+        do {
+            return try await client
+                .rpc("decision_detail", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func startVote(_ input: StartVoteParams) async throws -> UUID {
+        do {
+            return try await client.rpc("start_vote", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func castVote(_ input: CastVoteParams) async throws -> UUID {
+        do {
+            return try await client.rpc("cast_vote", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func finalizeVote(decisionId: UUID) async throws -> String {
+        let params = FinalizeVoteParams(decisionId: decisionId)
+        do {
+            return try await client.rpc("finalize_vote", params: params).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func cancelVote(_ input: CancelVoteParams) async throws {
+        do {
+            _ = try await client.rpc("cancel_vote", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Profile
 
     public func myProfile() async throws -> Profile {

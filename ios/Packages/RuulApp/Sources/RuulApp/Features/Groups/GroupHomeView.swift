@@ -103,6 +103,9 @@ struct GroupHomeView: View {
                 groupId: group.id
             )
         }
+        .navigationDestination(for: DecisionsDestination.self) { _ in
+            DecisionsListView(store: container.decisionsStore, groupId: group.id)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -111,6 +114,9 @@ struct GroupHomeView: View {
                     }
                     NavigationLink(value: GroupHistoryDestination()) {
                         Label(L10n.History.menuLink, systemImage: "clock.arrow.circlepath")
+                    }
+                    NavigationLink(value: DecisionsDestination()) {
+                        Label(L10n.Decisions.menuLink, systemImage: "checkmark.seal")
                     }
                     NavigationLink(value: ContributionsDestination()) {
                         Label(L10n.Contributions.title, systemImage: "hands.sparkles")
@@ -456,6 +462,9 @@ struct GroupHomeView: View {
 
     /// And Reputation feed (Primitiva 12 — C4).
     private struct ReputationFeedDestination: Hashable {}
+
+    /// And Decisions list (Primitiva 16 — C1).
+    private struct DecisionsDestination: Hashable {}
 
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same

@@ -170,4 +170,13 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func recordReputationEvent(_ input: RecordReputationEventParams) async throws -> GroupReputationEvent {
         GroupReputationEvent(id: UUID(), groupId: input.pGroupId, subjectMembershipId: input.pSubjectMembershipId, kind: .other)
     }
+    func listDecisionsActive(groupId: UUID) async throws -> [GroupDecisionSummary] { [] }
+    func listDecisionsHistory(groupId: UUID, limit: Int) async throws -> [GroupDecisionSummary] { [] }
+    func decisionDetail(decisionId: UUID) async throws -> GroupDecisionDetail {
+        GroupDecisionDetail(id: decisionId, groupId: UUID(), title: "")
+    }
+    func startVote(_ input: StartVoteParams) async throws -> UUID { UUID() }
+    func castVote(_ input: CastVoteParams) async throws -> UUID { UUID() }
+    func finalizeVote(decisionId: UUID) async throws -> String { "passed" }
+    func cancelVote(_ input: CancelVoteParams) async throws {}
 }
