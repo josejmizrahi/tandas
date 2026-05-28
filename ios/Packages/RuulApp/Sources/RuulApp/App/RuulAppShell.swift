@@ -46,27 +46,37 @@ public struct RuulAppShell: View {
         let groups = container.groupsStore.groups
         let resolved = resolveCurrentGroup(from: groups)
 
-        switch container.groupsStore.phase {
-        case .idle, .loading:
-            if let group = resolved {
-                // Show the shell against the previously-loaded group
-                // while a refresh runs in the background.
-                shellFor(group)
-            } else {
-                BootstrappingView()
-            }
-        case .failed(let message):
-            ErrorBanner(message: message) {
-                Task { await container.groupsStore.refresh() }
-            }
-        case .loaded:
-            if let group = resolved {
-                shellFor(group)
-            } else {
-                WelcomeNoGroupsView(container: container) {
+        Group {
+            switch container.groupsStore.phase {
+            case .idle, .loading:
+                if let group = resolved {
+                    // Show the shell against the previously-loaded
+                    // group while a refresh runs in the background.
+                    shellFor(group)
+                } else {
+                    BootstrappingView()
+                }
+            case .failed(let message):
+                ErrorBanner(message: message) {
                     Task { await container.groupsStore.refresh() }
                 }
+            case .loaded:
+                if let group = resolved {
+                    shellFor(group)
+                } else {
+                    WelcomeNoGroupsView(container: container) {
+                        Task { await container.groupsStore.refresh() }
+                    }
+                }
             }
+        }
+        // The previous shell relied on `GroupListView.task` to kick
+        // off the first `groupsStore.refresh()`. Now that the list is
+        // gone, we own that fetch here — otherwise signed-in users
+        // hang on `BootstrappingView` forever.
+        .task {
+            await container.groupsStore.refresh()
+            await container.profileStore.refreshIfNeeded()
         }
     }
 
