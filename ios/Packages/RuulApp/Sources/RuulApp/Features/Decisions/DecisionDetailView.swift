@@ -12,17 +12,22 @@ public struct DecisionDetailView: View {
     /// while the full detail is loading so the screen never flashes
     /// "Not found".
     let initial: GroupDecisionSummary
+    /// V2-G2 sub-slice 2 — caller-provided routing for the reference
+    /// row. When nil, the row still renders but isn't tappable.
+    let onSelectReference: ((DeepLink) -> Void)?
 
     public init(
         store: DecisionsStore,
         groupId: UUID,
         decisionId: UUID,
-        initial: GroupDecisionSummary
+        initial: GroupDecisionSummary,
+        onSelectReference: ((DeepLink) -> Void)? = nil
     ) {
         self.store = store
         self.groupId = groupId
         self.decisionId = decisionId
         self.initial = initial
+        self.onSelectReference = onSelectReference
     }
 
     public var body: some View {
@@ -31,6 +36,7 @@ public struct DecisionDetailView: View {
             if let detail = store.detail, detail.id == decisionId {
                 bodySection(detail: detail)
                 methodNarrativeSection(detail: detail)
+                referenceSection(detail: detail)
                 if !detail.options.isEmpty {
                     optionsSection(detail: detail)
                 }
@@ -38,6 +44,7 @@ public struct DecisionDetailView: View {
                 myVoteSection(detail: detail)
                 if detail.status != .open {
                     resultSection(detail: detail)
+                    outcomeAppliedSection(detail: detail)
                 }
                 actionsSection(detail: detail)
             } else {
@@ -178,6 +185,139 @@ public struct DecisionDetailView: View {
                     Text(L10n.Decisions.tallyQuorumLabel)
                 }
             }
+        }
+    }
+
+    /// V2-G2 sub-slice 2 — show what entity the decision affects when
+    /// `reference_kind` + `reference_id` are populated. Tappable when
+    /// the caller wired `onSelectReference` and the reference maps to a
+    /// known `DeepLink` case.
+    @ViewBuilder
+    private func referenceSection(detail: GroupDecisionDetail) -> some View {
+        if let kind = detail.referenceKind {
+            Section(L10n.Decisions.referenceSection) {
+                referenceRow(kind: kind, referenceId: detail.referenceId)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func referenceRow(kind: String, referenceId: UUID?) -> some View {
+        let label = referenceLabel(for: kind)
+        let icon = referenceIcon(for: kind)
+        let link = referenceDeepLink(kind: kind, referenceId: referenceId)
+
+        if let link, let onSelectReference {
+            Button {
+                onSelectReference(link)
+            } label: {
+                referenceRowContent(label: label, icon: icon, showsChevron: true)
+            }
+            .buttonStyle(.plain)
+        } else {
+            referenceRowContent(label: label, icon: icon, showsChevron: false)
+        }
+    }
+
+    @ViewBuilder
+    private func referenceRowContent(
+        label: LocalizedStringResource,
+        icon: String,
+        showsChevron: Bool
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundStyle(.tint)
+                .frame(width: 22)
+            Text(label)
+                .font(.body)
+            Spacer()
+            if showsChevron {
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func referenceLabel(for kind: String) -> LocalizedStringResource {
+        switch kind {
+        case "sanction":       return L10n.Decisions.referenceSanction
+        case "dispute":        return L10n.Decisions.referenceDispute
+        case "mandate":        return L10n.Decisions.referenceMandate
+        case "mandate_grant":  return L10n.Decisions.referenceMandateGrant
+        case "mandate_revoke": return L10n.Decisions.referenceMandateRevoke
+        case "dissolution":    return L10n.Decisions.referenceDissolution
+        case "rule":           return L10n.Decisions.referenceRule
+        default:               return L10n.Decisions.referenceOther
+        }
+    }
+
+    private func referenceIcon(for kind: String) -> String {
+        switch kind {
+        case "sanction":       return "exclamationmark.shield"
+        case "dispute":        return "scale.3d"
+        case "mandate",
+             "mandate_grant",
+             "mandate_revoke": return "person.crop.rectangle.badge.checkmark"
+        case "dissolution":    return "archivebox"
+        case "rule":           return "list.bullet.rectangle"
+        default:               return "link"
+        }
+    }
+
+    /// Maps the decision's reference tuple to a DeepLink. Returns nil
+    /// for kinds without a destination yet (e.g., dissolution / rule
+    /// don't have entity deep links in the V3-A4 shape).
+    private func referenceDeepLink(kind: String, referenceId: UUID?) -> DeepLink? {
+        guard let referenceId else { return nil }
+        switch kind {
+        case "sanction":
+            return .sanction(groupId: groupId, sanctionId: referenceId)
+        case "dispute":
+            return .dispute(groupId: groupId, disputeId: referenceId)
+        case "mandate", "mandate_grant", "mandate_revoke":
+            return .mandate(groupId: groupId, mandateId: referenceId)
+        default:
+            return nil
+        }
+    }
+
+    /// V2-G2 sub-slice 2 — surface the side effect the backend already
+    /// applied when this decision finalized with outcome=passed. The
+    /// dispatch table mirrors finalize_vote's reference_kind branch:
+    /// sanction→reversed, dispute→resolved, mandate_revoke→revoked,
+    /// dissolution→approved. mandate_grant attaches source_decision_id
+    /// (the mandate doesn't get created by the decision itself in the
+    /// current backend; the row should already exist with the decision
+    /// id stamped).
+    @ViewBuilder
+    private func outcomeAppliedSection(detail: GroupDecisionDetail) -> some View {
+        if let outcome = detail.result?.outcome, outcome == "passed",
+           let kind = detail.referenceKind,
+           let copy = outcomeHint(for: kind) {
+            Section(L10n.Decisions.outcomeAppliedSection) {
+                Label {
+                    Text(copy)
+                        .font(.subheadline)
+                } icon: {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(.green)
+                }
+            }
+        }
+    }
+
+    private func outcomeHint(for kind: String) -> LocalizedStringResource? {
+        switch kind {
+        case "sanction":       return L10n.Decisions.outcomeSanctionReversed
+        case "dispute":        return L10n.Decisions.outcomeDisputeResolved
+        case "mandate_revoke": return L10n.Decisions.outcomeMandateRevoked
+        case "mandate_grant",
+             "mandate":        return L10n.Decisions.outcomeMandateConfirmed
+        case "dissolution":    return L10n.Decisions.outcomeDissolutionApproved
+        default:               return nil
         }
     }
 

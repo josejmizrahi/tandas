@@ -124,7 +124,10 @@ public struct RuulAppShell: View {
                         id: pending.decisionId,
                         groupId: pending.groupId,
                         title: String(localized: L10n.Decisions.title)
-                    )
+                    ),
+                    onSelectReference: { link in
+                        container.deepLinkRouter.apply(link)
+                    }
                 )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

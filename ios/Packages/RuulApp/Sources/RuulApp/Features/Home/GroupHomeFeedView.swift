@@ -63,7 +63,10 @@ struct GroupHomeFeedView: View {
                 store: container.decisionsStore,
                 groupId: group.id,
                 decisionId: summary.id,
-                initial: summary
+                initial: summary,
+                onSelectReference: { link in
+                    container.deepLinkRouter.apply(link)
+                }
             )
         }
         .navigationDestination(item: $pendingSanctionDetail) { sanction in

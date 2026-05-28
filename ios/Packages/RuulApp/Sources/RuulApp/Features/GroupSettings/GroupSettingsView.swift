@@ -246,7 +246,13 @@ public struct GroupSettingsView: View {
                 myMembershipId: group.membershipId
             )
         case .decisions:
-            DecisionsListView(store: container.decisionsStore, groupId: group.id)
+            DecisionsListView(
+                store: container.decisionsStore,
+                groupId: group.id,
+                onSelectReference: { link in
+                    container.deepLinkRouter.apply(link)
+                }
+            )
         case .disputes:
             DisputesListView(store: container.disputesStore, groupId: group.id)
         case .sanctionsPolicy:

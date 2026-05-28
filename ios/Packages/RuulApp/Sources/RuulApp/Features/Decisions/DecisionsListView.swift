@@ -7,12 +7,21 @@ import RuulCore
 public struct DecisionsListView: View {
     @Bindable var store: DecisionsStore
     let groupId: UUID
+    /// V2-G2 sub-slice 2 — routing for the reference row inside
+    /// `DecisionDetailView`. Optional so previews and surfaces that
+    /// don't need cross-primitive navigation can pass nil.
+    let onSelectReference: ((DeepLink) -> Void)?
 
     @State private var filter: DecisionFilter = .open
 
-    public init(store: DecisionsStore, groupId: UUID) {
+    public init(
+        store: DecisionsStore,
+        groupId: UUID,
+        onSelectReference: ((DeepLink) -> Void)? = nil
+    ) {
         self.store = store
         self.groupId = groupId
+        self.onSelectReference = onSelectReference
     }
 
     public var body: some View {
@@ -41,7 +50,13 @@ public struct DecisionsListView: View {
             VoteSheet(store: store, groupId: groupId)
         }
         .navigationDestination(for: GroupDecisionSummary.self) { summary in
-            DecisionDetailView(store: store, groupId: groupId, decisionId: summary.id, initial: summary)
+            DecisionDetailView(
+                store: store,
+                groupId: groupId,
+                decisionId: summary.id,
+                initial: summary,
+                onSelectReference: onSelectReference
+            )
         }
         .task {
             await store.refreshIfNeeded(groupId: groupId)
