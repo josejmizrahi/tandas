@@ -600,4 +600,27 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_membership_id"] is NSNull)
         #expect(dict["p_resource_id"] is NSNull)
     }
+
+    @Test("group_reputation_events encodes group_id + limit")
+    func groupReputationEventsDefaults() throws {
+        let gid = UUID()
+        let dict = try encode(GroupReputationEventsParams(groupId: gid))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect((dict["p_limit"] as? Int) == 100)
+    }
+
+    @Test("record_reputation_event encodes required keys + null reason when omitted")
+    func recordReputationEventDefaults() throws {
+        let gid = UUID(); let sub = UUID()
+        let dict = try encode(RecordReputationEventParams(
+            groupId: gid,
+            subjectMembershipId: sub,
+            reputationType: "care_shown"
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_subject_membership_id"] as? String == sub.uuidString)
+        #expect(dict["p_reputation_type"] as? String == "care_shown")
+        #expect(dict["p_visibility"] as? String == "members")
+        #expect(dict["p_reason"] is NSNull)
+    }
 }

@@ -352,6 +352,35 @@ public enum L10n {
         public static let reversalNotice     = LocalizedStringResource("money_movement_detail.reversal_notice",    defaultValue: "Este movimiento es una reversión de uno anterior.")
     }
 
+    public enum ReputationFeed {
+        public static let title              = LocalizedStringResource("reputation_feed.title",              defaultValue: "Reputación")
+        public static let emptyTitle         = LocalizedStringResource("reputation_feed.empty.title",        defaultValue: "Sin hechos registrados")
+        public static let emptyDescription   = LocalizedStringResource("reputation_feed.empty.description",  defaultValue: "Cuando el grupo reconozca momentos concretos van a aparecer aquí.")
+        public static let addButton          = LocalizedStringResource("reputation_feed.add",                defaultValue: "Registrar")
+        public static let recordTitle        = LocalizedStringResource("reputation_feed.record.title",       defaultValue: "Registrar hecho")
+        public static let errorTitle         = LocalizedStringResource("reputation_feed.error.title",        defaultValue: "No pudimos cargar el historial")
+        public static let retry              = LocalizedStringResource("reputation_feed.retry",              defaultValue: "Reintentar")
+        public static let aboutLabel         = LocalizedStringResource("reputation_feed.about",              defaultValue: "Sobre")
+        public static let byLabel            = LocalizedStringResource("reputation_feed.by",                 defaultValue: "Registró")
+    }
+
+    public enum RecordReputation {
+        public static let title              = LocalizedStringResource("record_reputation.title",            defaultValue: "Registrar hecho")
+        public static let subjectSection     = LocalizedStringResource("record_reputation.section.subject",  defaultValue: "Sobre quién")
+        public static let subjectNone        = LocalizedStringResource("record_reputation.subject.none",     defaultValue: "Selecciona un miembro")
+        public static let kindSection        = LocalizedStringResource("record_reputation.section.kind",     defaultValue: "Tipo de hecho")
+        public static let reasonSection      = LocalizedStringResource("record_reputation.section.reason",   defaultValue: "Detalles")
+        public static let reasonPlaceholder  = LocalizedStringResource("record_reputation.reason.placeholder", defaultValue: "Cuenta brevemente qué pasó…")
+        public static let visibilitySection  = LocalizedStringResource("record_reputation.section.visibility", defaultValue: "Visibilidad")
+        public static let save               = LocalizedStringResource("record_reputation.save",             defaultValue: "Registrar")
+        public static let cancel             = LocalizedStringResource("record_reputation.cancel",           defaultValue: "Cancelar")
+        public static let subjectRequired    = LocalizedStringResource("record_reputation.subject.required", defaultValue: "Elige a quién se refiere.")
+
+        public static let visibilityPrivate  = LocalizedStringResource("record_reputation.visibility.private", defaultValue: "Privado")
+        public static let visibilityMembers  = LocalizedStringResource("record_reputation.visibility.members", defaultValue: "Miembros")
+        public static let visibilityPublic   = LocalizedStringResource("record_reputation.visibility.public",  defaultValue: "Público")
+    }
+
     public enum Contributions {
         public static let title              = LocalizedStringResource("contributions.title",              defaultValue: "Contribuciones")
         public static let emptyTitle         = LocalizedStringResource("contributions.empty.title",        defaultValue: "Sin contribuciones todavía")

@@ -60,13 +60,23 @@ public enum ReputationVisibility: String, Codable, CaseIterable, Sendable, Hasha
     case `private`
     case members
     case `public`
+
+    public var label: LocalizedStringResource {
+        switch self {
+        case .private: return L10n.RecordReputation.visibilityPrivate
+        case .members: return L10n.RecordReputation.visibilityMembers
+        case .public:  return L10n.RecordReputation.visibilityPublic
+        }
+    }
 }
 
 public struct GroupReputationEvent: Identifiable, Codable, Equatable, Sendable, Hashable {
     public let id: UUID                            // event_id
     public let groupId: UUID
     public let subjectMembershipId: UUID
+    public let subjectDisplayName: String?         // pre-joined by group feed RPC
     public let actorMembershipId: UUID?
+    public let actorDisplayName: String?           // pre-joined by group feed RPC
     public let kind: ReputationKind
     public let reason: String?
     public let evidenceEntityKind: String?
@@ -80,7 +90,9 @@ public struct GroupReputationEvent: Identifiable, Codable, Equatable, Sendable, 
         case id                  = "event_id"
         case groupId             = "group_id"
         case subjectMembershipId = "subject_membership_id"
+        case subjectDisplayName  = "subject_display_name"
         case actorMembershipId   = "actor_membership_id"
+        case actorDisplayName    = "actor_display_name"
         case kind                = "reputation_type"
         case reason
         case evidenceEntityKind  = "evidence_entity_kind"
@@ -95,7 +107,9 @@ public struct GroupReputationEvent: Identifiable, Codable, Equatable, Sendable, 
         id: UUID,
         groupId: UUID,
         subjectMembershipId: UUID,
+        subjectDisplayName: String? = nil,
         actorMembershipId: UUID? = nil,
+        actorDisplayName: String? = nil,
         kind: ReputationKind,
         reason: String? = nil,
         evidenceEntityKind: String? = nil,
@@ -108,7 +122,9 @@ public struct GroupReputationEvent: Identifiable, Codable, Equatable, Sendable, 
         self.id = id
         self.groupId = groupId
         self.subjectMembershipId = subjectMembershipId
+        self.subjectDisplayName = subjectDisplayName
         self.actorMembershipId = actorMembershipId
+        self.actorDisplayName = actorDisplayName
         self.kind = kind
         self.reason = reason
         self.evidenceEntityKind = evidenceEntityKind
@@ -121,7 +137,8 @@ public struct GroupReputationEvent: Identifiable, Codable, Equatable, Sendable, 
 
     /// Tolerant decode: unknown enums fall back to safe defaults. The
     /// read RPC returns `event_id`; the write RPC returns the raw row
-    /// with `id` — accept either.
+    /// with `id` — accept either. Subject/actor display names only
+    /// arrive from the group-feed RPC and decode as nil otherwise.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         if let v = try c.decodeIfPresent(UUID.self, forKey: .id) {
@@ -132,7 +149,9 @@ public struct GroupReputationEvent: Identifiable, Codable, Equatable, Sendable, 
         }
         self.groupId = try c.decode(UUID.self, forKey: .groupId)
         self.subjectMembershipId = try c.decode(UUID.self, forKey: .subjectMembershipId)
+        self.subjectDisplayName = try c.decodeIfPresent(String.self, forKey: .subjectDisplayName)
         self.actorMembershipId = try c.decodeIfPresent(UUID.self, forKey: .actorMembershipId)
+        self.actorDisplayName = try c.decodeIfPresent(String.self, forKey: .actorDisplayName)
         let rawKind = try c.decode(String.self, forKey: .kind)
         self.kind = ReputationKind(rawValue: rawKind) ?? .other
         self.reason = try c.decodeIfPresent(String.self, forKey: .reason)

@@ -33,6 +33,33 @@ struct GroupReputationEventTests {
         #expect(e.reason == "Llegó a la cena con la cuota lista.")
         #expect(e.evidenceEntityKind == "settlement")
         #expect(e.visibility == .members)
+        #expect(e.subjectDisplayName == nil)
+        #expect(e.actorDisplayName == nil)
+    }
+
+    @Test("decodes the group-feed row with subject + actor display names")
+    func decodesGroupFeedShape() throws {
+        let eid = UUID(); let gid = UUID(); let sub = UUID(); let act = UUID()
+        let json = """
+        {
+          "event_id":               "\(eid.uuidString)",
+          "group_id":               "\(gid.uuidString)",
+          "subject_membership_id":  "\(sub.uuidString)",
+          "subject_display_name":   "Ana López",
+          "actor_membership_id":    "\(act.uuidString)",
+          "actor_display_name":     "Mateo García",
+          "reputation_type":        "care_shown",
+          "reason":                 "Hizo la cena cuando nadie podía.",
+          "visibility":             "members",
+          "status":                 "active",
+          "occurred_at":            null,
+          "created_at":             null
+        }
+        """.data(using: .utf8)!
+        let e = try JSONDecoder().decode(GroupReputationEvent.self, from: json)
+        #expect(e.subjectDisplayName == "Ana López")
+        #expect(e.actorDisplayName == "Mateo García")
+        #expect(e.kind == .careShown)
     }
 
     @Test("decodes the write-row shape (id key)")

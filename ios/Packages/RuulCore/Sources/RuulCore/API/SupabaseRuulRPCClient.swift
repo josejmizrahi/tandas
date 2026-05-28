@@ -313,6 +313,28 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Reputation feed + record (Primitiva 12, C4)
+
+    public func groupReputationEvents(groupId: UUID, limit: Int) async throws -> [GroupReputationEvent] {
+        let params = GroupReputationEventsParams(groupId: groupId, limit: limit)
+        do {
+            return try await client
+                .rpc("group_reputation_events", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func recordReputationEvent(_ input: RecordReputationEventParams) async throws -> GroupReputationEvent {
+        do {
+            return try await client.rpc("record_reputation_event", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Contributions (Primitiva 9, C3)
 
     public func groupContributionsActive(

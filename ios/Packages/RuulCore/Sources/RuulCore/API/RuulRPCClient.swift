@@ -122,6 +122,19 @@ public protocol RuulRPCClient: Sendable {
     /// `before` is the cursor for pagination. Active-member gate.
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent]
 
+    // MARK: - Reputation feed + record (Primitiva 12, C4)
+
+    /// `group_reputation_events(p_group_id, p_limit)` — group-wide
+    /// reputation feed. Excludes private + non-active rows.
+    /// Pre-joined with subject + actor display names.
+    /// Active-member gate.
+    func groupReputationEvents(groupId: UUID, limit: Int) async throws -> [GroupReputationEvent]
+
+    /// `record_reputation_event(...)` — inserts an active reputation
+    /// event. Requires permission `reputation.record`. Returns the
+    /// inserted row.
+    func recordReputationEvent(_ input: RecordReputationEventParams) async throws -> GroupReputationEvent
+
     // MARK: - Contributions (Primitiva 9, C3)
 
     /// `group_contributions_active(p_group_id, p_membership_id, p_resource_id)`

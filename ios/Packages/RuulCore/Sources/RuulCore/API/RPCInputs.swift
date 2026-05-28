@@ -487,6 +487,65 @@ public struct GroupMoneyMovementsParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Reputation (Primitiva 12, C4)
+
+public struct GroupReputationEventsParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pLimit: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pLimit   = "p_limit"
+    }
+
+    public init(groupId: UUID, limit: Int = 100) {
+        self.pGroupId = groupId
+        self.pLimit = limit
+    }
+}
+
+public struct RecordReputationEventParams: Encodable, Sendable, Equatable, Hashable {
+    public let pGroupId: UUID
+    public let pSubjectMembershipId: UUID
+    public let pReputationType: String
+    public let pReason: String?
+    public let pVisibility: String
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId              = "p_group_id"
+        case pSubjectMembershipId  = "p_subject_membership_id"
+        case pReputationType       = "p_reputation_type"
+        case pReason               = "p_reason"
+        case pVisibility           = "p_visibility"
+    }
+
+    public init(
+        groupId: UUID,
+        subjectMembershipId: UUID,
+        reputationType: String,
+        reason: String? = nil,
+        visibility: String = "members"
+    ) {
+        self.pGroupId = groupId
+        self.pSubjectMembershipId = subjectMembershipId
+        self.pReputationType = reputationType
+        self.pReason = reason
+        self.pVisibility = visibility
+    }
+
+    /// Emit `null` for `p_reason` when nil so PostgREST overload
+    /// resolution stays deterministic. evidence + metadata are not
+    /// surfaced in Foundation; backend defaults handle them.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pSubjectMembershipId, forKey: .pSubjectMembershipId)
+        try c.encode(pReputationType, forKey: .pReputationType)
+        try c.encodeOrNil(pReason, forKey: .pReason)
+        try c.encode(pVisibility, forKey: .pVisibility)
+    }
+}
+
 // MARK: - Contributions (Primitiva 9, C3)
 
 public struct GroupContributionsActiveParams: Encodable, Sendable {

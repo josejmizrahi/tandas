@@ -69,6 +69,7 @@ public final class DependencyContainer {
     public let culturalNormsStore: CulturalNormsStore
     public let mandatesStore: MandatesStore
     public let contributionsStore: ContributionsStore
+    public let reputationFeedStore: ReputationFeedStore
 
     public init() {
         let client = SupabaseEnvironment.shared
@@ -120,6 +121,7 @@ public final class DependencyContainer {
         self.culturalNormsStore = CulturalNormsStore(repository: culturalNormsRepository)
         self.mandatesStore = MandatesStore(repository: mandatesRepository)
         self.contributionsStore = ContributionsStore(repository: contributionsRepository)
+        self.reputationFeedStore = ReputationFeedStore(repository: reputationRepository)
     }
 
     /// Kicks off the session subscription so the shell can observe state
