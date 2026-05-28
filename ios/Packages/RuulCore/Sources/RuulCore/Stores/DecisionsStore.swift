@@ -235,7 +235,9 @@ public final class DecisionsStore {
 
     public func beginVoting(on decision: GroupDecisionDetail) {
         voteDraftDecisionId = decision.id
-        voteDraftValue = decision.myVote?.voteValue ?? .yes
+        voteDraftValue = decision.myVote?.voteValue
+            ?? VoteValue.allowed(for: decision.method).first
+            ?? .yes
         voteDraftOptionId = decision.myVote?.optionId
         voteDraftReason = decision.myVote?.reason ?? ""
         voteDraftErrorMessage = nil
@@ -244,7 +246,9 @@ public final class DecisionsStore {
 
     public func beginVoting(on summary: GroupDecisionSummary) {
         voteDraftDecisionId = summary.id
-        voteDraftValue = summary.myVoteValue ?? .yes
+        voteDraftValue = summary.myVoteValue
+            ?? VoteValue.allowed(for: summary.method).first
+            ?? .yes
         voteDraftOptionId = summary.myVoteOptionId
         voteDraftReason = ""
         voteDraftErrorMessage = nil
@@ -255,6 +259,16 @@ public final class DecisionsStore {
     public func saveDraftVote(groupId: UUID) async -> Bool {
         guard let decisionId = voteDraftDecisionId else {
             voteDraftErrorMessage = String(localized: L10n.Decisions.voteValueRequired)
+            return false
+        }
+        // V2-G1 sub-slice 2 — consent/veto block require a reason. The
+        // decision's method comes from the loaded detail when present;
+        // when missing we err on the side of "no requirement" so we
+        // don't reject votes the backend would accept.
+        if let method = detail?.id == decisionId ? detail?.method : nil,
+           voteDraftValue.requiresReason(for: method),
+           voteDraftReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            voteDraftErrorMessage = String(localized: L10n.Decisions.voteReasonRequiredHint)
             return false
         }
         do {

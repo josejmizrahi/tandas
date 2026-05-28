@@ -1158,8 +1158,23 @@ public enum L10n {
         public static let voteOptionSection  = LocalizedStringResource("decisions.vote.option.section", defaultValue: "Opción")
         public static let voteOptionNoneRow  = LocalizedStringResource("decisions.vote.option.none",   defaultValue: "Sin opción específica")
         public static let voteReasonSection  = LocalizedStringResource("decisions.vote.reason.section", defaultValue: "Razón (opcional)")
+        public static let voteReasonRequiredSection = LocalizedStringResource("decisions.vote.reason.required.section", defaultValue: "Razón obligatoria")
         public static let voteReasonPlaceholder = LocalizedStringResource("decisions.vote.reason.placeholder", defaultValue: "Comentario público")
+        public static let voteReasonRequiredPlaceholder = LocalizedStringResource("decisions.vote.reason.required.placeholder", defaultValue: "Explica por qué bloqueas")
+        public static let voteReasonRequiredHint = LocalizedStringResource("decisions.vote.reason.required.hint", defaultValue: "Para bloquear hay que explicar el motivo.")
         public static let voteValueRequired  = LocalizedStringResource("decisions.vote.value.required", defaultValue: "Elige una opción de voto.")
+
+        // Method-specific vote value copy (V2-G1 sub-slice 2)
+        public static let voteInFavor       = LocalizedStringResource("decisions.vote_value.in_favor",      defaultValue: "A favor")
+        public static let voteObject        = LocalizedStringResource("decisions.vote_value.object",        defaultValue: "Objeto")
+        public static let voteWithdraw      = LocalizedStringResource("decisions.vote_value.withdraw",      defaultValue: "Me retiro")
+        public static let voteConsent       = LocalizedStringResource("decisions.vote_value.consent",       defaultValue: "Consiento")
+        public static let voteBlockConsent  = LocalizedStringResource("decisions.vote_value.block_consent", defaultValue: "Bloqueo")
+        public static let voteNoObjection   = LocalizedStringResource("decisions.vote_value.no_objection",  defaultValue: "Sin objeción")
+        public static let voteCastVeto      = LocalizedStringResource("decisions.vote_value.veto",          defaultValue: "Veto")
+
+        public static let voteAdminOnlyTitle = LocalizedStringResource("decisions.vote.admin_only.title",  defaultValue: "Decisión de admin")
+        public static let voteAdminOnlyHint  = LocalizedStringResource("decisions.vote.admin_only.hint",   defaultValue: "Este método no usa votación de miembros. Un admin la resuelve al finalizar.")
 
         // Statuses + outcomes
         public static let statusDraft     = LocalizedStringResource("decisions.status.draft",     defaultValue: "Borrador")

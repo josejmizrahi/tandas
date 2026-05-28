@@ -240,6 +240,58 @@ public enum VoteValue: String, Codable, CaseIterable, Identifiable, Sendable, Ha
         case .block:   return "hand.raised.fill"
         }
     }
+
+    /// V2-G1 sub-slice 2 — vote values legally castable for a given
+    /// decision method. The matrix here is the iOS surface contract,
+    /// not the backend gate: `cast_vote` allows any of the four values
+    /// regardless of method, but the UX restricts them to the
+    /// semantics that match. Admin decisions have no member ballots.
+    public static func allowed(for method: DecisionMethod) -> [VoteValue] {
+        switch method {
+        case .admin:
+            return []
+        case .majority, .supermajority:
+            return [.yes, .no, .abstain, .block]
+        case .consensus:
+            return [.yes, .no, .abstain]
+        case .consent:
+            return [.yes, .block]
+        case .veto:
+            return [.yes, .block]
+        case .rankedChoice, .weighted:
+            // Sub-slice 3 ships richer UX; until then we fall back to
+            // the broad set so the picker stays usable.
+            return [.yes, .no, .abstain, .block]
+        case .other:
+            return [.yes, .no, .abstain, .block]
+        }
+    }
+
+    /// Context-sensitive label so consent/veto read humanly. Falls back
+    /// to the generic label when no specialisation applies.
+    public func label(for method: DecisionMethod) -> LocalizedStringResource {
+        switch (self, method) {
+        case (.yes, .consent):   return L10n.Decisions.voteConsent
+        case (.yes, .veto):      return L10n.Decisions.voteNoObjection
+        case (.yes, .consensus): return L10n.Decisions.voteInFavor
+        case (.no,  .consensus): return L10n.Decisions.voteObject
+        case (.abstain, .consensus): return L10n.Decisions.voteWithdraw
+        case (.block, .consent): return L10n.Decisions.voteBlockConsent
+        case (.block, .veto):    return L10n.Decisions.voteCastVeto
+        default:                 return label
+        }
+    }
+
+    /// Blocking on consent / veto demands a reason — the whole point of
+    /// those methods is "explain why you're stopping the group".
+    public func requiresReason(for method: DecisionMethod) -> Bool {
+        switch (self, method) {
+        case (.block, .consent), (.block, .veto):
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 /// A single option row inside a decision. Mirrors

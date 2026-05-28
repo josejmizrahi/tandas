@@ -366,7 +366,7 @@ desconectadas de dinero, reglas decorativas, votos triviales).
 - [x] **V1 release tag** `v1.0.0-rc` — 2026-05-27
 
 ### V2 Depth/Engine/Integrations (~22-30 sesiones)
-- [~] V2-G1 Voting methods completos — sub-slice 1 (propose surface): 8 methods canónicos + LegitimacySource (10 sources con default sensato por método) + picker en ProposeDecisionSheet + auto-sync método→legitimidad hasta override manual. Falta sub-slice 2 (adaptive VoteSheet) + 3 (DecisionDetail tally por método).
+- [~] V2-G1 Voting methods completos — sub-slices 1+2: propose surface con 8 methods + LegitimacySource + adaptive VoteSheet (consensus 3-state / consent 2-state / veto 2-state + admin informativa + razón obligatoria en block para consent/veto). Falta sub-slice 3: ranked_choice drag-to-reorder + weighted input numérico + DecisionDetail tally por método + quorum enforcement.
 - [ ] V2-G2 Decision types con outcome handlers (rule_change / membership / mandate_grant / mandate_revoke / sanction_appeal / dissolution / budget)
 - [ ] V2-G3 Rule engine activation (sync eval + shapes + recursion guards + audit)
 - [ ] V2-G4 Sanction ↔ Money deep (pago parcial / plan de pago / auto-pay from fund / convert to service)
