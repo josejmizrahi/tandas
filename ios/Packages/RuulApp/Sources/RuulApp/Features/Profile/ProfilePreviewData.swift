@@ -124,6 +124,14 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
         CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
     }
     func archiveRule(_ input: ArchiveRuleInput) async throws {}
+    func listRuleShapes() async throws -> [RuleShape] { [] }
+    func validateRuleShape(_ input: ValidateRuleShapeInput) async throws -> RuleShapeValidationResult {
+        RuleShapeValidationResult(valid: true, errors: [], shapeKey: nil, triggerEventType: nil)
+    }
+    func createEngineRule(_ input: CreateEngineRuleInput) async throws -> CreateEngineRuleResult {
+        CreateEngineRuleResult(ruleId: UUID(), versionId: UUID())
+    }
+    func groupRulesEngine(groupId: UUID) async throws -> [EngineRule] { [] }
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] { [] }
     func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
         GroupResource(id: UUID(), groupId: input.pGroupId, resourceType: .other, name: input.pName)

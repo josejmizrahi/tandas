@@ -227,6 +227,57 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Rule engine (V2-G3.1)
+
+    public func listRuleShapes() async throws -> [RuleShape] {
+        do {
+            return try await client
+                .rpc("list_rule_shapes")
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func validateRuleShape(_ input: ValidateRuleShapeInput) async throws -> RuleShapeValidationResult {
+        do {
+            return try await client
+                .rpc("validate_rule_shape", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func createEngineRule(_ input: CreateEngineRuleInput) async throws -> CreateEngineRuleResult {
+        do {
+            let rows: [CreateEngineRuleResult] = try await client
+                .rpc("create_engine_rule", params: input)
+                .execute()
+                .value
+            guard let row = rows.first else {
+                throw RuulError.unexpected(message: "create_engine_rule returned no rows")
+            }
+            return row
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func groupRulesEngine(groupId: UUID) async throws -> [EngineRule] {
+        let params = GroupRulesEngineParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("group_rules_engine", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Resources
 
     public func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {

@@ -28,6 +28,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupRulesActive(groupId: UUID)
         case createTextRule(input: CreateTextRuleInput)
         case archiveRule(input: ArchiveRuleInput)
+        case listRuleShapes
+        case validateRuleShape(input: ValidateRuleShapeInput)
+        case createEngineRule(input: CreateEngineRuleInput)
+        case groupRulesEngine(groupId: UUID)
         case groupResourcesActive(groupId: UUID)
         case createGroupResource(input: CreateGroupResourceInput)
         case archiveGroupResource(input: ArchiveGroupResourceInput)
@@ -125,6 +129,14 @@ final actor MockRuulRPCClient: RuulRPCClient {
         CreateTextRuleResult(ruleId: UUID(), versionId: UUID())
     )
     private var archiveRuleStub: Result<Void, RuulError> = .success(())
+    private var listRuleShapesStub: Result<[RuleShape], RuulError> = .success([])
+    private var validateRuleShapeStub: Result<RuleShapeValidationResult, RuulError> = .success(
+        RuleShapeValidationResult(valid: true, errors: [], shapeKey: nil, triggerEventType: nil)
+    )
+    private var createEngineRuleStub: Result<CreateEngineRuleResult, RuulError> = .success(
+        CreateEngineRuleResult(ruleId: UUID(), versionId: UUID())
+    )
+    private var groupRulesEngineStub: Result<[EngineRule], RuulError> = .success([])
     private var groupResourcesActiveStub: Result<[GroupResource], RuulError> = .success([])
     private var createGroupResourceStub: Result<GroupResource, RuulError> = .success(
         GroupResource(id: UUID(), groupId: UUID(), resourceType: .other, name: "")
@@ -239,6 +251,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupRulesActiveStub(_ stub: Result<[GroupRule], RuulError>) { groupRulesActiveStub = stub }
     func setCreateTextRuleStub(_ stub: Result<CreateTextRuleResult, RuulError>) { createTextRuleStub = stub }
     func setArchiveRuleStub(_ stub: Result<Void, RuulError>) { archiveRuleStub = stub }
+    func setListRuleShapesStub(_ stub: Result<[RuleShape], RuulError>) { listRuleShapesStub = stub }
+    func setValidateRuleShapeStub(_ stub: Result<RuleShapeValidationResult, RuulError>) { validateRuleShapeStub = stub }
+    func setCreateEngineRuleStub(_ stub: Result<CreateEngineRuleResult, RuulError>) { createEngineRuleStub = stub }
+    func setGroupRulesEngineStub(_ stub: Result<[EngineRule], RuulError>) { groupRulesEngineStub = stub }
     func setGroupResourcesActiveStub(_ stub: Result<[GroupResource], RuulError>) { groupResourcesActiveStub = stub }
     func setCreateGroupResourceStub(_ stub: Result<GroupResource, RuulError>) { createGroupResourceStub = stub }
     func setArchiveGroupResourceStub(_ stub: Result<Void, RuulError>) { archiveGroupResourceStub = stub }
@@ -393,6 +409,26 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func archiveRule(_ input: ArchiveRuleInput) async throws {
         recorded.append(.archiveRule(input: input))
         try archiveRuleStub.get()
+    }
+
+    func listRuleShapes() async throws -> [RuleShape] {
+        recorded.append(.listRuleShapes)
+        return try listRuleShapesStub.get()
+    }
+
+    func validateRuleShape(_ input: ValidateRuleShapeInput) async throws -> RuleShapeValidationResult {
+        recorded.append(.validateRuleShape(input: input))
+        return try validateRuleShapeStub.get()
+    }
+
+    func createEngineRule(_ input: CreateEngineRuleInput) async throws -> CreateEngineRuleResult {
+        recorded.append(.createEngineRule(input: input))
+        return try createEngineRuleStub.get()
+    }
+
+    func groupRulesEngine(groupId: UUID) async throws -> [EngineRule] {
+        recorded.append(.groupRulesEngine(groupId: groupId))
+        return try groupRulesEngineStub.get()
     }
 
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {

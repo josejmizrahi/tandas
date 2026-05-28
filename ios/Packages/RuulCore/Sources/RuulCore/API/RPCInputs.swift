@@ -11,10 +11,14 @@ import Foundation
 /// V2-G9 — minimal JSON value container used by RPC params that need to
 /// pass nested jsonb (e.g. `start_vote.p_metadata.weight_strategy`).
 /// Flat string maps keep working via the `.string` case.
-public indirect enum RPCJSONValue: Encodable, Sendable, Equatable, Hashable {
+/// V2-G3.1 — added `.array` + `Decodable` so engine-rule round-trips
+/// (`condition_tree.fields`, `consequences[].fields`) can decode the
+/// catalog-driven payload back from `group_rules_engine(...)`.
+public indirect enum RPCJSONValue: Codable, Sendable, Equatable, Hashable {
     case string(String)
     case number(Decimal)
     case bool(Bool)
+    case array([RPCJSONValue])
     case object([String: RPCJSONValue])
     case null
 
@@ -24,9 +28,26 @@ public indirect enum RPCJSONValue: Encodable, Sendable, Equatable, Hashable {
         case .string(let s): try c.encode(s)
         case .number(let n): try c.encode(n)
         case .bool(let b):   try c.encode(b)
+        case .array(let a):  try c.encode(a)
         case .object(let o): try c.encode(o)
         case .null:          try c.encodeNil()
         }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() { self = .null; return }
+        if let b = try? c.decode(Bool.self) { self = .bool(b); return }
+        // Decimal must be tried before String — JSONDecoder will happily
+        // decode `"42"` (string) as Decimal otherwise on some platforms.
+        if let n = try? c.decode(Decimal.self) { self = .number(n); return }
+        if let s = try? c.decode(String.self) { self = .string(s); return }
+        if let a = try? c.decode([RPCJSONValue].self) { self = .array(a); return }
+        if let o = try? c.decode([String: RPCJSONValue].self) { self = .object(o); return }
+        throw DecodingError.dataCorruptedError(
+            in: c,
+            debugDescription: "Unsupported jsonb leaf value"
+        )
     }
 }
 
@@ -381,6 +402,82 @@ public struct ArchiveRuleInput: Encodable, Sendable, Equatable {
     public init(pRuleId: UUID, pReason: String? = nil) {
         self.pRuleId = pRuleId
         self.pReason = pReason
+    }
+}
+
+// MARK: - Rule engine (V2-G3.1)
+
+public struct GroupRulesEngineParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID) { self.pGroupId = groupId }
+}
+
+/// jsonb payload passed to `validate_rule_shape(p_shape jsonb)` and
+/// embedded by `create_engine_rule(...)` for server-side validation.
+public struct RuleShapePayload: Codable, Sendable, Equatable, Hashable {
+    public let shapeKey: String
+    public let conditionTree: EngineRuleCondition?
+    public let consequences: [EngineRuleConsequence]
+
+    enum CodingKeys: String, CodingKey {
+        case shapeKey      = "shape_key"
+        case conditionTree = "condition_tree"
+        case consequences
+    }
+
+    public init(
+        shapeKey: String,
+        conditionTree: EngineRuleCondition? = nil,
+        consequences: [EngineRuleConsequence] = []
+    ) {
+        self.shapeKey = shapeKey
+        self.conditionTree = conditionTree
+        self.consequences = consequences
+    }
+}
+
+public struct ValidateRuleShapeInput: Encodable, Sendable, Equatable {
+    public let pShape: RuleShapePayload
+    enum CodingKeys: String, CodingKey { case pShape = "p_shape" }
+    public init(shape: RuleShapePayload) { self.pShape = shape }
+}
+
+public struct CreateEngineRuleInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pTitle: String
+    public let pShapeKey: String
+    public let pConditionTree: EngineRuleCondition?
+    public let pConsequences: [EngineRuleConsequence]
+    public let pRuleType: String
+    public let pSeverity: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId       = "p_group_id"
+        case pTitle         = "p_title"
+        case pShapeKey      = "p_shape_key"
+        case pConditionTree = "p_condition_tree"
+        case pConsequences  = "p_consequences"
+        case pRuleType      = "p_rule_type"
+        case pSeverity      = "p_severity"
+    }
+
+    public init(
+        pGroupId: UUID,
+        pTitle: String,
+        pShapeKey: String,
+        pConditionTree: EngineRuleCondition?,
+        pConsequences: [EngineRuleConsequence],
+        pRuleType: String = "norm",
+        pSeverity: Int = 1
+    ) {
+        self.pGroupId = pGroupId
+        self.pTitle = pTitle
+        self.pShapeKey = pShapeKey
+        self.pConditionTree = pConditionTree
+        self.pConsequences = pConsequences
+        self.pRuleType = pRuleType
+        self.pSeverity = pSeverity
     }
 }
 

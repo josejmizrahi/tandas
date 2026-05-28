@@ -79,6 +79,33 @@ public protocol RuulRPCClient: Sendable {
     /// `rules.archive`.
     func archiveRule(_ input: ArchiveRuleInput) async throws
 
+    // MARK: - Rule engine (V2-G3.1)
+
+    /// `list_rule_shapes()` — the institutional atom catalog: every
+    /// trigger / condition / consequence iOS is allowed to pick from
+    /// when authoring engine rules. Auth-only (catalog is global,
+    /// shape `select` policy allows any caller).
+    func listRuleShapes() async throws -> [RuleShape]
+
+    /// `validate_rule_shape(p_shape jsonb)` — dry-run validator used by
+    /// the iOS shape-builder for inline preview. Mirrors the checks
+    /// `create_engine_rule(...)` runs on commit, so a `valid=true` here
+    /// guarantees the same payload won't be rejected on save.
+    func validateRuleShape(_ input: ValidateRuleShapeInput) async throws -> RuleShapeValidationResult
+
+    /// `create_engine_rule(...)` — atomic propose+publish wrapper for
+    /// engine rules. Server re-runs `validate_rule_shape` before write
+    /// + requires `rules.publish` (consistent with
+    /// `publish_rule_version`). Returns the new rule id + first
+    /// version id, mirroring `createTextRule`.
+    func createEngineRule(_ input: CreateEngineRuleInput) async throws -> CreateEngineRuleResult
+
+    /// `group_rules_engine(p_group_id)` — active engine rules for a
+    /// group, hydrated with their trigger + condition + consequences
+    /// so iOS can render the rule explicably (which atoms it's wired
+    /// to). Active-member gate.
+    func groupRulesEngine(groupId: UUID) async throws -> [EngineRule]
+
     // MARK: - Resources
 
     /// `group_resources_active(p_group_id)` — active resource envelopes

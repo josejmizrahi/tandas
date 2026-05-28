@@ -40,6 +40,49 @@ public struct CanonicalRulesRepository: Sendable {
             .nilIfBlank
         try await rpc.archiveRule(ArchiveRuleInput(pRuleId: ruleId, pReason: trimmed))
     }
+
+    // MARK: - Rule engine (V2-G3.1)
+
+    /// Pulls the institutional atom catalog (`rule_shapes_catalog`).
+    /// iOS caches the result for the lifetime of the store; the catalog
+    /// is small + global so refetching per session is fine.
+    public func listRuleShapes() async throws -> [RuleShape] {
+        try await rpc.listRuleShapes()
+    }
+
+    /// Server-side dry-run. The same payload, when passed to
+    /// `create_engine_rule`, will commit if and only if `valid == true`.
+    public func validateRuleShape(_ shape: RuleShapePayload) async throws -> RuleShapeValidationResult {
+        try await rpc.validateRuleShape(ValidateRuleShapeInput(shape: shape))
+    }
+
+    /// Atomic propose+publish for an engine rule. Server re-runs the
+    /// shape validator so the iOS-side dry-run is advisory, not load-
+    /// bearing.
+    public func createEngineRule(
+        groupId: UUID,
+        title: String,
+        shapeKey: String,
+        condition: EngineRuleCondition?,
+        consequences: [EngineRuleConsequence],
+        ruleType: GroupRuleType = .norm,
+        severity: Int = 1
+    ) async throws -> CreateEngineRuleResult {
+        let input = CreateEngineRuleInput(
+            pGroupId: groupId,
+            pTitle: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            pShapeKey: shapeKey,
+            pConditionTree: condition,
+            pConsequences: consequences,
+            pRuleType: ruleType.rawValue,
+            pSeverity: severity
+        )
+        return try await rpc.createEngineRule(input)
+    }
+
+    public func engineRules(groupId: UUID) async throws -> [EngineRule] {
+        try await rpc.groupRulesEngine(groupId: groupId)
+    }
 }
 
 private extension String {
