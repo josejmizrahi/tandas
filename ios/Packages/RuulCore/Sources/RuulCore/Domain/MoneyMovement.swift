@@ -196,7 +196,7 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         let rawType = try c.decode(String.self, forKey: .type)
         self.type = MoneyMovementType(rawValue: rawType) ?? .other
         if let asDecimal = try? c.decodeIfPresent(Decimal.self, forKey: .amount) {
-            self.amount = asDecimal ?? 0
+            self.amount = asDecimal
         } else if let asString = try c.decodeIfPresent(String.self, forKey: .amount),
                   let parsed = Decimal(string: asString) {
             self.amount = parsed

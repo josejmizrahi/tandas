@@ -76,7 +76,7 @@ public protocol AuthService: Actor {
 }
 
 public extension AuthService {
-    public func signInAnonymouslyIfNeeded() async throws {
+    func signInAnonymouslyIfNeeded() async throws {
         // No-op default. LiveAuthService overrides.
     }
 }
@@ -156,7 +156,7 @@ public actor MockAuthService: AuthService {
     public func verifySession() async -> Bool {
         // Mock: a non-nil session is always considered valid. Tests that
         // need to simulate an orphaned session can set the seed to nil.
-        await (self.session != nil)
+        self.session != nil
     }
 
     public func startPhoneChange(_ newPhone: String) async throws { /* no-op */ }
@@ -318,7 +318,7 @@ public actor LiveAuthService: AuthService {
 }
 
 private extension Supabase.Session {
-    public func toAppSession() -> AppSession {
+    func toAppSession() -> AppSession {
         AppSession(
             user: AppUser(
                 id: user.id,
