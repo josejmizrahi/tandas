@@ -305,6 +305,53 @@ public enum L10n {
         public static let usernameLabel         = LocalizedStringResource("member_detail.username",               defaultValue: "Usuario")
     }
 
+    public enum MoneyMovements {
+        public static let title              = LocalizedStringResource("money_movements.title",              defaultValue: "Movimientos")
+        public static let allFilter          = LocalizedStringResource("money_movements.filter.all",         defaultValue: "Todos")
+        public static let emptyTitle         = LocalizedStringResource("money_movements.empty.title",        defaultValue: "Sin movimientos")
+        public static let emptyDescription   = LocalizedStringResource("money_movements.empty.description",  defaultValue: "Cuando alguien registre un gasto o liquide, va a aparecer aquí.")
+        public static let errorTitle         = LocalizedStringResource("money_movements.error.title",        defaultValue: "No pudimos cargar los movimientos")
+        public static let retry              = LocalizedStringResource("money_movements.retry",              defaultValue: "Reintentar")
+        public static let loadMore           = LocalizedStringResource("money_movements.load_more",          defaultValue: "Cargar más")
+        public static let inKindHint         = LocalizedStringResource("money_movements.in_kind",            defaultValue: "En especie")
+        public static let reversalHint       = LocalizedStringResource("money_movements.reversal",           defaultValue: "Reversión")
+
+        public static let typeIncome         = LocalizedStringResource("money_movements.type.income",        defaultValue: "Ingreso")
+        public static let typeExpense        = LocalizedStringResource("money_movements.type.expense",       defaultValue: "Gasto")
+        public static let typeTransfer       = LocalizedStringResource("money_movements.type.transfer",      defaultValue: "Transferencia")
+        public static let typeContribution   = LocalizedStringResource("money_movements.type.contribution",  defaultValue: "Contribución")
+        public static let typeRefund         = LocalizedStringResource("money_movements.type.refund",        defaultValue: "Reembolso")
+        public static let typeAdjustment     = LocalizedStringResource("money_movements.type.adjustment",    defaultValue: "Ajuste")
+        public static let typeAllocation     = LocalizedStringResource("money_movements.type.allocation",    defaultValue: "Asignación")
+        public static let typePayout         = LocalizedStringResource("money_movements.type.payout",        defaultValue: "Pago a tercero")
+        public static let typeReversal       = LocalizedStringResource("money_movements.type.reversal",      defaultValue: "Reversión")
+        public static let typeSettlement     = LocalizedStringResource("money_movements.type.settlement",    defaultValue: "Liquidación")
+        public static let typeFinePayment    = LocalizedStringResource("money_movements.type.fine_payment",  defaultValue: "Pago de multa")
+        public static let typePoolCharge     = LocalizedStringResource("money_movements.type.pool_charge",   defaultValue: "Cuota")
+        public static let typeBookingCharge  = LocalizedStringResource("money_movements.type.booking_charge", defaultValue: "Cobro de reserva")
+        public static let typeOther          = LocalizedStringResource("money_movements.type.other",         defaultValue: "Otro")
+    }
+
+    public enum MoneyMovementDetail {
+        public static let title              = LocalizedStringResource("money_movement_detail.title",              defaultValue: "Movimiento")
+        public static let summarySection     = LocalizedStringResource("money_movement_detail.section.summary",   defaultValue: "Resumen")
+        public static let partiesSection     = LocalizedStringResource("money_movement_detail.section.parties",    defaultValue: "Partes")
+        public static let metaSection        = LocalizedStringResource("money_movement_detail.section.meta",       defaultValue: "Detalle")
+        public static let typeLabel          = LocalizedStringResource("money_movement_detail.type",               defaultValue: "Tipo")
+        public static let amountLabel        = LocalizedStringResource("money_movement_detail.amount",             defaultValue: "Monto")
+        public static let fromLabel          = LocalizedStringResource("money_movement_detail.from",               defaultValue: "De")
+        public static let toLabel            = LocalizedStringResource("money_movement_detail.to",                 defaultValue: "Para")
+        public static let paidByLabel        = LocalizedStringResource("money_movement_detail.paid_by",            defaultValue: "Pagó")
+        public static let recordedByLabel    = LocalizedStringResource("money_movement_detail.recorded_by",        defaultValue: "Registró")
+        public static let sourceLabel        = LocalizedStringResource("money_movement_detail.source",             defaultValue: "Origen")
+        public static let splitModeLabel     = LocalizedStringResource("money_movement_detail.split_mode",         defaultValue: "Modo de split")
+        public static let descriptionLabel   = LocalizedStringResource("money_movement_detail.description",        defaultValue: "Descripción")
+        public static let occurredAtLabel    = LocalizedStringResource("money_movement_detail.occurred_at",        defaultValue: "Ocurrió")
+        public static let recordedAtLabel    = LocalizedStringResource("money_movement_detail.recorded_at",        defaultValue: "Registrado")
+        public static let inKindLabel        = LocalizedStringResource("money_movement_detail.in_kind",            defaultValue: "En especie")
+        public static let reversalNotice     = LocalizedStringResource("money_movement_detail.reversal_notice",    defaultValue: "Este movimiento es una reversión de uno anterior.")
+    }
+
     public enum PersonalProfile {
         public static let title                 = LocalizedStringResource("personal_profile.title",                 defaultValue: "Tu cuenta")
         public static let editProfile           = LocalizedStringResource("personal_profile.edit_profile",          defaultValue: "Editar perfil")

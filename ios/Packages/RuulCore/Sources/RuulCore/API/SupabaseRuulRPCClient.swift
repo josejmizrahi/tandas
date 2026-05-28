@@ -313,6 +313,30 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Money movements (Primitiva 19, A2.b)
+
+    public func groupMoneyMovements(
+        groupId: UUID,
+        limit: Int,
+        filter: [String]?,
+        beforeSeq: Int64?
+    ) async throws -> [MoneyMovement] {
+        let params = GroupMoneyMovementsParams(
+            groupId: groupId,
+            limit: limit,
+            filter: filter,
+            beforeSeq: beforeSeq
+        )
+        do {
+            return try await client
+                .rpc("group_money_movements", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Disputes (Primitiva 14)
 
     public func groupDisputesActive(groupId: UUID, limit: Int) async throws -> [GroupDispute] {

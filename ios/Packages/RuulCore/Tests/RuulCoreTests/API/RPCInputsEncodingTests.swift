@@ -495,4 +495,30 @@ struct RPCInputsEncodingTests {
         // cast either way. Assert it's *not* null — actual value is opaque.
         #expect((dict["p_before"] is NSNull) == false)
     }
+
+    @Test("group_money_movements defaults: null filter + null cursor")
+    func groupMoneyMovementsDefaults() throws {
+        let gid = UUID()
+        let dict = try encode(GroupMoneyMovementsParams(groupId: gid))
+        #expect(dict.keys.sorted() == ["p_before_seq", "p_filter", "p_group_id", "p_limit"])
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect((dict["p_limit"] as? Int) == 100)
+        #expect(dict["p_filter"] is NSNull)
+        #expect(dict["p_before_seq"] is NSNull)
+    }
+
+    @Test("group_money_movements emits filter array + cursor when set")
+    func groupMoneyMovementsWithFilterAndCursor() throws {
+        let gid = UUID()
+        let dict = try encode(GroupMoneyMovementsParams(
+            groupId: gid,
+            limit: 25,
+            filter: ["expense", "settlement_payment"],
+            beforeSeq: 42
+        ))
+        #expect((dict["p_limit"] as? Int) == 25)
+        #expect((dict["p_filter"] as? [String]) == ["expense", "settlement_payment"])
+        let cursorOK = (dict["p_before_seq"] as? Int64) == 42 || (dict["p_before_seq"] as? Int) == 42
+        #expect(cursorOK)
+    }
 }

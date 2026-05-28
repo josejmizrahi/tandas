@@ -26,6 +26,7 @@ struct MoneyDashboardView: View {
             heroSection
             sanctionsSection
             debtsSection
+            movementsSection
             actionsSection
         }
         .navigationTitle(L10n.MoneyDashboard.title)
@@ -37,12 +38,20 @@ struct MoneyDashboardView: View {
                 myMembershipId: myMembershipId
             )
         }
+        .navigationDestination(for: MovementsDestination.self) { _ in
+            MoneyMovementsListView(
+                container: container,
+                groupId: groupId,
+                myMembershipId: myMembershipId
+            )
+        }
         .refreshable {
             await refresh()
         }
         .task {
             await container.moneyStore.refresh(groupId: groupId, membershipId: myMembershipId)
             await container.sanctionsStore.refreshIfNeeded(groupId: groupId)
+            await container.movementsStore.refreshIfNeeded(groupId: groupId)
         }
         .sheet(isPresented: $isShowingExpenseSheet) {
             RecordExpenseSheet(
@@ -244,6 +253,37 @@ struct MoneyDashboardView: View {
         return "\(count) deudas abiertas"
     }
 
+    // MARK: - Movements (recent + link to full list)
+
+    @ViewBuilder
+    private var movementsSection: some View {
+        Section(L10n.MoneyMovements.title) {
+            let recent = Array(container.movementsStore.movements.prefix(3))
+            if recent.isEmpty, case .loaded = container.movementsStore.phase {
+                Text(L10n.MoneyMovements.emptyDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else if !recent.isEmpty {
+                ForEach(recent) { movement in
+                    NavigationLink(value: MovementsDestination()) {
+                        MoneyMovementCompactRow(movement: movement)
+                    }
+                }
+                NavigationLink(value: MovementsDestination()) {
+                    Text(viewAllMovementsLabel)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var viewAllMovementsLabel: String {
+        let count = container.movementsStore.movements.count
+        guard count > 3 else { return String(localized: L10n.MoneyDashboard.debtsViewAll) }
+        return "Ver todos (\(count))"
+    }
+
     // MARK: - Acciones
 
     @ViewBuilder
@@ -267,12 +307,43 @@ struct MoneyDashboardView: View {
     private func refresh() async {
         await container.moneyStore.refresh(groupId: groupId, membershipId: myMembershipId)
         await container.sanctionsStore.refresh(groupId: groupId)
+        await container.movementsStore.refresh(groupId: groupId)
     }
 
     /// Hashable token for the dedicated debts surface (kept private so
     /// no other view can push into the dashboard's stack with the same
     /// type identity).
     private struct DebtsDestination: Hashable {}
+
+    /// Same pattern for the movements list (A2.b).
+    private struct MovementsDestination: Hashable {}
+}
+
+/// Compact one-line movement row used inside the dashboard's
+/// "Movimientos recientes" preview. Full row formatting lives on
+/// `MoneyMovementsListView`.
+private struct MoneyMovementCompactRow: View {
+    let movement: MoneyMovement
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: movement.type.systemImageName)
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(movement.headline)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                Text(movement.type.label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("\(movement.amount.formatted()) \(movement.unit)")
+                .font(.subheadline.monospacedDigit())
+                .strikethrough(movement.isReversal)
+        }
+    }
 }
 
 /// One-line money summary used as the inline row on `GroupHomeView`

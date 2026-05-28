@@ -40,6 +40,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupDisputesActive(groupId: UUID, limit: Int)
         case disputeSanction(input: DisputeSanctionInput)
         case groupEventsRecent(groupId: UUID, limit: Int, before: Date?)
+        case groupMoneyMovements(groupId: UUID, limit: Int, filter: [String]?, beforeSeq: Int64?)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -104,6 +105,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var groupDisputesActiveStub: Result<[GroupDispute], RuulError> = .success([])
     private var disputeSanctionStub: Result<UUID, RuulError> = .success(UUID())
     private var groupEventsRecentStub: Result<[GroupEvent], RuulError> = .success([])
+    private var groupMoneyMovementsStub: Result<[MoneyMovement], RuulError> = .success([])
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -141,6 +143,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupDisputesActiveStub(_ stub: Result<[GroupDispute], RuulError>) { groupDisputesActiveStub = stub }
     func setDisputeSanctionStub(_ stub: Result<UUID, RuulError>) { disputeSanctionStub = stub }
     func setGroupEventsRecentStub(_ stub: Result<[GroupEvent], RuulError>) { groupEventsRecentStub = stub }
+    func setGroupMoneyMovementsStub(_ stub: Result<[MoneyMovement], RuulError>) { groupMoneyMovementsStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -296,6 +299,16 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent] {
         recorded.append(.groupEventsRecent(groupId: groupId, limit: limit, before: before))
         return try groupEventsRecentStub.get()
+    }
+
+    func groupMoneyMovements(
+        groupId: UUID,
+        limit: Int,
+        filter: [String]?,
+        beforeSeq: Int64?
+    ) async throws -> [MoneyMovement] {
+        recorded.append(.groupMoneyMovements(groupId: groupId, limit: limit, filter: filter, beforeSeq: beforeSeq))
+        return try groupMoneyMovementsStub.get()
     }
 
     func myProfile() async throws -> Profile {

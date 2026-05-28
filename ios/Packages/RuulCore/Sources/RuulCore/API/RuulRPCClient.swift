@@ -122,6 +122,20 @@ public protocol RuulRPCClient: Sendable {
     /// `before` is the cursor for pagination. Active-member gate.
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent]
 
+    // MARK: - Money movements (Primitiva 19, A2.b)
+
+    /// `group_money_movements(p_group_id, p_limit, p_filter, p_before_seq)`
+    /// — paginated ledger feed for a group, newest first by seq. Filter
+    /// = NULL means "all types"; otherwise restricts `transaction_type`
+    /// to the listed strings. `beforeSeq` is the infinite-scroll cursor.
+    /// Active-member gate.
+    func groupMoneyMovements(
+        groupId: UUID,
+        limit: Int,
+        filter: [String]?,
+        beforeSeq: Int64?
+    ) async throws -> [MoneyMovement]
+
     // MARK: - Disputes (Primitiva 14)
 
     /// `group_disputes_active(p_group_id, p_limit)` — open disputes

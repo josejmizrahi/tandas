@@ -454,6 +454,39 @@ public struct GroupEventsRecentParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Money movements (Primitiva 19, A2.b)
+
+public struct GroupMoneyMovementsParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pLimit: Int
+    public let pFilter: [String]?
+    public let pBeforeSeq: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId   = "p_group_id"
+        case pLimit     = "p_limit"
+        case pFilter    = "p_filter"
+        case pBeforeSeq = "p_before_seq"
+    }
+
+    public init(groupId: UUID, limit: Int = 100, filter: [String]? = nil, beforeSeq: Int64? = nil) {
+        self.pGroupId = groupId
+        self.pLimit = limit
+        self.pFilter = filter
+        self.pBeforeSeq = beforeSeq
+    }
+
+    /// Emit `null` for optional cursor + filter so PostgREST overload
+    /// resolution stays deterministic.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pLimit, forKey: .pLimit)
+        try c.encodeOrNil(pFilter, forKey: .pFilter)
+        try c.encodeOrNil(pBeforeSeq, forKey: .pBeforeSeq)
+    }
+}
+
 // MARK: - Disputes (Primitiva 14)
 
 public struct GroupDisputesActiveParams: Encodable, Sendable {

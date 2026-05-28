@@ -144,6 +144,7 @@ private struct RulesStubClient: RuulRPCClient, @unchecked Sendable {
     func groupDisputesActive(groupId: UUID, limit: Int) async throws -> [GroupDispute] { [] }
     func disputeSanction(_ input: DisputeSanctionInput) async throws -> UUID { UUID() }
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent] { [] }
+    func groupMoneyMovements(groupId: UUID, limit: Int, filter: [String]?, beforeSeq: Int64?) async throws -> [MoneyMovement] { [] }
     func myProfile() async throws -> Profile { Profile(id: UUID()) }
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile { Profile(id: UUID()) }
 }
