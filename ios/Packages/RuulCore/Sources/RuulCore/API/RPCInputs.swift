@@ -487,6 +487,87 @@ public struct GroupMoneyMovementsParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Contributions (Primitiva 9, C3)
+
+public struct GroupContributionsActiveParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pMembershipId: UUID?
+    public let pResourceId: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId      = "p_group_id"
+        case pMembershipId = "p_membership_id"
+        case pResourceId   = "p_resource_id"
+    }
+
+    public init(groupId: UUID, membershipId: UUID? = nil, resourceId: UUID? = nil) {
+        self.pGroupId = groupId
+        self.pMembershipId = membershipId
+        self.pResourceId = resourceId
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encodeOrNil(pMembershipId, forKey: .pMembershipId)
+        try c.encodeOrNil(pResourceId, forKey: .pResourceId)
+    }
+}
+
+public struct LogContributionParams: Encodable, Sendable, Equatable, Hashable {
+    public let pGroupId: UUID
+    public let pContributionType: String
+    public let pTitle: String?
+    public let pDescription: String?
+    public let pAmount: Decimal?
+    public let pUnit: String?
+    public let pSourceResourceId: UUID?
+    public let pOccurredAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId          = "p_group_id"
+        case pContributionType = "p_contribution_type"
+        case pTitle            = "p_title"
+        case pDescription      = "p_description"
+        case pAmount           = "p_amount"
+        case pUnit             = "p_unit"
+        case pSourceResourceId = "p_source_resource_id"
+        case pOccurredAt       = "p_occurred_at"
+    }
+
+    public init(
+        groupId: UUID,
+        contributionType: String,
+        title: String? = nil,
+        description: String? = nil,
+        amount: Decimal? = nil,
+        unit: String? = nil,
+        sourceResourceId: UUID? = nil,
+        occurredAt: Date? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pContributionType = contributionType
+        self.pTitle = title
+        self.pDescription = description
+        self.pAmount = amount
+        self.pUnit = unit
+        self.pSourceResourceId = sourceResourceId
+        self.pOccurredAt = occurredAt
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pContributionType, forKey: .pContributionType)
+        try c.encodeOrNil(pTitle, forKey: .pTitle)
+        try c.encodeOrNil(pDescription, forKey: .pDescription)
+        try c.encodeOrNil(pAmount, forKey: .pAmount)
+        try c.encodeOrNil(pUnit, forKey: .pUnit)
+        try c.encodeOrNil(pSourceResourceId, forKey: .pSourceResourceId)
+        try c.encodeOrNil(pOccurredAt, forKey: .pOccurredAt)
+    }
+}
+
 // MARK: - Mandates (Primitiva 23, B4)
 
 public struct GroupMandatesActiveParams: Encodable, Sendable {

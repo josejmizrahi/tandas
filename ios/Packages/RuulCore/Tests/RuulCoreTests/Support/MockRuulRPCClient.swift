@@ -48,6 +48,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupMandatesActive(groupId: UUID)
         case grantMandate(input: GrantMandateParams)
         case revokeMandate(input: RevokeMandateParams)
+        case groupContributionsActive(groupId: UUID, membershipId: UUID?, resourceId: UUID?)
+        case logContribution(input: LogContributionParams)
         case myProfile
         case updateMyProfile(input: UpdateMyProfileInput)
     }
@@ -120,6 +122,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var groupMandatesActiveStub: Result<[GroupMandate], RuulError> = .success([])
     private var grantMandateStub: Result<UUID, RuulError> = .success(UUID())
     private var revokeMandateStub: Result<Void, RuulError> = .success(())
+    private var groupContributionsActiveStub: Result<[GroupContribution], RuulError> = .success([])
+    private var logContributionStub: Result<UUID, RuulError> = .success(UUID())
     private var myProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
     private var updateMyProfileStub: Result<Profile, RuulError> = .success(Profile(id: UUID()))
 
@@ -165,6 +169,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupMandatesActiveStub(_ stub: Result<[GroupMandate], RuulError>) { groupMandatesActiveStub = stub }
     func setGrantMandateStub(_ stub: Result<UUID, RuulError>) { grantMandateStub = stub }
     func setRevokeMandateStub(_ stub: Result<Void, RuulError>) { revokeMandateStub = stub }
+    func setGroupContributionsActiveStub(_ stub: Result<[GroupContribution], RuulError>) { groupContributionsActiveStub = stub }
+    func setLogContributionStub(_ stub: Result<UUID, RuulError>) { logContributionStub = stub }
     func setMyProfileStub(_ stub: Result<Profile, RuulError>) { myProfileStub = stub }
     func setUpdateMyProfileStub(_ stub: Result<Profile, RuulError>) { updateMyProfileStub = stub }
 
@@ -365,6 +371,20 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func revokeMandate(_ input: RevokeMandateParams) async throws {
         recorded.append(.revokeMandate(input: input))
         try revokeMandateStub.get()
+    }
+
+    func groupContributionsActive(
+        groupId: UUID,
+        membershipId: UUID?,
+        resourceId: UUID?
+    ) async throws -> [GroupContribution] {
+        recorded.append(.groupContributionsActive(groupId: groupId, membershipId: membershipId, resourceId: resourceId))
+        return try groupContributionsActiveStub.get()
+    }
+
+    func logContribution(_ input: LogContributionParams) async throws -> UUID {
+        recorded.append(.logContribution(input: input))
+        return try logContributionStub.get()
     }
 
     func myProfile() async throws -> Profile {

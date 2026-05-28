@@ -93,6 +93,9 @@ struct GroupHomeView: View {
         .navigationDestination(for: GroupSettingsDestination.self) { _ in
             GroupSettingsView(container: container, group: group)
         }
+        .navigationDestination(for: ContributionsDestination.self) { _ in
+            ContributionsListView(store: container.contributionsStore, groupId: group.id)
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -101,6 +104,9 @@ struct GroupHomeView: View {
                     }
                     NavigationLink(value: GroupHistoryDestination()) {
                         Label(L10n.History.menuLink, systemImage: "clock.arrow.circlepath")
+                    }
+                    NavigationLink(value: ContributionsDestination()) {
+                        Label(L10n.Contributions.title, systemImage: "hands.sparkles")
                     }
                     NavigationLink(value: GroupSettingsDestination()) {
                         Label(L10n.GroupSettings.title, systemImage: "gearshape")
@@ -434,6 +440,9 @@ struct GroupHomeView: View {
 
     /// And Group Settings (B1 — Settings.app root).
     private struct GroupSettingsDestination: Hashable {}
+
+    /// And Contributions (Primitiva 9 — C3).
+    private struct ContributionsDestination: Hashable {}
 
     /// Bridges the `isEditPresented` flag on the shared PurposeStore
     /// to the View's `.sheet(isPresented:)` API (mirrors the same

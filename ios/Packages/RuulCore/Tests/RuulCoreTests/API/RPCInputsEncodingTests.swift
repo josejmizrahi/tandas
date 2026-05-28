@@ -570,4 +570,34 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_mandate_id"] as? String == mid.uuidString)
         #expect(dict["p_reason"] is NSNull)
     }
+
+    @Test("log_contribution emits required keys + nulls for optionals by default")
+    func logContributionDefaults() throws {
+        let gid = UUID()
+        let dict = try encode(LogContributionParams(
+            groupId: gid,
+            contributionType: "care",
+            title: "Cuidé al perro",
+            description: nil,
+            amount: nil,
+            unit: nil
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_contribution_type"] as? String == "care")
+        #expect(dict["p_title"] as? String == "Cuidé al perro")
+        #expect(dict["p_description"] is NSNull)
+        #expect(dict["p_amount"] is NSNull)
+        #expect(dict["p_unit"] is NSNull)
+        #expect(dict["p_source_resource_id"] is NSNull)
+        #expect(dict["p_occurred_at"] is NSNull)
+    }
+
+    @Test("group_contributions_active encodes optional filters as null")
+    func groupContributionsActiveDefaults() throws {
+        let gid = UUID()
+        let dict = try encode(GroupContributionsActiveParams(groupId: gid))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_membership_id"] is NSNull)
+        #expect(dict["p_resource_id"] is NSNull)
+    }
 }

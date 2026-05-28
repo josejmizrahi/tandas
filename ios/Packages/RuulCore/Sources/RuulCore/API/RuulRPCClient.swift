@@ -122,6 +122,21 @@ public protocol RuulRPCClient: Sendable {
     /// `before` is the cursor for pagination. Active-member gate.
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent]
 
+    // MARK: - Contributions (Primitiva 9, C3)
+
+    /// `group_contributions_active(p_group_id, p_membership_id, p_resource_id)`
+    /// — non-rejected contributions, optionally filtered by member or
+    /// resource. Active-member gate.
+    func groupContributionsActive(
+        groupId: UUID,
+        membershipId: UUID?,
+        resourceId: UUID?
+    ) async throws -> [GroupContribution]
+
+    /// `log_contribution(...)` — self-claim a contribution (status =
+    /// claimed). Requires `contribution.record`. Returns the new id.
+    func logContribution(_ input: LogContributionParams) async throws -> UUID
+
     // MARK: - Mandates (Primitiva 23, B4)
 
     /// `group_mandates_active(p_group_id)` — currently-active mandates

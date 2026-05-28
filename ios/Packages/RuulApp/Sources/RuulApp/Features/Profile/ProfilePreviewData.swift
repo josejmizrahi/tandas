@@ -164,4 +164,6 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func groupMandatesActive(groupId: UUID) async throws -> [GroupMandate] { [] }
     func grantMandate(_ input: GrantMandateParams) async throws -> UUID { UUID() }
     func revokeMandate(_ input: RevokeMandateParams) async throws {}
+    func groupContributionsActive(groupId: UUID, membershipId: UUID?, resourceId: UUID?) async throws -> [GroupContribution] { [] }
+    func logContribution(_ input: LogContributionParams) async throws -> UUID { UUID() }
 }

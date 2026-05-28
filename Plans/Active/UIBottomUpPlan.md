@@ -572,7 +572,7 @@ Marcar cada slice cerrado:
 - [ ] C2 Disputes UI completo (Primitiva 14) — parcial: list + dispute
       sanction sheet listos; faltan DisputeDetailView + open generic +
       mediation/resolve
-- [ ] C3 Contributions (Primitiva 9)
+- [x] C3 Contributions (Primitiva 9)
 - [ ] C4 Reputation UI admin (Primitiva 12) — read listo
 - [ ] D1 GroupSwitcherSheet
 - [ ] D2 GroupTabsHost

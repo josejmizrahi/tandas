@@ -313,6 +313,36 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Contributions (Primitiva 9, C3)
+
+    public func groupContributionsActive(
+        groupId: UUID,
+        membershipId: UUID?,
+        resourceId: UUID?
+    ) async throws -> [GroupContribution] {
+        let params = GroupContributionsActiveParams(
+            groupId: groupId,
+            membershipId: membershipId,
+            resourceId: resourceId
+        )
+        do {
+            return try await client
+                .rpc("group_contributions_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func logContribution(_ input: LogContributionParams) async throws -> UUID {
+        do {
+            return try await client.rpc("log_contribution", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Mandates (Primitiva 23, B4)
 
     public func groupMandatesActive(groupId: UUID) async throws -> [GroupMandate] {
