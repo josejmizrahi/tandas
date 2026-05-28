@@ -130,6 +130,54 @@ struct DecisionsStoreTests {
         })
     }
 
+    @Test("draftLegitimacySource auto-tracks draftMethod by default (V2-G1)")
+    func legitimacyAutoSyncsWithMethod() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        #expect(store.draftLegitimacySource == .majority)
+
+        store.draftMethod = .consensus
+        #expect(store.draftLegitimacySource == .unanimity)
+
+        store.draftMethod = .veto
+        #expect(store.draftLegitimacySource == .committee)
+    }
+
+    @Test("manually picking legitimacy breaks the auto-sync until next beginProposing (V2-G1)")
+    func legitimacyManualOverride() async {
+        let (store, _) = await makeStore()
+        store.beginProposing()
+        store.draftMethod = .supermajority      // auto → .supermajority
+        store.draftLegitimacySource = .founder  // explicit override
+        store.draftMethod = .majority           // should NOT clobber back to .majority
+        #expect(store.draftLegitimacySource == .founder)
+
+        // Re-opening the sheet resets the auto-sync flag.
+        store.beginProposing()
+        store.draftMethod = .consent
+        #expect(store.draftLegitimacySource == .committee)
+    }
+
+    @Test("saveDraftDecision forwards draftLegitimacySource to start_vote (V2-G1)")
+    func saveDraftDecisionForwardsLegitimacy() async {
+        let (store, mock) = await makeStore()
+        store.beginProposing()
+        store.draftTitle = "Test"
+        store.draftMethod = .rankedChoice           // auto-syncs legitimacy to .election
+        store.draftLegitimacySource = .expert       // explicit override
+
+        let ok = await store.saveDraftDecision(groupId: groupId)
+        #expect(ok)
+        let recorded = await mock.recorded
+        #expect(recorded.contains { call in
+            if case .startVote(let input) = call {
+                return input.pMethod == "ranked_choice"
+                    && input.pLegitimacySource == "expert"
+            }
+            return false
+        })
+    }
+
     @Test("saveDraftVote sends cast_vote with trimmed reason")
     func saveDraftVoteSubmits() async {
         let did = UUID()

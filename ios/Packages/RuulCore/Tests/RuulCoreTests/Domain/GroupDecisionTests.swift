@@ -70,7 +70,7 @@ struct GroupDecisionTests {
           "group_id":    "\(UUID().uuidString)",
           "title":       "X",
           "decision_type": "future_kind",
-          "method":      "ranked_choice",
+          "method":      "future_method",
           "status":      "abandoned",
           "option_count": 0,
           "vote_count":   0,

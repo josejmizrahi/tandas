@@ -23,6 +23,7 @@ public struct ProposeDecisionSheet: View {
                 titleSection
                 bodySection
                 methodSection
+                legitimacySection
                 typeSection
                 optionsSection
                 if let message = store.draftErrorMessage, !message.isEmpty {
@@ -96,6 +97,27 @@ public struct ProposeDecisionSheet: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var legitimacySection: some View {
+        Section {
+            Picker(selection: $store.draftLegitimacySource) {
+                ForEach(LegitimacySource.selectable) { source in
+                    Label(source.label, systemImage: source.systemImageName)
+                        .tag(source)
+                }
+            } label: {
+                EmptyView()
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            Text(store.draftLegitimacySource.subtitle)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } header: {
+            Text(L10n.Decisions.legitimacySection)
         }
     }
 

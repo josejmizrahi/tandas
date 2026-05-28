@@ -33,52 +33,157 @@ public enum DecisionStatus: String, Codable, CaseIterable, Sendable, Hashable {
 /// `finalize_vote` understands; new backend values fall back to
 /// `.other` so a forward-compatible backend never crashes the client.
 public enum DecisionMethod: String, Codable, CaseIterable, Identifiable, Sendable, Hashable {
+    case admin
     case majority
     case supermajority
-    case unanimity
     case consensus
     case consent
+    case rankedChoice = "ranked_choice"
+    case weighted
+    case veto
     case other
 
     public var id: String { rawValue }
 
-    /// Methods we expose in the propose sheet. `other` is decode-only —
-    /// it represents unknown backend values so we don't crash, but the
-    /// picker never offers it.
+    /// Methods we expose in the propose sheet — the 8 canonical methods
+    /// the backend accepts (`group_decisions.method` CHECK). `other` is
+    /// decode-only — it represents unknown backend values so we don't
+    /// crash, but the picker never offers it.
     public static let selectable: [DecisionMethod] = [
-        .majority, .supermajority, .unanimity, .consensus, .consent
+        .admin, .majority, .supermajority, .consensus, .consent,
+        .rankedChoice, .weighted, .veto
     ]
 
     public var label: LocalizedStringResource {
         switch self {
+        case .admin:         return L10n.Decisions.methodAdmin
         case .majority:      return L10n.Decisions.methodMajority
         case .supermajority: return L10n.Decisions.methodSupermajority
-        case .unanimity:     return L10n.Decisions.methodUnanimity
         case .consensus:     return L10n.Decisions.methodConsensus
         case .consent:       return L10n.Decisions.methodConsent
+        case .rankedChoice:  return L10n.Decisions.methodRankedChoice
+        case .weighted:      return L10n.Decisions.methodWeighted
+        case .veto:          return L10n.Decisions.methodVeto
         case .other:         return L10n.Decisions.methodOther
         }
     }
 
     public var subtitle: LocalizedStringResource {
         switch self {
+        case .admin:         return L10n.Decisions.methodAdminSubtitle
         case .majority:      return L10n.Decisions.methodMajoritySubtitle
         case .supermajority: return L10n.Decisions.methodSupermajoritySubtitle
-        case .unanimity:     return L10n.Decisions.methodUnanimitySubtitle
         case .consensus:     return L10n.Decisions.methodConsensusSubtitle
         case .consent:       return L10n.Decisions.methodConsentSubtitle
+        case .rankedChoice:  return L10n.Decisions.methodRankedChoiceSubtitle
+        case .weighted:      return L10n.Decisions.methodWeightedSubtitle
+        case .veto:          return L10n.Decisions.methodVetoSubtitle
         case .other:         return L10n.Decisions.methodOtherSubtitle
         }
     }
 
     public var systemImageName: String {
         switch self {
+        case .admin:         return "person.crop.circle.badge.checkmark"
         case .majority:      return "chart.bar.fill"
         case .supermajority: return "chart.bar.doc.horizontal"
-        case .unanimity:     return "hand.thumbsup"
         case .consensus:     return "person.3.sequence"
         case .consent:       return "hand.raised"
+        case .rankedChoice:  return "list.number"
+        case .weighted:      return "scalemass"
+        case .veto:          return "hand.raised.slash"
         case .other:         return "questionmark.circle"
+        }
+    }
+}
+
+/// Mirrors `group_decisions.legitimacy_source` CHECK — what gives this
+/// decision its authority. Different from `method` (which is how votes
+/// are tallied). The 10 canonical sources cover the spectrum from
+/// founder-imposed to emergency-driven; `other` is decode-only.
+public enum LegitimacySource: String, Codable, CaseIterable, Identifiable, Sendable, Hashable {
+    case founder
+    case election
+    case majority
+    case supermajority
+    case committee
+    case unanimity
+    case expert
+    case externalContract = "external_contract"
+    case tradition
+    case emergency
+    case other
+
+    public var id: String { rawValue }
+
+    public static let selectable: [LegitimacySource] = [
+        .founder, .election, .majority, .supermajority, .committee,
+        .unanimity, .expert, .externalContract, .tradition, .emergency
+    ]
+
+    public var label: LocalizedStringResource {
+        switch self {
+        case .founder:          return L10n.Decisions.legitimacyFounder
+        case .election:         return L10n.Decisions.legitimacyElection
+        case .majority:         return L10n.Decisions.legitimacyMajority
+        case .supermajority:    return L10n.Decisions.legitimacySupermajority
+        case .committee:        return L10n.Decisions.legitimacyCommittee
+        case .unanimity:        return L10n.Decisions.legitimacyUnanimity
+        case .expert:           return L10n.Decisions.legitimacyExpert
+        case .externalContract: return L10n.Decisions.legitimacyExternalContract
+        case .tradition:        return L10n.Decisions.legitimacyTradition
+        case .emergency:        return L10n.Decisions.legitimacyEmergency
+        case .other:            return L10n.Decisions.legitimacyOther
+        }
+    }
+
+    public var subtitle: LocalizedStringResource {
+        switch self {
+        case .founder:          return L10n.Decisions.legitimacyFounderSubtitle
+        case .election:         return L10n.Decisions.legitimacyElectionSubtitle
+        case .majority:         return L10n.Decisions.legitimacyMajoritySubtitle
+        case .supermajority:    return L10n.Decisions.legitimacySupermajoritySubtitle
+        case .committee:        return L10n.Decisions.legitimacyCommitteeSubtitle
+        case .unanimity:        return L10n.Decisions.legitimacyUnanimitySubtitle
+        case .expert:           return L10n.Decisions.legitimacyExpertSubtitle
+        case .externalContract: return L10n.Decisions.legitimacyExternalContractSubtitle
+        case .tradition:        return L10n.Decisions.legitimacyTraditionSubtitle
+        case .emergency:        return L10n.Decisions.legitimacyEmergencySubtitle
+        case .other:            return L10n.Decisions.legitimacyOtherSubtitle
+        }
+    }
+
+    public var systemImageName: String {
+        switch self {
+        case .founder:          return "star.circle"
+        case .election:         return "checkmark.square"
+        case .majority:         return "chart.bar.fill"
+        case .supermajority:    return "chart.bar.doc.horizontal"
+        case .committee:        return "person.3.sequence"
+        case .unanimity:        return "hand.thumbsup"
+        case .expert:           return "person.crop.rectangle.badge.checkmark"
+        case .externalContract: return "doc.text"
+        case .tradition:        return "book"
+        case .emergency:        return "exclamationmark.triangle"
+        case .other:            return "questionmark.circle"
+        }
+    }
+
+    /// V2-G1 — sensible default given a chosen `method`. The matrix is
+    /// non-binding: founders can override in the picker. We pair
+    /// method↔source so the proposer doesn't have to reason about
+    /// "why is this method legitimate" from scratch on every decision.
+    public static func defaultFor(method: DecisionMethod) -> LegitimacySource {
+        switch method {
+        case .admin:         return .founder
+        case .majority:      return .majority
+        case .supermajority: return .supermajority
+        case .consensus:     return .unanimity
+        case .consent:       return .committee
+        case .rankedChoice:  return .election
+        case .weighted:      return .expert
+        case .veto:          return .committee
+        case .other:         return .majority
         }
     }
 }

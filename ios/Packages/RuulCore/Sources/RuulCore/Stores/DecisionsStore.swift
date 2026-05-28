@@ -24,7 +24,36 @@ public final class DecisionsStore {
     public var isProposePresented: Bool = false
     public var draftTitle: String = ""
     public var draftBody: String = ""
-    public var draftMethod: DecisionMethod = .majority
+    public var draftMethod: DecisionMethod = .majority {
+        didSet {
+            if draftLegitimacyAutoSync {
+                isInternallySettingLegitimacy = true
+                draftLegitimacySource = LegitimacySource.defaultFor(method: draftMethod)
+                isInternallySettingLegitimacy = false
+            }
+        }
+    }
+    /// V2-G1 — independent from `draftMethod`. Defaults track the method
+    /// via `LegitimacySource.defaultFor(...)` until the user picks one
+    /// explicitly; from that point on we honor their choice.
+    public var draftLegitimacySource: LegitimacySource = .majority {
+        didSet {
+            // Only an external (user-driven) write flips the auto-sync
+            // flag off; programmatic syncs from `draftMethod`'s didSet
+            // are gated by `isInternallySettingLegitimacy`.
+            if !isInternallySettingLegitimacy {
+                draftLegitimacyAutoSync = false
+            }
+        }
+    }
+    /// Internal flag: while true, changing `draftMethod` re-syncs the
+    /// legitimacy source to a sensible default. Flips to false as soon
+    /// as the proposer touches the legitimacy picker. Reset on
+    /// `beginProposing` / `clearDraft`.
+    private var draftLegitimacyAutoSync: Bool = true
+    /// Guards re-entrant updates from method→legitimacy auto-sync so
+    /// the legitimacy didSet doesn't disable auto-sync.
+    private var isInternallySettingLegitimacy: Bool = false
     public var draftType: DecisionType = .proposal
     public var draftOptions: [DraftOption] = []
     public private(set) var draftErrorMessage: String?
@@ -129,7 +158,13 @@ public final class DecisionsStore {
     public func beginProposing() {
         draftTitle = ""
         draftBody = ""
+        // Initialize draftMethod + draftLegitimacySource *before* we
+        // flip auto-sync on. The didSet observers on both properties
+        // turn auto-sync off on every assignment, so we set the values
+        // first and enable tracking last.
         draftMethod = .majority
+        draftLegitimacySource = LegitimacySource.defaultFor(method: .majority)
+        draftLegitimacyAutoSync = true
         draftType = .proposal
         draftOptions = []
         draftErrorMessage = nil
@@ -172,6 +207,7 @@ public final class DecisionsStore {
                 body: draftBody,
                 decisionType: draftType,
                 method: draftMethod,
+                legitimacySource: draftLegitimacySource,
                 options: payload
             )
             await refresh(groupId: groupId)
@@ -188,6 +224,8 @@ public final class DecisionsStore {
         draftTitle = ""
         draftBody = ""
         draftMethod = .majority
+        draftLegitimacySource = LegitimacySource.defaultFor(method: .majority)
+        draftLegitimacyAutoSync = true
         draftType = .proposal
         draftOptions = []
         draftErrorMessage = nil
