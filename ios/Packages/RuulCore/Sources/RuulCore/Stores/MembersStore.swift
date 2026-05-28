@@ -186,6 +186,73 @@ public final class MembersStore {
 
     public func clearError() { errorMessage = nil }
 
+    // MARK: - Membership state (Primitiva 2)
+
+    /// Drives `MembershipStateSheet`. Caller decides the target state
+    /// before opening (Suspender → `.suspended`, Reactivar → `.active`,
+    /// Expulsar → `.banned`).
+    public var isStateSheetPresented: Bool = false
+    public var stateDraftMembershipId: UUID?
+    public var stateDraftTargetState: MembershipStatus = .active
+    public var stateDraftReason: String = ""
+    public var stateDraftHasUntil: Bool = false
+    public var stateDraftUntil: Date = Date().addingTimeInterval(7 * 24 * 3600)
+
+    public func beginChangingState(
+        membershipId: UUID,
+        target: MembershipStatus,
+        prefillReason: String? = nil
+    ) {
+        stateDraftMembershipId = membershipId
+        stateDraftTargetState = target
+        stateDraftReason = prefillReason ?? ""
+        stateDraftHasUntil = false
+        stateDraftUntil = Date().addingTimeInterval(7 * 24 * 3600)
+        errorMessage = nil
+        isStateSheetPresented = true
+    }
+
+    public var canSaveStateDraft: Bool {
+        guard stateDraftMembershipId != nil else { return false }
+        // Expulsar / Suspender requieren razón mínima; Reactivar no.
+        if stateDraftTargetState != .active {
+            let trimmed = stateDraftReason.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !trimmed.isEmpty
+        }
+        return true
+    }
+
+    @discardableResult
+    public func saveStateDraft(groupId: UUID) async -> Bool {
+        guard let repository, let membershipId = stateDraftMembershipId else {
+            errorMessage = "No hay miembro seleccionado."
+            return false
+        }
+        let trimmedReason = stateDraftReason
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank
+        let until = (stateDraftTargetState == .suspended && stateDraftHasUntil)
+            ? stateDraftUntil
+            : nil
+        do {
+            try await repository.setMembershipState(
+                membershipId: membershipId,
+                newState: stateDraftTargetState,
+                reason: trimmedReason,
+                until: until
+            )
+            await refresh(groupId: groupId)
+            isStateSheetPresented = false
+            stateDraftMembershipId = nil
+            stateDraftReason = ""
+            stateDraftHasUntil = false
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
     // MARK: - Section routing
 
     private static func sectionKind(for item: MembershipBoundaryItem) -> MemberSectionKind {

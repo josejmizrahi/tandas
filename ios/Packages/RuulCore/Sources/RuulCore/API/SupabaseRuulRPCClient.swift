@@ -260,6 +260,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func setMembershipState(_ input: SetMembershipStateParams) async throws {
+        do {
+            _ = try await client.rpc("set_membership_state", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func setResourceOwnership(_ input: SetResourceOwnershipParams) async throws {
         do {
             _ = try await client.rpc("set_resource_ownership", params: input).execute()

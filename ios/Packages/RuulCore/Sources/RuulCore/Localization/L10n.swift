@@ -386,6 +386,23 @@ public enum L10n {
         public static let manageRolesEmpty      = LocalizedStringResource("member_detail.roles.manage.empty",     defaultValue: "Aún no hay roles para asignar.")
         public static let manageRolesDone       = LocalizedStringResource("member_detail.roles.manage.done",      defaultValue: "Listo")
         public static let manageRolesErrorTitle = LocalizedStringResource("member_detail.roles.manage.error",     defaultValue: "No pudimos actualizar los roles")
+
+        public static let stateSection          = LocalizedStringResource("member_detail.section.state",          defaultValue: "Estado en el grupo")
+        public static let suspendAction         = LocalizedStringResource("member_detail.action.suspend",         defaultValue: "Suspender")
+        public static let reactivateAction      = LocalizedStringResource("member_detail.action.reactivate",      defaultValue: "Reactivar")
+        public static let removeAction          = LocalizedStringResource("member_detail.action.remove",          defaultValue: "Expulsar")
+    }
+
+    public enum MembershipState {
+        public static let suspendTitle          = LocalizedStringResource("membership_state.suspend.title",       defaultValue: "Suspender miembro")
+        public static let reactivateTitle       = LocalizedStringResource("membership_state.reactivate.title",    defaultValue: "Reactivar miembro")
+        public static let removeTitle           = LocalizedStringResource("membership_state.remove.title",        defaultValue: "Expulsar miembro")
+        public static let reasonSection         = LocalizedStringResource("membership_state.section.reason",      defaultValue: "Motivo")
+        public static let reasonPlaceholder     = LocalizedStringResource("membership_state.reason.placeholder",  defaultValue: "Cuenta por qué…")
+        public static let untilSection          = LocalizedStringResource("membership_state.section.until",       defaultValue: "Hasta cuándo (opcional)")
+        public static let untilToggle           = LocalizedStringResource("membership_state.until.toggle",        defaultValue: "Con fecha límite")
+        public static let save                  = LocalizedStringResource("membership_state.save",                defaultValue: "Confirmar")
+        public static let cancel                = LocalizedStringResource("membership_state.cancel",              defaultValue: "Cancelar")
     }
 
     public enum MoneyMovements {

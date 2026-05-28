@@ -130,6 +130,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     }
     func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {}
     func setResourceOwnership(_ input: SetResourceOwnershipParams) async throws {}
+    func setMembershipState(_ input: SetMembershipStateParams) async throws {}
     func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {
         GroupFoundationStatus(
             groupId: groupId,

@@ -48,4 +48,31 @@ public struct CanonicalMembersRepository: Sendable {
             message: message
         )
     }
+
+    /// Wraps `set_membership_state`. Permission gating is server-side:
+    /// `members.suspend` for suspended, `members.remove` for banned,
+    /// `members.update` for the rest. `until` is only persisted when
+    /// the state is `.suspended`.
+    public func setMembershipState(
+        membershipId: UUID,
+        newState: MembershipStatus,
+        reason: String? = nil,
+        until: Date? = nil
+    ) async throws {
+        let trimmed = reason?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank
+        try await rpc.setMembershipState(
+            SetMembershipStateParams(
+                membershipId: membershipId,
+                newState: newState.rawValue,
+                reason: trimmed,
+                until: newState == .suspended ? until : nil
+            )
+        )
+    }
+}
+
+private extension String {
+    var nilIfBlank: String? { isEmpty ? nil : self }
 }

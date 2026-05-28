@@ -69,6 +69,7 @@ public struct MemberDetailView: View {
                 moneySection
             }
             historySection(item: item)
+            stateActionsSection(item: item)
         }
         .navigationTitle(L10n.MemberDetail.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -86,6 +87,9 @@ public struct MemberDetailView: View {
                 groupId: groupId,
                 memberItem: item
             )
+        }
+        .sheet(isPresented: $membersStore.isStateSheetPresented) {
+            MembershipStateSheet(store: membersStore, groupId: groupId)
         }
         .task {
             if let mid = item.membershipId {
@@ -326,6 +330,45 @@ public struct MemberDetailView: View {
             }
         }
         .redacted(reason: .placeholder)
+    }
+
+    // MARK: - State actions (Primitiva 2)
+
+    /// Admin actions on someone else's membership. Hidden for invites
+    /// (no membership_id), for myself (uso "Leave group" en otra
+    /// surface) y para estados terminales (`.left`/`.banned`).
+    /// Backend gating is server-side; we surface the error via
+    /// `membersStore.errorMessage`.
+    @ViewBuilder
+    private func stateActionsSection(item: MembershipBoundaryItem) -> some View {
+        if let mid = item.membershipId,
+           !item.isCurrentUser,
+           item.kind == .membership,
+           item.status != .left,
+           item.status != .banned
+        {
+            Section(L10n.MemberDetail.stateSection) {
+                if item.status == .active {
+                    Button {
+                        membersStore.beginChangingState(membershipId: mid, target: .suspended)
+                    } label: {
+                        Label(L10n.MemberDetail.suspendAction, systemImage: "pause.circle")
+                    }
+                }
+                if item.status == .suspended {
+                    Button {
+                        membersStore.beginChangingState(membershipId: mid, target: .active)
+                    } label: {
+                        Label(L10n.MemberDetail.reactivateAction, systemImage: "play.circle")
+                    }
+                }
+                Button(role: .destructive) {
+                    membersStore.beginChangingState(membershipId: mid, target: .banned)
+                } label: {
+                    Label(L10n.MemberDetail.removeAction, systemImage: "person.crop.circle.badge.xmark")
+                }
+            }
+        }
     }
 
     /// Hashable token so the inline "Ver historial completo" row can

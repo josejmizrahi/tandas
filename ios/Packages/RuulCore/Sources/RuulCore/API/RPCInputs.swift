@@ -627,6 +627,40 @@ public struct LogContributionParams: Encodable, Sendable, Equatable, Hashable {
     }
 }
 
+public struct SetMembershipStateParams: Encodable, Sendable, Equatable, Hashable {
+    public let pMembershipId: UUID
+    public let pNewState: String
+    public let pReason: String?
+    public let pUntil: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pMembershipId = "p_membership_id"
+        case pNewState     = "p_new_state"
+        case pReason       = "p_reason"
+        case pUntil        = "p_until"
+    }
+
+    public init(
+        membershipId: UUID,
+        newState: String,
+        reason: String? = nil,
+        until: Date? = nil
+    ) {
+        self.pMembershipId = membershipId
+        self.pNewState = newState
+        self.pReason = reason
+        self.pUntil = until
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pMembershipId, forKey: .pMembershipId)
+        try c.encode(pNewState, forKey: .pNewState)
+        try c.encodeOrNil(pReason, forKey: .pReason)
+        try c.encodeOrNil(pUntil, forKey: .pUntil)
+    }
+}
+
 public struct SetResourceOwnershipParams: Encodable, Sendable, Equatable, Hashable {
     public let pResourceId: UUID
     public let pOwnershipKind: String

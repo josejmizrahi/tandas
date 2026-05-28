@@ -96,6 +96,12 @@ public protocol RuulRPCClient: Sendable {
     /// generic backend error.
     func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws
 
+    /// `set_membership_state(p_membership_id, p_new_state, p_reason, p_until)`
+    /// — moves a membership between `active|suspended|left|banned|requested|invited`.
+    /// Permissions: `members.suspend` for suspended; `members.remove`
+    /// for banned (and non-self left); `members.update` otherwise.
+    func setMembershipState(_ input: SetMembershipStateParams) async throws
+
     /// `set_resource_ownership(...)` — switches `ownership_kind` (and
     /// optionally `owner_membership_id`) on an existing resource.
     /// Requires `resources.transfer`. Records a `resource.ownership_changed`
