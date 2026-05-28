@@ -458,6 +458,21 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func promoteNormToRule(_ input: PromoteNormToRuleInput) async throws -> PromoteNormToRuleResult {
+        do {
+            let rows: [PromoteNormToRuleResult] = try await client
+                .rpc("promote_norm_to_rule", params: input)
+                .execute()
+                .value
+            guard let row = rows.first else {
+                throw RuulError.unexpected(message: "promote_norm_to_rule returned no rows")
+            }
+            return row
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Money movements (Primitiva 19, A2.b)
 
     public func groupMoneyMovements(

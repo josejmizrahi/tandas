@@ -48,4 +48,15 @@ public struct CanonicalCulturalNormsRepository: Sendable {
         }
         try await rpc.retireCulturalNorm(RetireCulturalNormParams(normId: normId, reason: trimmed))
     }
+
+    @discardableResult
+    public func promoteToRule(
+        normId: UUID,
+        ruleType: String = "norm",
+        severity: Int = 1
+    ) async throws -> PromoteNormToRuleResult {
+        try await rpc.promoteNormToRule(
+            PromoteNormToRuleInput(normId: normId, ruleType: ruleType, severity: severity)
+        )
+    }
 }

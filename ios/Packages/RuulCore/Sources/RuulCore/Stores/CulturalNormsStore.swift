@@ -141,6 +141,30 @@ public final class CulturalNormsStore {
         }
     }
 
+    /// Promotes a cultural norm into a formal rule (V2-G6) atomically.
+    /// On success the norm is dropped from the local list (backend
+    /// retired it) and the returned rule id can drive an upstream
+    /// RulesStore refresh.
+    public func promoteToRule(
+        normId: UUID,
+        ruleType: GroupRuleType,
+        severity: Int,
+        groupId: UUID
+    ) async -> PromoteNormToRuleResult? {
+        do {
+            let result = try await repository.promoteToRule(
+                normId: normId,
+                ruleType: ruleType.rawValue,
+                severity: severity
+            )
+            norms.removeAll { $0.id == normId }
+            return result
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return nil
+        }
+    }
+
     public func clearDraft() {
         draftType = .value
         draftTitle = ""

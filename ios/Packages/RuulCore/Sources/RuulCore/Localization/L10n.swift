@@ -612,6 +612,15 @@ public enum L10n {
         public static let visibilityPrivate  = LocalizedStringResource("cultural_norms.visibility.private", defaultValue: "Privado")
         public static let visibilityMembers  = LocalizedStringResource("cultural_norms.visibility.members", defaultValue: "Miembros")
         public static let visibilityPublic   = LocalizedStringResource("cultural_norms.visibility.public",  defaultValue: "Público")
+
+        public static let promoteAction            = LocalizedStringResource("cultural_norms.promote",                 defaultValue: "Convertir en regla")
+        public static let promoteSheetTitle        = LocalizedStringResource("cultural_norms.promote.title",           defaultValue: "Convertir en regla")
+        public static let promoteSourceSection     = LocalizedStringResource("cultural_norms.promote.section.source",  defaultValue: "Norma a promover")
+        public static let promoteRuleTypeSection   = LocalizedStringResource("cultural_norms.promote.section.rule_type", defaultValue: "Tipo de regla")
+        public static let promoteSeveritySection   = LocalizedStringResource("cultural_norms.promote.section.severity",  defaultValue: "Severidad")
+        public static let promoteSeverityHint      = LocalizedStringResource("cultural_norms.promote.severity.hint",   defaultValue: "0 = informativa · 5 = no negociable")
+        public static let promoteFootnote          = LocalizedStringResource("cultural_norms.promote.footnote",        defaultValue: "Al confirmar se crea la regla con el mismo título y la norma queda retirada.")
+        public static let promoteConfirm           = LocalizedStringResource("cultural_norms.promote.confirm",         defaultValue: "Convertir")
     }
 
     public enum GroupSettings {

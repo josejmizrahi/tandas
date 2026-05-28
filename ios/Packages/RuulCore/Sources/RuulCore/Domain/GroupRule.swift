@@ -156,3 +156,23 @@ public struct CreateTextRuleResult: Codable, Equatable, Sendable {
         self.versionId = versionId
     }
 }
+
+/// Result of `promote_norm_to_rule(...)`: the new rule id + first
+/// version id + the retired norm id.
+public struct PromoteNormToRuleResult: Codable, Equatable, Sendable {
+    public let ruleId: UUID
+    public let versionId: UUID
+    public let normId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case ruleId    = "rule_id"
+        case versionId = "version_id"
+        case normId    = "norm_id"
+    }
+
+    public init(ruleId: UUID, versionId: UUID, normId: UUID) {
+        self.ruleId = ruleId
+        self.versionId = versionId
+        self.normId = normId
+    }
+}

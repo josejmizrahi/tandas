@@ -547,6 +547,15 @@ struct RPCInputsEncodingTests {
         #expect(dict["p_reason"] is NSNull)
     }
 
+    @Test("promote_norm_to_rule encodes id + rule_type + severity")
+    func promoteNormToRuleDefaults() throws {
+        let nid = UUID()
+        let dict = try encode(PromoteNormToRuleInput(normId: nid, ruleType: "principle", severity: 2))
+        #expect(dict["p_norm_id"] as? String == nid.uuidString)
+        #expect(dict["p_rule_type"] as? String == "principle")
+        #expect(dict["p_severity"] as? Int == 2)
+    }
+
     @Test("grant_mandate emits required keys + null optionals by default")
     func grantMandateDefaults() throws {
         let gid = UUID(); let rep = UUID()

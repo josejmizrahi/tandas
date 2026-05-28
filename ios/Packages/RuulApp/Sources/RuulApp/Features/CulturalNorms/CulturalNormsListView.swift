@@ -7,12 +7,19 @@ import RuulCore
 public struct CulturalNormsListView: View {
     @Bindable var store: CulturalNormsStore
     let groupId: UUID
+    let onPromotedToRule: (() -> Void)?
 
     @State private var toRetire: GroupCulturalNorm?
+    @State private var toPromote: GroupCulturalNorm?
 
-    public init(store: CulturalNormsStore, groupId: UUID) {
+    public init(
+        store: CulturalNormsStore,
+        groupId: UUID,
+        onPromotedToRule: (() -> Void)? = nil
+    ) {
         self.store = store
         self.groupId = groupId
+        self.onPromotedToRule = onPromotedToRule
     }
 
     public var body: some View {
@@ -35,6 +42,16 @@ public struct CulturalNormsListView: View {
         }
         .sheet(isPresented: $store.isCreatePresented) {
             EditCulturalNormView(store: store, groupId: groupId)
+        }
+        .sheet(item: $toPromote) { norm in
+            PromoteNormToRuleSheet(
+                store: store,
+                groupId: groupId,
+                norm: norm,
+                onSuccess: { _ in
+                    onPromotedToRule?()
+                }
+            )
         }
         .confirmationDialog(
             Text(L10n.CulturalNorms.retireConfirmTitle),
@@ -110,6 +127,16 @@ public struct CulturalNormsListView: View {
                                     )
                                 }
                                 .tint(.red)
+
+                                Button {
+                                    toPromote = norm
+                                } label: {
+                                    Label(
+                                        String(localized: L10n.CulturalNorms.promoteAction),
+                                        systemImage: "checkmark.seal"
+                                    )
+                                }
+                                .tint(.indigo)
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                 Button {
@@ -121,6 +148,16 @@ public struct CulturalNormsListView: View {
                                     )
                                 }
                                 .tint(.green)
+                            }
+                            .contextMenu {
+                                Button {
+                                    toPromote = norm
+                                } label: {
+                                    Label(
+                                        String(localized: L10n.CulturalNorms.promoteAction),
+                                        systemImage: "checkmark.seal"
+                                    )
+                                }
                             }
                     }
                 } header: {

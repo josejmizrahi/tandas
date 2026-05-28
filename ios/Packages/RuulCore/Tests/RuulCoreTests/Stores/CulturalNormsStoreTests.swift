@@ -99,6 +99,55 @@ struct CulturalNormsStoreTests {
         #expect(store.norms.isEmpty)
     }
 
+    @Test("promoteToRule removes the norm and returns the new rule id")
+    func promoteToRuleHappy() async {
+        let seedNorm = norm(.value, status: .endorsed, endorsedCount: 3)
+        let (store, mock) = await makeStore(seed: [seedNorm])
+        await store.refresh(groupId: groupId)
+
+        let expectedRule = UUID()
+        await mock.setPromoteNormToRuleStub(.success(
+            PromoteNormToRuleResult(ruleId: expectedRule, versionId: UUID(), normId: seedNorm.id)
+        ))
+
+        let result = await store.promoteToRule(
+            normId: seedNorm.id,
+            ruleType: .principle,
+            severity: 2,
+            groupId: groupId
+        )
+        #expect(result?.ruleId == expectedRule)
+        #expect(store.norms.isEmpty)
+
+        let recorded = await mock.recorded
+        #expect(recorded.contains { call in
+            if case .promoteNormToRule(let input) = call {
+                return input.pNormId == seedNorm.id
+                    && input.pRuleType == "principle"
+                    && input.pSeverity == 2
+            }
+            return false
+        })
+    }
+
+    @Test("promoteToRule surfaces backend error and keeps the norm")
+    func promoteToRuleError() async {
+        let seedNorm = norm()
+        let (store, mock) = await makeStore(seed: [seedNorm])
+        await store.refresh(groupId: groupId)
+        await mock.setPromoteNormToRuleStub(.failure(.backend(.lacksPermission(permission: "rules.create", groupId: groupId))))
+
+        let result = await store.promoteToRule(
+            normId: seedNorm.id,
+            ruleType: .norm,
+            severity: 1,
+            groupId: groupId
+        )
+        #expect(result == nil)
+        #expect(store.norms.count == 1)
+        #expect(store.errorMessage != nil)
+    }
+
     @Test("refresh failure surfaces user-facing message and flips to .failed")
     func refreshFailure() async {
         let mock = MockRuulRPCClient()

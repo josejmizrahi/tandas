@@ -865,6 +865,24 @@ public struct RetireCulturalNormParams: Encodable, Sendable, Equatable, Hashable
     }
 }
 
+public struct PromoteNormToRuleInput: Encodable, Sendable, Equatable, Hashable {
+    public let pNormId: UUID
+    public let pRuleType: String
+    public let pSeverity: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pNormId   = "p_norm_id"
+        case pRuleType = "p_rule_type"
+        case pSeverity = "p_severity"
+    }
+
+    public init(normId: UUID, ruleType: String = "norm", severity: Int = 1) {
+        self.pNormId = normId
+        self.pRuleType = ruleType
+        self.pSeverity = severity
+    }
+}
+
 // MARK: - Disputes (Primitiva 14)
 
 public struct GroupDisputesActiveParams: Encodable, Sendable {

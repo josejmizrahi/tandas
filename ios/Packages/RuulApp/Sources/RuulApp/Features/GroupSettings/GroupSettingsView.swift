@@ -222,7 +222,13 @@ public struct GroupSettingsView: View {
         case .rules:
             RulesListView(store: container.rulesStore, groupId: group.id)
         case .culture:
-            CulturalNormsListView(store: container.culturalNormsStore, groupId: group.id)
+            CulturalNormsListView(
+                store: container.culturalNormsStore,
+                groupId: group.id,
+                onPromotedToRule: {
+                    Task { await container.rulesStore.refresh(groupId: group.id) }
+                }
+            )
         case .boundaryPolicy:
             BoundaryPolicyView(store: container.boundaryPolicyStore, groupId: group.id)
         case .groupProfile:

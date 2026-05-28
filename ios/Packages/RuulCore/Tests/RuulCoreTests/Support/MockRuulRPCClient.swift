@@ -47,6 +47,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case proposeCulturalNorm(input: ProposeCulturalNormParams)
         case endorseCulturalNorm(normId: UUID)
         case retireCulturalNorm(input: RetireCulturalNormParams)
+        case promoteNormToRule(input: PromoteNormToRuleInput)
         case groupMandatesActive(groupId: UUID)
         case grantMandate(input: GrantMandateParams)
         case revokeMandate(input: RevokeMandateParams)
@@ -158,6 +159,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var proposeCulturalNormStub: Result<UUID, RuulError> = .success(UUID())
     private var endorseCulturalNormStub: Result<Int, RuulError> = .success(1)
     private var retireCulturalNormStub: Result<Void, RuulError> = .success(())
+    private var promoteNormToRuleStub: Result<PromoteNormToRuleResult, RuulError> = .success(
+        PromoteNormToRuleResult(ruleId: UUID(), versionId: UUID(), normId: UUID())
+    )
     private var groupMandatesActiveStub: Result<[GroupMandate], RuulError> = .success([])
     private var grantMandateStub: Result<UUID, RuulError> = .success(UUID())
     private var revokeMandateStub: Result<Void, RuulError> = .success(())
@@ -252,6 +256,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setProposeCulturalNormStub(_ stub: Result<UUID, RuulError>) { proposeCulturalNormStub = stub }
     func setEndorseCulturalNormStub(_ stub: Result<Int, RuulError>) { endorseCulturalNormStub = stub }
     func setRetireCulturalNormStub(_ stub: Result<Void, RuulError>) { retireCulturalNormStub = stub }
+    func setPromoteNormToRuleStub(_ stub: Result<PromoteNormToRuleResult, RuulError>) { promoteNormToRuleStub = stub }
     func setGroupMandatesActiveStub(_ stub: Result<[GroupMandate], RuulError>) { groupMandatesActiveStub = stub }
     func setGrantMandateStub(_ stub: Result<UUID, RuulError>) { grantMandateStub = stub }
     func setRevokeMandateStub(_ stub: Result<Void, RuulError>) { revokeMandateStub = stub }
@@ -487,6 +492,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func retireCulturalNorm(_ input: RetireCulturalNormParams) async throws {
         recorded.append(.retireCulturalNorm(input: input))
         try retireCulturalNormStub.get()
+    }
+
+    func promoteNormToRule(_ input: PromoteNormToRuleInput) async throws -> PromoteNormToRuleResult {
+        recorded.append(.promoteNormToRule(input: input))
+        return try promoteNormToRuleStub.get()
     }
 
     func groupMandatesActive(groupId: UUID) async throws -> [GroupMandate] {

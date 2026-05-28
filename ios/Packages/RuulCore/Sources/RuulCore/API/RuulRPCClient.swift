@@ -207,6 +207,13 @@ public protocol RuulRPCClient: Sendable {
     /// retired (idempotent). Requires `group.update`.
     func retireCulturalNorm(_ input: RetireCulturalNormParams) async throws
 
+    /// `promote_norm_to_rule(p_norm_id, p_rule_type, p_severity)` —
+    /// V2-G6 atomic promotion: creates the rule (status=active,
+    /// execution_mode=text) and retires the source norm in one
+    /// transaction. Requires `rules.create`. Returns the new rule id,
+    /// first version id and the retired norm id.
+    func promoteNormToRule(_ input: PromoteNormToRuleInput) async throws -> PromoteNormToRuleResult
+
     // MARK: - Money movements (Primitiva 19, A2.b)
 
     /// `group_money_movements(p_group_id, p_limit, p_filter, p_before_seq)`

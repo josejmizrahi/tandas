@@ -163,6 +163,9 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func proposeCulturalNorm(_ input: ProposeCulturalNormParams) async throws -> UUID { UUID() }
     func endorseCulturalNorm(normId: UUID) async throws -> Int { 1 }
     func retireCulturalNorm(_ input: RetireCulturalNormParams) async throws {}
+    func promoteNormToRule(_ input: PromoteNormToRuleInput) async throws -> PromoteNormToRuleResult {
+        PromoteNormToRuleResult(ruleId: UUID(), versionId: UUID(), normId: input.pNormId)
+    }
     func groupMandatesActive(groupId: UUID) async throws -> [GroupMandate] { [] }
     func grantMandate(_ input: GrantMandateParams) async throws -> UUID { UUID() }
     func revokeMandate(_ input: RevokeMandateParams) async throws {}
