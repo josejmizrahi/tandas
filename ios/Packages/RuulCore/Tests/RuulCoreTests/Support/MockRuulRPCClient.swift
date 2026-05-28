@@ -61,6 +61,12 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case castVote(input: CastVoteParams)
         case finalizeVote(decisionId: UUID)
         case cancelVote(input: CancelVoteParams)
+        case disputeDetail(disputeId: UUID)
+        case listDisputeEvents(disputeId: UUID, limit: Int)
+        case openDispute(input: OpenDisputeInput)
+        case appendDisputeEvent(input: AppendDisputeEventInput)
+        case recordDisputeResolution(input: RecordDisputeResolutionInput)
+        case escalateDisputeToVote(input: EscalateDisputeToVoteInput)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -148,6 +154,14 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var castVoteStub: Result<UUID, RuulError> = .success(UUID())
     private var finalizeVoteStub: Result<String, RuulError> = .success("passed")
     private var cancelVoteStub: Result<Void, RuulError> = .success(())
+    private var disputeDetailStub: Result<GroupDisputeDetail, RuulError> = .success(
+        GroupDisputeDetail(id: UUID(), groupId: UUID(), title: "")
+    )
+    private var listDisputeEventsStub: Result<[GroupDisputeEvent], RuulError> = .success([])
+    private var openDisputeStub: Result<UUID, RuulError> = .success(UUID())
+    private var appendDisputeEventStub: Result<UUID, RuulError> = .success(UUID())
+    private var recordDisputeResolutionStub: Result<Void, RuulError> = .success(())
+    private var escalateDisputeToVoteStub: Result<UUID, RuulError> = .success(UUID())
 
     init() {}
 
@@ -204,6 +218,12 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setCastVoteStub(_ stub: Result<UUID, RuulError>) { castVoteStub = stub }
     func setFinalizeVoteStub(_ stub: Result<String, RuulError>) { finalizeVoteStub = stub }
     func setCancelVoteStub(_ stub: Result<Void, RuulError>) { cancelVoteStub = stub }
+    func setDisputeDetailStub(_ stub: Result<GroupDisputeDetail, RuulError>) { disputeDetailStub = stub }
+    func setListDisputeEventsStub(_ stub: Result<[GroupDisputeEvent], RuulError>) { listDisputeEventsStub = stub }
+    func setOpenDisputeStub(_ stub: Result<UUID, RuulError>) { openDisputeStub = stub }
+    func setAppendDisputeEventStub(_ stub: Result<UUID, RuulError>) { appendDisputeEventStub = stub }
+    func setRecordDisputeResolutionStub(_ stub: Result<Void, RuulError>) { recordDisputeResolutionStub = stub }
+    func setEscalateDisputeToVoteStub(_ stub: Result<UUID, RuulError>) { escalateDisputeToVoteStub = stub }
 
     // MARK: - RuulRPCClient
 
@@ -471,5 +491,35 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func cancelVote(_ input: CancelVoteParams) async throws {
         recorded.append(.cancelVote(input: input))
         try cancelVoteStub.get()
+    }
+
+    func disputeDetail(disputeId: UUID) async throws -> GroupDisputeDetail {
+        recorded.append(.disputeDetail(disputeId: disputeId))
+        return try disputeDetailStub.get()
+    }
+
+    func listDisputeEvents(disputeId: UUID, limit: Int) async throws -> [GroupDisputeEvent] {
+        recorded.append(.listDisputeEvents(disputeId: disputeId, limit: limit))
+        return try listDisputeEventsStub.get()
+    }
+
+    func openDispute(_ input: OpenDisputeInput) async throws -> UUID {
+        recorded.append(.openDispute(input: input))
+        return try openDisputeStub.get()
+    }
+
+    func appendDisputeEvent(_ input: AppendDisputeEventInput) async throws -> UUID {
+        recorded.append(.appendDisputeEvent(input: input))
+        return try appendDisputeEventStub.get()
+    }
+
+    func recordDisputeResolution(_ input: RecordDisputeResolutionInput) async throws {
+        recorded.append(.recordDisputeResolution(input: input))
+        try recordDisputeResolutionStub.get()
+    }
+
+    func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID {
+        recorded.append(.escalateDisputeToVote(input: input))
+        return try escalateDisputeToVoteStub.get()
     }
 }

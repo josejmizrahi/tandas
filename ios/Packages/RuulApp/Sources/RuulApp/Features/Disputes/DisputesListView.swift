@@ -1,9 +1,11 @@
 import SwiftUI
 import RuulCore
 
-/// Full-list surface for active disputes. Foundation V1 is read-only;
-/// the only write affordance from iOS is "Disputar esta sanción" via
-/// a swipe action on the sanctions list — not on this screen.
+/// Full-list surface for active disputes. Toolbar add opens the
+/// canonical `open_dispute(...)` flow; rows push into
+/// `DisputeDetailView` (timeline + actions). The sanction-specific
+/// "Disputar esta sanción" shortcut still lives in SanctionsListView's
+/// swipe action.
 public struct DisputesListView: View {
     @Bindable var store: DisputesStore
     let groupId: UUID
@@ -21,6 +23,21 @@ public struct DisputesListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await store.refresh(groupId: groupId)
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    store.beginOpeningDispute()
+                } label: {
+                    Label(L10n.Disputes.openGenericConfirm, systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $store.isOpenPresented) {
+            OpenDisputeSheet(store: store, groupId: groupId)
+        }
+        .navigationDestination(for: GroupDispute.self) { dispute in
+            DisputeDetailView(store: store, groupId: groupId, dispute: dispute)
         }
         .task {
             await store.refreshIfNeeded(groupId: groupId)
@@ -40,27 +57,36 @@ public struct DisputesListView: View {
                 .redacted(reason: .placeholder)
             }
         case .failed(let message):
-            VStack(alignment: .leading, spacing: 8) {
+            ContentUnavailableView {
+                Label(L10n.Disputes.detailErrorTitle, systemImage: "exclamationmark.triangle")
+            } description: {
                 Text(message)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            } actions: {
                 Button("Reintentar") {
                     Task { await store.refresh(groupId: groupId) }
                 }
             }
-            .padding(.vertical, 6)
+            .listRowBackground(Color.clear)
         case .loaded:
             if !store.hasDisputes {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(L10n.Disputes.emptyTitle).font(.headline)
+                ContentUnavailableView {
+                    Label(L10n.Disputes.emptyTitle, systemImage: "hand.raised")
+                } description: {
                     Text(L10n.Disputes.emptyDescription)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                } actions: {
+                    Button {
+                        store.beginOpeningDispute()
+                    } label: {
+                        Text(L10n.Disputes.openGenericConfirm)
+                    }
+                    .buttonStyle(.glassProminent)
                 }
-                .padding(.vertical, 6)
+                .listRowBackground(Color.clear)
             } else {
                 ForEach(store.disputes) { dispute in
-                    DisputeRowView(dispute: dispute)
+                    NavigationLink(value: dispute) {
+                        DisputeRowView(dispute: dispute)
+                    }
                 }
             }
         }

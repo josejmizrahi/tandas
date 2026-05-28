@@ -666,6 +666,82 @@ struct RPCInputsEncodingTests {
         #expect(history["p_limit"] as? Int == 25)
     }
 
+    // MARK: - Disputes UI completion (Primitiva 14, C2)
+
+    @Test("open_dispute encodes p_subject_id as JSON null when nil")
+    func openDisputeEncoding() throws {
+        let gid = UUID()
+        let dict = try encode(OpenDisputeInput(
+            groupId: gid,
+            subjectKind: "other",
+            subjectId: nil,
+            title: "Conflicto",
+            description: nil,
+            respondentMembershipId: nil
+        ))
+        #expect(dict["p_group_id"] as? String == gid.uuidString)
+        #expect(dict["p_subject_kind"] as? String == "other")
+        #expect(dict["p_subject_id"] is NSNull)
+        #expect(dict["p_title"] as? String == "Conflicto")
+        #expect(dict["p_description"] is NSNull)
+        #expect(dict["p_respondent_membership_id"] is NSNull)
+    }
+
+    @Test("append_dispute_event encodes empty metadata as {}")
+    func appendDisputeEventEncoding() throws {
+        let did = UUID()
+        let dict = try encode(AppendDisputeEventInput(
+            disputeId: did,
+            eventType: "comment",
+            body: "Algo"
+        ))
+        #expect(dict["p_dispute_id"] as? String == did.uuidString)
+        #expect(dict["p_event_type"] as? String == "comment")
+        #expect(dict["p_body"] as? String == "Algo")
+        let meta = dict["p_metadata"] as? [String: Any]
+        #expect(meta?.isEmpty == true)
+    }
+
+    @Test("record_dispute_resolution encodes outcome as null when omitted")
+    func recordDisputeResolutionEncoding() throws {
+        let did = UUID()
+        let dict = try encode(RecordDisputeResolutionInput(
+            disputeId: did,
+            method: "conversation",
+            resolutionText: "Acuerdo"
+        ))
+        #expect(dict["p_dispute_id"] as? String == did.uuidString)
+        #expect(dict["p_method"] as? String == "conversation")
+        #expect(dict["p_resolution_text"] as? String == "Acuerdo")
+        #expect(dict["p_outcome"] is NSNull)
+    }
+
+    @Test("escalate_dispute_to_vote encodes optional closes_at as null")
+    func escalateDisputeToVoteEncoding() throws {
+        let did = UUID()
+        let dict = try encode(EscalateDisputeToVoteInput(
+            disputeId: did,
+            decisionTitle: "Resolución del conflicto",
+            decisionMethod: "majority",
+            closesAt: nil
+        ))
+        #expect(dict["p_dispute_id"] as? String == did.uuidString)
+        #expect(dict["p_decision_title"] as? String == "Resolución del conflicto")
+        #expect(dict["p_decision_method"] as? String == "majority")
+        #expect(dict["p_closes_at"] is NSNull)
+    }
+
+    @Test("dispute_detail / list_dispute_events encode minimally")
+    func disputeReadsEncoding() throws {
+        let did = UUID()
+        let detail = try encode(DisputeDetailParams(disputeId: did))
+        #expect(detail.keys.sorted() == ["p_dispute_id"])
+        #expect(detail["p_dispute_id"] as? String == did.uuidString)
+
+        let events = try encode(ListDisputeEventsParams(disputeId: did, limit: 100))
+        #expect(events["p_limit"] as? Int == 100)
+    }
+
     @Test("record_reputation_event encodes required keys + null reason when omitted")
     func recordReputationEventDefaults() throws {
         let gid = UUID(); let sub = UUID()

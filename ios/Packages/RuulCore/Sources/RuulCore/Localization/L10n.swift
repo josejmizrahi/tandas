@@ -157,6 +157,83 @@ public enum L10n {
         public static let subjectResource  = LocalizedStringResource("disputes.subject.resource",  defaultValue: "Sobre un recurso")
         public static let subjectMember    = LocalizedStringResource("disputes.subject.member",    defaultValue: "Sobre un miembro")
         public static let subjectOther     = LocalizedStringResource("disputes.subject.other",     defaultValue: "Otro")
+
+        // C2 — Detail
+        public static let detailTitle             = LocalizedStringResource("disputes.detail.title",            defaultValue: "Disputa")
+        public static let detailErrorTitle        = LocalizedStringResource("disputes.detail.error.title",      defaultValue: "No pudimos cargar la disputa")
+        public static let openedAtLabel           = LocalizedStringResource("disputes.opened_at",               defaultValue: "Abierta")
+        public static let openedByLabel           = LocalizedStringResource("disputes.opened_by",               defaultValue: "Abrió")
+        public static let respondentLabel         = LocalizedStringResource("disputes.respondent",              defaultValue: "Respondiendo")
+        public static let mediatorLabel           = LocalizedStringResource("disputes.mediator",                defaultValue: "Mediación")
+        public static let descriptionSection      = LocalizedStringResource("disputes.section.description",     defaultValue: "Detalle")
+        public static let descriptionEmpty        = LocalizedStringResource("disputes.description.empty",       defaultValue: "Sin detalle adicional.")
+        public static let timelineSection         = LocalizedStringResource("disputes.section.timeline",        defaultValue: "Hilo")
+        public static let timelineEmpty           = LocalizedStringResource("disputes.timeline.empty",          defaultValue: "Aún no hay actividad en este hilo.")
+        public static let resolutionSection       = LocalizedStringResource("disputes.section.resolution",      defaultValue: "Resolución")
+        public static let resolutionEmpty         = LocalizedStringResource("disputes.resolution.empty",        defaultValue: "Sin resolución todavía.")
+        public static let escalatedDecisionLabel  = LocalizedStringResource("disputes.escalated_decision",      defaultValue: "Decisión vinculada")
+        public static let detailActionsSection    = LocalizedStringResource("disputes.section.actions",         defaultValue: "Acciones")
+        public static let appendEventButton       = LocalizedStringResource("disputes.action.append_event",     defaultValue: "Agregar al hilo")
+        public static let resolveButton           = LocalizedStringResource("disputes.action.resolve",          defaultValue: "Resolver disputa")
+        public static let escalateButton          = LocalizedStringResource("disputes.action.escalate",         defaultValue: "Escalar a voto")
+        public static let detailLoading           = LocalizedStringResource("disputes.detail.loading",          defaultValue: "Cargando hilo…")
+
+        // C2 — Open generic dispute sheet
+        public static let openGenericTitle        = LocalizedStringResource("disputes.open_generic.title",      defaultValue: "Abrir disputa")
+        public static let openGenericConfirm      = LocalizedStringResource("disputes.open_generic.confirm",    defaultValue: "Abrir")
+        public static let openGenericCancel       = LocalizedStringResource("disputes.open_generic.cancel",     defaultValue: "Cancelar")
+        public static let openTitleLabel          = LocalizedStringResource("disputes.open.title.label",        defaultValue: "Título")
+        public static let openTitlePlaceholder    = LocalizedStringResource("disputes.open.title.placeholder",  defaultValue: "Ej. No estoy de acuerdo con la decisión del mes")
+        public static let openDescriptionLabel    = LocalizedStringResource("disputes.open.description.label",  defaultValue: "Descripción")
+        public static let openDescriptionPlaceholder = LocalizedStringResource("disputes.open.description.placeholder", defaultValue: "Explica con detalle…")
+        public static let openSubjectSection      = LocalizedStringResource("disputes.open.subject.section",    defaultValue: "Sobre qué es")
+        public static let openTitleRequired       = LocalizedStringResource("disputes.open.title.required",     defaultValue: "Escribe un título.")
+
+        // C2 — Append event sheet
+        public static let appendEventSheetTitle   = LocalizedStringResource("disputes.append_event.title",      defaultValue: "Agregar al hilo")
+        public static let appendEventConfirm      = LocalizedStringResource("disputes.append_event.confirm",    defaultValue: "Publicar")
+        public static let appendEventCancel       = LocalizedStringResource("disputes.append_event.cancel",     defaultValue: "Cancelar")
+        public static let eventTypeSection        = LocalizedStringResource("disputes.event.type.section",      defaultValue: "Tipo")
+        public static let eventBodySection        = LocalizedStringResource("disputes.event.body.section",      defaultValue: "Mensaje")
+        public static let eventBodyPlaceholder    = LocalizedStringResource("disputes.event.body.placeholder",  defaultValue: "Escribe el mensaje…")
+        public static let eventBodyRequired       = LocalizedStringResource("disputes.event.body.required",     defaultValue: "Escribe el mensaje.")
+
+        // Event type labels
+        public static let eventComment        = LocalizedStringResource("disputes.event.comment",        defaultValue: "Comentario")
+        public static let eventStatusChange   = LocalizedStringResource("disputes.event.status_change",  defaultValue: "Cambio de estado")
+        public static let eventEvidenceAdded  = LocalizedStringResource("disputes.event.evidence",       defaultValue: "Evidencia")
+        public static let eventMediationNote  = LocalizedStringResource("disputes.event.mediation_note", defaultValue: "Nota de mediación")
+        public static let eventResolution     = LocalizedStringResource("disputes.event.resolution",     defaultValue: "Resolución")
+        public static let eventEscalation     = LocalizedStringResource("disputes.event.escalation",     defaultValue: "Escalado a voto")
+        public static let eventOther          = LocalizedStringResource("disputes.event.other",          defaultValue: "Otro")
+
+        // C2 — Resolve sheet
+        public static let resolveSheetTitle       = LocalizedStringResource("disputes.resolve.title",          defaultValue: "Resolver disputa")
+        public static let resolveConfirm          = LocalizedStringResource("disputes.resolve.confirm",         defaultValue: "Resolver")
+        public static let resolveCancel           = LocalizedStringResource("disputes.resolve.cancel",          defaultValue: "Cancelar")
+        public static let resolveMethodSection    = LocalizedStringResource("disputes.resolve.method.section",  defaultValue: "Cómo se resolvió")
+        public static let resolveBodySection      = LocalizedStringResource("disputes.resolve.body.section",    defaultValue: "Acuerdo / Resultado")
+        public static let resolveBodyPlaceholder  = LocalizedStringResource("disputes.resolve.body.placeholder", defaultValue: "Resume el acuerdo…")
+        public static let resolveBodyRequired     = LocalizedStringResource("disputes.resolve.body.required",   defaultValue: "Escribe el resultado de la resolución.")
+
+        public static let resolutionConversation   = LocalizedStringResource("disputes.resolution.conversation",  defaultValue: "Hablando")
+        public static let resolutionMediation      = LocalizedStringResource("disputes.resolution.mediation",     defaultValue: "Con mediación")
+        public static let resolutionVote           = LocalizedStringResource("disputes.resolution.vote",          defaultValue: "Por votación")
+        public static let resolutionAdminDecision  = LocalizedStringResource("disputes.resolution.admin",         defaultValue: "Por decisión admin")
+        public static let resolutionArbitration    = LocalizedStringResource("disputes.resolution.arbitration",   defaultValue: "Por arbitraje")
+        public static let resolutionSeparation     = LocalizedStringResource("disputes.resolution.separation",    defaultValue: "Por separación")
+        public static let resolutionOther          = LocalizedStringResource("disputes.resolution.other",         defaultValue: "Otro")
+
+        // C2 — Escalate sheet
+        public static let escalateSheetTitle      = LocalizedStringResource("disputes.escalate.title",          defaultValue: "Escalar a voto")
+        public static let escalateConfirm         = LocalizedStringResource("disputes.escalate.confirm",        defaultValue: "Escalar")
+        public static let escalateCancel          = LocalizedStringResource("disputes.escalate.cancel",         defaultValue: "Cancelar")
+        public static let escalateDecisionTitle   = LocalizedStringResource("disputes.escalate.decision_title", defaultValue: "Título de la decisión")
+        public static let escalateMethodSection   = LocalizedStringResource("disputes.escalate.method.section", defaultValue: "Método de decisión")
+        public static let escalateClosesAtToggle  = LocalizedStringResource("disputes.escalate.closes_at.toggle", defaultValue: "Con fecha de cierre")
+        public static let escalateClosesAtLabel   = LocalizedStringResource("disputes.escalate.closes_at",      defaultValue: "Cierra")
+        public static let escalateTitleRequired   = LocalizedStringResource("disputes.escalate.title.required", defaultValue: "Escribe el título de la decisión.")
+        public static let escalateClosesAtFuture  = LocalizedStringResource("disputes.escalate.closes_at.future", defaultValue: "La fecha de cierre debe ser futura.")
     }
 
     public enum Sanctions {

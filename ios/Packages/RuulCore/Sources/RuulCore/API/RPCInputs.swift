@@ -804,6 +804,178 @@ public struct DisputeSanctionInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Disputes UI completion (Primitiva 14, C2)
+
+public struct DisputeDetailParams: Encodable, Sendable {
+    public let pDisputeId: UUID
+    enum CodingKeys: String, CodingKey { case pDisputeId = "p_dispute_id" }
+    public init(disputeId: UUID) { self.pDisputeId = disputeId }
+}
+
+public struct ListDisputeEventsParams: Encodable, Sendable {
+    public let pDisputeId: UUID
+    public let pLimit: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pDisputeId = "p_dispute_id"
+        case pLimit     = "p_limit"
+    }
+
+    public init(disputeId: UUID, limit: Int = 200) {
+        self.pDisputeId = disputeId
+        self.pLimit = limit
+    }
+}
+
+public struct OpenDisputeInput: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pSubjectKind: String
+    public let pSubjectId: UUID?
+    public let pTitle: String
+    public let pDescription: String?
+    public let pRespondentMembershipId: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId                = "p_group_id"
+        case pSubjectKind            = "p_subject_kind"
+        case pSubjectId              = "p_subject_id"
+        case pTitle                  = "p_title"
+        case pDescription            = "p_description"
+        case pRespondentMembershipId = "p_respondent_membership_id"
+    }
+
+    public init(
+        groupId: UUID,
+        subjectKind: String,
+        subjectId: UUID? = nil,
+        title: String,
+        description: String? = nil,
+        respondentMembershipId: UUID? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pSubjectKind = subjectKind
+        self.pSubjectId = subjectId
+        self.pTitle = title
+        self.pDescription = description
+        self.pRespondentMembershipId = respondentMembershipId
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pGroupId, forKey: .pGroupId)
+        try c.encode(pSubjectKind, forKey: .pSubjectKind)
+        try c.encodeOrNil(pSubjectId, forKey: .pSubjectId)
+        try c.encode(pTitle, forKey: .pTitle)
+        try c.encodeOrNil(pDescription, forKey: .pDescription)
+        try c.encodeOrNil(pRespondentMembershipId, forKey: .pRespondentMembershipId)
+    }
+}
+
+public struct AppendDisputeEventInput: Encodable, Sendable, Equatable {
+    public let pDisputeId: UUID
+    public let pEventType: String
+    public let pBody: String?
+    /// JSON-encoded as `{}` when omitted; the backend defaults the
+    /// column itself but PostgREST overload resolution requires the
+    /// key to be present.
+    public let pMetadata: [String: String]
+
+    enum CodingKeys: String, CodingKey {
+        case pDisputeId = "p_dispute_id"
+        case pEventType = "p_event_type"
+        case pBody      = "p_body"
+        case pMetadata  = "p_metadata"
+    }
+
+    public init(
+        disputeId: UUID,
+        eventType: String,
+        body: String?,
+        metadata: [String: String] = [:]
+    ) {
+        self.pDisputeId = disputeId
+        self.pEventType = eventType
+        self.pBody = body
+        self.pMetadata = metadata
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pDisputeId, forKey: .pDisputeId)
+        try c.encode(pEventType, forKey: .pEventType)
+        try c.encodeOrNil(pBody, forKey: .pBody)
+        try c.encode(pMetadata, forKey: .pMetadata)
+    }
+}
+
+public struct RecordDisputeResolutionInput: Encodable, Sendable, Equatable {
+    public let pDisputeId: UUID
+    public let pMethod: String
+    public let pResolutionText: String
+    public let pOutcome: [String: String]?
+
+    enum CodingKeys: String, CodingKey {
+        case pDisputeId      = "p_dispute_id"
+        case pMethod         = "p_method"
+        case pResolutionText = "p_resolution_text"
+        case pOutcome        = "p_outcome"
+    }
+
+    public init(
+        disputeId: UUID,
+        method: String,
+        resolutionText: String,
+        outcome: [String: String]? = nil
+    ) {
+        self.pDisputeId = disputeId
+        self.pMethod = method
+        self.pResolutionText = resolutionText
+        self.pOutcome = outcome
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pDisputeId, forKey: .pDisputeId)
+        try c.encode(pMethod, forKey: .pMethod)
+        try c.encode(pResolutionText, forKey: .pResolutionText)
+        try c.encodeOrNil(pOutcome, forKey: .pOutcome)
+    }
+}
+
+public struct EscalateDisputeToVoteInput: Encodable, Sendable, Equatable {
+    public let pDisputeId: UUID
+    public let pDecisionTitle: String
+    public let pDecisionMethod: String
+    public let pClosesAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pDisputeId      = "p_dispute_id"
+        case pDecisionTitle  = "p_decision_title"
+        case pDecisionMethod = "p_decision_method"
+        case pClosesAt       = "p_closes_at"
+    }
+
+    public init(
+        disputeId: UUID,
+        decisionTitle: String,
+        decisionMethod: String = "majority",
+        closesAt: Date? = nil
+    ) {
+        self.pDisputeId = disputeId
+        self.pDecisionTitle = decisionTitle
+        self.pDecisionMethod = decisionMethod
+        self.pClosesAt = closesAt
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(pDisputeId, forKey: .pDisputeId)
+        try c.encode(pDecisionTitle, forKey: .pDecisionTitle)
+        try c.encode(pDecisionMethod, forKey: .pDecisionMethod)
+        try c.encodeOrNil(pClosesAt, forKey: .pClosesAt)
+    }
+}
+
 // MARK: - Sanctions (Primitiva 11)
 
 public struct GroupSanctionsActiveParams: Encodable, Sendable {

@@ -215,6 +215,35 @@ public protocol RuulRPCClient: Sendable {
     /// sanction status to `disputed`.
     func disputeSanction(_ input: DisputeSanctionInput) async throws -> UUID
 
+    /// `dispute_detail(p_dispute_id)` — single dispute pre-joined with
+    /// opener/respondent/mediator display names + event count.
+    /// Active-member gate.
+    func disputeDetail(disputeId: UUID) async throws -> GroupDisputeDetail
+
+    /// `list_dispute_events(p_dispute_id, p_limit)` — chronological
+    /// timeline for a dispute (ASC by created_at). Active-member gate.
+    func listDisputeEvents(disputeId: UUID, limit: Int) async throws -> [GroupDisputeEvent]
+
+    /// `open_dispute(...)` — generic open against any subject (sanction
+    /// / rule / resource / member / other). Requires `disputes.open`.
+    /// Returns the new dispute id.
+    func openDispute(_ input: OpenDisputeInput) async throws -> UUID
+
+    /// `append_dispute_event(p_dispute_id, p_event_type, p_body, p_metadata)`
+    /// — comment / evidence / mediation note. Append-only. Backend
+    /// gates by opener / respondent / mediator OR `disputes.mediate`.
+    func appendDisputeEvent(_ input: AppendDisputeEventInput) async throws -> UUID
+
+    /// `record_dispute_resolution(p_dispute_id, p_method, p_resolution_text, p_outcome)`
+    /// — closes the dispute with a resolution. Requires
+    /// `disputes.resolve` (or assigned mediator).
+    func recordDisputeResolution(_ input: RecordDisputeResolutionInput) async throws
+
+    /// `escalate_dispute_to_vote(p_dispute_id, p_decision_title, p_decision_method, p_closes_at)`
+    /// — flips the dispute to `escalated` and creates a linked
+    /// `group_decisions` row. Returns the new decision id.
+    func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID
+
     // MARK: - Sanctions (Primitiva 11)
 
     /// `group_sanctions_active(p_group_id, p_limit)` — active+disputed

@@ -480,6 +480,66 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func disputeDetail(disputeId: UUID) async throws -> GroupDisputeDetail {
+        let params = DisputeDetailParams(disputeId: disputeId)
+        do {
+            let rows: [GroupDisputeDetail] = try await client
+                .rpc("dispute_detail", params: params)
+                .execute()
+                .value
+            guard let row = rows.first else {
+                throw RuulError.unexpected(message: "dispute_detail returned no rows")
+            }
+            return row
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func listDisputeEvents(disputeId: UUID, limit: Int) async throws -> [GroupDisputeEvent] {
+        let params = ListDisputeEventsParams(disputeId: disputeId, limit: limit)
+        do {
+            return try await client
+                .rpc("list_dispute_events", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func openDispute(_ input: OpenDisputeInput) async throws -> UUID {
+        do {
+            return try await client.rpc("open_dispute", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func appendDisputeEvent(_ input: AppendDisputeEventInput) async throws -> UUID {
+        do {
+            return try await client.rpc("append_dispute_event", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func recordDisputeResolution(_ input: RecordDisputeResolutionInput) async throws {
+        do {
+            _ = try await client.rpc("record_dispute_resolution", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func escalateDisputeToVote(_ input: EscalateDisputeToVoteInput) async throws -> UUID {
+        do {
+            return try await client.rpc("escalate_dispute_to_vote", params: input).execute().value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Sanctions (Primitiva 11)
 
     public func groupSanctionsActive(groupId: UUID, limit: Int) async throws -> [GroupSanction] {

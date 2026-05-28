@@ -124,8 +124,10 @@ stream con 5 clusters per `doctrine_group_space_situational`).
     reputation_note/other; suspension/loss_of_role/expulsion deferred)
   - Primitiva 12 Reputation read-only (MemberHistoryView)
   - Primitiva 13 Memory (GroupHistoryView con timeline paginado)
-  - Primitiva 14 Disputes parcial (DisputesListView + DisputeSanctionSheet
-    via swipe en SanctionsListView; falta DisputeDetailView/Open/Resolve)
+  - Primitiva 14 Disputes completo (DisputesListView + DisputeDetailView
+    timeline + OpenDisputeSheet generic + AddDisputeEventSheet +
+    ResolveDisputeView + EscalateDisputeSheet; mig `20260527170000`
+    agregó dispute_detail + list_dispute_events)
   - Primitiva 15 Entry/Exit (leave group)
   - Primitiva 16 Decisions/Voting completo (votes UI + propose/cast/
     finalize/cancel; mig `20260527160000` agregó list_decisions_active /
@@ -573,9 +575,11 @@ Marcar cada slice cerrado:
 - [x] C1 Decisions/Voting (Primitiva 16) — votes UI completo
       (mig `20260527160000` + Domain + Store + DecisionsListView +
       DecisionDetailView + ProposeDecisionSheet + VoteSheet)
-- [ ] C2 Disputes UI completo (Primitiva 14) — parcial: list + dispute
-      sanction sheet listos; faltan DisputeDetailView + open generic +
-      mediation/resolve
+- [x] C2 Disputes UI completo (Primitiva 14)
+      (mig `20260527170000` agregó dispute_detail + list_dispute_events;
+      iOS: DisputeDetailView + OpenDisputeSheet + AddDisputeEventSheet +
+      ResolveDisputeView + EscalateDisputeSheet; DisputesListView con
+      navegación + add toolbar)
 - [x] C3 Contributions (Primitiva 9)
 - [x] C4 Reputation UI admin (Primitiva 12) — read listo
 - [ ] D1 GroupSwitcherSheet
