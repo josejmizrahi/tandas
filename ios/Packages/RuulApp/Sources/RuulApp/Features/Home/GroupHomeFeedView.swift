@@ -25,15 +25,11 @@ struct GroupHomeFeedView: View {
     let container: DependencyContainer
     let group: GroupListItem
 
-    @Environment(\.dismiss) private var dismiss
-
-    // MARK: - Sheet state (mirrors what GroupHomeView used to own)
+    // MARK: - Sheet state
 
     @State private var isShowingExpenseSheet = false
     @State private var isShowingSettlementSheet = false
     @State private var isShowingInviteSheet = false
-    @State private var isConfirmingLeave = false
-    @State private var leaveError: UserFacingError?
     @State private var pendingMemberSelection: MembershipBoundaryItem?
 
     var body: some View {
@@ -58,35 +54,8 @@ struct GroupHomeFeedView: View {
                 memberItem: item
             )
         }
-        .navigationDestination(for: DecisionsDestination.self) { _ in
-            DecisionsListView(store: container.decisionsStore, groupId: group.id)
-        }
         .navigationDestination(for: GroupHistoryDestination.self) { _ in
             GroupHistoryView(store: container.eventsStore, groupId: group.id)
-        }
-        .navigationDestination(for: SanctionsDestination.self) { _ in
-            SanctionsListView(
-                container: container,
-                store: container.sanctionsStore,
-                membersStore: container.membersStore,
-                groupId: group.id,
-                myMembershipId: group.membershipId,
-                onDispute: { sanctionId in
-                    container.disputesStore.beginDisputingSanction(sanctionId)
-                }
-            )
-        }
-        .navigationDestination(for: MoneyDashboardDestination.self) { _ in
-            MoneyDashboardView(
-                container: container,
-                groupId: group.id,
-                myMembershipId: group.membershipId
-            )
-        }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                moreMenu
-            }
         }
         .refreshable { await refresh() }
         .task { await refresh() }
@@ -118,23 +87,6 @@ struct GroupHomeFeedView: View {
                 isShowingInviteSheet = false
             }
         }
-        .alert("Salir del grupo", isPresented: $isConfirmingLeave) {
-            Button("Cancelar", role: .cancel) {}
-            Button("Salir", role: .destructive) {
-                Task { await leave() }
-            }
-        } message: {
-            Text("Dejarás de ver lo que pase aquí. Puedes volver con otra invitación.")
-        }
-        .alert(
-            leaveError?.title ?? "",
-            isPresented: Binding(
-                get: { leaveError != nil },
-                set: { if !$0 { leaveError = nil } }
-            ),
-            actions: { Button("OK") { leaveError = nil } },
-            message: { Text(leaveError?.message ?? "") }
-        )
     }
 
     // MARK: - Foundation status
@@ -297,28 +249,6 @@ struct GroupHomeFeedView: View {
         }
     }
 
-    // MARK: - Toolbar "Más" menu
-
-    @ViewBuilder
-    private var moreMenu: some View {
-        Menu {
-            NavigationLink(value: GroupHistoryDestination()) {
-                Label(L10n.History.menuLink, systemImage: "clock.arrow.circlepath")
-            }
-            NavigationLink(value: DecisionsDestination()) {
-                Label(L10n.Decisions.menuLink, systemImage: "checkmark.seal")
-            }
-            Divider()
-            Button(role: .destructive) {
-                isConfirmingLeave = true
-            } label: {
-                Label("Salir del grupo", systemImage: "rectangle.portrait.and.arrow.right")
-            }
-        } label: {
-            Label("Más", systemImage: "ellipsis.circle")
-        }
-    }
-
     // MARK: - Handlers
 
     private func handleFoundationTap(_ kind: FoundationPrimitiveKind) {
@@ -350,7 +280,7 @@ struct GroupHomeFeedView: View {
         }
     }
 
-    // MARK: - Refresh + actions
+    // MARK: - Refresh
 
     private func refresh() async {
         // Hydrate every store the feed reads from. The foundation
@@ -361,18 +291,6 @@ struct GroupHomeFeedView: View {
         await container.decisionsStore.refresh(groupId: group.id)
         await container.sanctionsStore.refresh(groupId: group.id)
         await container.eventsStore.refresh(groupId: group.id)
-    }
-
-    private func leave() async {
-        do {
-            try await container.groupRepository.leaveGroup(groupId: group.id, reason: nil)
-            container.moneyStore.clear()
-            await container.currentGroupStore.setGroup(nil)
-            await container.groupsStore.refresh()
-            dismiss()
-        } catch {
-            leaveError = UserFacingError.from(error)
-        }
     }
 
     // MARK: - Cluster item enums
@@ -401,10 +319,7 @@ struct GroupHomeFeedView: View {
 
     // MARK: - Navigation tokens
 
-    private struct DecisionsDestination: Hashable {}
     private struct GroupHistoryDestination: Hashable {}
-    private struct SanctionsDestination: Hashable {}
-    private struct MoneyDashboardDestination: Hashable {}
 }
 
 // MARK: - Cluster row views

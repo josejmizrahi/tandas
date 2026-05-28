@@ -2,10 +2,14 @@ import SwiftUI
 import RuulCore
 
 /// D2 + D3 — Per-group tab bar shell. The app's root surface when the
-/// caller has at least one group. Five tabs mirror the doctrine in
-/// `Plans/Active/UIBottomUpPlan.md` §0:
+/// caller has at least one group. Four tabs, one verb each:
 ///
-///     🏠 Inicio · 💰 Dinero · 📦 Recursos · 👥 Miembros · ⚙️ Ajustes
+///     🏠 Inicio · 💰 Dinero · 👥 Personas · 🗂️ El grupo
+///
+/// "Recursos" no longer earns a dedicated tab: at Foundation level it's
+/// 0-3 items that rarely change, so it lives as a section inside
+/// "El grupo" alongside the rest of the non-feed, non-money, non-people
+/// primitives.
 ///
 /// Top-left toolbar slot hosts the group switcher (Calendar/Reminders
 /// pattern). Top-right hosts the avatar — opens `PersonalProfileSheet`.
@@ -19,8 +23,7 @@ public struct GroupTabsHost: View {
     @State private var selectedTab: GroupTab = .home
     @State private var isShowingSwitcher: Bool = false
     @State private var isShowingPersonalProfile: Bool = false
-    /// Drives the `MemberDetailView` push from the Members tab. Mirrors
-    /// the pattern used by `GroupHomeView`.
+    /// Drives the `MemberDetailView` push from the Personas tab.
     @State private var pendingMemberSelection: MembershipBoundaryItem?
 
     public init(
@@ -37,9 +40,8 @@ public struct GroupTabsHost: View {
         TabView(selection: $selectedTab) {
             homeTab
             moneyTab
-            resourcesTab
             membersTab
-            settingsTab
+            groupTab
         }
         .sheet(isPresented: $isShowingSwitcher) {
             GroupSwitcherSheet(
@@ -84,18 +86,6 @@ public struct GroupTabsHost: View {
     }
 
     @ViewBuilder
-    private var resourcesTab: some View {
-        NavigationStack {
-            ResourcesListView(store: container.resourcesStore, groupId: group.id)
-                .toolbar { shellToolbar }
-        }
-        .tabItem {
-            Label(L10n.GroupTabs.resources, systemImage: "square.stack.3d.up")
-        }
-        .tag(GroupTab.resources)
-    }
-
-    @ViewBuilder
     private var membersTab: some View {
         NavigationStack {
             MembersListView(
@@ -125,15 +115,15 @@ public struct GroupTabsHost: View {
     }
 
     @ViewBuilder
-    private var settingsTab: some View {
+    private var groupTab: some View {
         NavigationStack {
             GroupSettingsView(container: container, group: group)
                 .toolbar { shellToolbar }
         }
         .tabItem {
-            Label(L10n.GroupTabs.settings, systemImage: "gearshape")
+            Label(L10n.GroupTabs.group, systemImage: "rectangle.stack")
         }
-        .tag(GroupTab.settings)
+        .tag(GroupTab.group)
     }
 
     // MARK: - Toolbar
@@ -166,6 +156,6 @@ public struct GroupTabsHost: View {
     }
 
     private enum GroupTab: Hashable {
-        case home, money, resources, members, settings
+        case home, money, members, group
     }
 }

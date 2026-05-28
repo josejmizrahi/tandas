@@ -1,16 +1,23 @@
 import SwiftUI
 import RuulCore
 
-/// Settings.app-style root for a single group. Pure surface for the
-/// B1 slice — most rows route to existing edit sheets (Propósito,
-/// Decisiones del grupo) or push into already-built list/edit views
-/// (Reglas, Política de sanciones via SanctionsListView). Rows whose
-/// backend isn't ready yet surface a neutral "Próximamente" alert
-/// instead of dead-ending. The destructive "Salir del grupo" is the
-/// only real action this view owns directly.
+/// Canonical hub for the per-group "El grupo" tab (D3). Settings.app-
+/// style list organised by human verb, not by ontology. Every primitive
+/// that doesn't naturally live in Inicio / Dinero / Personas has its
+/// home here, so the 22 V1 primitives all have a single, findable
+/// entry point.
 ///
-/// Pushed from `GroupHomeView`'s "Más" menu. The shell (D3) will
-/// later host it under the tab "Ajustes" of the per-group tab bar.
+/// Section order (locked):
+///
+/// 1. Identidad         — quiénes somos y qué queremos
+/// 2. Recursos          — qué tenemos
+/// 3. En proceso        — qué está pasando (governance live)
+/// 4. Vida del grupo    — qué ya pasó / se repite
+/// 5. Estructura        — cómo nos organizamos (roles + mandatos)
+/// 6. Configuración     — settings técnicos + zona destructiva
+///
+/// Foundation readiness card stays pinned to the top as long as the
+/// group isn't ready; once it is, the card collapses entirely.
 public struct GroupSettingsView: View {
     let container: DependencyContainer
     let group: GroupListItem
@@ -18,7 +25,6 @@ public struct GroupSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirmingLeave: Bool = false
     @State private var leaveError: UserFacingError?
-    @State private var comingSoon: ComingSoonRow?
 
     public init(container: DependencyContainer, group: GroupListItem) {
         self.container = container
@@ -28,67 +34,23 @@ public struct GroupSettingsView: View {
     public var body: some View {
         List {
             foundationSection
-            belongingSection
-            organizationSection
-            moneyResourcesSection
-            notificationsSection
-            privacySection
-            dangerSection
+            identitySection
+            resourcesSection
+            inProgressSection
+            lifeSection
+            structureSection
+            configSection
         }
-        .navigationTitle(L10n.GroupSettings.title)
+        .navigationTitle(L10n.GroupTabs.group)
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: GroupSettingsDestination.self) { destination in
-            switch destination {
-            case .rules:
-                RulesListView(store: container.rulesStore, groupId: group.id)
-            case .sanctionsPolicy:
-                SanctionsListView(
-                    container: container,
-                    store: container.sanctionsStore,
-                    membersStore: container.membersStore,
-                    groupId: group.id,
-                    myMembershipId: group.membershipId,
-                    onDispute: { sanctionId in
-                        container.disputesStore.beginDisputingSanction(sanctionId)
-                    }
-                )
-            case .culture:
-                CulturalNormsListView(store: container.culturalNormsStore, groupId: group.id)
-            case .mandates:
-                MandatesListView(
-                    store: container.mandatesStore,
-                    membersStore: container.membersStore,
-                    groupId: group.id
-                )
-            case .boundaryPolicy:
-                BoundaryPolicyView(store: container.boundaryPolicyStore, groupId: group.id)
-            case .rituals:
-                RitualsListView(store: container.ritualsStore, groupId: group.id)
-            case .roles:
-                RolesListView(store: container.rolesStore, groupId: group.id)
-            case .dissolution:
-                DissolutionStatusView(store: container.dissolutionStore, groupId: group.id)
-            case .notifications:
-                NotificationSettingsView(store: container.notificationSettingsStore, groupId: group.id)
-            case .privacy:
-                GroupPrivacyView(store: container.privacyStore, groupId: group.id)
-            }
+            destinationView(for: destination)
         }
         .sheet(isPresented: purposeSheetBinding) {
             EditPurposeView(store: container.purposeStore, groupId: group.id)
         }
         .sheet(isPresented: decisionRulesSheetBinding) {
             EditDecisionRulesView(store: container.decisionRulesStore, groupId: group.id)
-        }
-        .alert(
-            Text(L10n.GroupSettings.comingSoonTitle),
-            isPresented: comingSoonBinding
-        ) {
-            Button(String(localized: L10n.GroupSettings.close)) {
-                comingSoon = nil
-            }
-        } message: {
-            Text(L10n.GroupSettings.comingSoonBody)
         }
         .alert(
             Text(L10n.GroupSettings.leaveConfirmTitle),
@@ -117,132 +79,129 @@ public struct GroupSettingsView: View {
             await container.purposeStore.refreshIfNeeded(groupId: group.id)
             await container.rulesStore.refreshIfNeeded(groupId: group.id)
             await container.decisionRulesStore.refreshIfNeeded(groupId: group.id)
-            await container.sanctionsStore.refreshIfNeeded(groupId: group.id)
-            await container.culturalNormsStore.refreshIfNeeded(groupId: group.id)
-            await container.mandatesStore.refreshIfNeeded(groupId: group.id)
+            await container.resourcesStore.refreshIfNeeded(groupId: group.id)
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Foundation card (pinned top while not ready)
 
     @ViewBuilder
     private var foundationSection: some View {
-        Section(L10n.GroupSettings.foundationSection) {
-            HStack(spacing: 12) {
-                Image(systemName: foundationIcon)
-                    .foregroundStyle(foundationTint)
-                    .frame(width: 24)
-                Text(foundationHint)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        if let status = container.foundationStatusStore.status, status.isReady {
+            EmptyView()
+        } else {
+            Section(L10n.GroupSettings.foundationSection) {
+                FoundationStatusCard(
+                    store: container.foundationStatusStore,
+                    onSelect: handleFoundationTap
+                )
             }
-            .padding(.vertical, 2)
         }
     }
 
-    private var foundationHint: LocalizedStringResource {
-        switch container.foundationStatusStore.phase {
-        case .idle, .loading:
-            return L10n.GroupSettings.foundationLoading
-        case .failed:
-            return L10n.GroupSettings.foundationPendingHint
-        case .loaded:
-            let isReady = container.foundationStatusStore.status?.isReady == true
-            return isReady ? L10n.GroupSettings.foundationReadyHint : L10n.GroupSettings.foundationPendingHint
-        }
-    }
-
-    private var foundationIcon: String {
-        let isReady = container.foundationStatusStore.status?.isReady == true
-        return isReady ? "checkmark.seal" : "exclamationmark.triangle"
-    }
-
-    private var foundationTint: Color {
-        let isReady = container.foundationStatusStore.status?.isReady == true
-        return isReady ? .green : .orange
-    }
+    // MARK: - 1. Identidad
 
     @ViewBuilder
-    private var belongingSection: some View {
-        Section(L10n.GroupSettings.belongingSection) {
-            NavigationLink(value: GroupSettingsDestination.boundaryPolicy) {
-                Label(L10n.GroupSettings.boundaryPolicyRow, systemImage: "door.left.hand.closed")
-            }
-            comingSoonRow(.membershipTypes, label: L10n.GroupSettings.membershipTypesRow, systemImage: "person.crop.rectangle.stack")
-            NavigationLink(value: GroupSettingsDestination.roles) {
-                Label(L10n.GroupSettings.rolesRow, systemImage: "person.crop.circle.badge.checkmark")
-            }
-            NavigationLink(value: GroupSettingsDestination.mandates) {
-                Label(L10n.GroupSettings.mandatesRow, systemImage: "signature")
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var organizationSection: some View {
-        Section(L10n.GroupSettings.organizationSection) {
+    private var identitySection: some View {
+        Section("Identidad") {
             Button {
                 container.purposeStore.beginEditing(kind: .declared)
             } label: {
-                row(label: L10n.GroupSettings.purposeRow, systemImage: "flag")
-            }
-            NavigationLink(value: GroupSettingsDestination.rules) {
-                Label(L10n.GroupSettings.rulesRow, systemImage: "list.bullet.rectangle")
+                row(label: "Propósito", systemImage: "flag")
             }
             Button {
                 container.decisionRulesStore.beginEditing()
             } label: {
-                row(label: L10n.GroupSettings.decisionRulesRow, systemImage: "person.3.sequence")
+                row(label: "Cómo decidimos", systemImage: "person.3.sequence")
+            }
+            NavigationLink(value: GroupSettingsDestination.rules) {
+                Label("Reglas", systemImage: "list.bullet.rectangle")
             }
             NavigationLink(value: GroupSettingsDestination.culture) {
-                Label(L10n.GroupSettings.cultureRow, systemImage: "heart")
+                Label("Cultura", systemImage: "heart")
             }
-            NavigationLink(value: GroupSettingsDestination.rituals) {
-                Label(L10n.GroupSettings.ritualsRow, systemImage: "sparkles")
+            NavigationLink(value: GroupSettingsDestination.boundaryPolicy) {
+                Label("Frontera", systemImage: "door.left.hand.closed")
+            }
+            NavigationLink(value: GroupSettingsDestination.groupProfile) {
+                Label("Perfil del grupo", systemImage: "person.crop.rectangle")
             }
         }
     }
 
+    // MARK: - 2. Recursos del grupo
+
     @ViewBuilder
-    private var moneyResourcesSection: some View {
-        Section(L10n.GroupSettings.moneyResourcesSection) {
-            comingSoonRow(.currency, label: L10n.GroupSettings.currencyRow, systemImage: "dollarsign.circle")
-            comingSoonRow(.fundsPolicy, label: L10n.GroupSettings.fundsPolicyRow, systemImage: "banknote")
+    private var resourcesSection: some View {
+        Section("Recursos del grupo") {
+            NavigationLink(value: GroupSettingsDestination.resources) {
+                Label("Lo que tenemos", systemImage: "square.stack.3d.up")
+            }
+            NavigationLink(value: GroupSettingsDestination.contributions) {
+                Label("Quién aportó qué", systemImage: "hands.sparkles")
+            }
+        }
+    }
+
+    // MARK: - 3. En proceso
+
+    @ViewBuilder
+    private var inProgressSection: some View {
+        Section("En proceso") {
+            NavigationLink(value: GroupSettingsDestination.decisions) {
+                Label("Decisiones", systemImage: "checkmark.seal")
+            }
+            NavigationLink(value: GroupSettingsDestination.disputes) {
+                Label("Disputas", systemImage: "hand.raised")
+            }
             NavigationLink(value: GroupSettingsDestination.sanctionsPolicy) {
-                Label(L10n.GroupSettings.sanctionsPolicyRow, systemImage: "exclamationmark.shield")
+                Label("Sanciones", systemImage: "exclamationmark.shield")
             }
         }
     }
 
+    // MARK: - 4. Vida del grupo
+
     @ViewBuilder
-    private var notificationsSection: some View {
-        Section(L10n.GroupSettings.notificationsSection) {
+    private var lifeSection: some View {
+        Section("Vida del grupo") {
+            NavigationLink(value: GroupSettingsDestination.rituals) {
+                Label("Rituales", systemImage: "sparkles")
+            }
+            NavigationLink(value: GroupSettingsDestination.history) {
+                Label("Historia del grupo", systemImage: "clock.arrow.circlepath")
+            }
+            NavigationLink(value: GroupSettingsDestination.reputationFeed) {
+                Label("Reputación del grupo", systemImage: "star.bubble")
+            }
+        }
+    }
+
+    // MARK: - 5. Estructura
+
+    @ViewBuilder
+    private var structureSection: some View {
+        Section("Estructura") {
+            NavigationLink(value: GroupSettingsDestination.roles) {
+                Label("Roles y permisos", systemImage: "person.crop.circle.badge.checkmark")
+            }
+            NavigationLink(value: GroupSettingsDestination.mandates) {
+                Label("Mandatos", systemImage: "signature")
+            }
+        }
+    }
+
+    // MARK: - 6. Configuración (+ danger)
+
+    @ViewBuilder
+    private var configSection: some View {
+        Section("Configuración") {
             NavigationLink(value: GroupSettingsDestination.notifications) {
-                Label {
-                    Text(L10n.GroupSettings.notificationsRow)
-                } icon: {
-                    Image(systemName: "bell")
-                }
+                Label(L10n.GroupSettings.notificationsRow, systemImage: "bell")
             }
-        }
-    }
-
-    @ViewBuilder
-    private var privacySection: some View {
-        Section(L10n.GroupSettings.privacySection) {
             NavigationLink(value: GroupSettingsDestination.privacy) {
-                Label {
-                    Text(L10n.GroupSettings.privacyRow)
-                } icon: {
-                    Image(systemName: "lock")
-                }
+                Label(L10n.GroupSettings.privacyRow, systemImage: "lock")
             }
-        }
-    }
-
-    @ViewBuilder
-    private var dangerSection: some View {
-        Section(L10n.GroupSettings.dangerSection) {
             Button(role: .destructive) {
                 isConfirmingLeave = true
             } label: {
@@ -255,10 +214,69 @@ public struct GroupSettingsView: View {
         }
     }
 
-    // MARK: - Row helpers
+    // MARK: - Destination switch
 
     @ViewBuilder
-    private func row(label: LocalizedStringResource, systemImage: String) -> some View {
+    private func destinationView(for destination: GroupSettingsDestination) -> some View {
+        switch destination {
+        case .rules:
+            RulesListView(store: container.rulesStore, groupId: group.id)
+        case .culture:
+            CulturalNormsListView(store: container.culturalNormsStore, groupId: group.id)
+        case .boundaryPolicy:
+            BoundaryPolicyView(store: container.boundaryPolicyStore, groupId: group.id)
+        case .groupProfile:
+            GroupProfileView(container: container, group: group)
+        case .resources:
+            ResourcesListView(store: container.resourcesStore, groupId: group.id)
+        case .contributions:
+            ContributionsListView(store: container.contributionsStore, groupId: group.id)
+        case .decisions:
+            DecisionsListView(store: container.decisionsStore, groupId: group.id)
+        case .disputes:
+            DisputesListView(store: container.disputesStore, groupId: group.id)
+        case .sanctionsPolicy:
+            SanctionsListView(
+                container: container,
+                store: container.sanctionsStore,
+                membersStore: container.membersStore,
+                groupId: group.id,
+                myMembershipId: group.membershipId,
+                onDispute: { sanctionId in
+                    container.disputesStore.beginDisputingSanction(sanctionId)
+                }
+            )
+        case .rituals:
+            RitualsListView(store: container.ritualsStore, groupId: group.id)
+        case .history:
+            GroupHistoryView(store: container.eventsStore, groupId: group.id)
+        case .reputationFeed:
+            ReputationFeedView(
+                store: container.reputationFeedStore,
+                membersStore: container.membersStore,
+                groupId: group.id
+            )
+        case .roles:
+            RolesListView(store: container.rolesStore, groupId: group.id)
+        case .mandates:
+            MandatesListView(
+                store: container.mandatesStore,
+                membersStore: container.membersStore,
+                groupId: group.id
+            )
+        case .notifications:
+            NotificationSettingsView(store: container.notificationSettingsStore, groupId: group.id)
+        case .privacy:
+            GroupPrivacyView(store: container.privacyStore, groupId: group.id)
+        case .dissolution:
+            DissolutionStatusView(store: container.dissolutionStore, groupId: group.id)
+        }
+    }
+
+    // MARK: - Row helper (used by sheet-triggered rows that can't be NavigationLink)
+
+    @ViewBuilder
+    private func row(label: String, systemImage: String) -> some View {
         HStack {
             Label(label, systemImage: systemImage)
                 .foregroundStyle(.primary)
@@ -269,16 +287,21 @@ public struct GroupSettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private func comingSoonRow(
-        _ which: ComingSoonRow,
-        label: LocalizedStringResource,
-        systemImage: String
-    ) -> some View {
-        Button {
-            comingSoon = which
-        } label: {
-            row(label: label, systemImage: systemImage)
+    // MARK: - Foundation taps
+
+    private func handleFoundationTap(_ kind: FoundationPrimitiveKind) {
+        switch kind {
+        case .members, .boundary:
+            // Foundation card surfaces the gap; resolution lives in
+            // Personas tab (Members) or Frontera (Boundary). No
+            // direct push from here for now.
+            break
+        case .purpose:
+            container.purposeStore.beginEditing(kind: .declared)
+        case .rules:
+            container.rulesStore.beginCreating()
+        case .resources:
+            container.resourcesStore.beginCreating()
         }
     }
 
@@ -295,13 +318,6 @@ public struct GroupSettingsView: View {
         Binding(
             get: { container.decisionRulesStore.isEditPresented },
             set: { container.decisionRulesStore.isEditPresented = $0 }
-        )
-    }
-
-    private var comingSoonBinding: Binding<Bool> {
-        Binding(
-            get: { comingSoon != nil },
-            set: { if !$0 { comingSoon = nil } }
         )
     }
 
@@ -323,20 +339,21 @@ public struct GroupSettingsView: View {
 
     private enum GroupSettingsDestination: Hashable {
         case rules
-        case sanctionsPolicy
         case culture
-        case mandates
         case boundaryPolicy
+        case groupProfile
+        case resources
+        case contributions
+        case decisions
+        case disputes
+        case sanctionsPolicy
         case rituals
+        case history
+        case reputationFeed
         case roles
-        case dissolution
+        case mandates
         case notifications
         case privacy
-    }
-
-    private enum ComingSoonRow: Hashable {
-        case membershipTypes
-        case currency
-        case fundsPolicy
+        case dissolution
     }
 }
