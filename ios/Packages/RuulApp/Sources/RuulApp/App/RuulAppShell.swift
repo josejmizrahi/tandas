@@ -154,6 +154,16 @@ public struct RuulAppShell: View {
             break
         case .decision(let groupId, let decisionId):
             pendingDecision = PendingDecision(groupId: groupId, decisionId: decisionId)
+        case .sanction, .dispute, .member, .mandate, .money:
+            // V3-A4 — the parser accepts these shapes so notification
+            // taps from `dispatch-notifications` land in the right
+            // group, but per-entity sheet routing is deferred: the
+            // matching detail views still take a fully-decoded domain
+            // object (GroupSanction / GroupDispute / MembershipBoundaryItem)
+            // in their init. Refactor each to support an id-only
+            // hydration pattern (DecisionDetailView's `initial:` was
+            // the trial) before re-enabling the per-entity shell sheet.
+            break
         }
         container.deepLinkRouter.consume()
     }
