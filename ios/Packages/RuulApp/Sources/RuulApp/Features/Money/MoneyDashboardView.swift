@@ -19,6 +19,7 @@ struct MoneyDashboardView: View {
 
     @State private var isShowingExpenseSheet: Bool = false
     @State private var isShowingSettlementSheet: Bool = false
+    @State private var isShowingSettleUp: Bool = false
     @State private var pendingPaySanction: GroupSanction?
 
     var body: some View {
@@ -72,6 +73,13 @@ struct MoneyDashboardView: View {
                 isShowingSettlementSheet = false
                 Task { await refresh() }
             }
+        }
+        .sheet(isPresented: $isShowingSettleUp) {
+            SettleUpView(
+                container: container,
+                groupId: groupId,
+                myMembershipId: myMembershipId
+            )
         }
         .sheet(item: $pendingPaySanction) { sanction in
             PaySanctionSheet(
@@ -294,6 +302,12 @@ struct MoneyDashboardView: View {
             } label: {
                 Label(L10n.MoneyDashboard.actionRecordExpense, systemImage: "plus.circle")
             }
+            Button {
+                isShowingSettleUp = true
+            } label: {
+                Label("Saldar cuentas", systemImage: "sparkles")
+            }
+            .disabled(container.moneyStore.settlementPlan.isEmpty)
             Button {
                 isShowingSettlementSheet = true
             } label: {

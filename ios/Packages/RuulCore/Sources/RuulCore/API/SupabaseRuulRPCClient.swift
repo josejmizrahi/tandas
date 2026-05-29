@@ -127,6 +127,19 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func groupSettlementPlanForMember(groupId: UUID, membershipId: UUID) async throws -> [SettlementPlanItem] {
+        let params = GroupSettlementPlanForMemberParams(groupId: groupId, membershipId: membershipId)
+        do {
+            let rows: [SettlementPlanRow] = try await client
+                .rpc("group_settlement_plan_for_member", params: params)
+                .execute()
+                .value
+            return rows.map { $0.toDomain() }
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String] {
         let params = ListMemberPermissionsParams(groupId: groupId, userId: userId)
         do {

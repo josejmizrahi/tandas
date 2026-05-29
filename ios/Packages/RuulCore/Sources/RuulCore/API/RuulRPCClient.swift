@@ -41,6 +41,12 @@ public protocol RuulRPCClient: Sendable {
 
     func memberObligationSummary(groupId: UUID, membershipId: UUID) async throws -> [ObligationSummary]
 
+    /// V3-SE-1 — Splitwise-style "Settle up" plan for the caller. Returns
+    /// one item per peer counterparty with a non-zero netted balance.
+    /// `netAmount > 0` ⇒ caller owes; `< 0` ⇒ counterparty owes caller.
+    /// Excludes pool obligations by doctrine.
+    func groupSettlementPlanForMember(groupId: UUID, membershipId: UUID) async throws -> [SettlementPlanItem]
+
     func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String]
 
     /// `group_members(p_group_id) returns table(...)`. Pre-joined rows

@@ -317,6 +317,20 @@ public struct MemberBalanceParams: Encodable, Sendable {
     }
 }
 
+/// V3-SE-1 — params for `group_settlement_plan_for_member`.
+public struct GroupSettlementPlanForMemberParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pMembershipId: UUID
+    enum CodingKeys: String, CodingKey {
+        case pGroupId      = "p_group_id"
+        case pMembershipId = "p_membership_id"
+    }
+    public init(groupId: UUID, membershipId: UUID) {
+        self.pGroupId = groupId
+        self.pMembershipId = membershipId
+    }
+}
+
 public struct MemberObligationSummaryParams: Encodable, Sendable {
     public let pGroupId: UUID
     public let pMembershipId: UUID

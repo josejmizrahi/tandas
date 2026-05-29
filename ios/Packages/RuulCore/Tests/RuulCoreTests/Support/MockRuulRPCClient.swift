@@ -20,6 +20,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupSummary(groupId: UUID)
         case memberBalance(groupId: UUID, membershipId: UUID)
         case memberObligationSummary(groupId: UUID, membershipId: UUID)
+        case groupSettlementPlanForMember(groupId: UUID, membershipId: UUID)
         case listMemberPermissions(groupId: UUID, userId: UUID?)
         case groupMembers(groupId: UUID)
         case groupMembershipBoundary(groupId: UUID)
@@ -124,6 +125,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     )
     private var memberBalanceStub: Result<Decimal, RuulError> = .success(0)
     private var memberObligationSummaryStub: Result<[ObligationSummary], RuulError> = .success([])
+    private var groupSettlementPlanForMemberStub: Result<[SettlementPlanItem], RuulError> = .success([])
     private var listMemberPermissionsStub: Result<[String], RuulError> = .success([])
     private var groupMembersStub: Result<[MemberListItem], RuulError> = .success([])
     private var groupMembershipBoundaryStub: Result<[MembershipBoundaryItem], RuulError> = .success([])
@@ -272,6 +274,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupSummaryStub(_ stub: Result<CanonicalGroupSummary, RuulError>) { groupSummaryStub = stub }
     func setMemberBalanceStub(_ stub: Result<Decimal, RuulError>) { memberBalanceStub = stub }
     func setMemberObligationSummaryStub(_ stub: Result<[ObligationSummary], RuulError>) { memberObligationSummaryStub = stub }
+    func setGroupSettlementPlanForMemberStub(_ stub: Result<[SettlementPlanItem], RuulError>) { groupSettlementPlanForMemberStub = stub }
     func setListMemberPermissionsStub(_ stub: Result<[String], RuulError>) { listMemberPermissionsStub = stub }
     func setGroupMembersStub(_ stub: Result<[MemberListItem], RuulError>) { groupMembersStub = stub }
     func setGroupMembershipBoundaryStub(_ stub: Result<[MembershipBoundaryItem], RuulError>) { groupMembershipBoundaryStub = stub }
@@ -405,6 +408,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func memberObligationSummary(groupId: UUID, membershipId: UUID) async throws -> [ObligationSummary] {
         recorded.append(.memberObligationSummary(groupId: groupId, membershipId: membershipId))
         return try memberObligationSummaryStub.get()
+    }
+
+    func groupSettlementPlanForMember(groupId: UUID, membershipId: UUID) async throws -> [SettlementPlanItem] {
+        recorded.append(.groupSettlementPlanForMember(groupId: groupId, membershipId: membershipId))
+        return try groupSettlementPlanForMemberStub.get()
     }
 
     func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String] {

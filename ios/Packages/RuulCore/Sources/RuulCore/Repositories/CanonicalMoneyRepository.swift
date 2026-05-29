@@ -47,4 +47,12 @@ public struct CanonicalMoneyRepository: Sendable {
     public func balance(groupId: UUID, membershipId: UUID) async throws -> Decimal {
         try await rpc.memberBalance(groupId: groupId, membershipId: membershipId)
     }
+
+    /// V3-SE-1 — Splitwise-style "Settle up" plan from the caller's
+    /// perspective. Returns one item per peer counterparty with a
+    /// non-zero netted balance. Items are ordered by `|netAmount|`
+    /// descending so the UI shows the biggest knots first.
+    public func settlementPlan(groupId: UUID, membershipId: UUID) async throws -> [SettlementPlanItem] {
+        try await rpc.groupSettlementPlanForMember(groupId: groupId, membershipId: membershipId)
+    }
 }

@@ -115,6 +115,51 @@ extension MemberObligationRow {
     }
 }
 
+// MARK: - V3-SE-1 group_settlement_plan_for_member returns
+// TABLE(counterparty_membership_id, counterparty_display_name,
+//       net_amount numeric, unit text). Decoder is tolerant of
+// numeric-as-string framing from PostgREST.
+
+struct SettlementPlanRow: Decodable {
+    let counterpartyMembershipId: UUID
+    let counterpartyDisplayName: String
+    let netAmount: Decimal
+    let unit: String
+
+    enum CodingKeys: String, CodingKey {
+        case counterpartyMembershipId = "counterparty_membership_id"
+        case counterpartyDisplayName  = "counterparty_display_name"
+        case netAmount                = "net_amount"
+        case unit
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.counterpartyMembershipId = try c.decode(UUID.self, forKey: .counterpartyMembershipId)
+        self.counterpartyDisplayName = try c.decodeIfPresent(String.self, forKey: .counterpartyDisplayName) ?? ""
+        if let asDecimal = try? c.decodeIfPresent(Decimal.self, forKey: .netAmount) {
+            self.netAmount = asDecimal
+        } else if let asString = try c.decodeIfPresent(String.self, forKey: .netAmount),
+                  let parsed = Decimal(string: asString) {
+            self.netAmount = parsed
+        } else {
+            self.netAmount = 0
+        }
+        self.unit = try c.decodeIfPresent(String.self, forKey: .unit) ?? "MXN"
+    }
+}
+
+extension SettlementPlanRow {
+    func toDomain() -> SettlementPlanItem {
+        SettlementPlanItem(
+            counterpartyMembershipId: counterpartyMembershipId,
+            counterpartyDisplayName: counterpartyDisplayName,
+            netAmount: netAmount,
+            unit: unit
+        )
+    }
+}
+
 // MARK: - (legacy GroupRow/MembershipRow DTOs removed — listMyGroups
 // now uses the canonical `list_my_groups()` RPC which returns the
 // pre-flattened ListMyGroupsRow shape; no embedded join is needed.)

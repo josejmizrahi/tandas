@@ -112,6 +112,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     }
     func memberBalance(groupId: UUID, membershipId: UUID) async throws -> Decimal { 0 }
     func memberObligationSummary(groupId: UUID, membershipId: UUID) async throws -> [ObligationSummary] { [] }
+    func groupSettlementPlanForMember(groupId: UUID, membershipId: UUID) async throws -> [SettlementPlanItem] { [] }
     func listMemberPermissions(groupId: UUID, userId: UUID?) async throws -> [String] { [] }
     func groupMembers(groupId: UUID) async throws -> [MemberListItem] { [] }
     func groupMembershipBoundary(groupId: UUID) async throws -> [MembershipBoundaryItem] { [] }

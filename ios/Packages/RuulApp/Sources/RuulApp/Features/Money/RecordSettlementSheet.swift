@@ -10,7 +10,60 @@ struct RecordSettlementSheet: View {
     let container: DependencyContainer
     let groupId: UUID
     let myMembershipId: UUID
+    /// V3-SE-1 — optional prefill so callers (e.g. `SettleUpView`'s
+    /// "Págale $X a Pedro" cards) can preselect the counterparty and
+    /// amount. Default nil keeps the open-from-dashboard flow intact.
+    let prefill: Prefill?
     let onSubmitted: () -> Void
+
+    /// V3-SE-1 prefill payload. `counterpartyId == nil` means "pay the
+    /// pool"; non-nil targets a specific peer member.
+    struct Prefill: Equatable {
+        let counterpartyId: UUID?
+        let counterpartyLabel: String?
+        let amount: Decimal?
+
+        static let pool = Prefill(counterpartyId: nil, counterpartyLabel: nil, amount: nil)
+
+        static func member(id: UUID, label: String, amount: Decimal?) -> Prefill {
+            Prefill(counterpartyId: id, counterpartyLabel: label, amount: amount)
+        }
+    }
+
+    init(
+        container: DependencyContainer,
+        groupId: UUID,
+        myMembershipId: UUID,
+        prefill: Prefill? = nil,
+        onSubmitted: @escaping () -> Void
+    ) {
+        self.container = container
+        self.groupId = groupId
+        self.myMembershipId = myMembershipId
+        self.prefill = prefill
+        self.onSubmitted = onSubmitted
+        // Seed state from prefill where present. Falls through to the
+        // existing defaults (pool, blank amount) when prefill is nil.
+        if let prefill {
+            if let counterpartyId = prefill.counterpartyId {
+                _target = State(initialValue: .member(
+                    id: counterpartyId,
+                    label: prefill.counterpartyLabel ?? "—"
+                ))
+            } else {
+                _target = State(initialValue: .pool)
+            }
+            if let amount = prefill.amount {
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .decimal
+                formatter.maximumFractionDigits = 2
+                formatter.minimumFractionDigits = 0
+                formatter.usesGroupingSeparator = false
+                formatter.locale = Locale(identifier: "es_MX")
+                _amountText = State(initialValue: formatter.string(from: amount as NSNumber) ?? "")
+            }
+        }
+    }
 
     @Environment(\.dismiss) private var dismiss
 
@@ -122,6 +175,11 @@ struct RecordSettlementSheet: View {
     /// One obligation per person can show up multiple times in the store
     /// (e.g. two separate expenses → two rows owed to the same person);
     /// we collapse by membership id so the picker stays tight.
+    ///
+    /// V3-SE-1: when a prefilled counterparty isn't already in the open
+    /// obligations (e.g. the SettleUp plan merged several into a single
+    /// net suggestion), we still surface it so the picker can show the
+    /// preselected option.
     private var memberOptions: [TargetOption] {
         var seen: Set<UUID> = []
         var options: [TargetOption] = []
@@ -130,6 +188,9 @@ struct RecordSettlementSheet: View {
             guard let id = obligation.owedToMembershipId, !seen.contains(id) else { continue }
             seen.insert(id)
             options.append(.member(id: id, label: obligation.owedToLabel))
+        }
+        if let prefill, let prefilledId = prefill.counterpartyId, !seen.contains(prefilledId) {
+            options.insert(.member(id: prefilledId, label: prefill.counterpartyLabel ?? "—"), at: 0)
         }
         return options
     }
