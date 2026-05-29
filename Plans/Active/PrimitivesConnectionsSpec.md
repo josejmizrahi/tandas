@@ -161,6 +161,16 @@
   - `20260529204003 v3_parte3_3_emit_dispute_event_added` — `append_dispute_event` ahora emite `dispute.event_added` a `group_events` (sin tocar el atom privado `group_dispute_events`).
 - **+1 aplicada 2026-05-29 (PARTE 5b — leave_group balance guard)**:
   - `20260529205001 v3_parte5b_leave_group_balance_guard` — `leave_group` ahora asserta `member_balance_in_group=0` antes de delegar a `set_membership_state`. Path de expulsión admin queda intacto (gap doctrinal: la función no cuenta obligations donde el miembro es `owed_to`).
+- **+2 aplicadas 2026-05-29 (PARTE 7 — governance versioning)**:
+  - `20260529210001 v3_parte7_a_group_governance_versions_table` — nuevo atom append-only `group_governance_versions` (id, group_id, snapshot jsonb, effective_from, effective_until, set_by, source_decision_id). UNIQUE partial index "una versión activa por grupo". Partial atom guard solo permite mutar `effective_until`. Atom no-delete guard.
+  - `20260529210002 v3_parte7_b_set_decision_rules_writes_version` — ambas overloads (legacy 4-arg + modern 6-arg) ahora cierran versión previa (`effective_until=now()`) + insertan nueva fila + augmentan payload de `decision_rules.set` con `version_id` para reverse-link. `source_decision_id` queda NULL en path admin directo; lo llevará el handler `governance_change` de `finalize_vote` cuando PARTE 4 aterrice.
+
+**Smokes PARTE 7 verdes** (5/5):
+- 2 calls consecutivos → 2 versions, primera con `effective_until` cerrado, segunda activa ✓
+- UPDATE snapshot directo → bloqueado (partial guard) ✓
+- DELETE directo → bloqueado (atom no-delete) ✓
+- Eventos `decision_rules.set` carry `version_id` (reverse-link a snapshot) ✓
+- INSERT paralelo activo → bloqueado por UNIQUE partial index ✓
 
 **Re-audit §0.6 post-PARTE 3**: el catálogo "eventos declarados pero NO emitidos" era parcialmente falso. Lo único que faltaba realmente eran las 3 RPCs zero-emit ya cerradas. Los demás (`dispute.escalated`, `rule.published`, `mandate.granted/revoked`, `money.transaction_reversed`, `dissolution.proposed/finalized`, `resource.ownership_changed`, `dispute.resolved`) **ya están en código** — solo no aparecen en data dev porque no se han ejercido en tests. **Doctrinales pendientes (no slices mecánicos)**:
 - `sanction.paid` vs `sanction.completed` actual: `update_sanction_status` emite `sanction.<new_status>` dinámico (`sanction.completed/reversed/cancelled`); el doc pide `sanction.paid` separado. Decisión: ¿rename `completed` → `paid` cuando origen es settlement? ¿O emit alias?
