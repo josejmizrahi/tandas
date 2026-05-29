@@ -16,6 +16,30 @@ struct AcceptInviteRow: Decodable {
     }
 }
 
+// MARK: - V3-INV invite_member returns TABLE(invite_id, code, placeholder_membership_id)
+
+struct InviteMemberRow: Decodable {
+    let inviteId: UUID
+    let code: String
+    let placeholderMembershipId: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case inviteId                 = "invite_id"
+        case code
+        case placeholderMembershipId  = "placeholder_membership_id"
+    }
+}
+
+extension InviteMemberRow {
+    func toDomain() -> InviteCreated {
+        InviteCreated(
+            inviteId: inviteId,
+            code: code,
+            placeholderMembershipId: placeholderMembershipId
+        )
+    }
+}
+
 // MARK: - record_settlement returns TABLE(settlement_id, transaction_id)
 
 struct RecordSettlementRow: Decodable {

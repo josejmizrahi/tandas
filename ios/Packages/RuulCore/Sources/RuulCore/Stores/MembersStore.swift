@@ -150,17 +150,21 @@ public final class MembersStore {
         await refresh(groupId: groupId)
     }
 
-    public func inviteMember(groupId: UUID) async -> Bool {
-        guard canSubmitInvite else { return false }
+    /// V3-INV: returns the freshly created invite (with its shareable
+    /// code) so the calling sheet can route the user into share/copy
+    /// flows. Returns nil if the form is invalid or the repository was
+    /// not configured (preview mode).
+    public func inviteMember(groupId: UUID) async -> InviteCreated? {
+        guard canSubmitInvite else { return nil }
         guard let repository else {
             clearInviteForm()
-            return true
+            return nil
         }
         let email = inviteEmail.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
         let phone = invitePhone.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
         let message = inviteMessage.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
         do {
-            _ = try await repository.inviteMember(
+            let created = try await repository.inviteMember(
                 groupId: groupId,
                 email: email,
                 phone: phone,
@@ -168,6 +172,21 @@ public final class MembersStore {
                 message: message
             )
             clearInviteForm()
+            await refresh(groupId: groupId)
+            return created
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return nil
+        }
+    }
+
+    /// V3-INV: cancel a pending invitation. Refreshes the boundary list
+    /// on success so the revoked row drops out of `items`. Returns false
+    /// on server error (typically: invite has open obligations).
+    public func revokeInvite(inviteId: UUID, groupId: UUID, reason: String? = nil) async -> Bool {
+        guard let repository else { return true }
+        do {
+            try await repository.revokeInvite(inviteId: inviteId, reason: reason)
             await refresh(groupId: groupId)
             return true
         } catch {

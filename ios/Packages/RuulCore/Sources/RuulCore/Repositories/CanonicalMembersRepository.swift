@@ -31,15 +31,17 @@ public struct CanonicalMembersRepository: Sendable {
         try await rpc.groupMembershipBoundary(groupId: groupId)
     }
 
-    /// Forwards the invite to `CanonicalInviteRepository`. Returns the
-    /// new `group_invites.id` so callers can correlate UI flows.
+    /// Forwards the invite to `CanonicalInviteRepository`. V3-INV: now
+    /// returns the full `InviteCreated` (invite id + shareable code +
+    /// placeholder membership id) so the UI can drop the user into a
+    /// share/copy flow right after sending.
     public func inviteMember(
         groupId: UUID,
         email: String?,
         phone: String?,
         membershipType: MembershipType,
         message: String?
-    ) async throws -> UUID {
+    ) async throws -> InviteCreated {
         try await invites.inviteMember(
             groupId: groupId,
             email: email,
@@ -47,6 +49,11 @@ public struct CanonicalMembersRepository: Sendable {
             membershipType: membershipType.rawValue,
             message: message
         )
+    }
+
+    /// V3-INV: cancel a pending invitation.
+    public func revokeInvite(inviteId: UUID, reason: String? = nil) async throws {
+        try await invites.revokeInvite(inviteId: inviteId, reason: reason)
     }
 
     /// Wraps `set_membership_state`. Permission gating is server-side:

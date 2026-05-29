@@ -26,7 +26,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                              email: String?,
                              phone: String?,
                              membershipType: String,
-                             message: String?) async throws -> UUID {
+                             message: String?) async throws -> InviteCreated {
         let params = InviteMemberParams(
             groupId: groupId,
             email: email,
@@ -34,7 +34,16 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             membershipType: membershipType,
             message: message
         )
-        return try await callReturningUUID("invite_member", params: params)
+        let rows: [InviteMemberRow] = try await callReturningArray("invite_member", params: params)
+        guard let row = rows.first else {
+            throw RuulError.unexpected(message: "invite_member returned no rows")
+        }
+        return row.toDomain()
+    }
+
+    public func revokeInvite(inviteId: UUID, reason: String?) async throws {
+        let params = RevokeInviteParams(inviteId: inviteId, reason: reason)
+        try await callVoid("revoke_invite", params: params)
     }
 
     public func acceptInvite(code: String) async throws -> AcceptInviteResult {

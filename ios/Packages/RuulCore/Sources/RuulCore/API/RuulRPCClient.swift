@@ -15,11 +15,19 @@ public protocol RuulRPCClient: Sendable {
                      category: String?,
                      purposeDeclared: String?) async throws -> UUID
 
+    /// V3-INV: returns the created invite + its shareable code so the
+    /// UI can show / copy / share it. Replaces the previous UUID-only
+    /// return shape.
     func inviteMember(groupId: UUID,
                       email: String?,
                       phone: String?,
                       membershipType: String,
-                      message: String?) async throws -> UUID
+                      message: String?) async throws -> InviteCreated
+
+    /// V3-INV: cancel a pending invitation. Authorized to the original
+    /// inviter or anyone with `members.invite`. Backend blocks if the
+    /// linked placeholder membership has open obligations.
+    func revokeInvite(inviteId: UUID, reason: String?) async throws
 
     func acceptInvite(code: String) async throws -> AcceptInviteResult
 

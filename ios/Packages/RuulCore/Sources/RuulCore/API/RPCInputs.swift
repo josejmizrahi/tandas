@@ -108,6 +108,20 @@ public struct InviteMemberParams: Encodable, Sendable {
     }
 }
 
+/// V3-INV — params for `revoke_invite(p_invite_id, p_reason)`.
+public struct RevokeInviteParams: Encodable, Sendable {
+    public let pInviteId: UUID
+    public let pReason: String?
+    enum CodingKeys: String, CodingKey {
+        case pInviteId = "p_invite_id"
+        case pReason   = "p_reason"
+    }
+    public init(inviteId: UUID, reason: String? = nil) {
+        self.pInviteId = inviteId
+        self.pReason = reason
+    }
+}
+
 public struct AcceptInviteParams: Encodable, Sendable {
     public let pCode: String
     enum CodingKeys: String, CodingKey { case pCode = "p_code" }

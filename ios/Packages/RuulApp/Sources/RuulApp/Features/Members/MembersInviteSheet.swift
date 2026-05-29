@@ -105,8 +105,12 @@ public struct MembersInviteSheet: View {
     private func submit() async {
         isSubmitting = true
         defer { isSubmitting = false }
-        let success = await store.inviteMember(groupId: groupId)
-        if success { dismiss() }
+        // V3-INV: invite now returns the shareable code. The store
+        // continues to clear the form on success; we just dismiss the
+        // sheet so the MembersListView can surface the new "Invitado"
+        // row. The share/copy affordance lives on InviteMemberSheet
+        // (the standalone Invites flow), not here.
+        if await store.inviteMember(groupId: groupId) != nil { dismiss() }
     }
 }
 

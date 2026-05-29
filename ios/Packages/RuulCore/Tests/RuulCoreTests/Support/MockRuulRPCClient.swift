@@ -12,6 +12,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     enum RecordedCall: Sendable, Equatable {
         case createGroup(name: String, slug: String?, category: String?, purposeDeclared: String?)
         case inviteMember(groupId: UUID, email: String?, phone: String?, membershipType: String, message: String?)
+        case revokeInvite(inviteId: UUID, reason: String?)
         case acceptInvite(code: String)
         case leaveGroup(groupId: UUID, reason: String?)
         case recordExpense(draft: ExpenseDraft, clientId: String?)
@@ -110,7 +111,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     // MARK: - Stubs
 
     private var createGroupStub: Result<UUID, RuulError> = .success(UUID())
-    private var inviteMemberStub: Result<UUID, RuulError> = .success(UUID())
+    private var inviteMemberStub: Result<InviteCreated, RuulError> = .success(
+        InviteCreated(inviteId: UUID(), code: "STUBSTUB", placeholderMembershipId: UUID())
+    )
+    private var revokeInviteStub: Result<Void, RuulError> = .success(())
     private var acceptInviteStub: Result<AcceptInviteResult, RuulError> = .success(
         AcceptInviteResult(groupId: UUID(), membershipId: UUID())
     )
@@ -265,7 +269,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     // MARK: - Stub setters
 
     func setCreateGroupStub(_ stub: Result<UUID, RuulError>) { createGroupStub = stub }
-    func setInviteMemberStub(_ stub: Result<UUID, RuulError>) { inviteMemberStub = stub }
+    func setInviteMemberStub(_ stub: Result<InviteCreated, RuulError>) { inviteMemberStub = stub }
+    func setRevokeInviteStub(_ stub: Result<Void, RuulError>) { revokeInviteStub = stub }
     func setAcceptInviteStub(_ stub: Result<AcceptInviteResult, RuulError>) { acceptInviteStub = stub }
     func setLeaveGroupStub(_ stub: Result<Void, RuulError>) { leaveGroupStub = stub }
     func setRecordExpenseStub(_ stub: Result<UUID, RuulError>) { recordExpenseStub = stub }
@@ -365,9 +370,14 @@ final actor MockRuulRPCClient: RuulRPCClient {
         return try createGroupStub.get()
     }
 
-    func inviteMember(groupId: UUID, email: String?, phone: String?, membershipType: String, message: String?) async throws -> UUID {
+    func inviteMember(groupId: UUID, email: String?, phone: String?, membershipType: String, message: String?) async throws -> InviteCreated {
         recorded.append(.inviteMember(groupId: groupId, email: email, phone: phone, membershipType: membershipType, message: message))
         return try inviteMemberStub.get()
+    }
+
+    func revokeInvite(inviteId: UUID, reason: String?) async throws {
+        recorded.append(.revokeInvite(inviteId: inviteId, reason: reason))
+        try revokeInviteStub.get()
     }
 
     func acceptInvite(code: String) async throws -> AcceptInviteResult {

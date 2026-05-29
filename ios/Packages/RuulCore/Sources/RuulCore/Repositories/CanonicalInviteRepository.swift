@@ -11,17 +11,16 @@ public struct CanonicalInviteRepository: Sendable {
         self.rpc = rpc
     }
 
-    /// `invite_member(p_group_id, p_email, p_phone, p_membership_type, p_message)`
-    /// → returns the new invite id. Exactly one of `email` or `phone`
-    /// must be non-nil; the backend raises `invite requires email or phone`
-    /// otherwise, which maps to `.inviteRequiresEmailOrPhone`.
+    /// V3-INV: `invite_member` → returns the created invite + its
+    /// shareable code + placeholder membership id. Exactly one of
+    /// `email` or `phone` must be non-nil.
     public func inviteMember(
         groupId: UUID,
         email: String? = nil,
         phone: String? = nil,
         membershipType: String = "member",
         message: String? = nil
-    ) async throws -> UUID {
+    ) async throws -> InviteCreated {
         try await rpc.inviteMember(
             groupId: groupId,
             email: email,
@@ -29,6 +28,14 @@ public struct CanonicalInviteRepository: Sendable {
             membershipType: membershipType,
             message: message
         )
+    }
+
+    /// V3-INV: `revoke_invite` cancels a pending invitation. Authorized
+    /// to the original inviter or anyone with `members.invite`. Backend
+    /// blocks if the placeholder membership has any open obligations
+    /// (peer-to-peer or pool).
+    public func revokeInvite(inviteId: UUID, reason: String? = nil) async throws {
+        try await rpc.revokeInvite(inviteId: inviteId, reason: reason)
     }
 
     /// `accept_invite(p_code)` → returns the joined group id + the new

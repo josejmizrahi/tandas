@@ -99,7 +99,10 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
 
     // The rest of the protocol — previews never invoke these.
     func createGroup(name: String, slug: String?, category: String?, purposeDeclared: String?) async throws -> UUID { UUID() }
-    func inviteMember(groupId: UUID, email: String?, phone: String?, membershipType: String, message: String?) async throws -> UUID { UUID() }
+    func inviteMember(groupId: UUID, email: String?, phone: String?, membershipType: String, message: String?) async throws -> InviteCreated {
+        InviteCreated(inviteId: UUID(), code: "PREVIEW1", placeholderMembershipId: UUID())
+    }
+    func revokeInvite(inviteId: UUID, reason: String?) async throws {}
     func acceptInvite(code: String) async throws -> AcceptInviteResult { .init(groupId: UUID(), membershipId: UUID()) }
     func leaveGroup(groupId: UUID, reason: String?) async throws {}
     func recordExpense(_ draft: ExpenseDraft, clientId: String?) async throws -> UUID { UUID() }
