@@ -155,6 +155,15 @@
   - `20260529203228 v2_g4_1_sanction_payment_status_rpc` — disk file `20260529030000_…sql` sin drift.
   - `20260529203312 v2_g4_2_sanction_payment_plans` — disk file `20260529040000_…sql` (fix drift signature `record_system_event`: 5 args posicionales → named arg con `p_payload =>`).
   - `20260529203431 v3_parte1_profiles_rls_self_or_co_member` — disk file homónimo (PARTE 1: drop `profiles_select_authenticated`, create policy self-or-co-member).
+- **+3 aplicadas 2026-05-29 (PARTE 3 — gaps puros)**:
+  - `20260529204001 v3_parte3_1_emit_role_granted_event` — `assign_role_to_member` ahora emite `role.granted` a `group_events`.
+  - `20260529204002 v3_parte3_2_emit_role_revoked_event` — `revoke_role_from_member` ahora emite `role.revoked` a `group_events`.
+  - `20260529204003 v3_parte3_3_emit_dispute_event_added` — `append_dispute_event` ahora emite `dispute.event_added` a `group_events` (sin tocar el atom privado `group_dispute_events`).
+
+**Re-audit §0.6 post-PARTE 3**: el catálogo "eventos declarados pero NO emitidos" era parcialmente falso. Lo único que faltaba realmente eran las 3 RPCs zero-emit ya cerradas. Los demás (`dispute.escalated`, `rule.published`, `mandate.granted/revoked`, `money.transaction_reversed`, `dissolution.proposed/finalized`, `resource.ownership_changed`, `dispute.resolved`) **ya están en código** — solo no aparecen en data dev porque no se han ejercido en tests. **Doctrinales pendientes (no slices mecánicos)**:
+- `sanction.paid` vs `sanction.completed` actual: `update_sanction_status` emite `sanction.<new_status>` dinámico (`sanction.completed/reversed/cancelled`); el doc pide `sanction.paid` separado. Decisión: ¿rename `completed` → `paid` cuando origen es settlement? ¿O emit alias?
+- `mandate.used`: no hay emisor; el FK guard `assert_mandate_authorizes` corre por cada uso pero no emite. ¿Vale la inflación del log?
+- `member.left` vs `member.expelled` vs el actual `member.state_changed`: ¿split por motivo o mantener un solo event con `new_state` en payload?
 
 **Resultado**:
 - BD vivo: 101 migs.
