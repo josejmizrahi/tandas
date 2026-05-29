@@ -121,6 +121,7 @@ public struct GroupTabsHost: View {
             MembersListView(
                 store: container.membersStore,
                 groupId: group.id,
+                container: container,
                 onSelectMember: { item in
                     pendingMemberSelection = item
                 }

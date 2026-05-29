@@ -13,12 +13,20 @@ public struct MembersListView: View {
     /// destination without coupling this view to the route registry.
     /// Pending invites stay non-tappable.
     let onSelectMember: ((MembershipBoundaryItem) -> Void)?
+    /// V3-INV: when set, the "Invitar" button presents the canonical
+    /// `InviteMemberSheet` (Contacts picker + ShareLink + code reveal).
+    /// When nil — used by SwiftUI previews / tests — falls back to the
+    /// store-bound `MembersInviteSheet` so callers without a container
+    /// keep working.
+    let container: DependencyContainer?
 
     public init(store: MembersStore,
                 groupId: UUID,
+                container: DependencyContainer? = nil,
                 onSelectMember: ((MembershipBoundaryItem) -> Void)? = nil) {
         self.store = store
         self.groupId = groupId
+        self.container = container
         self.onSelectMember = onSelectMember
     }
 
@@ -42,7 +50,18 @@ public struct MembersListView: View {
             }
         }
         .sheet(isPresented: $store.isInviteSheetPresented) {
-            MembersInviteSheet(store: store, groupId: groupId)
+            if let container {
+                InviteMemberSheet(
+                    container: container,
+                    groupId: groupId
+                ) {
+                    store.isInviteSheetPresented = false
+                    Task { await store.refresh(groupId: groupId) }
+                }
+            }
+            // SwiftUI previews that omit `container` see a no-op
+            // toolbar button — the production app always passes a
+            // container so the canonical sheet always presents.
         }
         .task {
             await store.refreshIfNeeded(groupId: groupId)
