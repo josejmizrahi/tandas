@@ -36,6 +36,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupRuleEvaluationSummary(groupId: UUID, windowHours: Int)
         case systemEventEngineProvenance(eventUuid: UUID)
         case groupSanctionPaymentStatus(sanctionId: UUID)
+        case proposeSanctionPaymentPlan(input: ProposeSanctionPaymentPlanParams)
+        case cancelSanctionPaymentPlan(input: CancelSanctionPaymentPlanParams)
+        case groupSanctionPaymentPlanActive(sanctionId: UUID)
         case groupResourcesActive(groupId: UUID)
         case createGroupResource(input: CreateGroupResourceInput)
         case archiveGroupResource(input: ArchiveGroupResourceInput)
@@ -157,6 +160,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
             obligationStatus: "no_obligation",
             sanctionStatus: "active"
         )
+    )
+    private var proposeSanctionPaymentPlanStub: Result<UUID, RuulError> = .success(UUID())
+    private var cancelSanctionPaymentPlanStub: Result<Void, RuulError> = .success(())
+    private var groupSanctionPaymentPlanActiveStub: Result<SanctionPaymentPlan, RuulError> = .success(
+        SanctionPaymentPlan(active: false)
     )
     private var groupResourcesActiveStub: Result<[GroupResource], RuulError> = .success([])
     private var createGroupResourceStub: Result<GroupResource, RuulError> = .success(
@@ -280,6 +288,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupRuleEvaluationSummaryStub(_ stub: Result<GroupRuleEvaluationSummary, RuulError>) { groupRuleEvaluationSummaryStub = stub }
     func setSystemEventEngineProvenanceStub(_ stub: Result<SystemEventProvenance, RuulError>) { systemEventEngineProvenanceStub = stub }
     func setGroupSanctionPaymentStatusStub(_ stub: Result<SanctionPaymentStatus, RuulError>) { groupSanctionPaymentStatusStub = stub }
+    func setProposeSanctionPaymentPlanStub(_ stub: Result<UUID, RuulError>) { proposeSanctionPaymentPlanStub = stub }
+    func setCancelSanctionPaymentPlanStub(_ stub: Result<Void, RuulError>) { cancelSanctionPaymentPlanStub = stub }
+    func setGroupSanctionPaymentPlanActiveStub(_ stub: Result<SanctionPaymentPlan, RuulError>) { groupSanctionPaymentPlanActiveStub = stub }
     func setGroupResourcesActiveStub(_ stub: Result<[GroupResource], RuulError>) { groupResourcesActiveStub = stub }
     func setCreateGroupResourceStub(_ stub: Result<GroupResource, RuulError>) { createGroupResourceStub = stub }
     func setArchiveGroupResourceStub(_ stub: Result<Void, RuulError>) { archiveGroupResourceStub = stub }
@@ -474,6 +485,21 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
         recorded.append(.groupSanctionPaymentStatus(sanctionId: sanctionId))
         return try groupSanctionPaymentStatusStub.get()
+    }
+
+    func proposeSanctionPaymentPlan(_ input: ProposeSanctionPaymentPlanParams) async throws -> UUID {
+        recorded.append(.proposeSanctionPaymentPlan(input: input))
+        return try proposeSanctionPaymentPlanStub.get()
+    }
+
+    func cancelSanctionPaymentPlan(_ input: CancelSanctionPaymentPlanParams) async throws {
+        recorded.append(.cancelSanctionPaymentPlan(input: input))
+        try cancelSanctionPaymentPlanStub.get()
+    }
+
+    func groupSanctionPaymentPlanActive(sanctionId: UUID) async throws -> SanctionPaymentPlan {
+        recorded.append(.groupSanctionPaymentPlanActive(sanctionId: sanctionId))
+        return try groupSanctionPaymentPlanActiveStub.get()
     }
 
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {

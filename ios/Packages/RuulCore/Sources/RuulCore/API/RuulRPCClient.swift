@@ -145,6 +145,25 @@ public protocol RuulRPCClient: Sendable {
         sanctionId: UUID
     ) async throws -> SanctionPaymentStatus
 
+    /// `propose_sanction_payment_plan(...)` — V2-G4.2 self-party only
+    /// (target of the sanction). Auto-active al propose. No cron
+    /// auto-debit yet (V3) — el plan es guía + tracking.
+    func proposeSanctionPaymentPlan(
+        _ input: ProposeSanctionPaymentPlanParams
+    ) async throws -> UUID
+
+    /// `cancel_sanction_payment_plan(p_plan_id, p_reason)` — V2-G4.2
+    /// target O admin con `sanction.review`.
+    func cancelSanctionPaymentPlan(
+        _ input: CancelSanctionPaymentPlanParams
+    ) async throws
+
+    /// `group_sanction_payment_plan_active(p_sanction_id)` — V2-G4.2
+    /// read RPC. `active=false` cuando no hay plan vivo.
+    func groupSanctionPaymentPlanActive(
+        sanctionId: UUID
+    ) async throws -> SanctionPaymentPlan
+
     // MARK: - Resources
 
     /// `group_resources_active(p_group_id)` — active resource envelopes

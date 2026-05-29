@@ -337,6 +337,45 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func proposeSanctionPaymentPlan(
+        _ input: ProposeSanctionPaymentPlanParams
+    ) async throws -> UUID {
+        do {
+            return try await client
+                .rpc("propose_sanction_payment_plan", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func cancelSanctionPaymentPlan(
+        _ input: CancelSanctionPaymentPlanParams
+    ) async throws {
+        do {
+            try await client
+                .rpc("cancel_sanction_payment_plan", params: input)
+                .execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func groupSanctionPaymentPlanActive(
+        sanctionId: UUID
+    ) async throws -> SanctionPaymentPlan {
+        let params = GroupSanctionPaymentStatusParams(sanctionId: sanctionId)
+        do {
+            return try await client
+                .rpc("group_sanction_payment_plan_active", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Resources
 
     public func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {

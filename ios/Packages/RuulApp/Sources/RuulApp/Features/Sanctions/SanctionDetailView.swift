@@ -20,6 +20,10 @@ public struct SanctionDetailView: View {
     @State private var pendingPaySanction: GroupSanction?
     /// V2-G4.1 — payment progress hidratado on appear.
     @State private var paymentStatus: SanctionPaymentStatus?
+    /// V2-G4.2 — active payment plan, or nil if none.
+    @State private var paymentPlan: SanctionPaymentPlan?
+    @State private var isShowingProposePlan: Bool = false
+    @State private var isCancellingPlan: Bool = false
 
     public init(
         container: DependencyContainer,
@@ -39,6 +43,7 @@ public struct SanctionDetailView: View {
             heroSection
             infoSection
             progressSection
+            paymentPlanSection
             paymentHistorySection
             actionsSection
         }
@@ -57,6 +62,18 @@ public struct SanctionDetailView: View {
                     await container.moneyStore.refresh(groupId: groupId, membershipId: myMembershipId)
                     await container.sanctionsStore.refresh(groupId: groupId)
                     await loadPaymentStatus()
+                }
+            }
+        }
+        .sheet(isPresented: $isShowingProposePlan) {
+            if let status = paymentStatus, status.amountOutstanding > 0 {
+                ProposePaymentPlanSheet(
+                    container: container,
+                    sanction: sanction,
+                    paymentStatus: status
+                ) {
+                    isShowingProposePlan = false
+                    Task { await loadPaymentStatus() }
                 }
             }
         }
@@ -224,10 +241,121 @@ public struct SanctionDetailView: View {
     }
 
     private func loadPaymentStatus() async {
+        async let status = container.sanctionsRepository.paymentStatus(sanctionId: sanction.id)
+        async let plan = container.sanctionsRepository.paymentPlan(sanctionId: sanction.id)
         do {
-            paymentStatus = try await container.sanctionsRepository.paymentStatus(sanctionId: sanction.id)
+            paymentStatus = try await status
         } catch {
-            // Silent — payment section es chrome no-crítico.
+            // Silent — chrome no-crítico.
+        }
+        do {
+            paymentPlan = try await plan
+        } catch {
+            // Silent.
+        }
+    }
+
+    // MARK: - Payment plan (V2-G4.2)
+
+    @ViewBuilder
+    private var paymentPlanSection: some View {
+        if let plan = paymentPlan, plan.active,
+           let installments = plan.installments,
+           let installmentAmount = plan.installmentAmount {
+            Section("Plan de pago") {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Cuotas")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(plan.installmentsPaid ?? 0)/\(installments)")
+                            .font(.subheadline.monospacedDigit())
+                    }
+                    ProgressView(value: plan.progress)
+                        .tint(plan.isOverdue ? .red : .accentColor)
+                    HStack {
+                        Text("Cada cuota")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(formatAmount(installmentAmount))
+                            .font(.caption.monospacedDigit())
+                    }
+                    if let nextDue = plan.nextDueAt {
+                        HStack {
+                            Image(systemName: plan.isOverdue ? "clock.badge.exclamationmark" : "clock")
+                                .foregroundStyle(plan.isOverdue ? .red : .secondary)
+                            Text(plan.isOverdue ? "Cuota vencida el" : "Próxima cuota")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(nextDue, format: .dateTime.day().month().year())
+                                .font(.caption.monospacedDigit())
+                        }
+                    } else {
+                        Label("Plan completado", systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                    if let notes = plan.notes, !notes.isEmpty {
+                        Text(notes)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 2)
+                    }
+                }
+                .padding(.vertical, 4)
+
+                if canManageThisPlan(plan) {
+                    Button(role: .destructive) {
+                        Task { await cancelPlan(plan) }
+                    } label: {
+                        if isCancellingPlan {
+                            ProgressView()
+                        } else {
+                            Label("Cancelar plan", systemImage: "xmark.circle")
+                        }
+                    }
+                    .disabled(isCancellingPlan)
+                }
+            }
+        } else if shouldOfferProposePlan {
+            Section("Plan de pago") {
+                Button {
+                    isShowingProposePlan = true
+                } label: {
+                    Label("Proponer plan en cuotas", systemImage: "calendar.badge.plus")
+                }
+            }
+        }
+    }
+
+    private var shouldOfferProposePlan: Bool {
+        guard sanction.targetMembershipId == myMembershipId,
+              sanction.status.isOpen,
+              let status = paymentStatus,
+              status.amountOutstanding > 0
+        else { return false }
+        return true
+    }
+
+    private func canManageThisPlan(_ plan: SanctionPaymentPlan) -> Bool {
+        // Target can always cancel its own plan. Admin path uses
+        // assert_permission server-side; surface stays target-only
+        // hasta exponer permission check (V3).
+        sanction.targetMembershipId == myMembershipId
+    }
+
+    private func cancelPlan(_ plan: SanctionPaymentPlan) async {
+        guard let planId = plan.planId else { return }
+        isCancellingPlan = true
+        defer { isCancellingPlan = false }
+        do {
+            try await container.sanctionsRepository.cancelPaymentPlan(planId: planId, reason: nil)
+            await loadPaymentStatus()
+        } catch {
+            // Silent for V2-G4.2 — V3 surfaces error toast.
         }
     }
 

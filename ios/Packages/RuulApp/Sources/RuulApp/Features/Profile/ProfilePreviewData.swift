@@ -149,6 +149,11 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
             sanctionStatus: "active"
         )
     }
+    func proposeSanctionPaymentPlan(_ input: ProposeSanctionPaymentPlanParams) async throws -> UUID { UUID() }
+    func cancelSanctionPaymentPlan(_ input: CancelSanctionPaymentPlanParams) async throws {}
+    func groupSanctionPaymentPlanActive(sanctionId: UUID) async throws -> SanctionPaymentPlan {
+        SanctionPaymentPlan(active: false)
+    }
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] { [] }
     func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
         GroupResource(id: UUID(), groupId: input.pGroupId, resourceType: .other, name: input.pName)

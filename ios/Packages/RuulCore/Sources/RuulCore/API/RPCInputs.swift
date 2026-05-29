@@ -500,6 +500,45 @@ public struct GroupSanctionPaymentStatusParams: Encodable, Sendable, Equatable {
     }
 }
 
+public struct ProposeSanctionPaymentPlanParams: Encodable, Sendable, Equatable {
+    public let pSanctionId: UUID
+    public let pInstallments: Int
+    public let pFirstDueAt: Date
+    public let pIntervalDays: Int
+    public let pNotes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pSanctionId   = "p_sanction_id"
+        case pInstallments = "p_installments"
+        case pFirstDueAt   = "p_first_due_at"
+        case pIntervalDays = "p_interval_days"
+        case pNotes        = "p_notes"
+    }
+
+    public init(sanctionId: UUID, installments: Int, firstDueAt: Date, intervalDays: Int = 30, notes: String? = nil) {
+        self.pSanctionId = sanctionId
+        self.pInstallments = installments
+        self.pFirstDueAt = firstDueAt
+        self.pIntervalDays = intervalDays
+        self.pNotes = notes
+    }
+}
+
+public struct CancelSanctionPaymentPlanParams: Encodable, Sendable, Equatable {
+    public let pPlanId: UUID
+    public let pReason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pPlanId = "p_plan_id"
+        case pReason = "p_reason"
+    }
+
+    public init(planId: UUID, reason: String? = nil) {
+        self.pPlanId = planId
+        self.pReason = reason
+    }
+}
+
 public struct CreateEngineRuleInput: Encodable, Sendable, Equatable {
     public let pGroupId: UUID
     public let pTitle: String

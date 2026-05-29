@@ -52,4 +52,35 @@ public struct CanonicalSanctionsRepository: Sendable {
     public func paymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
         try await rpc.groupSanctionPaymentStatus(sanctionId: sanctionId)
     }
+
+    /// V2-G4.2 — active payment plan for a sanction, if any.
+    public func paymentPlan(sanctionId: UUID) async throws -> SanctionPaymentPlan {
+        try await rpc.groupSanctionPaymentPlanActive(sanctionId: sanctionId)
+    }
+
+    /// V2-G4.2 — target proposes a plan. Auto-active al backend.
+    public func proposePaymentPlan(
+        sanctionId: UUID,
+        installments: Int,
+        firstDueAt: Date,
+        intervalDays: Int = 30,
+        notes: String? = nil
+    ) async throws -> UUID {
+        try await rpc.proposeSanctionPaymentPlan(
+            ProposeSanctionPaymentPlanParams(
+                sanctionId: sanctionId,
+                installments: installments,
+                firstDueAt: firstDueAt,
+                intervalDays: intervalDays,
+                notes: notes
+            )
+        )
+    }
+
+    /// V2-G4.2 — cancel an active plan. Target or admin.
+    public func cancelPaymentPlan(planId: UUID, reason: String? = nil) async throws {
+        try await rpc.cancelSanctionPaymentPlan(
+            CancelSanctionPaymentPlanParams(planId: planId, reason: reason)
+        )
+    }
 }
