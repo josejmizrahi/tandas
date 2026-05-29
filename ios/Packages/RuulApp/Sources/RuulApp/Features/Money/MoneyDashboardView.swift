@@ -134,9 +134,16 @@ struct MoneyDashboardView: View {
         }
     }
 
+    /// V3 Batch B-2 slice 4 — hero "2 worlds" split (doctrine_money_two_worlds).
+    /// El single net balance pre-slice mezclaba pool side y peer side, que
+    /// son socialmente distintos. Ahora el hero muestra:
+    /// - Balance canónico arriba (siempre visible, autoridad)
+    /// - "Con el grupo: $X" descompuesto = balance - peer_net
+    /// - "Entre miembros: $Y" descompuesto = sum signed settlementPlan
+    /// Each line ocultada cuando vale 0 (situational).
     @ViewBuilder
     private var heroCard: some View {
-        VStack(alignment: .center, spacing: 8) {
+        VStack(alignment: .center, spacing: 10) {
             Text(heroLabel)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -144,11 +151,69 @@ struct MoneyDashboardView: View {
                 .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                 .monospacedDigit()
                 .foregroundStyle(heroColor)
+            // Split breakdown — solo cuando hay valor real en ambos
+            // lados o cuando solo uno es no-cero (para evitar mostrar
+            // dos ceros redundantes).
+            if showsSplit {
+                Divider().padding(.horizontal, 40)
+                HStack(alignment: .top, spacing: 24) {
+                    splitColumn(
+                        label: "Con el grupo",
+                        amount: poolSideAmount,
+                        icon: "building.columns"
+                    )
+                    splitColumn(
+                        label: "Entre miembros",
+                        amount: peerSideAmount,
+                        icon: "person.2"
+                    )
+                }
+                .padding(.top, 2)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func splitColumn(label: String, amount: Decimal, icon: String) -> some View {
+        VStack(alignment: .center, spacing: 4) {
+            Label {
+                Text(label).font(.caption).foregroundStyle(.secondary)
+            } icon: {
+                Image(systemName: icon).font(.caption).foregroundStyle(.secondary)
+            }
+            Text(amount, format: .currency(code: "MXN"))
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(colorFor(amount: amount))
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var heroAmount: Decimal {
         container.moneyStore.balance ?? 0
+    }
+
+    /// Suma signed del settlementPlan (ya excluye pool por doctrina).
+    /// Positivo cuando el caller debe net a peers, negativo cuando peers
+    /// le deben net.
+    private var peerSideAmount: Decimal {
+        container.moneyStore.settlementPlan.reduce(Decimal(0)) { acc, item in
+            // .youOwe es positivo en netAmount (caller debe), .theyOwe
+            // es negativo (peer debe). Mantenemos el signo del balance:
+            // perspective is "what I owe net" so .youOwe debit, .theyOwe credit.
+            acc - item.netAmount  // invertimos porque queremos perspective "tengo X"
+        }
+    }
+
+    /// Pool side = balance canónico − peer side. Equivalencia:
+    /// pool + peer = balance (descomposición sin pérdida de información).
+    private var poolSideAmount: Decimal {
+        heroAmount - peerSideAmount
+    }
+
+    /// Visible solo cuando vale la pena descomponer: al menos un lado
+    /// no-cero. Si ambos son 0 (caller perfectly settled), invisible.
+    private var showsSplit: Bool {
+        peerSideAmount != 0 || poolSideAmount != 0
     }
 
     private var heroLabel: LocalizedStringResource {
@@ -165,6 +230,11 @@ struct MoneyDashboardView: View {
         guard let balance = container.moneyStore.balance else { return .secondary }
         if balance == 0 { return .primary }
         return balance > 0 ? .green : .red
+    }
+
+    private func colorFor(amount: Decimal) -> Color {
+        if amount == 0 { return .secondary }
+        return amount > 0 ? .green : .red
     }
 
     // MARK: - Entre miembros (V3 Batch B-2)
