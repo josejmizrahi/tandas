@@ -304,34 +304,102 @@ struct MoneyDashboardView: View {
         .contentShape(Rectangle())
     }
 
-    // MARK: - Debts
+    // MARK: - Debts (split por doctrine_money_two_worlds)
 
+    /// Doctrina: el caller debe poder ver de un vistazo qué le debe AL
+    /// GRUPO (multas, buy-ins, pool charges) y qué le debe A MIEMBROS
+    /// específicos — no son la misma deuda social. Pre-PARTE B-2 esto
+    /// era una sola línea "N deudas abiertas" que mezclaba todo.
+    ///
+    /// Pool side viene de obligations con `owedToKind == "pool"`.
+    /// Peer side viene del settlementPlan (ya netted, excluye pool por
+    /// doctrina), filtrado a direction == .youOwe para mostrar lo que
+    /// efectivamente DEBES (los que te deben se ven en peerPairsSection).
     @ViewBuilder
     private var debtsSection: some View {
-        Section(L10n.MoneyDashboard.debtsSection) {
-            if container.moneyStore.obligations.isEmpty,
-               case .loaded = container.moneyStore.phase {
-                Text(L10n.MoneyDashboard.debtsEmpty)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else if !container.moneyStore.obligations.isEmpty {
-                NavigationLink(value: DebtsDestination()) {
-                    HStack {
-                        Text(debtsCountLabel)
-                            .font(.body)
-                        Spacer()
+        let pool = poolObligations
+        let peerDebts = peerOwedAmount
+        let isLoaded: Bool = {
+            if case .loaded = container.moneyStore.phase { return true }
+            return false
+        }()
+        let allEmpty = pool.isEmpty && peerDebts == nil
+        if !allEmpty || isLoaded {
+            Section(L10n.MoneyDashboard.debtsSection) {
+                if !pool.isEmpty {
+                    NavigationLink(value: DebtsDestination()) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "building.columns")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Con el grupo")
+                                    .font(.body.weight(.medium))
+                                Text(poolSummary(for: pool))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
+                }
+                if let totalOwed = peerDebts {
+                    Button {
+                        isShowingSettleUp = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.2")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Entre miembros")
+                                    .font(.body.weight(.medium))
+                                Text(totalOwed)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                if pool.isEmpty, peerDebts == nil {
+                    Text(L10n.MoneyDashboard.debtsEmpty)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
     }
 
-    private var debtsCountLabel: String {
-        let count = container.moneyStore.obligations.count
-        if count == 1 {
-            return String(localized: L10n.MoneyDashboard.debtsCountSingular)
+    private var poolObligations: [ObligationSummary] {
+        container.moneyStore.obligations.filter { $0.owedToKind == "pool" }
+    }
+
+    private func poolSummary(for pool: [ObligationSummary]) -> String {
+        let total = pool.reduce(Decimal(0)) { $0 + $1.amountOutstanding }
+        if pool.count == 1 {
+            return "\(total.formatted()) MXN"
         }
-        return "\(count) deudas abiertas"
+        return "\(pool.count) pendientes · \(total.formatted()) MXN"
+    }
+
+    /// Total que el caller debe NET a peers. Cuenta solo direction =
+    /// .youOwe (lo que te deben es buena noticia, no debt section). nil
+    /// cuando no hay deudas activas con miembros.
+    private var peerOwedAmount: String? {
+        let owed = container.moneyStore.settlementPlan
+            .filter { $0.direction == .youOwe }
+        guard !owed.isEmpty else { return nil }
+        let total = owed.reduce(Decimal(0)) { $0 + $1.absoluteAmount }
+        let unit = owed.first?.unit ?? "MXN"
+        if owed.count == 1, let peer = owed.first {
+            return "Págale a \(peer.counterpartyDisplayName) · \(total.formatted()) \(unit)"
+        }
+        return "\(owed.count) personas · \(total.formatted()) \(unit)"
     }
 
     // MARK: - Movements (recent + link to full list)
