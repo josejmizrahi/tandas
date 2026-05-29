@@ -18,6 +18,8 @@ public struct SanctionDetailView: View {
     let sanction: GroupSanction
 
     @State private var pendingPaySanction: GroupSanction?
+    /// V2-G4.1 — payment progress hidratado on appear.
+    @State private var paymentStatus: SanctionPaymentStatus?
 
     public init(
         container: DependencyContainer,
@@ -36,10 +38,13 @@ public struct SanctionDetailView: View {
         return List {
             heroSection
             infoSection
+            progressSection
+            paymentHistorySection
             actionsSection
         }
         .navigationTitle(L10n.SanctionDetail.title)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await loadPaymentStatus() }
         .sheet(item: $pendingPaySanction) { sanction in
             PaySanctionSheet(
                 container: container,
@@ -51,6 +56,7 @@ public struct SanctionDetailView: View {
                 Task {
                     await container.moneyStore.refresh(groupId: groupId, membershipId: myMembershipId)
                     await container.sanctionsStore.refresh(groupId: groupId)
+                    await loadPaymentStatus()
                 }
             }
         }
@@ -149,6 +155,79 @@ public struct SanctionDetailView: View {
                     Text(L10n.SanctionDetail.createdAtLabel)
                 }
             }
+        }
+    }
+
+    // MARK: - Payment progress (V2-G4.1)
+
+    @ViewBuilder
+    private var progressSection: some View {
+        if let status = paymentStatus, status.hasObligation, status.amountOriginal > 0 {
+            Section("Pago") {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Pagado")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(formatAmount(status.amountPaid)) de \(formatAmount(status.amountOriginal))")
+                            .font(.subheadline.monospacedDigit())
+                    }
+                    ProgressView(value: status.progress)
+                        .tint(status.isFullyPaid ? .green : .accentColor)
+                    if status.amountOutstanding > 0 {
+                        Text("Pendiente \(formatAmount(status.amountOutstanding))\(status.unit.map { " \($0)" } ?? "")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if status.isFullyPaid {
+                        Label("Sanción saldada", systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var paymentHistorySection: some View {
+        if let status = paymentStatus, !status.payments.isEmpty {
+            Section("Pagos") {
+                ForEach(status.payments) { payment in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(payment.paidByDisplayName ?? "—")
+                                .font(.subheadline)
+                            if let when = payment.paidAt {
+                                Text(when, format: .dateTime.day().month().year().hour().minute())
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Text(formatAmount(payment.amountClosed))
+                            .font(.subheadline.monospacedDigit())
+                    }
+                }
+            }
+        }
+    }
+
+    private func formatAmount(_ value: Decimal) -> String {
+        let n = NSDecimalNumber(decimal: value)
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
+        return f.string(from: n) ?? "\(value)"
+    }
+
+    private func loadPaymentStatus() async {
+        do {
+            paymentStatus = try await container.sanctionsRepository.paymentStatus(sanctionId: sanction.id)
+        } catch {
+            // Silent — payment section es chrome no-crítico.
         }
     }
 

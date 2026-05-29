@@ -139,6 +139,16 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func systemEventEngineProvenance(eventUuid: UUID) async throws -> SystemEventProvenance {
         SystemEventProvenance(found: false, reason: "no_engine_origin")
     }
+    func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
+        SanctionPaymentStatus(
+            sanctionId: sanctionId,
+            amountOriginal: 0,
+            amountOutstanding: 0,
+            amountPaid: 0,
+            obligationStatus: "no_obligation",
+            sanctionStatus: "active"
+        )
+    }
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] { [] }
     func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource {
         GroupResource(id: UUID(), groupId: input.pGroupId, resourceType: .other, name: input.pName)

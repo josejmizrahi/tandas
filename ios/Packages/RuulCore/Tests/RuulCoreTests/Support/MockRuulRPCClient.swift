@@ -35,6 +35,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupRuleEvaluations(groupId: UUID, limit: Int, before: Date?)
         case groupRuleEvaluationSummary(groupId: UUID, windowHours: Int)
         case systemEventEngineProvenance(eventUuid: UUID)
+        case groupSanctionPaymentStatus(sanctionId: UUID)
         case groupResourcesActive(groupId: UUID)
         case createGroupResource(input: CreateGroupResourceInput)
         case archiveGroupResource(input: ArchiveGroupResourceInput)
@@ -146,6 +147,16 @@ final actor MockRuulRPCClient: RuulRPCClient {
     )
     private var systemEventEngineProvenanceStub: Result<SystemEventProvenance, RuulError> = .success(
         SystemEventProvenance(found: false, reason: "no_engine_origin")
+    )
+    private var groupSanctionPaymentStatusStub: Result<SanctionPaymentStatus, RuulError> = .success(
+        SanctionPaymentStatus(
+            sanctionId: UUID(),
+            amountOriginal: 0,
+            amountOutstanding: 0,
+            amountPaid: 0,
+            obligationStatus: "no_obligation",
+            sanctionStatus: "active"
+        )
     )
     private var groupResourcesActiveStub: Result<[GroupResource], RuulError> = .success([])
     private var createGroupResourceStub: Result<GroupResource, RuulError> = .success(
@@ -268,6 +279,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupRuleEvaluationsStub(_ stub: Result<[GroupRuleEvaluation], RuulError>) { groupRuleEvaluationsStub = stub }
     func setGroupRuleEvaluationSummaryStub(_ stub: Result<GroupRuleEvaluationSummary, RuulError>) { groupRuleEvaluationSummaryStub = stub }
     func setSystemEventEngineProvenanceStub(_ stub: Result<SystemEventProvenance, RuulError>) { systemEventEngineProvenanceStub = stub }
+    func setGroupSanctionPaymentStatusStub(_ stub: Result<SanctionPaymentStatus, RuulError>) { groupSanctionPaymentStatusStub = stub }
     func setGroupResourcesActiveStub(_ stub: Result<[GroupResource], RuulError>) { groupResourcesActiveStub = stub }
     func setCreateGroupResourceStub(_ stub: Result<GroupResource, RuulError>) { createGroupResourceStub = stub }
     func setArchiveGroupResourceStub(_ stub: Result<Void, RuulError>) { archiveGroupResourceStub = stub }
@@ -457,6 +469,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func systemEventEngineProvenance(eventUuid: UUID) async throws -> SystemEventProvenance {
         recorded.append(.systemEventEngineProvenance(eventUuid: eventUuid))
         return try systemEventEngineProvenanceStub.get()
+    }
+
+    func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
+        recorded.append(.groupSanctionPaymentStatus(sanctionId: sanctionId))
+        return try groupSanctionPaymentStatusStub.get()
     }
 
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {

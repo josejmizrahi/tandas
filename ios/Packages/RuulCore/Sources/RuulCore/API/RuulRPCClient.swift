@@ -136,6 +136,15 @@ public protocol RuulRPCClient: Sendable {
         eventUuid: UUID
     ) async throws -> SystemEventProvenance
 
+    /// `group_sanction_payment_status(p_sanction_id)` — V2-G4.1 read
+    /// RPC for "Pendiente X de Y" + payment history per sanction. The
+    /// backend already supports partial payments via the FIFO settlement
+    /// allocator; this surface makes the progress visible. Active-member
+    /// gate.
+    func groupSanctionPaymentStatus(
+        sanctionId: UUID
+    ) async throws -> SanctionPaymentStatus
+
     // MARK: - Resources
 
     /// `group_resources_active(p_group_id)` — active resource envelopes

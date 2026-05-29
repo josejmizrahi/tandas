@@ -26,6 +26,8 @@ struct PaySanctionSheet: View {
     @State private var clientId: String?
     /// V2-G5 — see RecordExpenseSheet.selectedMandateId.
     @State private var selectedMandateId: UUID?
+    /// V2-G4.1 — payment progress hidratado on appear. nil = aún cargando.
+    @State private var paymentStatus: SanctionPaymentStatus?
 
     init(
         container: DependencyContainer,
@@ -40,6 +42,8 @@ struct PaySanctionSheet: View {
         self.sanction = sanction
         self.onPaid = onPaid
         let amount = sanction.amount ?? 0
+        // Pre-fill se ajusta a outstanding cuando el RPC termine; mientras
+        // tanto usa el monto original como fallback.
         self._amountText = State(initialValue: amount > 0 ? "\(amount)" : "")
         self._notes = State(initialValue: "Pago de sanción: \(sanction.reason)")
     }
@@ -60,11 +64,29 @@ struct PaySanctionSheet: View {
                     } label: {
                         Text("Razón")
                     }
+                    if let status = paymentStatus, status.hasObligation {
+                        progressRow(status: status)
+                    }
                 }
 
                 Section(L10n.PaySanction.amountSection) {
                     TextField(String(localized: L10n.PaySanction.amountField), text: $amountText)
                         .keyboardType(.decimalPad)
+                    if let status = paymentStatus,
+                       status.amountOutstanding > 0,
+                       parsedAmount != status.amountOutstanding {
+                        Button {
+                            amountText = formatAmount(status.amountOutstanding)
+                        } label: {
+                            Label(
+                                "Pagar todo (\(formatAmount(status.amountOutstanding)))",
+                                systemImage: "checkmark.circle"
+                            )
+                            .font(.subheadline)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.tint)
+                    }
                 }
 
                 Section(L10n.PaySanction.notesSection) {
@@ -85,6 +107,7 @@ struct PaySanctionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 await container.mandatesStore.refreshIfNeeded(groupId: groupId)
+                await loadPaymentStatus()
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -135,6 +158,49 @@ struct PaySanctionSheet: View {
     }
 
     private var isFormValid: Bool { parsedAmount != nil }
+
+    @ViewBuilder
+    private func progressRow(status: SanctionPaymentStatus) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Pendiente")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(formatAmount(status.amountOutstanding)) de \(formatAmount(status.amountOriginal))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.primary)
+            }
+            ProgressView(value: status.progress)
+                .tint(status.isFullyPaid ? .green : .accentColor)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func formatAmount(_ value: Decimal) -> String {
+        let n = NSDecimalNumber(decimal: value)
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
+        return f.string(from: n) ?? "\(value)"
+    }
+
+    private func loadPaymentStatus() async {
+        do {
+            let status = try await container.sanctionsRepository.paymentStatus(sanctionId: sanction.id)
+            paymentStatus = status
+            // Pre-fill el campo con outstanding si todavía no se editó.
+            if status.amountOutstanding > 0,
+               let current = parsedAmount,
+               current == (sanction.amount ?? 0),
+               current != status.amountOutstanding {
+                amountText = formatAmount(status.amountOutstanding)
+            }
+        } catch {
+            // Silent — sheet sigue funcional con el monto original.
+        }
+    }
 
     private func submit() async {
         guard let amount = parsedAmount else { return }

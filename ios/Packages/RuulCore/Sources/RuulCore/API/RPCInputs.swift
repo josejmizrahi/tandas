@@ -488,6 +488,18 @@ public struct SystemEventEngineProvenanceParams: Encodable, Sendable, Equatable 
     }
 }
 
+public struct GroupSanctionPaymentStatusParams: Encodable, Sendable, Equatable {
+    public let pSanctionId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case pSanctionId = "p_sanction_id"
+    }
+
+    public init(sanctionId: UUID) {
+        self.pSanctionId = sanctionId
+    }
+}
+
 public struct CreateEngineRuleInput: Encodable, Sendable, Equatable {
     public let pGroupId: UUID
     public let pTitle: String

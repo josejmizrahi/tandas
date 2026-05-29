@@ -46,4 +46,10 @@ public struct CanonicalSanctionsRepository: Sendable {
         )
         return try await rpc.issueSanction(input)
     }
+
+    /// V2-G4.1 — payment progress for the PaySanctionSheet pre-fill +
+    /// the SanctionDetailView progress bar.
+    public func paymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
+        try await rpc.groupSanctionPaymentStatus(sanctionId: sanctionId)
+    }
 }
