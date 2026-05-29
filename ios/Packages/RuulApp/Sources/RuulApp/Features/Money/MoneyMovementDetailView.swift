@@ -13,15 +13,22 @@ struct MoneyMovementDetailView: View {
     /// "actuó por mandato de…" context. Optional so previews and
     /// non-money callers can pass nil.
     let mandatesStore: MandatesStore?
+    /// V3 Batch B-2 slice 2 — when set, party rows (from/to/paidBy)
+    /// become tappable and call back with the membership_id. Caller
+    /// resolves to MembershipBoundaryItem and pushes MemberDetailView.
+    /// Nil = static labels (preview / standalone).
+    let onSelectMember: ((UUID) -> Void)?
 
     init(
         movement: MoneyMovement,
         myMembershipId: UUID,
-        mandatesStore: MandatesStore? = nil
+        mandatesStore: MandatesStore? = nil,
+        onSelectMember: ((UUID) -> Void)? = nil
     ) {
         self.movement = movement
         self.myMembershipId = myMembershipId
         self.mandatesStore = mandatesStore
+        self.onSelectMember = onSelectMember
     }
 
     var body: some View {
@@ -101,29 +108,63 @@ struct MoneyMovementDetailView: View {
                 if let from = movement.fromDisplayName {
                     party(label: L10n.MoneyMovementDetail.fromLabel,
                           name: from,
+                          membershipId: movement.fromMembershipId,
                           isMe: movement.fromMembershipId == myMembershipId)
                 }
                 if let to = movement.toDisplayName {
                     party(label: L10n.MoneyMovementDetail.toLabel,
                           name: to,
+                          membershipId: movement.toMembershipId,
                           isMe: movement.toMembershipId == myMembershipId)
                 }
                 if let paidBy = movement.paidByDisplayName, paidBy != movement.fromDisplayName {
                     party(label: L10n.MoneyMovementDetail.paidByLabel,
                           name: paidBy,
+                          membershipId: movement.paidByMembershipId,
                           isMe: movement.paidByMembershipId == myMembershipId)
                 }
                 if let recordedBy = movement.recordedByDisplayName {
+                    // recordedBy es auth-side (user, no membership). No
+                    // navegable porque el dataset no carga su
+                    // membership_id en este shape.
                     party(label: L10n.MoneyMovementDetail.recordedByLabel,
                           name: recordedBy,
+                          membershipId: nil,
                           isMe: false)
                 }
             }
         }
     }
 
+    /// V3 Batch B-2 — cuando `onSelectMember` está cableado y hay
+    /// `membershipId` real, el row se vuelve un botón que navega a
+    /// MemberDetailView. Cross-primitive link doctrine.
     @ViewBuilder
-    private func party(label: LocalizedStringResource, name: String, isMe: Bool) -> some View {
+    private func party(
+        label: LocalizedStringResource,
+        name: String,
+        membershipId: UUID?,
+        isMe: Bool
+    ) -> some View {
+        if let onSelectMember, let mid = membershipId, !isMe {
+            Button {
+                onSelectMember(mid)
+            } label: {
+                partyContent(label: label, name: name, isMe: isMe, isNavigable: true)
+            }
+            .buttonStyle(.plain)
+        } else {
+            partyContent(label: label, name: name, isMe: isMe, isNavigable: false)
+        }
+    }
+
+    @ViewBuilder
+    private func partyContent(
+        label: LocalizedStringResource,
+        name: String,
+        isMe: Bool,
+        isNavigable: Bool
+    ) -> some View {
         LabeledContent {
             HStack(spacing: 4) {
                 Text(name)
@@ -131,6 +172,11 @@ struct MoneyMovementDetailView: View {
                     Text("(tú)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+                if isNavigable {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
                 }
             }
         } label: {

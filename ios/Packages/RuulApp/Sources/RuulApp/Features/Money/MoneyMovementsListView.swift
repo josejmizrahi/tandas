@@ -11,6 +11,10 @@ struct MoneyMovementsListView: View {
     let myMembershipId: UUID
 
     @State private var pendingDetail: MoneyMovement?
+    /// V3 Batch B-2 — pendiente push a MemberDetailView desde una party
+    /// row del MovementDetail. Resolved client-side desde
+    /// `membersStore.items` con el membership_id que el detail emite.
+    @State private var pendingMemberSelection: MembershipBoundaryItem?
 
     var body: some View {
         List {
@@ -26,11 +30,50 @@ struct MoneyMovementsListView: View {
             MoneyMovementDetailView(
                 movement: movement,
                 myMembershipId: myMembershipId,
-                mandatesStore: container.mandatesStore
+                mandatesStore: container.mandatesStore,
+                onSelectMember: { membershipId in
+                    if let item = container.membersStore.items.first(where: {
+                        $0.membershipId == membershipId
+                    }) {
+                        pendingMemberSelection = item
+                    }
+                }
+            )
+        }
+        .navigationDestination(item: $pendingMemberSelection) { item in
+            MemberDetailView(
+                sanctionsStore: container.sanctionsStore,
+                reputationStore: container.reputationStore,
+                moneyStore: container.moneyStore,
+                rolesStore: container.rolesStore,
+                membersStore: container.membersStore,
+                groupId: groupId,
+                memberItem: item,
+                activityFetcher: { gid, mid, limit in
+                    try await container.rpcClient.groupEventsForMember(
+                        groupId: gid,
+                        membershipId: mid,
+                        limit: limit
+                    )
+                },
+                permissionsFetcher: { gid in
+                    try await container.groupRepository.listMemberPermissions(
+                        groupId: gid,
+                        userId: nil
+                    )
+                },
+                quickActionStores: MemberDetailView.QuickActionStores(
+                    mandates: container.mandatesStore,
+                    reputationFeed: container.reputationFeedStore
+                )
             )
         }
         .task {
             await container.movementsStore.refreshIfNeeded(groupId: groupId)
+            // V3 Batch B-2 — necesario para resolver tap-on-party del
+            // MovementDetail; si membersStore aún no cargó la lista,
+            // el tap no encuentra match y queda no-op.
+            await container.membersStore.refreshIfNeeded(groupId: groupId)
         }
     }
 
