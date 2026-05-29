@@ -199,9 +199,16 @@ struct InviteMemberSheet: View {
         }
     }
 
+    /// V3-DOMAIN — share text bundles a Universal Link
+    /// (`https://ruul.mx/invite/CODE`) so a tap from WhatsApp / Messages
+    /// / Mail opens the app straight into `AcceptInviteSheet` with the
+    /// code pre-filled. The fallback raw code is included in case the
+    /// recipient is reading from somewhere that strips URLs.
     private func composedShareText(code: String) -> String {
-        let prefix = "Te invité a un grupo en Ruul. Usa este código para entrar:"
-        return "\(prefix)\n\n\(code)"
+        let prefix = "Te invité a un grupo en Ruul. Únete con este link:"
+        let url = "https://ruul.mx/invite/\(code)"
+        let fallback = "O usa el código: \(code)"
+        return "\(prefix)\n\n\(url)\n\n\(fallback)"
     }
 
     // MARK: - Validation

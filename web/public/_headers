@@ -1,0 +1,15 @@
+# Apple App Site Association MUST be served as application/json (no
+# extension on the path; Cloudflare Pages strips the trailing slash so
+# both forms work) with caching to avoid Apple's "couldn't fetch" UX.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: public, max-age=3600
+
+# Default index gets short cache so a relaunch can pick up new copy.
+/index.html
+  Cache-Control: public, max-age=300
+
+# Invite landing page gets no cache so a freshly-issued code doesn't
+# show a stale variant to anyone testing.
+/invite/[code].html
+  Cache-Control: no-store

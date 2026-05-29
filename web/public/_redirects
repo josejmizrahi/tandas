@@ -1,0 +1,4 @@
+# Cloudflare Pages redirects. Universal Links require the path
+# /invite/<code> to return 200 with HTML — we serve the dynamic
+# template that client-side parses the code from window.location.
+/invite/*  /invite/[code].html  200

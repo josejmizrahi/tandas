@@ -7,10 +7,25 @@ import RuulCore
 struct AcceptInviteSheet: View {
     let container: DependencyContainer
     let onAccepted: (AcceptInviteResult) -> Void
+    /// V3-DOMAIN — when present, seeds the code field from a Universal
+    /// Link tap (`https://ruul.mx/invite/CODE`) so the invitee can just
+    /// confirm instead of typing.
+    let prefilledCode: String?
+
+    init(
+        container: DependencyContainer,
+        prefilledCode: String? = nil,
+        onAccepted: @escaping (AcceptInviteResult) -> Void
+    ) {
+        self.container = container
+        self.prefilledCode = prefilledCode
+        self.onAccepted = onAccepted
+        _code = State(initialValue: prefilledCode ?? "")
+    }
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var code: String = ""
+    @State private var code: String
     @State private var isSubmitting: Bool = false
     @State private var error: UserFacingError?
 

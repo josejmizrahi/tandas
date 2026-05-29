@@ -24,6 +24,11 @@ public struct RuulAppShell: View {
     /// app is cold-launched into them.
     @State private var pendingDecision: PendingDecision?
 
+    /// V3-DOMAIN — buffered invite code from a Universal Link tap
+    /// (`https://ruul.mx/invite/CODE`) or custom scheme. Presented as a
+    /// top-level sheet on top of whatever group context is mounted.
+    @State private var pendingInviteCode: String?
+
     /// V3-A4 — focused tab inside `GroupTabsHost`. Hoisted here so a
     /// deep-link arrival (`ruul://group/X/money`, etc.) can land the
     /// user on the matching tab before the detail surface refactor
@@ -53,6 +58,14 @@ public struct RuulAppShell: View {
             }
             .onOpenURL { url in
                 container.deepLinkRouter.handle(url)
+            }
+            // Universal Links: when iOS launches the app from a tap on
+            // https://ruul.mx/... it hands us the URL via a browsing
+            // user activity, not via onOpenURL.
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                if let url = activity.webpageURL {
+                    container.deepLinkRouter.handle(url)
+                }
             }
     }
 
@@ -114,6 +127,18 @@ public struct RuulAppShell: View {
         .onChange(of: container.groupsStore.groups) { _, _ in
             applyPendingDeepLink()
         }
+        .sheet(item: Binding(
+            get: { pendingInviteCode.map(PendingInvite.init) },
+            set: { pendingInviteCode = $0?.code }
+        )) { pending in
+            AcceptInviteSheet(
+                container: container,
+                prefilledCode: pending.code
+            ) { _ in
+                pendingInviteCode = nil
+                Task { await container.groupsStore.refresh() }
+            }
+        }
         .sheet(item: $pendingDecision) { pending in
             NavigationStack {
                 DecisionDetailView(
@@ -146,8 +171,21 @@ public struct RuulAppShell: View {
     /// flash an error.
     private func applyPendingDeepLink() {
         guard let link = container.deepLinkRouter.pending else { return }
+
+        // Cross-group links resolve before group-scoped routing because
+        // they don't require a focused group (e.g. .invite). The shell
+        // surfaces them as a top-level sheet on top of whatever is
+        // already mounted.
+        if case .invite(let code) = link {
+            pendingInviteCode = code
+            container.deepLinkRouter.consume()
+            return
+        }
+
         let groups = container.groupsStore.groups
-        guard let target = groups.first(where: { $0.id == link.groupId }) else {
+        guard let groupIdForLink = link.groupId,
+              let target = groups.first(where: { $0.id == groupIdForLink })
+        else {
             // Groups still loading — leave `pending` set so the next
             // `onChange(of: groups)` can retry. If the user really
             // isn't a member, the link will never resolve and stays
@@ -168,11 +206,10 @@ public struct RuulAppShell: View {
         case .member:
             selectedTab = .members
         case .sanction, .dispute, .mandate:
-            // These primitives live under the "El grupo" tab. Per-
-            // entity sheet routing is still deferred (detail views
-            // require fully-decoded domain objects in init); the
-            // tab focus is the best A4-scoped landing.
             selectedTab = .group
+        case .invite:
+            // Handled above; unreachable here.
+            break
         }
         container.deepLinkRouter.consume()
     }
@@ -183,6 +220,13 @@ public struct RuulAppShell: View {
         let groupId: UUID
         let decisionId: UUID
         var id: UUID { decisionId }
+    }
+
+    /// V3-DOMAIN — Identifiable wrapper so `.sheet(item:)` reacts to
+    /// a new pending invite code arriving via Universal Link.
+    private struct PendingInvite: Identifiable, Equatable {
+        let code: String
+        var id: String { code }
     }
 
     @ViewBuilder

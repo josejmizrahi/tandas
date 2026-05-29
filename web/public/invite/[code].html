@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0b0d" />
+    <title>Te invitaron a Ruul</title>
+    <meta name="apple-itunes-app" content="app-id=PENDING, app-argument=ruul://invite/INVITE_CODE" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E🧭%3C/text%3E%3C/svg%3E" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: #0b0b0d;
+        color: #f4f4f5;
+        font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 32px 24px;
+      }
+      main { max-width: 480px; text-align: center; }
+      .pill {
+        display: inline-block;
+        padding: 4px 10px;
+        background: rgba(110, 90, 255, 0.15);
+        border-radius: 999px;
+        font-size: 13px;
+        color: #c4b5fd;
+        margin-bottom: 24px;
+      }
+      h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 8px; }
+      p { color: #a1a1aa; margin: 12px 0; }
+      .code {
+        display: block;
+        font-family: ui-monospace, SF Mono, monospace;
+        font-size: 28px;
+        letter-spacing: 0.1em;
+        padding: 16px;
+        background: rgba(244, 244, 245, 0.06);
+        border: 1px solid rgba(244, 244, 245, 0.1);
+        border-radius: 12px;
+        margin: 24px 0;
+        user-select: all;
+      }
+      .actions { display: flex; flex-direction: column; gap: 8px; margin-top: 24px; }
+      .btn {
+        display: inline-block;
+        padding: 14px 18px;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        text-align: center;
+      }
+      .btn-primary { background: #f4f4f5; color: #0b0b0d; }
+      .btn-secondary { color: #d4d4d8; border: 1px solid rgba(244, 244, 245, 0.15); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="pill">Invitación a Ruul</span>
+      <h1>Te invitaron a un grupo</h1>
+      <p>Si ya tienes la app instalada, este link debió abrirla automáticamente.</p>
+      <p>Si no, abre la app y pega tu código:</p>
+      <code class="code" id="code">INVITE_CODE</code>
+      <div class="actions">
+        <a class="btn btn-primary" href="ruul://invite/INVITE_CODE">Abrir Ruul</a>
+        <a class="btn btn-secondary" href="/">Aún no tengo la app</a>
+      </div>
+    </main>
+    <script>
+      // Replace template placeholders with the actual code from the path.
+      // Cloudflare Pages serves this same file for /invite/* so the
+      // route resolver injects the segment client-side.
+      (function () {
+        const path = window.location.pathname;
+        const match = path.match(/^\/invite\/([^\/?#]+)/);
+        if (match) {
+          const code = decodeURIComponent(match[1]).toUpperCase();
+          document.getElementById('code').textContent = code;
+          document.querySelectorAll('a.btn-primary').forEach(a => {
+            a.href = 'ruul://invite/' + code;
+          });
+          document.querySelector('meta[name="apple-itunes-app"]').setAttribute(
+            'content',
+            'app-id=PENDING, app-argument=ruul://invite/' + code
+          );
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["G3TMTFSG7S.com.josejmizrahi.ruul"],
+        "components": [
+          {
+            "/": "/invite/*",
+            "comment": "Open Ruul to the AcceptInviteSheet with the code pre-filled."
+          },
+          {
+            "/": "/group/*",
+            "comment": "Open Ruul focused on the given group."
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["G3TMTFSG7S.com.josejmizrahi.ruul"]
+  }
+}
