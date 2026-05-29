@@ -171,19 +171,27 @@ public struct RulesListView: View {
         if !store.engineRules.isEmpty {
             Section {
                 ForEach(store.engineRules) { rule in
-                    EngineRuleRowView(rule: rule)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                engineRuleToArchive = rule
-                            } label: {
-                                Label(L10n.Rules.archive, systemImage: "archivebox")
-                            }
+                    NavigationLink {
+                        EngineRuleDetailView(
+                            rule: rule,
+                            evaluationsStore: evaluationsStore,
+                            groupId: groupId
+                        )
+                    } label: {
+                        EngineRuleRowView(rule: rule)
+                    }
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            engineRuleToArchive = rule
+                        } label: {
+                            Label(L10n.Rules.archive, systemImage: "archivebox")
                         }
+                    }
                 }
             } header: {
                 Text("Con engine")
             } footer: {
-                Text("Estas reglas se evalúan cuando ocurre el evento.")
+                Text("Estas reglas se evalúan cuando ocurre el evento. Tap para ver los disparos recientes de cada una.")
             }
         }
     }

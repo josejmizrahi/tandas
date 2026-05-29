@@ -89,8 +89,9 @@ public struct RuleEvaluationsView: View {
 
 /// Compact row: title + trigger + outcome chip + action results. Tap
 /// could push a future RuleEvaluationDetailView; for G3.5 the row is
-/// self-contained.
-private struct RuleEvaluationRow: View {
+/// self-contained. Exposed at module scope (V2-G8.3) so the per-rule
+/// detail view can reuse the same row aesthetic.
+struct RuleEvaluationRow: View {
     let evaluation: GroupRuleEvaluation
 
     var body: some View {
