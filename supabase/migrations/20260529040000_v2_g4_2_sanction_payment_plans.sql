@@ -144,11 +144,11 @@ BEGIN
   ) RETURNING id INTO v_plan_id;
 
   PERFORM public.record_system_event(
-    v_sanction.group_id,
-    'sanction.payment_plan_proposed',
-    'sanction',
-    p_sanction_id,
-    jsonb_build_object(
+    p_group_id    => v_sanction.group_id,
+    p_event_type  => 'sanction.payment_plan_proposed',
+    p_entity_kind => 'sanction',
+    p_entity_id   => p_sanction_id,
+    p_payload     => jsonb_build_object(
       'plan_id',         v_plan_id,
       'sanction_id',     p_sanction_id,
       'installments',    p_installments,
@@ -208,11 +208,11 @@ BEGIN
    WHERE id = p_plan_id;
 
   PERFORM public.record_system_event(
-    v_plan.group_id,
-    'sanction.payment_plan_cancelled',
-    'sanction',
-    v_plan.sanction_id,
-    jsonb_build_object(
+    p_group_id    => v_plan.group_id,
+    p_event_type  => 'sanction.payment_plan_cancelled',
+    p_entity_kind => 'sanction',
+    p_entity_id   => v_plan.sanction_id,
+    p_payload     => jsonb_build_object(
       'plan_id',  p_plan_id,
       'reason',   p_reason,
       'by_target', v_is_target

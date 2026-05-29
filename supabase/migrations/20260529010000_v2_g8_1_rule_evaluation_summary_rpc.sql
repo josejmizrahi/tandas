@@ -36,10 +36,10 @@ BEGIN
   -- Active-member gate (mismo que group_rule_evaluations list)
   IF NOT EXISTS (
     SELECT 1
-      FROM public.group_memberships m
-     WHERE m.group_id = p_group_id
-       AND m.user_id = v_caller
-       AND m.state = 'active'
+      FROM public.group_memberships gm
+     WHERE gm.group_id = p_group_id
+       AND gm.user_id = v_caller
+       AND gm.status = 'active'
   ) THEN
     RAISE EXCEPTION 'caller is not an active member of group %', p_group_id
       USING ERRCODE = '42501';
