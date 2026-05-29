@@ -57,6 +57,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupDisputesActive(groupId: UUID, limit: Int)
         case disputeSanction(input: DisputeSanctionInput)
         case groupEventsRecent(groupId: UUID, limit: Int, before: Date?)
+        case groupEventsForMember(groupId: UUID, membershipId: UUID, limit: Int)
         case groupMoneyMovements(groupId: UUID, limit: Int, filter: [String]?, beforeSeq: Int64?)
         case groupCulturalNormsActive(groupId: UUID)
         case proposeCulturalNorm(input: ProposeCulturalNormParams)
@@ -208,6 +209,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var groupDisputesActiveStub: Result<[GroupDispute], RuulError> = .success([])
     private var disputeSanctionStub: Result<UUID, RuulError> = .success(UUID())
     private var groupEventsRecentStub: Result<[GroupEvent], RuulError> = .success([])
+    private var groupEventsForMemberStub: Result<[GroupEvent], RuulError> = .success([])
     private var groupMoneyMovementsStub: Result<[MoneyMovement], RuulError> = .success([])
     private var groupCulturalNormsActiveStub: Result<[GroupCulturalNorm], RuulError> = .success([])
     private var proposeCulturalNormStub: Result<UUID, RuulError> = .success(UUID())
@@ -321,6 +323,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupDisputesActiveStub(_ stub: Result<[GroupDispute], RuulError>) { groupDisputesActiveStub = stub }
     func setDisputeSanctionStub(_ stub: Result<UUID, RuulError>) { disputeSanctionStub = stub }
     func setGroupEventsRecentStub(_ stub: Result<[GroupEvent], RuulError>) { groupEventsRecentStub = stub }
+    func setGroupEventsForMemberStub(_ stub: Result<[GroupEvent], RuulError>) { groupEventsForMemberStub = stub }
     func setGroupMoneyMovementsStub(_ stub: Result<[MoneyMovement], RuulError>) { groupMoneyMovementsStub = stub }
     func setGroupCulturalNormsActiveStub(_ stub: Result<[GroupCulturalNorm], RuulError>) { groupCulturalNormsActiveStub = stub }
     func setProposeCulturalNormStub(_ stub: Result<UUID, RuulError>) { proposeCulturalNormStub = stub }
@@ -608,6 +611,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent] {
         recorded.append(.groupEventsRecent(groupId: groupId, limit: limit, before: before))
         return try groupEventsRecentStub.get()
+    }
+
+    func groupEventsForMember(groupId: UUID, membershipId: UUID, limit: Int) async throws -> [GroupEvent] {
+        recorded.append(.groupEventsForMember(groupId: groupId, membershipId: membershipId, limit: limit))
+        return try groupEventsForMemberStub.get()
     }
 
     func groupMoneyMovements(

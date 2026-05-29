@@ -245,6 +245,12 @@ public protocol RuulRPCClient: Sendable {
     /// `before` is the cursor for pagination. Active-member gate.
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent]
 
+    /// V3 Batch B-1 — `group_events_for_member(p_group_id, p_membership_id, p_limit)`
+    /// timeline filtrada por miembro: entity-side (mutaciones a la
+    /// membership) + actor-side (cosas que esta persona hizo).
+    /// Active-member gate.
+    func groupEventsForMember(groupId: UUID, membershipId: UUID, limit: Int) async throws -> [GroupEvent]
+
     // MARK: - Reputation feed + record (Primitiva 12, C4)
 
     /// `group_reputation_events(p_group_id, p_limit)` — group-wide

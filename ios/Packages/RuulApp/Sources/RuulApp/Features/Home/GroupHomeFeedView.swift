@@ -61,7 +61,14 @@ struct GroupHomeFeedView: View {
                 rolesStore: container.rolesStore,
                 membersStore: container.membersStore,
                 groupId: group.id,
-                memberItem: item
+                memberItem: item,
+                activityFetcher: { gid, mid, limit in
+                    try await container.rpcClient.groupEventsForMember(
+                        groupId: gid,
+                        membershipId: mid,
+                        limit: limit
+                    )
+                }
             )
         }
         .navigationDestination(item: $pendingDecisionDetail) { summary in

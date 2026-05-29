@@ -202,6 +202,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func groupDisputesActive(groupId: UUID, limit: Int) async throws -> [GroupDispute] { [] }
     func disputeSanction(_ input: DisputeSanctionInput) async throws -> UUID { UUID() }
     func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent] { [] }
+    func groupEventsForMember(groupId: UUID, membershipId: UUID, limit: Int) async throws -> [GroupEvent] { [] }
     func groupMoneyMovements(groupId: UUID, limit: Int, filter: [String]?, beforeSeq: Int64?) async throws -> [MoneyMovement] { [] }
     func groupCulturalNormsActive(groupId: UUID) async throws -> [GroupCulturalNorm] { [] }
     func proposeCulturalNorm(_ input: ProposeCulturalNormParams) async throws -> UUID { UUID() }

@@ -27,12 +27,21 @@ public struct MemberDetailView: View {
     @Bindable var membersStore: MembersStore
     let groupId: UUID
     let memberItem: MembershipBoundaryItem
+    /// V3 Batch B-1 — fetch fire-and-forget para la timeline del
+    /// miembro. Inyectado para que las views derivadas (preview, tests)
+    /// puedan pasar fixtures sin tocar Supabase.
+    let activityFetcher: (UUID, UUID, Int) async throws -> [GroupEvent]
 
     @State private var isManagingRoles: Bool = false
+    /// V3 Batch B-1 — Activity feed local. `nil` mientras carga; `[]`
+    /// cuando confirmadamente vacío (fallback silencioso si la RPC
+    /// falla).
+    @State private var activity: [GroupEvent]? = nil
 
     /// How many recent history rows to render inline before linking out
     /// to the full `MemberHistoryView`.
     private let recentHistoryLimit = 5
+    private let activityLimit = 8
 
     public init(
         sanctionsStore: SanctionsStore,
@@ -41,7 +50,8 @@ public struct MemberDetailView: View {
         rolesStore: RolesStore,
         membersStore: MembersStore,
         groupId: UUID,
-        memberItem: MembershipBoundaryItem
+        memberItem: MembershipBoundaryItem,
+        activityFetcher: @escaping (UUID, UUID, Int) async throws -> [GroupEvent] = { _, _, _ in [] }
     ) {
         self.sanctionsStore = sanctionsStore
         self.reputationStore = reputationStore
@@ -50,6 +60,7 @@ public struct MemberDetailView: View {
         self.membersStore = membersStore
         self.groupId = groupId
         self.memberItem = memberItem
+        self.activityFetcher = activityFetcher
     }
 
     /// Live projection of the member — picks up the latest snapshot
@@ -69,6 +80,7 @@ public struct MemberDetailView: View {
             if item.isCurrentUser {
                 moneySection
             }
+            activitySection(item: item)
             historySection(item: item)
             stateActionsSection(item: item)
         }
@@ -99,6 +111,7 @@ public struct MemberDetailView: View {
                     subjectMembershipId: mid,
                     limit: 50
                 )
+                await loadActivity(membershipId: mid)
             }
             await sanctionsStore.refreshIfNeeded(groupId: groupId)
             await rolesStore.refreshIfNeeded(groupId: groupId)
@@ -110,9 +123,19 @@ public struct MemberDetailView: View {
                     subjectMembershipId: mid,
                     limit: 50
                 )
+                await loadActivity(membershipId: mid)
             }
             await sanctionsStore.refresh(groupId: groupId)
             await rolesStore.refresh(groupId: groupId)
+        }
+    }
+
+    private func loadActivity(membershipId: UUID) async {
+        do {
+            activity = try await activityFetcher(groupId, membershipId, activityLimit)
+        } catch {
+            // Silent: la timeline no es load-bearing, el bloque queda invisible.
+            activity = []
         }
     }
 
@@ -394,6 +417,64 @@ public struct MemberDetailView: View {
             }
         }
         .redacted(reason: .placeholder)
+    }
+
+    // MARK: - Activity timeline (V3 Batch B-1)
+
+    /// Universal Detail bloque 5: eventos del feed que afectan a esta
+    /// persona — entity-side (member.joined/state_changed/role.granted/
+    /// role.revoked sobre la membership) + actor-side (cosas que esta
+    /// persona hizo, vía actor_user_id).
+    ///
+    /// Invisible si el fetch falló o devolvió 0 rows (situational).
+    @ViewBuilder
+    private func activitySection(item: MembershipBoundaryItem) -> some View {
+        if let events = activity, !events.isEmpty {
+            Section("Actividad") {
+                ForEach(events) { event in
+                    activityRow(event: event)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func activityRow(event: GroupEvent) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: activityIcon(for: event.eventType))
+                .font(.body.weight(.medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(event.summary ?? event.eventType)
+                    .font(.body)
+                    .lineLimit(2)
+                if let when = event.occurredAt {
+                    Text(when, format: .dateTime.day().month().year())
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// Mapeo mínimo event_type → SF Symbol. Cubre los 4 event_types
+    /// confirmados en data dev hoy (member.joined / state_changed /
+    /// role.granted / role.revoked) + fallback genérico.
+    private func activityIcon(for eventType: String) -> String {
+        switch eventType {
+        case "member.joined":         return "person.crop.circle.badge.plus"
+        case "member.state_changed":  return "arrow.triangle.2.circlepath"
+        case "role.granted":          return "person.crop.rectangle.badge.plus"
+        case "role.revoked":          return "person.crop.rectangle.badge.minus"
+        case let t where t.hasPrefix("money."):     return "creditcard"
+        case let t where t.hasPrefix("decision."):  return "checkmark.seal"
+        case let t where t.hasPrefix("sanction."):  return "exclamationmark.shield"
+        case let t where t.hasPrefix("dispute."):   return "exclamationmark.bubble"
+        case let t where t.hasPrefix("mandate."):   return "person.2"
+        default: return "circle.fill"
+        }
     }
 
     // MARK: - State actions (Primitiva 2)
