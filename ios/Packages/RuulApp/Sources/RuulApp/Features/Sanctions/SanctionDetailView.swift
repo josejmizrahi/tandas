@@ -37,10 +37,13 @@ public struct SanctionDetailView: View {
         self.sanction = sanction
     }
 
+    @State private var pendingDisputeNav: GroupDispute?
+
     public var body: some View {
         @Bindable var disputesStore = container.disputesStore
         return List {
             heroSection
+            linkedDisputeSection
             infoSection
             progressSection
             paymentPlanSection
@@ -49,7 +52,21 @@ public struct SanctionDetailView: View {
         }
         .navigationTitle(L10n.SanctionDetail.title)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await loadPaymentStatus() }
+        .navigationDestination(item: $pendingDisputeNav) { dispute in
+            DisputeDetailView(
+                store: container.disputesStore,
+                groupId: groupId,
+                dispute: dispute
+            )
+        }
+        .task {
+            await loadPaymentStatus()
+            // V3 Batch B-4 — necesitamos disputesStore.disputes para
+            // resolver el dispute_id del sanction client-side.
+            if sanction.disputeId != nil {
+                await container.disputesStore.refreshIfNeeded(groupId: groupId)
+            }
+        }
         .sheet(item: $pendingPaySanction) { sanction in
             PaySanctionSheet(
                 container: container,
@@ -117,6 +134,66 @@ public struct SanctionDetailView: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
         }
+    }
+
+    // MARK: - Linked Dispute (V3 Batch B-4)
+
+    /// Universal Detail Context bloque — cuando hay disputa abierta
+    /// contra esta sanción, surface el link directo. Resuelto client-
+    /// side desde disputesStore.disputes; si todavía no se cargó la
+    /// lista, mostramos el link con label genérico para no bloquear el
+    /// flow.
+    @ViewBuilder
+    private var linkedDisputeSection: some View {
+        if let disputeId = sanction.disputeId {
+            let linked = container.disputesStore.disputes
+                .first(where: { $0.id == disputeId })
+            Section {
+                Button {
+                    if let dispute = linked {
+                        pendingDisputeNav = dispute
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.bubble")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.orange)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Esta sanción está siendo disputada")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(.primary)
+                            if let dispute = linked {
+                                Text(disputeSubtitle(for: dispute))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("Tocá para ver el detalle")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        if linked != nil {
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(linked == nil)
+            }
+        }
+    }
+
+    private func disputeSubtitle(for dispute: GroupDispute) -> String {
+        var parts: [String] = [String(localized: dispute.status.label)]
+        if let opener = dispute.openedByDisplayName {
+            parts.append("Abrió: \(opener)")
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - Info

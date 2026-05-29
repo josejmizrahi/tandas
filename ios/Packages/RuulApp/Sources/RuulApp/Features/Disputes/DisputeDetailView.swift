@@ -9,11 +9,23 @@ public struct DisputeDetailView: View {
     @Bindable var store: DisputesStore
     let groupId: UUID
     let dispute: GroupDispute
+    /// V3 Batch B-4 — cuando se cablea, el subject label (cuando
+    /// subjectKind == .sanction y hay subjectId) se vuelve un botón
+    /// que invoca este callback con el sanction_id. Caller resuelve
+    /// el GroupSanction y empuja SanctionDetailView. Default no-op
+    /// para previews y standalone.
+    let onSelectSanction: ((UUID) -> Void)?
 
-    public init(store: DisputesStore, groupId: UUID, dispute: GroupDispute) {
+    public init(
+        store: DisputesStore,
+        groupId: UUID,
+        dispute: GroupDispute,
+        onSelectSanction: ((UUID) -> Void)? = nil
+    ) {
         self.store = store
         self.groupId = groupId
         self.dispute = dispute
+        self.onSelectSanction = onSelectSanction
     }
 
     public var body: some View {
@@ -56,9 +68,7 @@ public struct DisputeDetailView: View {
                     Spacer()
                     statusBadge(for: status)
                 }
-                Label(subjectKind.label, systemImage: subjectKind.systemImageName)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                subjectRow
                 if let opener = openerName, !opener.isEmpty {
                     Text("\(String(localized: L10n.Disputes.openedByLabel)) \(opener)")
                         .font(.caption2)
@@ -198,6 +208,36 @@ public struct DisputeDetailView: View {
                     Label(L10n.Disputes.resolveButton, systemImage: "checkmark.seal")
                 }
             }
+        }
+    }
+
+    /// V3 Batch B-4 — subject del dispute como link a la entidad cuando
+    /// es navegable. Hoy solo cableamos `.sanction` (el caso más común
+    /// per uso real). Otros kinds (.rule/.resource/.member/.other)
+    /// quedan como label estático hasta que el slice respectivo
+    /// aterrice.
+    @ViewBuilder
+    private var subjectRow: some View {
+        let kind = subjectKind
+        let subjectId = store.detail?.subjectId ?? dispute.subjectId
+        if kind == .sanction, let sid = subjectId, let cb = onSelectSanction {
+            Button {
+                cb(sid)
+            } label: {
+                HStack(spacing: 4) {
+                    Label(kind.label, systemImage: kind.systemImageName)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.tint)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+        } else {
+            Label(kind.label, systemImage: kind.systemImageName)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
         }
     }
 
