@@ -4,15 +4,22 @@
 > de conexiones entre primitivas de Ruul. NO sustituye
 > `GroupPrimitives.md` (doctrina), sino que lo traduce a SQL/RPC/iOS.
 >
-> Estado backend al 2026-05-29: 338+ migrations, `v1.0.0-rc` cortado,
-> **V2-G3 EPIC CERRADO COMPLETO** (G3.1→G3.5 + polish `6bb56c78`).
-> 6 migs G3 (`060000..060500` + `20260529000000`). 427/427 tests
-> RuulCore verdes. **Catálogo: 20 atoms vivos** (8 triggers + 6
-> conditions + 6 consequences). 7 callsites cableados. **Puente
-> engine→votos vivo** vía `consequence.start_vote` (frontera doctrinal:
-> cambiar autoridad = voto; aplicar autoridad existente = engine).
-> Restante V2: G8 (banner + "¿por qué pasó esto?" sheet) + G4
-> (sanction ↔ money deep).
+> Estado backend al 2026-05-29: 342+ migrations, `v1.0.0-rc` cortado,
+> **V2 EPIC CERRADO** — tag `v2.0.0-rc` listo. Pendiente único:
+> G4.3 auto-pay from fund (decisión doctrinal "modelo from-fund-to-pool")
+> diferido a V3.
+>
+> **V2 sub-slices shipped**:
+> - **G3** entero (G3.1→G3.5 + polish): 20 atoms vivos (8 triggers +
+>   6 conditions + 6 consequences). 7 callsites cableados. Puente
+>   engine→votos vía `consequence.start_vote`.
+> - **G8**: engine banner en home + "¿Por qué pasó esto?" sheet con
+>   provenance reverse-lookup.
+> - **G4.1**: partial payment surfaces (progress + history + "Pagar todo").
+> - **G4.2**: payment plans MVP (target propone cuotas, no auto-debit).
+>
+> Migs G3+G8+G4 (10): `060000..060500` + `20260529000000..040000`.
+> 427+/427+ tests RuulCore.
 >
 > Naming conventions duras:
 > - Tablas dominio = `group_*` (multi-tenant) excepto `profiles`.
@@ -1700,8 +1707,11 @@ Out of scope. Requeriría: `federations`, cross-tenant identity bridge, schema-l
 | 3 | V2-G3.2 Cable hook en 4 callsites canónicos (issue_sanction, set_membership_state, open_dispute, finalize_vote) | Rules+todo | — | ✅ DONE (commit `7270e3d4`, mig `060400`, e2e verde) |
 | 4 | V2-G3.5 iOS Disparos feed (RPC `group_rule_evaluations` + RuleEvaluationsStore + RuleEvaluationsView + 8 tests) | iOS UI+Rules | — | ✅ DONE (commit `cf9a8b8d`, mig `060500`, 427 tests) |
 | 5 | ~~V2-G3.6 Simulator~~ → **diferido a V3** (dry-run ya quedó en G3.1) | Rules | — | V3 |
-| 6 | **V2-G8 Engine-driven UX** — banner global "Sistema evaluó M reglas en últimas 24h" en `GroupHomeFeedView` + per-resource "qué reglas matchearon aquí" | iOS UI | 1-2 | siguiente; G3 ya cerrado |
-| 7 | V2-G4 Sanction ↔ Money deep (partial pay, plans, auto-pay from fund) | Money+Sanctions | 3-4 | independent de G8 |
+| 6 | V2-G8.1 Engine banner (cheap aggregate summary RPC + Section en home) | iOS UI+Rules | — | ✅ DONE (commit `6f5481b3`, mig `20260529010000`) |
+| 6b | V2-G8.2 "¿Por qué pasó esto?" sheet (reverse-lookup provenance + swipe action en Historia) | iOS UI+Rules | — | ✅ DONE (commit `aedd1ae1`, mig `20260529020000`) |
+| 7 | V2-G4.1 Partial payment surfaces (read RPC + progress bar + "Pagar todo" + payment history) | Money+Sanctions | — | ✅ DONE (commit `e5042455`, mig `20260529030000`) |
+| 7b | V2-G4.2 Payment plans MVP (target propone cuotas, no auto-debit) | Money+Sanctions | — | ✅ DONE (commit `36548366`, mig `20260529040000`) |
+| 7c | **V2-G4.3 Auto-pay from fund común → DEFERRED V3** (decisión doctrinal pendiente: cómo modelar "from fund → pool" sin romper `record_settlement` abstraction) | Money+Resource | 2-3 | V3, ver `handoff_v3_g4_3_fund_auto_settle` memory |
 | 8 | V3: Particionar `system_events` + `ledger_entries` monthly | Memory+Money | 2 | scalability |
 | 9 | V3: `group_governance_versions` + `group_role_versions` snapshots | Authority+Governance | 1-2 | audit |
 | 10 | V3: Deprecate `rules`, `fines`, `events` legacy tables | Cleanup | 1 | nothing critical |
@@ -1851,18 +1861,26 @@ Todos en `swift-testing` framework. Backend smokes en SQL scripts ejecutables v�
 
 Este documento es la traducción técnica de `GroupPrimitives.md` al backend real.
 
-## Estado post-V2-G3 EPIC cerrado (commits `30efadce`→`6bb56c78`)
-✅ G3.1 → G3.5 + polish. 6 migs (`060000`→`060500` + `20260529000000`). 427/427 tests RuulCore. **20 atoms** (8 triggers + 6 conditions + 6 consequences). 7 callsites cableados. 5 consequence handlers vivos (sync sanction, sync membership, sync pool_charge, sync start_vote, async notification). iOS Disparos feed accesible desde RulesListView toolbar.
+## Estado post-V2 EPIC cerrado — `v2.0.0-rc`
 
-**Pendiente menor** (no bloquea cierre G3, cae en V2-G8):
-- Banner global "Sistema evaluó M reglas en últimas 24h" en `GroupHomeFeedView`.
-- Sheet "¿Por qué pasó esto?" en eventos generados por engine.
+V2 shipped (commits `30efadce`→`36548366`):
+- G3 entero + polish (commits `30efadce`/`904e9127`/`7270e3d4`/`cf9a8b8d`/`6bb56c78`).
+- G8.1+G8.2 (commits `6f5481b3`/`aedd1ae1`).
+- G4.1+G4.2 (commits `e5042455`/`36548366`).
 
-## Siguiente foco (V2 restante)
-1. **V2-G8 Engine-driven UX** (1-2 sesiones) — banner + "¿por qué pasó esto?" sheet + per-resource "qué reglas matchearon aquí".
-2. **V2-G4 Sanction ↔ Money deep** (3-4 sesiones) — partial payments, payment plans, auto-pay from fund. Independent de G8.
+10 migs nuevas. Catálogo 20 atoms. 5 consequence handlers + bridge engine→voto. Banner home + "¿Por qué pasó esto?" sheet. Partial payments + plans.
 
-Tras G4+G8 → tag `v2.0.0-rc` → pase V3 (consolidación / cleanup / launch + handler registry refactor antes de crecer catálogo > 20).
+**V2-G4.3 (auto-pay from fund común) deferred V3** por decisión doctrinal pendiente. Ver `handoff_v3_g4_3_fund_auto_settle` en memoria.
+
+## V3 — siguiente foco
+
+Orden recomendado:
+1. **G4.3 fund auto-settle** — primero, porque cierra el money/sanction loop completo. Necesita decisión doctrinal sobre modelo "from fund → pool" antes de tocar `record_settlement`.
+2. **Handler registry refactor** (item 12b en M.1) — antes de crecer catálogo atoms > 20 (umbral marcado).
+3. Particionar `system_events` + `ledger_entries` mensual.
+4. Versionar `governance` + `roles`.
+5. Replay engine + freeform rule jsonb + simulator full.
+6. Notification preferences + retention de outbox.
 
 ## Cambios diferidos (V3)
 - Particionado mensual.
