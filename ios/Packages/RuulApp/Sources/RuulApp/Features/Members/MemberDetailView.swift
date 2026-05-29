@@ -65,6 +65,7 @@ public struct MemberDetailView: View {
             identitySection(item: item)
             rolesSection(item: item)
             sanctionsSection(item: item)
+            peerMoneySection(item: item)
             if item.isCurrentUser {
                 moneySection
             }
@@ -212,6 +213,69 @@ public struct MemberDetailView: View {
     private func filteredSanctions(for item: MembershipBoundaryItem) -> [GroupSanction] {
         guard let mid = item.membershipId else { return [] }
         return sanctionsStore.sanctions.filter { $0.targetMembershipId == mid }
+    }
+
+    // MARK: - Money "Entre miembros" (peer-pair from caller's plan)
+
+    /// Doctrina `doctrine_money_two_worlds`: cuando miras a otra
+    /// persona, la pregunta más concreta es "¿en qué estamos en
+    /// plata?". Tomamos el `settlementPlan` ya hidratado por
+    /// `MoneyStore.refresh(...)` y lo filtramos por contraparte.
+    ///
+    /// Visibilidad:
+    /// - Self → cluster propio (`moneySection`) maneja el caso.
+    /// - Other con membership_id → siempre se muestra (incluso "al día"
+    ///   responde una pregunta concreta).
+    /// - Invite pendiente (no membership_id) → invisible.
+    @ViewBuilder
+    private func peerMoneySection(item: MembershipBoundaryItem) -> some View {
+        if !item.isCurrentUser, let mid = item.membershipId {
+            let peer = moneyStore.settlementPlan.first(where: { $0.counterpartyMembershipId == mid })
+            Section("Entre ustedes") {
+                if let peer {
+                    peerMoneyRow(peer: peer, displayName: item.displayName)
+                } else {
+                    HStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle")
+                            .foregroundStyle(.green)
+                            .frame(width: 24)
+                        Text("Están al día.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func peerMoneyRow(peer: SettlementPlanItem, displayName: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: peer.direction == .youOwe
+                  ? "arrow.up.right.circle.fill"
+                  : "arrow.down.left.circle.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(peer.direction == .youOwe ? .red : .green)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(peerHeadline(direction: peer.direction, name: displayName))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text("\(peer.absoluteAmount.formatted()) \(peer.unit)")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Doctrina `doctrine_money_two_worlds`: cada string nombra a la
+    /// contraparte. Coincide con `SettleUpView.headline(for:)` para
+    /// mantener vocabulario consistente.
+    private func peerHeadline(direction: SettlementPlanItem.Direction, name: String) -> String {
+        switch direction {
+        case .youOwe:  return "Págale a \(name)"
+        case .theyOwe: return "\(name) te debe"
+        }
     }
 
     // MARK: - Money (self only)
