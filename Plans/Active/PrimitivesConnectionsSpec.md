@@ -184,6 +184,18 @@
 - **+1 aplicada 2026-05-29 (PARTE 8b — security hardening por advisor)**:
   - `20260529214001 v3_parte8b_security_hardening` — closeout para Supabase advisor: (i) ALTER FUNCTION ... SET search_path='public' en 4 trigger fns (3 míos + `_group_decisions_partial_guard`). (ii) REVOKE EXECUTE FROM anon, public + GRANT EXECUTE TO authenticated en cada SECURITY DEFINER de public (defensa-en-profundidad además del `auth.uid() IS NULL` interno). (iii) REVOKE EXECUTE FROM authenticated en 7 internas (`_smoke_money_flow`, `_rule_eval_predicate/dispatch`, `_resolve_authority_path`, `_assert_mandate_authorizes`, `_auto_promote_norm_internal`, `_check_norm_promotion_threshold`) que son postgres-only. Resultado: anon=0 / authenticated=129 (mismo que pre-mig) / internals expuestos=0. Smokes: `my_profile()` desde authenticated OK ✓, anon bloqueado con 42501 ✓, `_smoke_money_flow()` desde authenticated bloqueado ✓.
 
+- **+5 aplicadas 2026-05-29 (PARTE 12 batch inicial — formal smoke suite)**:
+  - `20260529215000 v3_parte12_hotfix_start_vote_decisions_create` — hot-fix: `start_vote` exigía permission `decisions.propose` que NO está registrada en `permissions` ni concedida a ningún rol. **Voting estaba 100% roto en dev**. Founder decisión 2026-05-29: rename a `decisions.create` (la permission viva que founder + member ya tienen). 'propose' era un misnomer; el authority right canónico es 'crear decisión'.
+  - `20260529215001 v3_parte12_n1_smoke_identity_rls` — `_smoke_identity_rls()` formaliza N.1 con simulation approach (SET ROLE bloqueado en SECURITY DEFINER + postgres/service_role BYPASSRLS + sin dblink). Valida: policy `profiles_select_self_or_co_member` presente, RLS habilitado, USING expr evaluado contra 3 (caller=A, target=X) pairs, ninguna policy SELECT concedida a anon. Smokes 5/5 verdes.
+  - `20260529215002 v3_parte12_n7_smoke_governance` — `_smoke_governance()` formaliza PARTE 7 versioning + core voting lifecycle. Valida: tabla `group_governance_versions` presente + atom guards + UPDATE snapshot bloqueado + DELETE bloqueado + 2 calls consecutivos cierran previa/abren nueva + event `decision_rules.set` carry `version_id` + `start_vote` crea decision status='open' + emite `decision.proposed` + `cast_vote` 2x mismo voter inserta 2 rows + `current_vote_for` retorna latest. Smokes 9/9 verdes. **Deferidos a follow-up**: N.7.3 ranked, N.7.4-6 finalize per-handler (PARTE 4 doctrinal), N.7.8 closed-decision raise, N.7.9 weighted tally.
+  - `20260529215003 v3_parte12_n9_smoke_notifications` — `_smoke_notifications()` formaliza notifications atom + PARTE 8 dedup + PARTE 8 retention. Valida: tabla + atom guards + idempotency UNIQUE index + INSERT pending + UPDATE payload bloqueado + UPDATE dispatch_status permitido + DELETE dispatched<30d bloqueado + DELETE dispatched>30d permitido + UNIQUE dedup por idempotency_key. Smokes 9/9 verdes.
+  - `20260529215004 v3_parte12_fix_smoke_money_flow_invite_composite` — bug-fix paralelo: `_smoke_money_flow` legacy estaba roto silenciosamente desde PARTE INV (asignaba composite a uuid escalar). Adaptado a `SELECT INTO` sobre `(invite_id, code, placeholder_membership_id)`. Smoke 17/17 verde tras fix.
+
+**Hallazgos PARTE 12 / drifts capturados** (no aplicados, anotados):
+- `cast_vote` tiene 2 overloads ambiguos (4-arg legacy + 5-arg con `p_weight DEFAULT NULL`). Cualquier call de 4 args falla con `42725 function not unique`. Smoke usa el 5-arg explícito con `1::numeric`. **TODO**: drop overload 4-arg en mig separada.
+- `start_vote` emite `decision.proposed` (NO `decision.started` como decía spec §N.7.1). Código source of truth. **Corregido en spec esta sesión**.
+- Spec §N.7.1 listaba decision_type `free_form` que NO está en el CHECK constraint. Allowed list real: `proposal | poll | election | budget | rule_change | membership | sanction_appeal | mandate_grant | mandate_revoke | dissolution | other`. **Corregido**: usar `other` para tests sin handler.
+
 **Re-audit §0.6 post-PARTE 3**: el catálogo "eventos declarados pero NO emitidos" era parcialmente falso. Lo único que faltaba realmente eran las 3 RPCs zero-emit ya cerradas. Los demás (`dispute.escalated`, `rule.published`, `mandate.granted/revoked`, `money.transaction_reversed`, `dissolution.proposed/finalized`, `resource.ownership_changed`, `dispute.resolved`) **ya están en código** — solo no aparecen en data dev porque no se han ejercido en tests. **Doctrinales pendientes (no slices mecánicos)**:
 - `sanction.paid` vs `sanction.completed` actual: `update_sanction_status` emite `sanction.<new_status>` dinámico (`sanction.completed/reversed/cancelled`); el doc pide `sanction.paid` separado. Decisión: ¿rename `completed` → `paid` cuando origen es settlement? ¿O emit alias?
 - `mandate.used`: no hay emisor; el FK guard `assert_mandate_authorizes` corre por cada uso pero no emite. ¿Vale la inflación del log?
@@ -1970,7 +1982,7 @@ Ver §N.
 ## N.7 Governance
 
 ```sql
--- N.7.1: start_vote → group_decisions status='open' + 'decision.started'
+-- N.7.1: start_vote → group_decisions status='open' + 'decision.proposed' (no .started)
 -- N.7.2: cast_vote 1 → seq=1; cast_vote 2 mismo voter → seq=2; current_vote_for retorna seq=2
 -- N.7.3: cast_ranked_vote → múltiples rows con metadata.rank
 -- N.7.4: finalize_vote 'membership' passed → set_membership_state invoked + member status mutado
