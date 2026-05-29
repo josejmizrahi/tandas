@@ -582,6 +582,32 @@ public struct CancelSanctionPaymentPlanParams: Encodable, Sendable, Equatable {
     }
 }
 
+/// V3 PARTE 5a — `pay_sanction(p_sanction_id, p_amount, p_unit?, p_client_id?)`.
+/// Self-party sugar over `record_settlement`: el backend resuelve
+/// `target_membership` desde la sanción, fija `paid_to_kind='pool'`, y
+/// rechaza over-pay (cap en `amount_outstanding`). El path con mandato
+/// queda en `record_settlement` directo.
+public struct PaySanctionParams: Encodable, Sendable, Equatable {
+    public let pSanctionId: UUID
+    public let pAmount: Decimal
+    public let pUnit: String?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pSanctionId = "p_sanction_id"
+        case pAmount     = "p_amount"
+        case pUnit       = "p_unit"
+        case pClientId   = "p_client_id"
+    }
+
+    public init(sanctionId: UUID, amount: Decimal, unit: String? = nil, clientId: String? = nil) {
+        self.pSanctionId = sanctionId
+        self.pAmount     = amount
+        self.pUnit       = unit
+        self.pClientId   = clientId
+    }
+}
+
 public struct CreateEngineRuleInput: Encodable, Sendable, Equatable {
     public let pGroupId: UUID
     public let pTitle: String

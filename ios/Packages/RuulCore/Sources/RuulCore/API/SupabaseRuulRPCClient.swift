@@ -76,6 +76,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return SettlementResult(settlementId: row.settlementId, transactionId: row.transactionId)
     }
 
+    public func paySanction(_ input: PaySanctionParams) async throws -> SettlementResult {
+        let rows: [RecordSettlementRow] = try await callReturningArray("pay_sanction", params: input)
+        guard let row = rows.first else {
+            throw RuulError.unexpected(message: "pay_sanction returned no rows")
+        }
+        return SettlementResult(settlementId: row.settlementId, transactionId: row.transactionId)
+    }
+
     // MARK: - Reads
 
     public func listMyGroups() async throws -> [GroupListItem] {

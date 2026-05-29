@@ -207,17 +207,31 @@ struct PaySanctionSheet: View {
         isSubmitting = true
         defer { isSubmitting = false }
         if clientId == nil { clientId = UUID().uuidString }
-        let notesClean = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        let draft = SettlementDraft(
-            groupId: groupId,
-            paidByMembershipId: myMembershipId,
-            target: .pool,
-            amount: amount,
-            notes: notesClean.isEmpty ? nil : notesClean,
-            mandateId: selectedMandateId
-        )
         do {
-            _ = try await container.moneyRepository.recordOwnSettlement(draft, clientId: clientId)
+            if selectedMandateId == nil {
+                // V3 PARTE 5a — self-party sugar. Backend resuelve target,
+                // pool target_kind, rechaza over-pay (cap en outstanding).
+                _ = try await container.sanctionsRepository.paySanction(
+                    sanctionId: sanction.id,
+                    amount: amount,
+                    unit: nil,
+                    clientId: clientId
+                )
+            } else {
+                // Mandate-on-behalf: el target del sanction NO es el caller,
+                // así que pay_sanction lo rechazaría con 42501. Mantenemos
+                // record_settlement para que el mandato lleve la autoridad.
+                let notesClean = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+                let draft = SettlementDraft(
+                    groupId: groupId,
+                    paidByMembershipId: myMembershipId,
+                    target: .pool,
+                    amount: amount,
+                    notes: notesClean.isEmpty ? nil : notesClean,
+                    mandateId: selectedMandateId
+                )
+                _ = try await container.moneyRepository.recordOwnSettlement(draft, clientId: clientId)
+            }
             clientId = nil
             onPaid()
         } catch {

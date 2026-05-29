@@ -17,6 +17,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case leaveGroup(groupId: UUID, reason: String?)
         case recordExpense(draft: ExpenseDraft, clientId: String?)
         case recordSettlement(draft: SettlementDraft, clientId: String?)
+        case paySanction(input: PaySanctionParams)
         case listMyGroups
         case groupSummary(groupId: UUID)
         case memberBalance(groupId: UUID, membershipId: UUID)
@@ -121,6 +122,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var leaveGroupStub: Result<Void, RuulError> = .success(())
     private var recordExpenseStub: Result<UUID, RuulError> = .success(UUID())
     private var recordSettlementStub: Result<SettlementResult, RuulError> = .success(
+        SettlementResult(settlementId: UUID(), transactionId: UUID())
+    )
+    private var paySanctionStub: Result<SettlementResult, RuulError> = .success(
         SettlementResult(settlementId: UUID(), transactionId: UUID())
     )
     private var listMyGroupsStub: Result<[GroupListItem], RuulError> = .success([])
@@ -275,6 +279,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setLeaveGroupStub(_ stub: Result<Void, RuulError>) { leaveGroupStub = stub }
     func setRecordExpenseStub(_ stub: Result<UUID, RuulError>) { recordExpenseStub = stub }
     func setRecordSettlementStub(_ stub: Result<SettlementResult, RuulError>) { recordSettlementStub = stub }
+    func setPaySanctionStub(_ stub: Result<SettlementResult, RuulError>) { paySanctionStub = stub }
     func setListMyGroupsStub(_ stub: Result<[GroupListItem], RuulError>) { listMyGroupsStub = stub }
     func setGroupSummaryStub(_ stub: Result<CanonicalGroupSummary, RuulError>) { groupSummaryStub = stub }
     func setMemberBalanceStub(_ stub: Result<Decimal, RuulError>) { memberBalanceStub = stub }
@@ -398,6 +403,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func recordSettlement(_ draft: SettlementDraft, clientId: String?) async throws -> SettlementResult {
         recorded.append(.recordSettlement(draft: draft, clientId: clientId))
         return try recordSettlementStub.get()
+    }
+
+    func paySanction(_ input: PaySanctionParams) async throws -> SettlementResult {
+        recorded.append(.paySanction(input: input))
+        return try paySanctionStub.get()
     }
 
     func listMyGroups() async throws -> [GroupListItem] {

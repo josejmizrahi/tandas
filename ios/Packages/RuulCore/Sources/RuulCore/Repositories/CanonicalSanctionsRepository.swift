@@ -83,4 +83,24 @@ public struct CanonicalSanctionsRepository: Sendable {
             CancelSanctionPaymentPlanParams(planId: planId, reason: reason)
         )
     }
+
+    /// V3 PARTE 5a — self-party sugar `pay_sanction`. Para pagar
+    /// on-behalf usar `moneyRepository.recordOwnSettlement` con mandato.
+    /// Backend resuelve target_membership, fija paid_to_kind='pool', y
+    /// rechaza over-pay.
+    public func paySanction(
+        sanctionId: UUID,
+        amount: Decimal,
+        unit: String? = nil,
+        clientId: String? = nil
+    ) async throws -> SettlementResult {
+        try await rpc.paySanction(
+            PaySanctionParams(
+                sanctionId: sanctionId,
+                amount: amount,
+                unit: unit,
+                clientId: clientId
+            )
+        )
+    }
 }

@@ -39,6 +39,13 @@ public protocol RuulRPCClient: Sendable {
 
     func recordSettlement(_ draft: SettlementDraft, clientId: String?) async throws -> SettlementResult
 
+    /// V3 PARTE 5a — `pay_sanction(...)` self-party sugar. El target del
+    /// sanction paga (resuelto server-side) y el backend delega a
+    /// `record_settlement` con paid_to_kind='pool'. Rechaza over-pay
+    /// (cap en `amount_outstanding`). Devuelve el `SettlementResult`
+    /// usual. Para pagar on-behalf usar `recordSettlement` con `mandateId`.
+    func paySanction(_ input: PaySanctionParams) async throws -> SettlementResult
+
     // MARK: - Reads
 
     func listMyGroups() async throws -> [GroupListItem]
