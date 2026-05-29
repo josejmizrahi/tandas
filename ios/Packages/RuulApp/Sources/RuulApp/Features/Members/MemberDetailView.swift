@@ -31,17 +31,40 @@ public struct MemberDetailView: View {
     /// miembro. Inyectado para que las views derivadas (preview, tests)
     /// puedan pasar fixtures sin tocar Supabase.
     let activityFetcher: (UUID, UUID, Int) async throws -> [GroupEvent]
+    /// V3 Batch B-1 (Quick Actions) — fetcher de permisos del caller en
+    /// el grupo (`list_member_permissions(p_group_id, p_user_id=NULL)`).
+    /// Default vacío para previews → buttons quedan ocultos.
+    let permissionsFetcher: (UUID) async throws -> [String]
+    /// Opt-in. Cuando los 3 stores se proveen + hay perms suficientes,
+    /// MemberDetailView renderiza Quick Actions con sheets directos.
+    /// Nil = la sección queda invisible (back-compat para previews).
+    let quickActionStores: QuickActionStores?
 
     @State private var isManagingRoles: Bool = false
     /// V3 Batch B-1 — Activity feed local. `nil` mientras carga; `[]`
     /// cuando confirmadamente vacío (fallback silencioso si la RPC
     /// falla).
     @State private var activity: [GroupEvent]? = nil
+    /// V3 Batch B-1 — caller permissions resueltos server-side. Set
+    /// vacío inicial = nada visible (fail-closed UX).
+    @State private var callerPermissions: Set<String> = []
 
     /// How many recent history rows to render inline before linking out
     /// to the full `MemberHistoryView`.
     private let recentHistoryLimit = 5
     private let activityLimit = 8
+
+    /// Bundle de los 3 stores write-side necesarios para los Quick
+    /// Actions. Separado del init principal para que call sites con
+    /// container solo pasen `.from(container)`.
+    public struct QuickActionStores {
+        public let mandates: MandatesStore
+        public let reputationFeed: ReputationFeedStore
+        public init(mandates: MandatesStore, reputationFeed: ReputationFeedStore) {
+            self.mandates = mandates
+            self.reputationFeed = reputationFeed
+        }
+    }
 
     public init(
         sanctionsStore: SanctionsStore,
@@ -51,7 +74,9 @@ public struct MemberDetailView: View {
         membersStore: MembersStore,
         groupId: UUID,
         memberItem: MembershipBoundaryItem,
-        activityFetcher: @escaping (UUID, UUID, Int) async throws -> [GroupEvent] = { _, _, _ in [] }
+        activityFetcher: @escaping (UUID, UUID, Int) async throws -> [GroupEvent] = { _, _, _ in [] },
+        permissionsFetcher: @escaping (UUID) async throws -> [String] = { _ in [] },
+        quickActionStores: QuickActionStores? = nil
     ) {
         self.sanctionsStore = sanctionsStore
         self.reputationStore = reputationStore
@@ -61,6 +86,8 @@ public struct MemberDetailView: View {
         self.groupId = groupId
         self.memberItem = memberItem
         self.activityFetcher = activityFetcher
+        self.permissionsFetcher = permissionsFetcher
+        self.quickActionStores = quickActionStores
     }
 
     /// Live projection of the member — picks up the latest snapshot
@@ -74,6 +101,7 @@ public struct MemberDetailView: View {
         let item = displayedItem
         return List {
             identitySection(item: item)
+            quickActionsSection(item: item)
             rolesSection(item: item)
             sanctionsSection(item: item)
             peerMoneySection(item: item)
@@ -115,6 +143,32 @@ public struct MemberDetailView: View {
             }
             await sanctionsStore.refreshIfNeeded(groupId: groupId)
             await rolesStore.refreshIfNeeded(groupId: groupId)
+            await loadPermissions()
+        }
+        .sheet(isPresented: sanctionSheetBinding) {
+            IssueSanctionSheet(
+                store: sanctionsStore,
+                membersStore: membersStore,
+                groupId: groupId
+            )
+        }
+        .sheet(isPresented: mandateSheetBinding) {
+            if let mandates = quickActionStores?.mandates {
+                GrantMandateSheet(
+                    store: mandates,
+                    membersStore: membersStore,
+                    groupId: groupId
+                )
+            }
+        }
+        .sheet(isPresented: reputationSheetBinding) {
+            if let feed = quickActionStores?.reputationFeed {
+                RecordReputationEventSheet(
+                    store: feed,
+                    membersStore: membersStore,
+                    groupId: groupId
+                )
+            }
         }
         .refreshable {
             if let mid = item.membershipId {
@@ -137,6 +191,80 @@ public struct MemberDetailView: View {
             // Silent: la timeline no es load-bearing, el bloque queda invisible.
             activity = []
         }
+    }
+
+    private func loadPermissions() async {
+        do {
+            callerPermissions = Set(try await permissionsFetcher(groupId))
+        } catch {
+            callerPermissions = []
+        }
+    }
+
+    // MARK: - V3 Batch B-1 — Quick Actions (gated por perms server-side)
+
+    /// Universal Detail bloque 6 (Actions). Renderiza solo cuando:
+    /// 1. Hay stores write-side disponibles (`quickActionStores != nil`).
+    /// 2. El displayed NO es el caller (no tiene sentido sancionarse a
+    ///    sí mismo desde acá; el flow self vive en otros sheets).
+    /// 3. El displayed tiene membership_id (no es invite pendiente).
+    /// 4. El caller tiene AL MENOS un permiso aplicable a este target.
+    @ViewBuilder
+    private func quickActionsSection(item: MembershipBoundaryItem) -> some View {
+        if let stores = quickActionStores,
+           !item.isCurrentUser,
+           let mid = item.membershipId,
+           hasAnyQuickAction
+        {
+            Section("Acciones rápidas") {
+                if callerPermissions.contains("sanctions.create") {
+                    Button {
+                        sanctionsStore.beginIssuing(defaultTarget: mid)
+                    } label: {
+                        Label("Sancionar a \(item.displayName)", systemImage: "exclamationmark.shield")
+                    }
+                }
+                if callerPermissions.contains("mandates.grant") {
+                    Button {
+                        stores.mandates.beginGranting(defaultRepresentative: mid)
+                    } label: {
+                        Label("Otorgar mandato a \(item.displayName)", systemImage: "person.2")
+                    }
+                }
+                if callerPermissions.contains("reputation.record") {
+                    Button {
+                        stores.reputationFeed.beginRecording(defaultSubject: mid)
+                    } label: {
+                        Label("Registrar reputación sobre \(item.displayName)", systemImage: "star.bubble")
+                    }
+                }
+            }
+        }
+    }
+
+    private var hasAnyQuickAction: Bool {
+        callerPermissions.contains("sanctions.create")
+        || callerPermissions.contains("mandates.grant")
+        || callerPermissions.contains("reputation.record")
+    }
+
+    private var sanctionSheetBinding: Binding<Bool> {
+        Binding(
+            get: { sanctionsStore.isIssuePresented },
+            set: { sanctionsStore.isIssuePresented = $0 }
+        )
+    }
+    private var mandateSheetBinding: Binding<Bool> {
+        Binding(
+            get: { quickActionStores?.mandates.isGrantPresented ?? false },
+            set: { quickActionStores?.mandates.isGrantPresented = $0 }
+        )
+    }
+    private var reputationSheetBinding: Binding<Bool> {
+        Binding(
+            get: { quickActionStores?.reputationFeed.isRecordPresented ?? false },
+            set: { quickActionStores?.reputationFeed.isRecordPresented = $0 }
+        )
     }
 
     // MARK: - Identity

@@ -68,7 +68,17 @@ struct GroupHomeFeedView: View {
                         membershipId: mid,
                         limit: limit
                     )
-                }
+                },
+                permissionsFetcher: { gid in
+                    try await container.groupRepository.listMemberPermissions(
+                        groupId: gid,
+                        userId: nil
+                    )
+                },
+                quickActionStores: MemberDetailView.QuickActionStores(
+                    mandates: container.mandatesStore,
+                    reputationFeed: container.reputationFeedStore
+                )
             )
         }
         .navigationDestination(item: $pendingDecisionDetail) { summary in
