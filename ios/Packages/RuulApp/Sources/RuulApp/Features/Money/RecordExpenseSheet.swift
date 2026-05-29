@@ -218,6 +218,10 @@ struct RecordExpenseSheet: View {
                     Text("Tú (pagaste)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                } else if member.status == .invited {
+                    Text("Invitado · esperando")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -261,9 +265,16 @@ struct RecordExpenseSheet: View {
 
     // MARK: - Derived
 
+    /// V3-R0: includes both `active` and `invited` memberships so a
+    /// pending invitee (placeholder membership with `joined_via =
+    /// 'placeholder_claim'`) can be picked as participant and as payer
+    /// right after the invite is sent — no need to wait for them to
+    /// accept. Suspended/banned/left rows are excluded.
     private var activeMembers: [MembershipBoundaryItem] {
         container.membersStore.items.filter { item in
-            item.kind == .membership && item.membershipId != nil
+            item.kind == .membership
+                && item.membershipId != nil
+                && (item.status == .active || item.status == .invited)
         }
     }
 
