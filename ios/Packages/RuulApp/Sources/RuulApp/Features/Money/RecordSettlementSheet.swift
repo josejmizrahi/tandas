@@ -171,6 +171,22 @@ struct RecordSettlementSheet: View {
         )
     }
 
+    /// V3 doctrine_mandate_in_money_rpcs — espejo de
+    /// RecordExpenseSheet.resolvedPaidByMembershipId. Cuando el
+    /// mandato apunta a una membership específica, el settlement se
+    /// registra como pagado por el principal. group/committee/role →
+    /// caller queda como payer.
+    private var resolvedPaidByMembershipId: UUID {
+        guard let mandateId = selectedMandateId,
+              let mandate = availableMandates.first(where: { $0.id == mandateId }),
+              mandate.principalType == .membership,
+              let principalId = mandate.principalId
+        else {
+            return myMembershipId
+        }
+        return principalId
+    }
+
     /// Distinct member counterparties pulled from the open obligations.
     /// One obligation per person can show up multiple times in the store
     /// (e.g. two separate expenses → two rows owed to the same person);
@@ -223,9 +239,13 @@ struct RecordSettlementSheet: View {
             settlementTarget = .member(membershipId: id)
         }
 
+        // V3 mandate redirect: si el mandato seleccionado representa a
+        // una membership específica, el draft se firma como pagado
+        // por el principal — no por mí. Audit symmetry con
+        // RecordExpenseSheet.
         let draft = SettlementDraft(
             groupId: groupId,
-            paidByMembershipId: myMembershipId,
+            paidByMembershipId: resolvedPaidByMembershipId,
             target: settlementTarget,
             amount: amount,
             notes: notesClean.isEmpty ? nil : notesClean,

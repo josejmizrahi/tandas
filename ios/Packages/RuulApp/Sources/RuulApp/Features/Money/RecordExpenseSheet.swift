@@ -292,6 +292,24 @@ struct RecordExpenseSheet: View {
         )
     }
 
+    /// V3 doctrine_mandate_in_money_rpcs — cuando el mandato
+    /// seleccionado tiene `principalType == .membership` y
+    /// `principalId != nil`, el `paid_by_membership_id` redirige al
+    /// principal (acto-en-nombre-de). Para principal group/committee/
+    /// role el caller queda como payer (esos mandatos modelan
+    /// autoridad institucional, no identidad alternativa).
+    /// Nil mandate → caller es payer (path normal).
+    private var resolvedPaidByMembershipId: UUID {
+        guard let mandateId = selectedMandateId,
+              let mandate = availableMandates.first(where: { $0.id == mandateId }),
+              mandate.principalType == .membership,
+              let principalId = mandate.principalId
+        else {
+            return myMembershipId
+        }
+        return principalId
+    }
+
     private var parsedAmount: Decimal? {
         let normalized = amountText
             .replacingOccurrences(of: ",", with: ".")
@@ -481,11 +499,18 @@ struct RecordExpenseSheet: View {
             }
         }
 
+        // V3 doctrine_mandate_in_money_rpcs: cuando se eligió un mandato
+        // cuyo principal es una membership específica, el `paid_by`
+        // canonical es el principal (en cuyo nombre actúo), no yo. Si
+        // el principal es group/committee/role el caller queda como
+        // payer (esos mandatos cubren autorización sin redirigir
+        // identidad del pagador).
+        let resolvedPaidBy = resolvedPaidByMembershipId
         let draft = ExpenseDraft(
             groupId: groupId,
             resourceId: nil,
             amount: amount,
-            paidByMembershipId: myMembershipId,
+            paidByMembershipId: resolvedPaidBy,
             description: descriptionClean.isEmpty ? nil : descriptionClean,
             split: split,
             inKind: inKind,
