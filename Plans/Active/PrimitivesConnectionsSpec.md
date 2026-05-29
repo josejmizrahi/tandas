@@ -159,6 +159,8 @@
   - `20260529204001 v3_parte3_1_emit_role_granted_event` — `assign_role_to_member` ahora emite `role.granted` a `group_events`.
   - `20260529204002 v3_parte3_2_emit_role_revoked_event` — `revoke_role_from_member` ahora emite `role.revoked` a `group_events`.
   - `20260529204003 v3_parte3_3_emit_dispute_event_added` — `append_dispute_event` ahora emite `dispute.event_added` a `group_events` (sin tocar el atom privado `group_dispute_events`).
+- **+1 aplicada 2026-05-29 (PARTE 5b — leave_group balance guard)**:
+  - `20260529205001 v3_parte5b_leave_group_balance_guard` — `leave_group` ahora asserta `member_balance_in_group=0` antes de delegar a `set_membership_state`. Path de expulsión admin queda intacto (gap doctrinal: la función no cuenta obligations donde el miembro es `owed_to`).
 
 **Re-audit §0.6 post-PARTE 3**: el catálogo "eventos declarados pero NO emitidos" era parcialmente falso. Lo único que faltaba realmente eran las 3 RPCs zero-emit ya cerradas. Los demás (`dispute.escalated`, `rule.published`, `mandate.granted/revoked`, `money.transaction_reversed`, `dissolution.proposed/finalized`, `resource.ownership_changed`, `dispute.resolved`) **ya están en código** — solo no aparecen en data dev porque no se han ejercido en tests. **Doctrinales pendientes (no slices mecánicos)**:
 - `sanction.paid` vs `sanction.completed` actual: `update_sanction_status` emite `sanction.<new_status>` dinámico (`sanction.completed/reversed/cancelled`); el doc pide `sanction.paid` separado. Decisión: ¿rename `completed` → `paid` cuando origen es settlement? ¿O emit alias?
