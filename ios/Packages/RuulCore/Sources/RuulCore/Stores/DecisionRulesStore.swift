@@ -11,6 +11,11 @@ public final class DecisionRulesStore {
     public private(set) var rules: GroupDecisionRules?
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
+    /// V3 PARTE 7c — historial append-only de snapshots. Vacío hasta
+    /// que `refreshHistory(groupId:)` lo hidrate. Nunca causa fail del
+    /// store principal.
+    public private(set) var history: [GroupGovernanceVersion] = []
+    public private(set) var isHistoryLoading: Bool = false
 
     /// Drives a single `EditDecisionRulesView` sheet. Flipped by
     /// `beginEditing()` / `saveDraft(...)`.
@@ -96,6 +101,18 @@ public final class DecisionRulesStore {
             return
         }
         await refresh(groupId: groupId)
+    }
+
+    /// V3 PARTE 7c — fetch historial. Silent on error: el sheet no se
+    /// rompe si la RPC falla, simplemente la sección queda vacía.
+    public func refreshHistory(groupId: UUID, limit: Int = 20) async {
+        isHistoryLoading = true
+        defer { isHistoryLoading = false }
+        do {
+            history = try await repository.history(groupId: groupId, limit: limit)
+        } catch {
+            history = []
+        }
     }
 
     public func beginEditing() {

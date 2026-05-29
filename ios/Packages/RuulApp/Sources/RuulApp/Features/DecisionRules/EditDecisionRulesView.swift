@@ -65,6 +65,8 @@ struct EditDecisionRulesView: View {
                             .foregroundStyle(.red)
                     }
                 }
+
+                historySection
             }
             .navigationTitle(L10n.DecisionRules.editTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -100,6 +102,7 @@ struct EditDecisionRulesView: View {
                     quorumValue = 2
                 }
             }
+            .task { await store.refreshHistory(groupId: groupId) }
             .onChange(of: quorumEnabled) { _, enabled in
                 store.draftQuorum = enabled ? quorumValue : nil
             }
@@ -174,5 +177,63 @@ struct EditDecisionRulesView: View {
         defer { isSaving = false }
         let ok = await store.saveDraft(groupId: groupId)
         if ok { dismiss() }
+    }
+
+    // MARK: - V3 PARTE 7c — Historial
+
+    /// Doctrina situational: invisible cuando hay 0 versions guardadas
+    /// (grupos pre-PARTE 7 nunca llamaron set_decision_rules y empiezan
+    /// con jsonb '{}'); también invisible si solo hay 1 version (no hay
+    /// nada a comparar todavía). El loading-skeleton SI se muestra
+    /// brevemente.
+    @ViewBuilder
+    private var historySection: some View {
+        if store.isHistoryLoading && store.history.isEmpty {
+            Section("Historial") {
+                ProgressView()
+            }
+        } else if store.history.count > 1 {
+            Section("Historial") {
+                ForEach(store.history) { version in
+                    historyRow(version)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func historyRow(_ version: GroupGovernanceVersion) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                if version.isActive {
+                    Text("Vigente")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(.green.opacity(0.18)))
+                        .foregroundStyle(.green)
+                }
+                Text(version.effectiveFrom.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let method = version.snapshot.defaultMethod {
+                Text(method.label)
+                    .font(.body.weight(.medium))
+            }
+            HStack(spacing: 8) {
+                if let q = version.snapshot.quorumMin {
+                    Label("Quórum: \(q)", systemImage: "person.3")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let actor = version.setByDisplayName, !actor.isEmpty {
+                    Label(actor, systemImage: "person.crop.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 2)
     }
 }

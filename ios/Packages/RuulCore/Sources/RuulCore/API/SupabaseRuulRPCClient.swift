@@ -494,6 +494,25 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func groupGovernanceVersions(groupId: UUID, limit: Int) async throws -> [GroupGovernanceVersion] {
+        struct Params: Encodable {
+            let pGroupId: UUID
+            let pLimit: Int
+            enum CodingKeys: String, CodingKey {
+                case pGroupId = "p_group_id"
+                case pLimit   = "p_limit"
+            }
+        }
+        do {
+            return try await client
+                .rpc("group_governance_versions", params: Params(pGroupId: groupId, pLimit: limit))
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - History / Events (Primitiva 13)
 
     public func groupEventsRecent(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupEvent] {

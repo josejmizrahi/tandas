@@ -43,4 +43,10 @@ public struct CanonicalDecisionRulesRepository: Sendable {
         )
         return try await rpc.setDecisionRules(input)
     }
+
+    /// V3 PARTE 7c — append-only historial de snapshots. Pre-joined con
+    /// el `display_name` del actor. Active-member gate server-side.
+    public func history(groupId: UUID, limit: Int = 20) async throws -> [GroupGovernanceVersion] {
+        try await rpc.groupGovernanceVersions(groupId: groupId, limit: limit)
+    }
 }

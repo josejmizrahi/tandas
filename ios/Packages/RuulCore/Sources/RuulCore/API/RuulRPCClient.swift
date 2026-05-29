@@ -233,6 +233,11 @@ public protocol RuulRPCClient: Sendable {
     /// `group.update` permission.
     func setDecisionRules(_ input: SetDecisionRulesInput) async throws -> GroupDecisionRules
 
+    /// V3 PARTE 7c — `group_governance_versions(p_group_id, p_limit)`
+    /// historial append-only de snapshots de `groups.decision_rules`.
+    /// Pre-joined con profile.display_name del actor. Active-member gate.
+    func groupGovernanceVersions(groupId: UUID, limit: Int) async throws -> [GroupGovernanceVersion]
+
     // MARK: - History / Events (Primitiva 13)
 
     /// `group_events_recent(p_group_id, p_limit, p_before)` —
