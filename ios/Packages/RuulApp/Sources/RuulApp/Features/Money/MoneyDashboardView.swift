@@ -25,6 +25,7 @@ struct MoneyDashboardView: View {
     var body: some View {
         List {
             heroSection
+            peerPairsSection
             sanctionsSection
             debtsSection
             movementsSection
@@ -164,6 +165,78 @@ struct MoneyDashboardView: View {
         guard let balance = container.moneyStore.balance else { return .secondary }
         if balance == 0 { return .primary }
         return balance > 0 ? .green : .red
+    }
+
+    // MARK: - Entre miembros (V3 Batch B-2)
+
+    /// Doctrina `doctrine_money_two_worlds`: el dashboard debe partir en
+    /// "Con el grupo" (pool side) y "Entre miembros" (peer pairs). El
+    /// hero + sanctions + debtsSection cubren la parte pool; esta
+    /// sección surface las relaciones peer-to-peer del caller sin que
+    /// tenga que abrir SettleUpView para verlas.
+    ///
+    /// Renders top 3 contrapartes por |netAmount| con vocab que nombra
+    /// la contraparte ("Págale a {nombre}" / "{nombre} te debe").
+    /// Tap → SettleUpView (existing surface) con la lista completa.
+    /// Invisible si no hay peer pairs activos.
+    @ViewBuilder
+    private var peerPairsSection: some View {
+        let plan = container.moneyStore.settlementPlan
+        if !plan.isEmpty {
+            Section {
+                ForEach(plan.prefix(3)) { item in
+                    Button {
+                        isShowingSettleUp = true
+                    } label: {
+                        peerPairRow(item: item)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if plan.count > 3 {
+                    Button {
+                        isShowingSettleUp = true
+                    } label: {
+                        Text("Ver todas (\(plan.count))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Text("Entre miembros")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func peerPairRow(item: SettlementPlanItem) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: item.direction == .youOwe
+                  ? "arrow.up.right.circle.fill"
+                  : "arrow.down.left.circle.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(item.direction == .youOwe ? .red : .green)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(peerPairHeadline(item))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text("\(item.absoluteAmount.formatted()) \(item.unit)")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .contentShape(Rectangle())
+    }
+
+    /// Mismo vocabulario que SettleUpView/MemberDetailView para que el
+    /// usuario nunca dude qué significa una cifra.
+    private func peerPairHeadline(_ item: SettlementPlanItem) -> String {
+        switch item.direction {
+        case .youOwe:  return "Págale a \(item.counterpartyDisplayName)"
+        case .theyOwe: return "\(item.counterpartyDisplayName) te debe"
+        }
     }
 
     // MARK: - Sanctions to pay
