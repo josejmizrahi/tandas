@@ -9,23 +9,23 @@ public struct DisputeDetailView: View {
     @Bindable var store: DisputesStore
     let groupId: UUID
     let dispute: GroupDispute
-    /// V3 Batch B-4 — cuando se cablea, el subject label (cuando
-    /// subjectKind == .sanction y hay subjectId) se vuelve un botón
-    /// que invoca este callback con el sanction_id. Caller resuelve
-    /// el GroupSanction y empuja SanctionDetailView. Default no-op
-    /// para previews y standalone.
-    let onSelectSanction: ((UUID) -> Void)?
+    /// V3 Batch B-4 — cuando se cablea, el subject label se vuelve un
+    /// botón que invoca este callback con (kind, subjectId). El caller
+    /// decide cómo resolver: hoy cubrimos .sanction y .member, los
+    /// demás kinds quedan estáticos hasta que su detail surface
+    /// respectivo esté disponible.
+    let onSelectSubject: ((DisputeSubjectKind, UUID) -> Void)?
 
     public init(
         store: DisputesStore,
         groupId: UUID,
         dispute: GroupDispute,
-        onSelectSanction: ((UUID) -> Void)? = nil
+        onSelectSubject: ((DisputeSubjectKind, UUID) -> Void)? = nil
     ) {
         self.store = store
         self.groupId = groupId
         self.dispute = dispute
-        self.onSelectSanction = onSelectSanction
+        self.onSelectSubject = onSelectSubject
     }
 
     public var body: some View {
@@ -212,17 +212,21 @@ public struct DisputeDetailView: View {
     }
 
     /// V3 Batch B-4 — subject del dispute como link a la entidad cuando
-    /// es navegable. Hoy solo cableamos `.sanction` (el caso más común
-    /// per uso real). Otros kinds (.rule/.resource/.member/.other)
-    /// quedan como label estático hasta que el slice respectivo
-    /// aterrice.
+    /// es navegable. Hoy cableamos `.sanction` y `.member`. Los demás
+    /// kinds (.rule/.resource/.other) quedan label estático hasta que
+    /// el slice respectivo aterrice. Doctrine "empty cluster invisible"
+    /// no aplica acá — el subject siempre se muestra (orientación).
     @ViewBuilder
     private var subjectRow: some View {
         let kind = subjectKind
         let subjectId = store.detail?.subjectId ?? dispute.subjectId
-        if kind == .sanction, let sid = subjectId, let cb = onSelectSanction {
+        let isNavigable: Bool = {
+            guard subjectId != nil, onSelectSubject != nil else { return false }
+            return kind == .sanction || kind == .member
+        }()
+        if isNavigable, let sid = subjectId, let cb = onSelectSubject {
             Button {
-                cb(sid)
+                cb(kind, sid)
             } label: {
                 HStack(spacing: 4) {
                     Label(kind.label, systemImage: kind.systemImageName)

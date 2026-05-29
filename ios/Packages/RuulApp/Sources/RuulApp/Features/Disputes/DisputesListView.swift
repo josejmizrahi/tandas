@@ -16,6 +16,7 @@ public struct DisputesListView: View {
     let myMembershipId: UUID?
 
     @State private var pendingSanctionNav: GroupSanction?
+    @State private var pendingMemberNav: MembershipBoundaryItem?
 
     public init(
         store: DisputesStore,
@@ -55,11 +56,8 @@ public struct DisputesListView: View {
                 store: store,
                 groupId: groupId,
                 dispute: dispute,
-                onSelectSanction: container != nil ? { sanctionId in
-                    if let sanction = container?.sanctionsStore.sanctions
-                        .first(where: { $0.id == sanctionId }) {
-                        pendingSanctionNav = sanction
-                    }
+                onSelectSubject: container != nil ? { kind, subjectId in
+                    handleSubjectTap(kind: kind, subjectId: subjectId)
                 } : nil
             )
         }
@@ -73,13 +71,69 @@ public struct DisputesListView: View {
                 )
             }
         }
+        .navigationDestination(item: $pendingMemberNav) { item in
+            if let container {
+                MemberDetailView(
+                    sanctionsStore: container.sanctionsStore,
+                    reputationStore: container.reputationStore,
+                    moneyStore: container.moneyStore,
+                    rolesStore: container.rolesStore,
+                    membersStore: container.membersStore,
+                    groupId: groupId,
+                    memberItem: item,
+                    activityFetcher: { gid, mid, limit in
+                        try await container.rpcClient.groupEventsForMember(
+                            groupId: gid,
+                            membershipId: mid,
+                            limit: limit
+                        )
+                    },
+                    permissionsFetcher: { gid in
+                        try await container.groupRepository.listMemberPermissions(
+                            groupId: gid,
+                            userId: nil
+                        )
+                    },
+                    quickActionStores: MemberDetailView.QuickActionStores(
+                        mandates: container.mandatesStore,
+                        reputationFeed: container.reputationFeedStore
+                    )
+                )
+            }
+        }
         .task {
             await store.refreshIfNeeded(groupId: groupId)
-            // V3 Batch B-4 — necesario para resolver subjectId del
-            // dispute a un GroupSanction concreto al hacer tap.
+            // V3 Batch B-4 — pre-cargamos sanctions + members para
+            // resolver el subjectId a la entidad concreta al tap.
             if container != nil {
                 await container?.sanctionsStore.refreshIfNeeded(groupId: groupId)
+                await container?.membersStore.refreshIfNeeded(groupId: groupId)
             }
+        }
+    }
+
+    /// V3 Batch B-4 — unified dispatcher para cross-link desde el
+    /// subject del DisputeDetail. Por kind resolvemos client-side y
+    /// empujamos al detail apropiado dentro de este NavigationStack
+    /// (no usamos deepLinkRouter para preservar el back stack en lugar
+    /// de saltar de tab).
+    private func handleSubjectTap(kind: DisputeSubjectKind, subjectId: UUID) {
+        switch kind {
+        case .sanction:
+            if let sanction = container?.sanctionsStore.sanctions
+                .first(where: { $0.id == subjectId }) {
+                pendingSanctionNav = sanction
+            }
+        case .member:
+            if let item = container?.membersStore.items
+                .first(where: { $0.membershipId == subjectId }) {
+                pendingMemberNav = item
+            }
+        case .rule, .resource, .other:
+            // Slice futuro: rule push EngineRuleDetailView, resource
+            // push ResourceDetailView. Hoy no-op (subjectRow ya marca
+            // estos kinds como no-navegables).
+            break
         }
     }
 
