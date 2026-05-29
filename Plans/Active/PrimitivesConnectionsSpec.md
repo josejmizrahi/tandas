@@ -172,6 +172,9 @@
 - Eventos `decision_rules.set` carry `version_id` (reverse-link a snapshot) ✓
 - INSERT paralelo activo → bloqueado por UNIQUE partial index ✓
 
+- **+1 aplicada 2026-05-29 (PARTE 5a — pay_sanction sugar)**:
+  - `20260529212001 v3_parte5a_pay_sanction_sugar_rpc` — RPC self-party `pay_sanction(sanction_id, amount, unit?, client_id?)` que delega a `record_settlement` con paid_to_kind='pool'. Resuelve target_membership server-side, valida outstanding, rechaza over-pay (evita ledger orphans). Mandate path se mantiene via `record_settlement` directo. Smokes 5/5: non-target rechazado ✓ / partial $100/$300 ✓ / over-pay rechazado ✓ / pay-to-zero cascadea sanction→completed ✓ / pay sanción cerrada rechazado ✓.
+
 **Re-audit §0.6 post-PARTE 3**: el catálogo "eventos declarados pero NO emitidos" era parcialmente falso. Lo único que faltaba realmente eran las 3 RPCs zero-emit ya cerradas. Los demás (`dispute.escalated`, `rule.published`, `mandate.granted/revoked`, `money.transaction_reversed`, `dissolution.proposed/finalized`, `resource.ownership_changed`, `dispute.resolved`) **ya están en código** — solo no aparecen en data dev porque no se han ejercido en tests. **Doctrinales pendientes (no slices mecánicos)**:
 - `sanction.paid` vs `sanction.completed` actual: `update_sanction_status` emite `sanction.<new_status>` dinámico (`sanction.completed/reversed/cancelled`); el doc pide `sanction.paid` separado. Decisión: ¿rename `completed` → `paid` cuando origen es settlement? ¿O emit alias?
 - `mandate.used`: no hay emisor; el FK guard `assert_mandate_authorizes` corre por cada uso pero no emite. ¿Vale la inflación del log?
