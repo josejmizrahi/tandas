@@ -95,7 +95,52 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
     public let reversedEntryId: UUID?
     public let inKind: Bool
     public let splitMode: String?
+    /// Pre-joined per-participant breakdown of an expense split. Each
+    /// entry carries `membershipId`, the participant's `displayName`
+    /// (resolved server-side, may be nil if the row is stale), and the
+    /// `amount` they were assigned. `amount` is nil for legacy pre-S1
+    /// rows where `split_mode='even'` was stored without per-share
+    /// amounts. Decoded straight from the V3-S3 `split_breakdown jsonb`
+    /// column on `group_money_movements`.
+    public let splitBreakdown: [SplitShareDisplay]?
     public let description: String?
+
+    public struct SplitShareDisplay: Sendable, Equatable, Hashable, Codable {
+        public let membershipId: UUID
+        public let displayName: String?
+        public let amount: Decimal?
+
+        public init(membershipId: UUID, displayName: String?, amount: Decimal?) {
+            self.membershipId = membershipId
+            self.displayName = displayName
+            self.amount = amount
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case membershipId = "membership_id"
+            case displayName  = "display_name"
+            case amount
+        }
+
+        // Tolerant decode: `amount` may arrive as numeric or as a string
+        // (PostgREST sometimes frames numeric as text). displayName may
+        // be present with an empty string in some legacy paths — treat
+        // empty as nil.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.membershipId = try c.decode(UUID.self, forKey: .membershipId)
+            let rawName = try c.decodeIfPresent(String.self, forKey: .displayName)
+            self.displayName = (rawName?.isEmpty == true) ? nil : rawName
+            if let asDecimal = try? c.decodeIfPresent(Decimal.self, forKey: .amount) {
+                self.amount = asDecimal
+            } else if let asString = try c.decodeIfPresent(String.self, forKey: .amount),
+                      let parsed = Decimal(string: asString) {
+                self.amount = parsed
+            } else {
+                self.amount = nil
+            }
+        }
+    }
     public let occurredAt: Date?
     public let createdAt: Date?
     /// V2-G5 — mandate this movement was recorded under, when the
@@ -124,6 +169,7 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         case reversedEntryId          = "reversed_entry_id"
         case inKind                   = "in_kind"
         case splitMode                = "split_mode"
+        case splitBreakdown           = "split_breakdown"
         case description
         case occurredAt               = "occurred_at"
         case createdAt                = "created_at"
@@ -152,6 +198,7 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         reversedEntryId: UUID? = nil,
         inKind: Bool = false,
         splitMode: String? = nil,
+        splitBreakdown: [SplitShareDisplay]? = nil,
         description: String? = nil,
         occurredAt: Date? = nil,
         createdAt: Date? = nil,
@@ -178,6 +225,7 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         self.reversedEntryId = reversedEntryId
         self.inKind = inKind
         self.splitMode = splitMode
+        self.splitBreakdown = splitBreakdown
         self.description = description
         self.occurredAt = occurredAt
         self.createdAt = createdAt
@@ -219,6 +267,7 @@ public struct MoneyMovement: Identifiable, Codable, Equatable, Sendable, Hashabl
         self.reversedEntryId = try c.decodeIfPresent(UUID.self, forKey: .reversedEntryId)
         self.inKind = (try c.decodeIfPresent(Bool.self, forKey: .inKind)) ?? false
         self.splitMode = try c.decodeIfPresent(String.self, forKey: .splitMode)
+        self.splitBreakdown = try c.decodeIfPresent([SplitShareDisplay].self, forKey: .splitBreakdown)
         self.description = try c.decodeIfPresent(String.self, forKey: .description)
         self.occurredAt = try c.decodeIfPresent(Date.self, forKey: .occurredAt)
         self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)

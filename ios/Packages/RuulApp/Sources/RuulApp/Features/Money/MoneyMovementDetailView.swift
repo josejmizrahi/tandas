@@ -28,6 +28,7 @@ struct MoneyMovementDetailView: View {
         List {
             heroSection
             partiesSection
+            breakdownSection
             mandateSection
             metaSection
         }
@@ -135,6 +136,58 @@ struct MoneyMovementDetailView: View {
         } label: {
             Text(label)
         }
+    }
+
+    /// V3-S3 — per-participant breakdown of an expense split. Shows
+    /// "Pedro: $33.33 / Tú: $33.34 / María: $33.33". Hidden for movements
+    /// without a breakdown (settlements, sanctions, in-kind, or legacy
+    /// rows where split_breakdown was never persisted).
+    @ViewBuilder
+    private var breakdownSection: some View {
+        if let breakdown = movement.splitBreakdown, !breakdown.isEmpty {
+            Section("Reparto") {
+                ForEach(breakdown, id: \.membershipId) { share in
+                    HStack {
+                        Text(displayName(for: share))
+                        Spacer()
+                        Text(formattedAmount(share.amount))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                // Footer total only when amounts are present (legacy rows
+                // pre-S1 stored even-split without per-share amounts).
+                if breakdown.allSatisfy({ $0.amount != nil }) {
+                    HStack {
+                        Text("Total")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Text(
+                            formattedAmount(
+                                breakdown.reduce(Decimal(0)) { $0 + ($1.amount ?? 0) }
+                            )
+                        )
+                        .monospacedDigit()
+                        .fontWeight(.semibold)
+                    }
+                }
+            }
+        }
+    }
+
+    private func displayName(for share: MoneyMovement.SplitShareDisplay) -> String {
+        if share.membershipId == myMembershipId { return "Tú" }
+        if let name = share.displayName, !name.isEmpty { return name }
+        return "—"
+    }
+
+    private func formattedAmount(_ value: Decimal?) -> String {
+        guard let value else { return "—" }
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = movement.unit
+        f.locale = Locale(identifier: "es_MX")
+        return f.string(from: value as NSNumber) ?? "\(value)"
     }
 
     @ViewBuilder

@@ -87,6 +87,78 @@ struct MoneyMovementTests {
         #expect(m.type == .settlementPayment)
     }
 
+    @Test("split_breakdown decodes per-participant shares with display names (V3-S3)")
+    func splitBreakdownDecode() throws {
+        let a = UUID()
+        let b = UUID()
+        let c = UUID()
+        let json = """
+        {
+          "transaction_id":   "\(UUID().uuidString)",
+          "seq":              11,
+          "group_id":         "\(UUID().uuidString)",
+          "transaction_type": "expense",
+          "amount":           "100",
+          "unit":             "MXN",
+          "in_kind":          false,
+          "split_mode":       "custom",
+          "split_breakdown":  [
+            { "membership_id": "\(a.uuidString)", "display_name": "Ana",   "amount": "33.33" },
+            { "membership_id": "\(b.uuidString)", "display_name": "Mateo", "amount": "33.33" },
+            { "membership_id": "\(c.uuidString)", "display_name": null,    "amount": "33.34" }
+          ]
+        }
+        """.data(using: .utf8)!
+        let m = try JSONDecoder().decode(MoneyMovement.self, from: json)
+        #expect(m.splitBreakdown?.count == 3)
+        #expect(m.splitBreakdown?[0].displayName == "Ana")
+        #expect(m.splitBreakdown?[0].amount == Decimal(string: "33.33"))
+        #expect(m.splitBreakdown?[2].displayName == nil)
+        #expect(m.splitBreakdown?[2].amount == Decimal(string: "33.34"))
+        let total = m.splitBreakdown?.reduce(Decimal(0)) { $0 + ($1.amount ?? 0) } ?? 0
+        #expect(total == Decimal(string: "100"))
+    }
+
+    @Test("split_breakdown with null amount (legacy even pre-S1) decodes as nil amount")
+    func splitBreakdownLegacyNullAmount() throws {
+        let a = UUID()
+        let json = """
+        {
+          "transaction_id":   "\(UUID().uuidString)",
+          "seq":              12,
+          "group_id":         "\(UUID().uuidString)",
+          "transaction_type": "expense",
+          "amount":           "60",
+          "unit":             "MXN",
+          "in_kind":          false,
+          "split_mode":       "even",
+          "split_breakdown":  [
+            { "membership_id": "\(a.uuidString)", "display_name": "Ana", "amount": null }
+          ]
+        }
+        """.data(using: .utf8)!
+        let m = try JSONDecoder().decode(MoneyMovement.self, from: json)
+        #expect(m.splitBreakdown?.count == 1)
+        #expect(m.splitBreakdown?[0].amount == nil)
+    }
+
+    @Test("split_breakdown absent decodes as nil (settlement / sanction / legacy rows)")
+    func splitBreakdownAbsent() throws {
+        let json = """
+        {
+          "transaction_id":   "\(UUID().uuidString)",
+          "seq":              13,
+          "group_id":         "\(UUID().uuidString)",
+          "transaction_type": "settlement_payment",
+          "amount":           "100",
+          "unit":             "MXN",
+          "in_kind":          false
+        }
+        """.data(using: .utf8)!
+        let m = try JSONDecoder().decode(MoneyMovement.self, from: json)
+        #expect(m.splitBreakdown == nil)
+    }
+
     @Test("mandate_id decodes from group_money_movements row (V2-G5)")
     func mandateIdDecode() throws {
         let mandateId = UUID()
