@@ -196,6 +196,17 @@
 - `start_vote` emite `decision.proposed` (NO `decision.started` como decía spec §N.7.1). Código source of truth. **Corregido en spec esta sesión**.
 - Spec §N.7.1 listaba decision_type `free_form` que NO está en el CHECK constraint. Allowed list real: `proposal | poll | election | budget | rule_change | membership | sanction_appeal | mandate_grant | mandate_revoke | dissolution | other`. **Corregido**: usar `other` para tests sin handler.
 
+- **+3 aplicadas 2026-05-29 (PARTE 12 batch 2 — N.2 + N.3 + N.4)**:
+  - `20260529230001 v3_parte12_n2_smoke_groups_boundary` — `_smoke_groups_boundary()` formaliza N.2 con 7 asserts: create_group founder activa + event, invite + member.invited, accept + member.joined, set_group_boundary_policy + event, entry_mode inválido raises, set_membership_state 'banned' + event, leave_group con balance != 0 bloqueado (PARTE 5b).
+  - `20260529230002 v3_parte12_n3_smoke_authority` — `_smoke_authority()` formaliza N.3 con 7 asserts: assert_permission positive (founder), assert_permission outsider bloqueado, grant_mandate happy + event, grant_mandate ends_at past raises, revoke_mandate → status='revoked' + event, revoke_role_from_member último rol bloqueado, mandate cross-group via record_expense bloqueado.
+  - `20260529230003 v3_parte12_n4_smoke_rules_engine` — `_smoke_rules_engine()` formaliza N.4 con 6 asserts (3 prechecks + 3 runtime): catalog has 3 shapes, validate_rule_shape happy=true, validate_rule_shape unknown=false, create_engine_rule activa + event, expense > threshold → matched=true + outbox 'rule_consequence', expense < threshold → matched=false (audit-only).
+
+**Hallazgos PARTE 12 batch 2 / drifts capturados**:
+- Membership states allowed: `active | suspended | left | banned | requested | invited`. **`expelled` NO existe** — canonical kick-out es `banned`. Doctrinal D3 ("split member.left vs member.expelled") sigue abierta.
+- `group_rule_evaluations` usa `rule_version_id` (NO `rule_id` como decía spec §N.4). Tiene también: `parent_evaluation_id`, `depth`, `matched_predicate`, `actions_emitted`, `cycle_detected`, `consequences_emitted`, `idempotency_key`.
+- `notifications_outbox.category` emitida por engine es `'rule_consequence'` (NO `'rule.send_notification'` como decía spec).
+- `revoke_role_from_member` guard real es "cannot revoke last role from member" (cualquier miembro con 1 rol), NO "last_admin" específico como decía spec §N.3.6.
+
 **Re-audit §0.6 post-PARTE 3**: el catálogo "eventos declarados pero NO emitidos" era parcialmente falso. Lo único que faltaba realmente eran las 3 RPCs zero-emit ya cerradas. Los demás (`dispute.escalated`, `rule.published`, `mandate.granted/revoked`, `money.transaction_reversed`, `dissolution.proposed/finalized`, `resource.ownership_changed`, `dispute.resolved`) **ya están en código** — solo no aparecen en data dev porque no se han ejercido en tests. **Doctrinales pendientes (no slices mecánicos)**:
 - `sanction.paid` vs `sanction.completed` actual: `update_sanction_status` emite `sanction.<new_status>` dinámico (`sanction.completed/reversed/cancelled`); el doc pide `sanction.paid` separado. Decisión: ¿rename `completed` → `paid` cuando origen es settlement? ¿O emit alias?
 - `mandate.used`: no hay emisor; el FK guard `assert_mandate_authorizes` corre por cada uso pero no emite. ¿Vale la inflación del log?
