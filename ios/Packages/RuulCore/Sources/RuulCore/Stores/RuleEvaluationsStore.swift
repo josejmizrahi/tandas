@@ -13,6 +13,11 @@ public final class RuleEvaluationsStore {
     public private(set) var errorMessage: String?
     public private(set) var hasMore: Bool = true
 
+    /// V2-G8.1 — summary used by the home banner. `nil` until first
+    /// refresh, then non-nil with `evaluationsCount = 0` if the window
+    /// was empty. UI hides the banner when count == 0.
+    public private(set) var summary: GroupRuleEvaluationSummary?
+
     /// When set, the surface filters the list locally to evaluations
     /// matching this rule. Server-side filtering is V3 (would need a
     /// separate RPC parameter).
@@ -81,4 +86,19 @@ public final class RuleEvaluationsStore {
     }
 
     public func clearError() { errorMessage = nil }
+
+    /// V2-G8.1 — refresh just the summary aggregate. Lightweight (1 row)
+    /// vs `refresh(...)` which pulls a page. Caller (home view) invokes
+    /// this on every refresh; banner hides when `summary.evaluationsCount`
+    /// is 0. Errors are silent — the banner is non-critical chrome and
+    /// shouldn't push a failure state to the home.
+    public func refreshSummary(groupId: UUID, windowHours: Int = 24) async {
+        do {
+            summary = try await repository.summary(groupId: groupId, windowHours: windowHours)
+        } catch {
+            // Silent: banner is non-critical. Keep the previous value
+            // (or nil) so transient backend hiccups don't blank the
+            // home unnecessarily.
+        }
+    }
 }

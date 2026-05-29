@@ -35,10 +35,14 @@ struct GroupHomeFeedView: View {
     @State private var pendingDecisionDetail: GroupDecisionSummary?
     /// Drives the push from attention.sanctionOnMe.
     @State private var pendingSanctionDetail: GroupSanction?
+    /// V2-G8.1 — drives the push from the engine banner into the
+    /// Disparos feed.
+    @State private var pushEngineEvaluations = false
 
     var body: some View {
         List {
             foundationSection
+            engineBannerSection
             attentionSection
             upcomingSection
             debtsSection
@@ -86,6 +90,12 @@ struct GroupHomeFeedView: View {
                         container.deepLinkRouter.apply(link)
                     }
                 }
+            )
+        }
+        .navigationDestination(isPresented: $pushEngineEvaluations) {
+            RuleEvaluationsView(
+                store: container.ruleEvaluationsStore,
+                groupId: group.id
             )
         }
         .refreshable { await refresh() }
@@ -162,6 +172,67 @@ struct GroupHomeFeedView: View {
                 )
             }
         }
+    }
+
+    // MARK: - Engine banner (V2-G8.1)
+
+    /// Doctrina situational: invisible si `summary.evaluationsCount == 0`.
+    /// Tap → push a `RuleEvaluationsView` (Disparos feed) para
+    /// transparencia "qué hizo el sistema en las últimas 24h".
+    @ViewBuilder
+    private var engineBannerSection: some View {
+        if let summary = container.ruleEvaluationsStore.summary,
+           summary.evaluationsCount > 0 {
+            Section {
+                Button {
+                    pushEngineEvaluations = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: summary.hasFailures ? "exclamationmark.octagon" : "bolt.horizontal.circle.fill")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(summary.hasFailures ? .red : .accentColor)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(engineBannerHeadline(summary))
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            if let detail = engineBannerDetail(summary) {
+                                Text(detail)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func engineBannerHeadline(_ summary: GroupRuleEvaluationSummary) -> String {
+        let count = summary.evaluationsCount
+        let noun = count == 1 ? "regla" : "reglas"
+        let hoursLabel: String
+        if summary.windowHours == 24 {
+            hoursLabel = "24h"
+        } else if summary.windowHours % 24 == 0 {
+            hoursLabel = "\(summary.windowHours / 24)d"
+        } else {
+            hoursLabel = "\(summary.windowHours)h"
+        }
+        return "Sistema evaluó \(count) \(noun) en las últimas \(hoursLabel)"
+    }
+
+    private func engineBannerDetail(_ summary: GroupRuleEvaluationSummary) -> String? {
+        if summary.hasFailures {
+            return "Una acción del engine falló. Tocá para ver el detalle."
+        }
+        return "Tocá para ver disparos"
     }
 
     // MARK: - Necesita atención
@@ -360,6 +431,8 @@ struct GroupHomeFeedView: View {
         await container.decisionsStore.refresh(groupId: group.id)
         await container.sanctionsStore.refresh(groupId: group.id)
         await container.eventsStore.refresh(groupId: group.id)
+        // V2-G8.1: cheap aggregate, drives the engine banner.
+        await container.ruleEvaluationsStore.refreshSummary(groupId: group.id)
     }
 
     // MARK: - Cluster item enums

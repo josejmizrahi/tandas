@@ -79,4 +79,62 @@ struct RuleEvaluationsStoreTests {
         }
         #expect(store.errorMessage != nil)
     }
+
+    // V2-G8.1 — refreshSummary populates the home-banner summary,
+    // count=0 means banner stays invisible, errors are silent.
+
+    @Test("refreshSummary populates summary with non-zero count")
+    func summaryHappyPath() async {
+        let mock = MockRuulRPCClient()
+        await mock.setGroupRuleEvaluationSummaryStub(.success(
+            GroupRuleEvaluationSummary(
+                evaluationsCount: 3,
+                lastEvaluatedAt: Date(),
+                hasFailures: false,
+                windowHours: 24
+            )
+        ))
+        let store = RuleEvaluationsStore(
+            repository: CanonicalRuleEvaluationsRepository(rpc: mock)
+        )
+        await store.refreshSummary(groupId: groupId)
+        #expect(store.summary?.evaluationsCount == 3)
+        #expect(store.summary?.hasFailures == false)
+        #expect(store.summary?.windowHours == 24)
+        let recorded = await mock.recorded
+        #expect(recorded.contains(where: {
+            if case .groupRuleEvaluationSummary(let g, let w) = $0 {
+                return g == groupId && w == 24
+            }
+            return false
+        }))
+    }
+
+    @Test("refreshSummary tolerates zero count (banner stays hidden)")
+    func summaryZeroCount() async {
+        let mock = MockRuulRPCClient()
+        await mock.setGroupRuleEvaluationSummaryStub(.success(
+            GroupRuleEvaluationSummary(evaluationsCount: 0)
+        ))
+        let store = RuleEvaluationsStore(
+            repository: CanonicalRuleEvaluationsRepository(rpc: mock)
+        )
+        await store.refreshSummary(groupId: groupId)
+        #expect(store.summary?.evaluationsCount == 0)
+    }
+
+    @Test("refreshSummary swallows failure (banner is non-critical chrome)")
+    func summaryFailureSilent() async {
+        let mock = MockRuulRPCClient()
+        await mock.setGroupRuleEvaluationSummaryStub(.failure(
+            RuulError.backend(.unknown(message: "boom"))
+        ))
+        let store = RuleEvaluationsStore(
+            repository: CanonicalRuleEvaluationsRepository(rpc: mock)
+        )
+        await store.refreshSummary(groupId: groupId)
+        // Nothing thrown, summary stays nil, phase untouched.
+        #expect(store.summary == nil)
+        #expect(store.errorMessage == nil)
+    }
 }

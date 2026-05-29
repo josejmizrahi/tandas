@@ -461,6 +461,21 @@ public struct GroupRuleEvaluationsParams: Encodable, Sendable, Equatable {
     }
 }
 
+public struct GroupRuleEvaluationSummaryParams: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pWindowHours: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId     = "p_group_id"
+        case pWindowHours = "p_window_hours"
+    }
+
+    public init(groupId: UUID, windowHours: Int = 24) {
+        self.pGroupId = groupId
+        self.pWindowHours = windowHours
+    }
+}
+
 public struct CreateEngineRuleInput: Encodable, Sendable, Equatable {
     public let pGroupId: UUID
     public let pTitle: String

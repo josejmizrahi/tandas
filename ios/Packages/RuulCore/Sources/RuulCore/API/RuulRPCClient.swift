@@ -118,6 +118,16 @@ public protocol RuulRPCClient: Sendable {
         before: Date?
     ) async throws -> [GroupRuleEvaluation]
 
+    /// `group_rule_evaluation_summary(p_group_id, p_window_hours)` —
+    /// V2-G8.1 cheap aggregate for the home banner. Returns
+    /// `{evaluations_count, last_evaluated_at, has_failures,
+    /// window_hours}`. iOS uses count=0 as the invisibility signal.
+    /// Active-member gate.
+    func groupRuleEvaluationSummary(
+        groupId: UUID,
+        windowHours: Int
+    ) async throws -> GroupRuleEvaluationSummary
+
     // MARK: - Resources
 
     /// `group_resources_active(p_group_id)` — active resource envelopes

@@ -169,6 +169,37 @@ public struct GroupRuleEvaluation: Codable, Sendable, Hashable, Equatable, Ident
     }
 }
 
+// MARK: - Summary (V2-G8.1 home banner)
+
+/// Aggregate over `group_rule_evaluations` for the home banner. Cheap
+/// — server returns one row. `evaluationsCount == 0` means the banner
+/// is invisible per doctrina situational (empty cluster = invisible).
+public struct GroupRuleEvaluationSummary: Codable, Sendable, Hashable, Equatable {
+    public let evaluationsCount: Int
+    public let lastEvaluatedAt: Date?
+    public let hasFailures: Bool
+    public let windowHours: Int
+
+    enum CodingKeys: String, CodingKey {
+        case evaluationsCount = "evaluations_count"
+        case lastEvaluatedAt  = "last_evaluated_at"
+        case hasFailures      = "has_failures"
+        case windowHours      = "window_hours"
+    }
+
+    public init(
+        evaluationsCount: Int,
+        lastEvaluatedAt: Date? = nil,
+        hasFailures: Bool = false,
+        windowHours: Int = 24
+    ) {
+        self.evaluationsCount = evaluationsCount
+        self.lastEvaluatedAt = lastEvaluatedAt
+        self.hasFailures = hasFailures
+        self.windowHours = windowHours
+    }
+}
+
 public extension GroupRuleEvaluation {
     var hasActions: Bool { !actionsEmitted.isEmpty }
     var emittedActions: [RuleActionResult] { actionsEmitted.filter(\.isEmitted) }

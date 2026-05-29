@@ -17,4 +17,13 @@ public struct CanonicalRuleEvaluationsRepository: Sendable {
     ) async throws -> [GroupRuleEvaluation] {
         try await rpc.groupRuleEvaluations(groupId: groupId, limit: limit, before: before)
     }
+
+    /// V2-G8.1 — cheap aggregate for the home banner. Returns
+    /// `{evaluationsCount, lastEvaluatedAt, hasFailures, windowHours}`.
+    public func summary(
+        groupId: UUID,
+        windowHours: Int = 24
+    ) async throws -> GroupRuleEvaluationSummary {
+        try await rpc.groupRuleEvaluationSummary(groupId: groupId, windowHours: windowHours)
+    }
 }

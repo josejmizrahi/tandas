@@ -33,6 +33,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case createEngineRule(input: CreateEngineRuleInput)
         case groupRulesEngine(groupId: UUID)
         case groupRuleEvaluations(groupId: UUID, limit: Int, before: Date?)
+        case groupRuleEvaluationSummary(groupId: UUID, windowHours: Int)
         case groupResourcesActive(groupId: UUID)
         case createGroupResource(input: CreateGroupResourceInput)
         case archiveGroupResource(input: ArchiveGroupResourceInput)
@@ -139,6 +140,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     )
     private var groupRulesEngineStub: Result<[EngineRule], RuulError> = .success([])
     private var groupRuleEvaluationsStub: Result<[GroupRuleEvaluation], RuulError> = .success([])
+    private var groupRuleEvaluationSummaryStub: Result<GroupRuleEvaluationSummary, RuulError> = .success(
+        GroupRuleEvaluationSummary(evaluationsCount: 0)
+    )
     private var groupResourcesActiveStub: Result<[GroupResource], RuulError> = .success([])
     private var createGroupResourceStub: Result<GroupResource, RuulError> = .success(
         GroupResource(id: UUID(), groupId: UUID(), resourceType: .other, name: "")
@@ -258,6 +262,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setCreateEngineRuleStub(_ stub: Result<CreateEngineRuleResult, RuulError>) { createEngineRuleStub = stub }
     func setGroupRulesEngineStub(_ stub: Result<[EngineRule], RuulError>) { groupRulesEngineStub = stub }
     func setGroupRuleEvaluationsStub(_ stub: Result<[GroupRuleEvaluation], RuulError>) { groupRuleEvaluationsStub = stub }
+    func setGroupRuleEvaluationSummaryStub(_ stub: Result<GroupRuleEvaluationSummary, RuulError>) { groupRuleEvaluationSummaryStub = stub }
     func setGroupResourcesActiveStub(_ stub: Result<[GroupResource], RuulError>) { groupResourcesActiveStub = stub }
     func setCreateGroupResourceStub(_ stub: Result<GroupResource, RuulError>) { createGroupResourceStub = stub }
     func setArchiveGroupResourceStub(_ stub: Result<Void, RuulError>) { archiveGroupResourceStub = stub }
@@ -437,6 +442,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupRuleEvaluations(groupId: UUID, limit: Int, before: Date?) async throws -> [GroupRuleEvaluation] {
         recorded.append(.groupRuleEvaluations(groupId: groupId, limit: limit, before: before))
         return try groupRuleEvaluationsStub.get()
+    }
+
+    func groupRuleEvaluationSummary(groupId: UUID, windowHours: Int) async throws -> GroupRuleEvaluationSummary {
+        recorded.append(.groupRuleEvaluationSummary(groupId: groupId, windowHours: windowHours))
+        return try groupRuleEvaluationSummaryStub.get()
     }
 
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {
