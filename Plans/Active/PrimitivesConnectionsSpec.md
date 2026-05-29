@@ -207,6 +207,17 @@
 - `notifications_outbox.category` emitida por engine es `'rule_consequence'` (NO `'rule.send_notification'` como decía spec).
 - `revoke_role_from_member` guard real es "cannot revoke last role from member" (cualquier miembro con 1 rol), NO "last_admin" específico como decía spec §N.3.6.
 
+- **+3 aplicadas 2026-05-29 (PARTE 12 batch 3 — cast_vote cleanup + N.6 + N.8)**:
+  - `20260529230004 v3_parte12_drop_cast_vote_4arg_legacy` — DROP overload `cast_vote(uuid,uuid,text,text)` que generaba ambigüedad 42725 con el 5-arg (DEFAULT NULL). iOS inmune (encodeOrNil siempre emite p_weight). Smoke gov + money_flow verde tras drop.
+  - `20260529230005 v3_parte12_n6_smoke_disputes` — `_smoke_disputes()` formaliza N.6 con 8 asserts: atom guards, open_dispute + event, append_dispute_event + canonical event, assign_mediator mutates, escalate → status='escalated' + escalated_decision_id + event, record_dispute_resolution → status='resolved' + resolved_at + event, UPDATE group_dispute_events bloqueado, DELETE bloqueado.
+  - `20260529230006 v3_parte12_n8_smoke_memory_audit` — `_smoke_memory_audit()` formaliza N.8 con 5 asserts: atom guards group_events, record_system_event retorna (id bigint, uuid_id uuid) + row visible, UPDATE summary bloqueado, DELETE bloqueado, group_events_recent retorna feed con ambos uuids del par emitido.
+
+**Hallazgos PARTE 12 batch 3 / drifts capturados**:
+- `group_disputes.subject_kind` whitelist: `sanction | rule | resource | member | other` (no `general`).
+- `group_disputes.resolution_method` whitelist: `conversation | mediation | vote | admin_decision | arbitration | separation | other` (no `mediated`).
+- `group_events_recent` RPC retorna **`event_uuid`** (NO `id` como decía spec §N.8.3). Cursor real expuesto a iOS es uuid, no el bigint interno.
+- `group_events_recent` ORDER BY `occurred_at DESC` **sin tie-break secundario `id DESC`** → ordering no determinístico cuando timestamps coinciden (caso real: múltiples eventos en una misma RPC tx). TODO: mig separada que agregue tie-break + cursor paginate por `(occurred_at, id)` para estabilizar.
+
 **Re-audit §0.6 post-PARTE 3**: el catálogo "eventos declarados pero NO emitidos" era parcialmente falso. Lo único que faltaba realmente eran las 3 RPCs zero-emit ya cerradas. Los demás (`dispute.escalated`, `rule.published`, `mandate.granted/revoked`, `money.transaction_reversed`, `dissolution.proposed/finalized`, `resource.ownership_changed`, `dispute.resolved`) **ya están en código** — solo no aparecen en data dev porque no se han ejercido en tests. **Doctrinales pendientes (no slices mecánicos)**:
 - `sanction.paid` vs `sanction.completed` actual: `update_sanction_status` emite `sanction.<new_status>` dinámico (`sanction.completed/reversed/cancelled`); el doc pide `sanction.paid` separado. Decisión: ¿rename `completed` → `paid` cuando origen es settlement? ¿O emit alias?
 - `mandate.used`: no hay emisor; el FK guard `assert_mandate_authorizes` corre por cada uso pero no emite. ¿Vale la inflación del log?
