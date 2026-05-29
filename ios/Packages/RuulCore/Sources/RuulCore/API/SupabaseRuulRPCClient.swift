@@ -309,6 +309,20 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func systemEventEngineProvenance(
+        eventUuid: UUID
+    ) async throws -> SystemEventProvenance {
+        let params = SystemEventEngineProvenanceParams(eventUuid: eventUuid)
+        do {
+            return try await client
+                .rpc("system_event_engine_provenance", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Resources
 
     public func groupResourcesActive(groupId: UUID) async throws -> [GroupResource] {

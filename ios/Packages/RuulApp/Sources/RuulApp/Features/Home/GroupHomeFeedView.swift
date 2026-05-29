@@ -38,6 +38,8 @@ struct GroupHomeFeedView: View {
     /// V2-G8.1 — drives the push from the engine banner into the
     /// Disparos feed.
     @State private var pushEngineEvaluations = false
+    /// V2-G8.2 — drives the "¿Por qué pasó esto?" sheet from history rows.
+    @State private var pendingWhyEvent: GroupEvent?
 
     var body: some View {
         List {
@@ -89,8 +91,14 @@ struct GroupHomeFeedView: View {
                     if let link = HistoryEventRouting.deepLink(for: event, groupId: group.id) {
                         container.deepLinkRouter.apply(link)
                     }
+                },
+                onAskWhyDidThisHappen: { event in
+                    pendingWhyEvent = event
                 }
             )
+        }
+        .sheet(item: $pendingWhyEvent) { event in
+            WhyDidThisHappenSheet(container: container, event: event)
         }
         .navigationDestination(isPresented: $pushEngineEvaluations) {
             RuleEvaluationsView(

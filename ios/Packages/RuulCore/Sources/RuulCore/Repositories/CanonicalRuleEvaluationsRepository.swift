@@ -26,4 +26,12 @@ public struct CanonicalRuleEvaluationsRepository: Sendable {
     ) async throws -> GroupRuleEvaluationSummary {
         try await rpc.groupRuleEvaluationSummary(groupId: groupId, windowHours: windowHours)
     }
+
+    /// V2-G8.2 — "¿Por qué pasó esto?" reverse lookup. `found=false`
+    /// is a normal answer (event wasn't engine-caused), not an error.
+    public func provenance(
+        eventUuid: UUID
+    ) async throws -> SystemEventProvenance {
+        try await rpc.systemEventEngineProvenance(eventUuid: eventUuid)
+    }
 }

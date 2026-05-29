@@ -128,6 +128,14 @@ public protocol RuulRPCClient: Sendable {
         windowHours: Int
     ) async throws -> GroupRuleEvaluationSummary
 
+    /// `system_event_engine_provenance(p_event_uuid_id)` — V2-G8.2
+    /// reverse lookup from a `group_events` row to the
+    /// `group_rule_evaluations` row that originated it (if any). Drives
+    /// the "¿Por qué pasó esto?" sheet. Active-member gate.
+    func systemEventEngineProvenance(
+        eventUuid: UUID
+    ) async throws -> SystemEventProvenance
+
     // MARK: - Resources
 
     /// `group_resources_active(p_group_id)` — active resource envelopes

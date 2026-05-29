@@ -14,15 +14,18 @@ public struct GroupHistoryView: View {
     @Bindable var store: EventsStore
     let groupId: UUID
     let onSelectEvent: ((GroupEvent) -> Void)?
+    let onAskWhyDidThisHappen: ((GroupEvent) -> Void)?
 
     public init(
         store: EventsStore,
         groupId: UUID,
-        onSelectEvent: ((GroupEvent) -> Void)? = nil
+        onSelectEvent: ((GroupEvent) -> Void)? = nil,
+        onAskWhyDidThisHappen: ((GroupEvent) -> Void)? = nil
     ) {
         self.store = store
         self.groupId = groupId
         self.onSelectEvent = onSelectEvent
+        self.onAskWhyDidThisHappen = onAskWhyDidThisHappen
     }
 
     public var body: some View {
@@ -213,15 +216,33 @@ public struct GroupHistoryView: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
 
-        if isInteractive, hasDestination(for: event) {
-            Button {
-                onSelectEvent?(event)
-            } label: {
+        let body = Group {
+            if isInteractive, hasDestination(for: event) {
+                Button {
+                    onSelectEvent?(event)
+                } label: {
+                    content
+                }
+                .buttonStyle(.plain)
+            } else {
                 content
             }
-            .buttonStyle(.plain)
+        }
+
+        // V2-G8.2 — "¿Por qué pasó esto?" swipe action. Always offered
+        // when the host wired the callback; the sheet itself handles
+        // both engine-caused and human-caused branches.
+        if let onAskWhy = onAskWhyDidThisHappen {
+            body.swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button {
+                    onAskWhy(event)
+                } label: {
+                    Label("¿Por qué?", systemImage: "questionmark.circle")
+                }
+                .tint(.accentColor)
+            }
         } else {
-            content
+            body
         }
     }
 

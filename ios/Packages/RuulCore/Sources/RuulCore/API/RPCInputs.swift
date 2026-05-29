@@ -476,6 +476,18 @@ public struct GroupRuleEvaluationSummaryParams: Encodable, Sendable, Equatable {
     }
 }
 
+public struct SystemEventEngineProvenanceParams: Encodable, Sendable, Equatable {
+    public let pEventUuidId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case pEventUuidId = "p_event_uuid_id"
+    }
+
+    public init(eventUuid: UUID) {
+        self.pEventUuidId = eventUuid
+    }
+}
+
 public struct CreateEngineRuleInput: Encodable, Sendable, Equatable {
     public let pGroupId: UUID
     public let pTitle: String
