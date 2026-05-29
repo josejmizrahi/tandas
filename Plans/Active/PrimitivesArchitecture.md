@@ -4,31 +4,57 @@
 > de conexiones entre primitivas de Ruul. NO sustituye
 > `GroupPrimitives.md` (doctrina), sino que lo traduce a SQL/RPC/iOS.
 >
-> Estado backend al 2026-05-29: 342+ migrations, `v1.0.0-rc` cortado,
-> **V2 EPIC CERRADO** — tag `v2.0.0-rc` listo. Pendiente único:
-> G4.3 auto-pay from fund (decisión doctrinal "modelo from-fund-to-pool")
-> diferido a V3.
->
-> **V2 sub-slices shipped**:
-> - **G3** entero (G3.1→G3.5 + polish): 20 atoms vivos (8 triggers +
->   6 conditions + 6 consequences). 7 callsites cableados. Puente
->   engine→votos vía `consequence.start_vote`.
-> - **G8**: engine banner en home + "¿Por qué pasó esto?" sheet con
->   provenance reverse-lookup.
-> - **G4.1**: partial payment surfaces (progress + history + "Pagar todo").
-> - **G4.2**: payment plans MVP (target propone cuotas, no auto-debit).
->
-> Migs G3+G8+G4 (10): `060000..060500` + `20260529000000..040000`.
-> 427+/427+ tests RuulCore.
->
-> Naming conventions duras:
-> - Tablas dominio = `group_*` (multi-tenant) excepto `profiles`.
-> - Tablas atom = nombre directo (`ledger_entries`, `vote_casts`,
->   `rsvp_actions`, `bookings`, `check_in_actions`, `system_events`).
-> - RPCs canónicas = verbo + objeto (`record_expense`, `issue_sanction`,
->   `publish_rule_version`).
-> - Reads helper = `group_<plural>(p_group_id)` SECURITY DEFINER.
-> - Events = `<noun>.<verb>` (`expense.recorded`, `rule.published`).
+---
+
+# FASE 0 — AUDIT BD-REAL 2026-05-29
+
+> Auditoría verify-before-implement contra el proyecto Supabase `ruul`
+> (`wyvkqveienzixinonhum`). El cuerpo del documento (FASE 1+) describe
+> el modelo doctrinal y tiene **derivas conocidas** vs la BD vigente.
+> Esta sección es la fuente de verdad operativa hasta que el cuerpo
+> se reescriba.
+
+## 0.1 Renombramientos / estructuras no reflejadas en el cuerpo del doc
+
+| El doc menciona | Realidad BD | Notas |
+|---|---|---|
+| Tabla `system_events` (atom canónico, ~50 refs) | Tabla **`group_events`** | `record_system_event(...)` inserta a `group_events`; `system_events` no existe en `public`. Cuando leas "system_events" en §A.6/§E/§F/§J/§K interprétalo como `group_events`. |
+| Tabla `notification_preferences` "V3 futuro" (§K.1, §K.6) | **Ya existe** | Tabla presente. Falta UI iOS para gestionarla. |
+| Tabla `notification_tokens` o `push_tokens` "V3" | **Ya existe** | Tabla `notification_tokens` presente. Falta registro APNs en device. |
+| Schema `ruul.*` (~15 refs: `ruul.dispatch_consequences`, `ruul.consequence_*`, `ruul.raise_immutable_atom`, `ruul.evaluate_condition_tree`, `ruul.rule_eval_depth`) | **Schema no existe** | Todas las funciones internas viven en `public` con prefijo `_*` (ej: `public._rule_eval_predicate`, `public._rule_eval_dispatch`). Los nuevos guards V3-A3 siguen el patrón `public._*_guard`. |
+| `groups.governance jsonb` (~10 refs: §A.2, §H, §1.2-(15)) | **Columna no existe** | `groups` tiene 3 jsonb: `settings`, `decision_rules`, `roles_catalog`. Para V3-A2 el umbral de auto-promote usa `settings->>'cultural_norm_auto_promote_threshold'`. |
+| `group_decisions.status='closed'` (§1.2-(12), §H.6) | **Estado no existe** | Estados reales: `open`, `passed`, `rejected`. El guard partial V3-A3b dispara en terminales (passed/rejected), no en "closed". |
+| `notifications_outbox` columns del doc (§K.1): `kind, target_member_id, source_event_id, scheduled_for, delivery_status, retry_count, last_retry_at` | **Columns reales**: `recipient_user_id, category, payload, dispatch_status, attempts, last_error, dispatched_at` | El partial guard V3-A3a se aplica sobre las columns reales. |
+| `pg_cron` para crons del rule engine y dispatchers (§F.11, §K.7) | **NO instalado** | Crons deben ser **edge functions** con Supabase scheduler. La capa SQL expone RPCs invocables (ej: `emit_mandate_expiring_events()` V3-A4b). |
+
+## 0.2 Items que el doc declara faltantes pero YA están vivos
+
+| Item | Doc dice | Realidad verificada |
+|---|---|---|
+| #9 Contribuciones — verify path | "verify_contribution deferido" (§1.1 nota, §M.1) | RPC `verify_contribution(p_contribution_id, p_outcome, p_note)` viva. Acepta `verified` y `rejected`. Self-verify bloqueado. Encadena reputation_event `contribution_recognized` + `record_system_event('contribution.{verified,rejected}')` + `evaluate_rules_for_event(...)`. |
+| §C.11 listener `contribution.verified` → reputation | "no cableado" | ✅ Cableado en `verify_contribution`. |
+| §C.11 listener `sanction.issued` → reputation | "no cableado" | ✅ Cableado inline en `issue_sanction` (mig `20260528060400` líneas 82-89, reputation_type `rule_violation` o `commitment_broken` según `p_rule_version_id`). |
+| §1.2 punto (12) `group_rule_evaluations` sin full atom guard | "ALTER añadir guard en V2-G3.3" | ✅ Triggers `group_rule_evaluations_atom_guard` (BEFORE UPDATE) + `group_rule_evaluations_no_delete` (BEFORE DELETE) presentes. |
+| #4 Reglas — engine sync hook | "🟡 engine sync hook off" (§1.1) | ✅ G3.2 cableó hook en 4 callsites (issue_sanction, set_membership_state, open_dispute, finalize_vote) + RPCs money pre-existentes. §M.1 ya marca DONE; el §1.1 inventario está desactualizado. |
+
+## 0.3 Items del Bloque A V3 — estado tras aplicación 2026-05-29
+
+| # | Slice | Estado | Mig / Notas |
+|---|---|---|---|
+| A2 | `cultural_norm.endorsed ≥ N` → auto-promote a rule | ✅ DONE | `20260530000200`. Trigger AFTER UPDATE OF endorsed_count + `public._auto_promote_norm_internal` (omite assert_permission; legitimidad por umbral). Opt-in via `groups.settings.cultural_norm_auto_promote_threshold` (NULL/≤0 = solo manual). `created_by`/`published_by` NULL marca acción de sistema. `legitimacy_source = cultural_norm_threshold_reached` en payload. |
+| A3a | `notifications_outbox` partial atom guard | ✅ DONE | `20260530000300`. `_notifications_outbox_partial_guard` deja mutables sólo `dispatch_status, attempts, last_error, dispatched_at`. `_notifications_outbox_no_delete` bloquea DELETE (retention cron pendiente — cuando llegue, se libera vía condición). |
+| A3b | `group_decisions` partial atom guard | ✅ DONE | `20260530000300`. `_group_decisions_partial_guard` dispara en OLD.status ∈ (passed, rejected); bloquea mutación material; `updated_at` queda libre para coexistir con `set_updated_at`. |
+| A4b | Emisor `mandate.expiring_in_24h` | ✅ DONE | `20260530000400`. RPC `emit_mandate_expiring_events()` SECURITY DEFINER. Idempotent (no re-emite si ya hubo event del mismo mandate en últimas 24h). Pendiente: cablear edge function con schedule diario (Supabase scheduler — no pg_cron). |
+| A4a | Emisor `obligation.overdue` | ❌ DEFERRED | `group_obligations` no tiene column `due_at`/`due_date`. Sin doctrina founder de "cuándo vence una obligación" (¿`sanction.ends_at`? ¿`metadata.due_at`? ¿plan de pago?) no se puede emitir overdue. Pre-requisito: decisión doctrinal + mig ALTER ADD COLUMN. |
+
+## 0.4 Protocolo verify-before-implement (locked 2026-05-29)
+
+ANTES de escribir cualquier mig o iOS slice sobre items del cuerpo del doc:
+1. Verificar contra BD real vía `mcp__supabase__execute_sql` (information_schema + pg_proc).
+2. Si la realidad contradice al doc, anotar la deriva en §0.1/§0.2 (esta sección).
+3. Solo implementar items confirmados faltantes contra BD.
+
+**Why**: el cuerpo de §1.1 y §M.1 fue escrito durante V2 y no se sincronizó tras los slices de G3/G4. Confiar ciegamente en él produce trabajo duplicado (caso testigo: 2026-05-29 se intentó crear `verify_contribution` overload sin saber que la firma `(uuid, text, text)` ya existía).
 
 ---
 
@@ -41,16 +67,16 @@
 | 1 | Miembros | `profiles` + `group_memberships` | ✅ live |
 | 2 | Membresía/Límite | `group_memberships.state` + `group_invites` + `group_membership_boundary` view | ✅ live |
 | 3 | Propósito | `group_purposes (kind, body)` | ✅ live |
-| 4 | Reglas/Normas | `group_rules` + `group_rule_versions` + `rule_shapes_catalog` | 🟡 schema live, engine sync hook off |
+| 4 | Reglas/Normas | `group_rules` + `group_rule_versions` + `rule_shapes_catalog` | ✅ live (engine sync hook ON post-G3.2; ver §0.2) |
 | 5 | Roles | `group_roles` + jsonb `groups.roles` | ✅ live |
 | 6 | Poder/Autoridad | `group_permissions` (direct) + `group_mandates` + `group_role_permissions` | ✅ live |
 | 7 | Comunicación | — | ❌ deferred (post-V2) |
 | 8 | Recursos | `group_resources` + subtipos (`group_funds`, `group_assets`, `group_spaces`, `group_documents`) | ✅ envelope + 4 subtipos |
-| 9 | Contribuciones | `ledger_entries (kind='contribution')` + `group_contributions` view | ✅ live |
+| 9 | Contribuciones | `group_contributions` + `log_contribution` + `verify_contribution` (claimed→verified/rejected, ver §0.2) | ✅ live |
 | 10 | Incentivos | — | ❌ deferred (no entity) |
 | 11 | Sanciones | `group_sanctions` + `ledger_entries (kind='sanction_*')` | ✅ live |
 | 12 | Confianza/Reputación | `group_reputation_events` (append-only) | ✅ live (sin score) |
-| 13 | Memoria/Registro | `system_events` + `group_events` (proyección) | ✅ live |
+| 13 | Memoria/Registro | `group_events` (atom canónico) + proyecciones (ver §0.1 — el doc usa "system_events" históricamente, la tabla real es `group_events`) | ✅ live |
 | 14 | Conflictos | `group_disputes` + `group_dispute_events` | ✅ live |
 | 15 | Entrada/Salida | `group_invites` + `accept_invite` + `leave_group` + `set_membership_state` | ✅ live |
 | 16 | Decisiones | `group_decisions` + `group_votes` + `vote_casts` (atom) + `group_decision_rules` | ✅ live (8 methods + 11 types) |
@@ -146,9 +172,9 @@ Ya son append-only (atoms con guard):
 - `group_reputation_events`
 
 Faltan guards (decisión pendiente):
-- `group_rule_evaluations` — debe ser append-only. ALTER añadir guard en V2-G3.3.
-- `notifications_outbox` — `dispatched_at` mutable (cron); resto inmutable. Añadir partial guard.
-- `group_decisions` — debe ser append-only post-finalization. Guard: si `status = 'closed'` → no UPDATE.
+- ~~`group_rule_evaluations` — debe ser append-only. ALTER añadir guard en V2-G3.3.~~ ✅ Ya cableado (`group_rule_evaluations_atom_guard` + `group_rule_evaluations_no_delete`). Ver §0.2.
+- `notifications_outbox` — `dispatched_at` mutable (cron); resto inmutable. Añadir partial guard. (V3-A3a, ver §0.3)
+- `group_decisions` — debe ser append-only post-finalization. Guard: si `status = 'closed'` → no UPDATE. (V3-A3b, ver §0.3)
 
 ### (13) Entidades que requieren versionado
 - `group_rules` → `group_rule_versions` ✅ ya
@@ -1590,8 +1616,12 @@ push_tokens (
   registered_at timestamptz
 )
 
-notification_preferences (    -- V3
+notification_preferences (    -- ✅ tabla ya existe (verificado §0.1); falta UI iOS para gestionarla
   user_id, group_id, kind, enabled, channel
+)
+
+notification_tokens (         -- ✅ tabla ya existe (§0.1); falta APNs register en device (V3-A2)
+  user_id, apns_token, device_id, ...
 )
 ```
 
@@ -1712,7 +1742,13 @@ Out of scope. Requeriría: `federations`, cross-tenant identity bridge, schema-l
 | 7 | V2-G4.1 Partial payment surfaces (read RPC + progress bar + "Pagar todo" + payment history) | Money+Sanctions | — | ✅ DONE (commit `e5042455`, mig `20260529030000`) |
 | 7b | V2-G4.2 Payment plans MVP (target propone cuotas, no auto-debit) | Money+Sanctions | — | ✅ DONE (commit `36548366`, mig `20260529040000`) |
 | 7c | **V2-G4.3 Auto-pay from fund común → DEFERRED V3** (decisión doctrinal pendiente: cómo modelar "from fund → pool" sin romper `record_settlement` abstraction) | Money+Resource | 2-3 | V3, ver `handoff_v3_g4_3_fund_auto_settle` memory |
-| 8 | V3: Particionar `system_events` + `ledger_entries` monthly | Memory+Money | 2 | scalability |
+| **V3-A1** | Cierre conexiones §C — pivot post-audit BD-real 2026-05-29 | Cross | — | Replanteado: ver §0.3 (4 items declarados ya vivos; 5 reales pendientes) |
+| V3-A2 | `cultural_norm.endorsed ≥ threshold` → auto-promote a rule | Rules+Culture | — | ✅ DONE mig `20260530000200`. Opt-in via `groups.settings.cultural_norm_auto_promote_threshold`. |
+| V3-A3a | `notifications_outbox` partial atom guard | Notification | — | ✅ DONE mig `20260530000300`. |
+| V3-A3b | `group_decisions` partial atom guard (terminales: passed, rejected) | Governance | — | ✅ DONE mig `20260530000300`. |
+| V3-A4b | RPC emisor `mandate.expiring_in_24h` (scan idempotente; edge function scheduler pendiente) | Authority+Notification | — | ✅ DONE mig `20260530000400`. Cablear edge function aparte. |
+| V3-A4a | RPC emisor `obligation.overdue` | Money+Notification | — | ❌ DEFERRED — `group_obligations` sin column `due_at`. Requiere decisión doctrinal founder + mig ALTER. |
+| 8 | V3: Particionar `group_events` (atom canónico) + `ledger_entries` monthly | Memory+Money | 2 | scalability |
 | 9 | V3: `group_governance_versions` + `group_role_versions` snapshots | Authority+Governance | 1-2 | audit |
 | 10 | V3: Deprecate `rules`, `fines`, `events` legacy tables | Cleanup | 1 | nothing critical |
 | 11 | V3: Cron `discrepancy_alert` for ledger reconciliation | Money | 1 | observability |
