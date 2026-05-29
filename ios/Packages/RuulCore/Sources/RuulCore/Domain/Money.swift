@@ -10,11 +10,23 @@ public struct CurrencyCode: Sendable, Hashable, RawRepresentable, Codable {
 }
 
 /// How to split a recorded expense across the group.
+///
+/// Both cases always carry per-participant resolution. `.even` is a UX
+/// affordance — at the wire layer iOS materialises the breakdown via
+/// `ExpenseSplitCalculator.even(...)` (so leftover cents are
+/// deterministically distributed) and emits `p_split_mode = "custom"`
+/// with the resolved shares. That guarantees the server-side custom
+/// sum check matches exactly and removes the 4-decimal rounding drift
+/// of the SQL `round(amount/n, 4)` branch.
 public enum ExpenseSplit: Sendable, Equatable {
-    case even
+    /// Equal split across the given participants. Calculator distributes
+    /// leftover cents deterministically (sorted by membership_id).
+    case even(participantIds: [UUID])
+    /// Caller-provided breakdown. Sum must equal the expense amount;
+    /// validated client- and server-side.
     case custom(breakdown: [Share])
 
-    public struct Share: Sendable, Equatable {
+    public struct Share: Sendable, Equatable, Hashable {
         public let membershipId: UUID
         public let amount: Decimal
         public init(membershipId: UUID, amount: Decimal) {
@@ -23,10 +35,19 @@ public enum ExpenseSplit: Sendable, Equatable {
         }
     }
 
+    /// Participant ids for either branch. Stable order: `.even` keeps
+    /// caller order; `.custom` returns whatever order the breakdown
+    /// carries.
+    public var participantIds: [UUID] {
+        switch self {
+        case .even(let ids): return ids
+        case .custom(let shares): return shares.map(\.membershipId)
+        }
+    }
+
     public var rpcMode: String {
         switch self {
-        case .even: return "even"
-        case .custom: return "custom"
+        case .even, .custom: return "custom"
         }
     }
 }
@@ -54,7 +75,7 @@ public struct ExpenseDraft: Sendable, Equatable {
         currency: CurrencyCode = .mxn,
         paidByMembershipId: UUID,
         description: String? = nil,
-        split: ExpenseSplit = .even,
+        split: ExpenseSplit = .even(participantIds: []),
         inKind: Bool = false,
         mandateId: UUID? = nil
     ) {

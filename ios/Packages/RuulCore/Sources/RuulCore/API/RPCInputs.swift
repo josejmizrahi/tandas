@@ -172,6 +172,14 @@ public struct RecordExpenseParams: Encodable, Sendable {
     /// Convenience init from a domain draft. Mandate-on-behalf-of is
     /// V2-G5 wiring: `p_mandate_id` is populated from the draft when
     /// the actor is acting under an active mandate; null otherwise.
+    ///
+    /// V3-S1: both `.even` and `.custom` materialise to wire-level
+    /// `p_split_mode = "custom"` with an explicit per-participant
+    /// breakdown. For `.even` we run `ExpenseSplitCalculator.even(...)`
+    /// so leftover cents land deterministically client-side; the server
+    /// then takes the exact sums and skips its own 4-decimal rounding
+    /// path (which would otherwise drift on totals like $100/3 and
+    /// silently lose a fraction of a cent).
     public init(draft: ExpenseDraft, clientId: String?) {
         self.pGroupId = draft.groupId
         self.pResourceId = draft.resourceId
@@ -181,10 +189,17 @@ public struct RecordExpenseParams: Encodable, Sendable {
         self.pDescription = draft.description
         self.pSplitMode = draft.split.rpcMode
         self.pSplitBreakdown = {
-            if case .custom(let shares) = draft.split {
+            switch draft.split {
+            case .even(let participantIds):
+                guard !participantIds.isEmpty else { return nil }
+                let shares = ExpenseSplitCalculator.even(
+                    amount: draft.amount,
+                    participants: participantIds
+                )
+                return shares.map { SplitShare(membershipId: $0.membershipId, amount: $0.amount) }
+            case .custom(let shares):
                 return shares.map { SplitShare(membershipId: $0.membershipId, amount: $0.amount) }
             }
-            return nil
         }()
         self.pInKind = draft.inKind
         self.pMandateId = draft.mandateId

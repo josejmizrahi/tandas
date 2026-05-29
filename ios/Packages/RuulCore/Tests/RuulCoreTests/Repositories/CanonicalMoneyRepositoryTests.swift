@@ -5,7 +5,7 @@ import Testing
 @Suite("CanonicalMoneyRepository")
 struct CanonicalMoneyRepositoryTests {
 
-    private func draft(amount: Decimal = 300, split: ExpenseSplit = .even) -> ExpenseDraft {
+    private func draft(amount: Decimal = 300, split: ExpenseSplit = .even(participantIds: [])) -> ExpenseDraft {
         ExpenseDraft(
             groupId: UUID(),
             resourceId: nil,

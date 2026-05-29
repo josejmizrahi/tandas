@@ -77,17 +77,20 @@ struct RPCInputsEncodingTests {
 
     // MARK: - record_expense
 
-    @Test("record_expense even split encodes nil resource as null and omits split_breakdown")
+    @Test("record_expense even split materialises a custom breakdown with leftover cents")
     func recordExpenseEvenSplit() throws {
         let groupId = UUID()
         let paidBy = UUID()
+        let a = UUID()
+        let b = UUID()
+        let c = UUID()
         let draft = ExpenseDraft(
             groupId: groupId,
             resourceId: nil,
-            amount: 300,
+            amount: 100,                     // $100 / 3 → 33.33 / 33.33 / 33.34
             paidByMembershipId: paidBy,
             description: "groceries",
-            split: .even
+            split: .even(participantIds: [a, b, c])
         )
         let params = RecordExpenseParams(draft: draft, clientId: "client-1")
         let data = try JSONEncoder().encode(params)
@@ -95,27 +98,43 @@ struct RPCInputsEncodingTests {
 
         #expect(dict["p_group_id"] as? String == groupId.uuidString)
         #expect(dict["p_paid_by_membership_id"] as? String == paidBy.uuidString)
-        #expect(dict["p_amount"] as? NSNumber == NSNumber(value: 300))
+        #expect(dict["p_amount"] as? NSNumber == NSNumber(value: 100))
         #expect(dict["p_unit"] as? String == "MXN")
         #expect(dict["p_description"] as? String == "groceries")
-        #expect(dict["p_split_mode"] as? String == "even")
+        // V3-S1: iOS always emits custom at the wire so server skips its
+        // 4-decimal rounding path; sum matches exactly.
+        #expect(dict["p_split_mode"] as? String == "custom")
         #expect(dict["p_in_kind"] as? Bool == false)
         #expect(dict["p_client_id"] as? String == "client-1")
 
-        // p_mandate_id must always serialise to null in Foundation scope so the
-        // RPC classifies the row as self_party (per condition §16-bis #1).
+        // p_mandate_id must always serialise to null in Foundation scope.
         let hasMandateKey = dict.keys.contains("p_mandate_id")
         if hasMandateKey {
             #expect(dict["p_mandate_id"] is NSNull)
         }
-
         // p_resource_id must be present as null when nil (doctrine_shared_money).
         let hasResourceKey = dict.keys.contains("p_resource_id")
         if hasResourceKey {
             #expect(dict["p_resource_id"] is NSNull)
         }
 
-        // even split should not send a breakdown
+        // Breakdown sum must equal the total to the cent.
+        let shares = dict["p_split_breakdown"] as? [[String: Any]]
+        #expect(shares?.count == 3)
+        let amounts = shares?.compactMap { ($0["amount"] as? NSNumber)?.doubleValue } ?? []
+        #expect(amounts.reduce(0, +) == 100.0)
+    }
+
+    @Test("record_expense even split with empty participants leaves breakdown null")
+    func recordExpenseEvenSplitEmptyParticipants() throws {
+        let draft = ExpenseDraft(
+            groupId: UUID(),
+            amount: 50,
+            paidByMembershipId: UUID()
+        )                                    // default: .even(participantIds: [])
+        let params = RecordExpenseParams(draft: draft, clientId: nil)
+        let data = try JSONEncoder().encode(params)
+        let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
         if dict.keys.contains("p_split_breakdown") {
             #expect(dict["p_split_breakdown"] is NSNull)
         }
