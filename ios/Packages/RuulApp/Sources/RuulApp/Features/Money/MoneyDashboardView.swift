@@ -160,16 +160,17 @@ struct MoneyDashboardView: View {
         }
     }
 
-    /// V3 Batch B-2 slice 4 — hero "2 worlds" split (doctrine_money_two_worlds).
-    /// El single net balance pre-slice mezclaba pool side y peer side, que
-    /// son socialmente distintos. Ahora el hero muestra:
-    /// - Balance canónico arriba (siempre visible, autoridad)
-    /// - "Con el grupo: $X" descompuesto = balance - peer_net
-    /// - "Entre miembros: $Y" descompuesto = sum signed settlementPlan
-    /// Each line ocultada cuando vale 0 (situational).
+    /// V3 — hero rediseñado para resolver confusión doctrinal.
+    ///
+    /// El balance canónico mezcla pool-side + peer-side; mostrarlo con
+    /// label "El grupo te debe" era engañoso porque parte del numero
+    /// son saldos peer-to-peer. Ahora el hero muestra UN número, lo
+    /// llama "Tu saldo neto en este grupo", y deja que los bloques
+    /// debajo (Fondo del grupo, Entre miembros) expliquen qué hay
+    /// detrás de la cifra.
     @ViewBuilder
     private var heroCard: some View {
-        VStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .center, spacing: 6) {
             Text(heroLabel)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -177,71 +178,22 @@ struct MoneyDashboardView: View {
                 .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                 .monospacedDigit()
                 .foregroundStyle(heroColor)
-            // Split breakdown — solo cuando hay valor real en ambos
-            // lados o cuando solo uno es no-cero (para evitar mostrar
-            // dos ceros redundantes).
-            if showsSplit {
-                Divider().padding(.horizontal, 40)
-                HStack(alignment: .top, spacing: 24) {
-                    splitColumn(
-                        label: "Con el grupo",
-                        amount: poolSideAmount,
-                        icon: "building.columns"
-                    )
-                    splitColumn(
-                        label: "Entre miembros",
-                        amount: peerSideAmount,
-                        icon: "person.2"
-                    )
-                }
+            Text("Tu saldo neto (todo lo que debes/te deben en este grupo).")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
                 .padding(.top, 2)
-            }
         }
-    }
-
-    @ViewBuilder
-    private func splitColumn(label: String, amount: Decimal, icon: String) -> some View {
-        VStack(alignment: .center, spacing: 4) {
-            Label {
-                Text(label).font(.caption).foregroundStyle(.secondary)
-            } icon: {
-                Image(systemName: icon).font(.caption).foregroundStyle(.secondary)
-            }
-            Text(amount, format: .currency(code: "MXN"))
-                .font(.subheadline.monospacedDigit().weight(.semibold))
-                .foregroundStyle(colorFor(amount: amount))
-        }
-        .frame(maxWidth: .infinity)
     }
 
     private var heroAmount: Decimal {
         container.moneyStore.balance ?? 0
     }
 
-    /// Suma signed del settlementPlan (ya excluye pool por doctrina).
-    /// Positivo cuando el caller debe net a peers, negativo cuando peers
-    /// le deben net.
-    private var peerSideAmount: Decimal {
-        container.moneyStore.settlementPlan.reduce(Decimal(0)) { acc, item in
-            // .youOwe es positivo en netAmount (caller debe), .theyOwe
-            // es negativo (peer debe). Mantenemos el signo del balance:
-            // perspective is "what I owe net" so .youOwe debit, .theyOwe credit.
-            acc - item.netAmount  // invertimos porque queremos perspective "tengo X"
-        }
-    }
-
-    /// Pool side = balance canónico − peer side. Equivalencia:
-    /// pool + peer = balance (descomposición sin pérdida de información).
-    private var poolSideAmount: Decimal {
-        heroAmount - peerSideAmount
-    }
-
-    /// Visible solo cuando vale la pena descomponer: al menos un lado
-    /// no-cero. Si ambos son 0 (caller perfectly settled), invisible.
-    private var showsSplit: Bool {
-        peerSideAmount != 0 || poolSideAmount != 0
-    }
-
+    /// V3 — etiquetas reescritas para evitar la frase "el grupo te debe"
+    /// (engañosa porque parte del saldo es peer-to-peer). Ahora son
+    /// caller-centric sin suponer contraparte.
     private var heroLabel: LocalizedStringResource {
         guard let balance = container.moneyStore.balance else {
             return L10n.MoneyDashboard.heroEmptyLabel
@@ -256,11 +208,6 @@ struct MoneyDashboardView: View {
         guard let balance = container.moneyStore.balance else { return .secondary }
         if balance == 0 { return .primary }
         return balance > 0 ? .green : .red
-    }
-
-    private func colorFor(amount: Decimal) -> Color {
-        if amount == 0 { return .secondary }
-        return amount > 0 ? .green : .red
     }
 
     // MARK: - Entre miembros (V3 Batch B-2)
@@ -529,16 +476,18 @@ struct MoneyDashboardView: View {
         return "Ver todos (\(count))"
     }
 
-    // MARK: - Pool balance (V3 — Q1 answer)
+    // MARK: - Pool balance (V3 — Q1 answer, rediseñado)
     //
-    // El fondo común del grupo. Suma de contributions + multas pagadas
-    // − payouts. Invisible cuando no hay actividad pool (net=0 y zero
-    // movement) — doctrine situational. Tap → expandible (futuro).
+    // El fondo común del grupo. Always-visible (incluso $0) para que
+    // el caller aprenda el concepto. Copy "El fondo común tiene" deja
+    // claro que es del GRUPO, no del caller. Subtitle explica cómo se
+    // forma (aportes + multas − retiros) para que la cifra no luzca
+    // mágica.
 
     @ViewBuilder
     private var poolBalanceSection: some View {
-        if let pool = poolBalance, hasPoolActivity(pool) {
-            Section {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 14) {
                     Image(systemName: "building.columns.fill")
                         .font(.title3.weight(.semibold))
@@ -546,25 +495,63 @@ struct MoneyDashboardView: View {
                         .frame(width: 36, height: 36)
                         .background(Circle().fill(Color.accentColor.opacity(0.14)))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("El grupo tiene")
+                        Text("Fondo común del grupo")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text(pool.net, format: .currency(code: pool.unit))
+                        Text(poolNetForDisplay, format: .currency(code: poolUnit))
                             .font(.title3.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(pool.net >= 0 ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.red))
+                            .foregroundStyle(poolColorForDisplay)
                     }
                     Spacer()
                 }
-                .padding(.vertical, 4)
+                if poolBalance != nil {
+                    Text(poolExplainer)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
+            .padding(.vertical, 4)
+        } header: {
+            Text("El grupo")
         }
     }
 
-    private func hasPoolActivity(_ pool: GroupPoolBalance) -> Bool {
-        pool.net != 0
-            || pool.contributionsIn != 0
-            || pool.settlementsIn != 0
-            || pool.payoutsOut != 0
+    /// Si el pool aún no cargó, muestra 0 (no nil) para mantener el
+    /// layout estable y el caller no vea una sección apareciendo a
+    /// mitad de scroll.
+    private var poolNetForDisplay: Decimal {
+        poolBalance?.net ?? 0
+    }
+
+    private var poolUnit: String {
+        poolBalance?.unit ?? "MXN"
+    }
+
+    private var poolColorForDisplay: Color {
+        guard let pool = poolBalance else { return .secondary }
+        if pool.net == 0 { return .primary }
+        return pool.net > 0 ? .green : .red
+    }
+
+    /// Pluraliza la explicación según los flows reales del grupo:
+    /// "Sumas: $X de aportes y $Y de multas pagadas." etc. Hace la
+    /// cifra interpretable sin abrir un detail.
+    private var poolExplainer: String {
+        guard let pool = poolBalance else { return "" }
+        var parts: [String] = []
+        if pool.contributionsIn > 0 {
+            parts.append("\(pool.contributionsIn.formatted()) en aportes")
+        }
+        if pool.settlementsIn > 0 {
+            parts.append("\(pool.settlementsIn.formatted()) en multas pagadas")
+        }
+        if pool.payoutsOut > 0 {
+            parts.append("\(pool.payoutsOut.formatted()) retirados")
+        }
+        if parts.isEmpty {
+            return "Aún sin movimientos. Crece con aportes y multas pagadas, baja con retiros."
+        }
+        return "Resultado: " + parts.joined(separator: " + ")
     }
 
     // MARK: - Quick actions row (V3 — UX redesign)

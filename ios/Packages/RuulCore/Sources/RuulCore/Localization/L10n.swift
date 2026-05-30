@@ -799,8 +799,8 @@ public enum L10n {
 
     public enum MoneyDashboard {
         public static let title                 = LocalizedStringResource("money_dashboard.title",                  defaultValue: "Dinero")
-        public static let heroPositiveLabel     = LocalizedStringResource("money_dashboard.hero.positive",          defaultValue: "El grupo te debe")
-        public static let heroNegativeLabel     = LocalizedStringResource("money_dashboard.hero.negative",          defaultValue: "Le debes al grupo")
+        public static let heroPositiveLabel     = LocalizedStringResource("money_dashboard.hero.positive",          defaultValue: "Te deben (neto)")
+        public static let heroNegativeLabel     = LocalizedStringResource("money_dashboard.hero.negative",          defaultValue: "Debes (neto)")
         public static let heroZeroLabel         = LocalizedStringResource("money_dashboard.hero.zero",              defaultValue: "Estás al corriente")
         public static let heroEmptyLabel        = LocalizedStringResource("money_dashboard.hero.empty",             defaultValue: "Sin posición todavía")
         public static let sanctionsToPaySection = LocalizedStringResource("money_dashboard.section.sanctions",      defaultValue: "Multas a pagar")
