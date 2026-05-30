@@ -112,6 +112,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func paySanction(_ input: PaySanctionParams) async throws -> SettlementResult {
         .init(settlementId: UUID(), transactionId: UUID())
     }
+    func recordContribution(_ input: RecordContributionParams) async throws -> UUID { UUID() }
     func listMyGroups() async throws -> [GroupListItem] { [] }
     func groupSummary(groupId: UUID) async throws -> CanonicalGroupSummary {
         .init(groupId: groupId, memberCount: 0, openDecisions: 0, openDisputes: 0, openObligations: 0, recentEvents: [])

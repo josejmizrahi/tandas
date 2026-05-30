@@ -46,6 +46,12 @@ public protocol RuulRPCClient: Sendable {
     /// usual. Para pagar on-behalf usar `recordSettlement` con `mandateId`.
     func paySanction(_ input: PaySanctionParams) async throws -> SettlementResult
 
+    /// V3 — `record_contribution(...)` para depositar dinero al pool
+    /// del grupo (o a un recurso específico cuando `resourceId != nil`).
+    /// A diferencia de record_expense, NO genera obligations peer-to-peer:
+    /// es un acredita-al-grupo directo. Returns la transaction_id.
+    func recordContribution(_ input: RecordContributionParams) async throws -> UUID
+
     // MARK: - Reads
 
     func listMyGroups() async throws -> [GroupListItem]

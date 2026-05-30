@@ -34,6 +34,37 @@ public struct CanonicalMoneyRepository: Sendable {
         try await rpc.recordSettlement(draft, clientId: clientId)
     }
 
+    /// V3 — `record_contribution(...)` para aportar dinero al pool del
+    /// grupo. A diferencia de `recordOwnExpense`, esto NO genera
+    /// obligations peer-to-peer; acredita directamente al balance del
+    /// grupo. Cuando `resourceId != nil` el monto se attribuye al
+    /// recurso específico (e.g. fondo común con nombre).
+    public func recordContribution(
+        groupId: UUID,
+        fromMembershipId: UUID,
+        amount: Decimal,
+        unit: String = "MXN",
+        resourceId: UUID? = nil,
+        description: String? = nil,
+        inKind: Bool = false,
+        mandateId: UUID? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.recordContribution(
+            RecordContributionParams(
+                groupId: groupId,
+                resourceId: resourceId,
+                amount: amount,
+                unit: unit,
+                fromMembershipId: fromMembershipId,
+                description: description,
+                inKind: inKind,
+                mandateId: mandateId,
+                clientId: clientId
+            )
+        )
+    }
+
     /// `member_obligation_summary(p_group_id, p_membership_id)` — open
     /// obligations (debt rows) for the membership in this group, with
     /// human label for the counterparty.

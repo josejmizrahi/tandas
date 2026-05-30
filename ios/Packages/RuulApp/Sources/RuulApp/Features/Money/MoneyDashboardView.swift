@@ -20,16 +20,17 @@ struct MoneyDashboardView: View {
     @State private var isShowingExpenseSheet: Bool = false
     @State private var isShowingSettlementSheet: Bool = false
     @State private var isShowingSettleUp: Bool = false
+    @State private var isShowingContribute: Bool = false
     @State private var pendingPaySanction: GroupSanction?
 
     var body: some View {
         List {
             heroSection
+            quickActionsRow
             peerPairsSection
             sanctionsSection
             debtsSection
             movementsSection
-            actionsSection
         }
         .navigationTitle(L10n.MoneyDashboard.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -90,6 +91,16 @@ struct MoneyDashboardView: View {
                 sanction: sanction
             ) {
                 pendingPaySanction = nil
+                Task { await refresh() }
+            }
+        }
+        .sheet(isPresented: $isShowingContribute) {
+            ContributeToPoolSheet(
+                container: container,
+                groupId: groupId,
+                myMembershipId: myMembershipId
+            ) {
+                isShowingContribute = false
                 Task { await refresh() }
             }
         }
@@ -503,28 +514,77 @@ struct MoneyDashboardView: View {
         return "Ver todos (\(count))"
     }
 
-    // MARK: - Acciones
+    // MARK: - Quick actions row (V3 — UX redesign)
+    //
+    // Doctrine ruul_canonical_ux_doctrine: las acciones primarias del
+    // tab deben estar arriba (no enterradas al fondo). Patron horizontal
+    // chip row right under hero — verbos directos, alta accesibilidad
+    // sin necesidad de scroll. Cada chip activo solo cuando aplica.
 
     @ViewBuilder
-    private var actionsSection: some View {
-        Section(L10n.MoneyDashboard.actionsSection) {
-            Button {
-                isShowingExpenseSheet = true
-            } label: {
-                Label(L10n.MoneyDashboard.actionRecordExpense, systemImage: "plus.circle")
+    private var quickActionsRow: some View {
+        Section {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    actionChip(
+                        label: "Aportar",
+                        icon: "arrow.down.to.line.circle.fill",
+                        tint: .green
+                    ) {
+                        isShowingContribute = true
+                    }
+                    actionChip(
+                        label: "Registrar gasto",
+                        icon: "plus.circle.fill",
+                        tint: .accentColor
+                    ) {
+                        isShowingExpenseSheet = true
+                    }
+                    if !container.moneyStore.settlementPlan.isEmpty {
+                        actionChip(
+                            label: "Saldar cuentas",
+                            icon: "sparkles",
+                            tint: .purple
+                        ) {
+                            isShowingSettleUp = true
+                        }
+                    }
+                    actionChip(
+                        label: "Pagar a alguien",
+                        icon: "checkmark.circle.fill",
+                        tint: .blue
+                    ) {
+                        isShowingSettlementSheet = true
+                    }
+                }
+                .padding(.horizontal, 4)
             }
-            Button {
-                isShowingSettleUp = true
-            } label: {
-                Label("Saldar cuentas", systemImage: "sparkles")
-            }
-            .disabled(container.moneyStore.settlementPlan.isEmpty)
-            Button {
-                isShowingSettlementSheet = true
-            } label: {
-                Label(L10n.MoneyDashboard.actionSettle, systemImage: "checkmark.circle")
-            }
+            .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         }
+    }
+
+    @ViewBuilder
+    private func actionChip(
+        label: String,
+        icon: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.subheadline.weight(.semibold))
+                Text(label)
+                    .font(.subheadline.weight(.medium))
+            }
+            .foregroundStyle(tint)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(Capsule().fill(tint.opacity(0.14)))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Refresh

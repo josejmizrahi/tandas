@@ -2174,6 +2174,59 @@ public struct CancelVoteParams: Encodable, Sendable, Equatable {
     }
 }
 
+/// V3 — `record_contribution(p_group_id, p_resource_id?, p_amount,
+/// p_unit='MXN', p_from_membership_id?, p_description?, p_in_kind=false,
+/// p_mandate_id?, p_client_id?)`. Acredita dinero al pool del grupo
+/// (resource_id=NULL) o a un recurso específico. iOS lo usa para
+/// "aportar dinero al grupo" — surface paralela a record_expense pero
+/// que aumenta el balance del grupo en lugar de generar obligations
+/// peer-to-peer.
+public struct RecordContributionParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pResourceId: UUID?
+    public let pAmount: Decimal
+    public let pUnit: String
+    public let pFromMembershipId: UUID
+    public let pDescription: String?
+    public let pInKind: Bool
+    public let pMandateId: UUID?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId          = "p_group_id"
+        case pResourceId       = "p_resource_id"
+        case pAmount           = "p_amount"
+        case pUnit             = "p_unit"
+        case pFromMembershipId = "p_from_membership_id"
+        case pDescription      = "p_description"
+        case pInKind           = "p_in_kind"
+        case pMandateId        = "p_mandate_id"
+        case pClientId         = "p_client_id"
+    }
+
+    public init(
+        groupId: UUID,
+        resourceId: UUID? = nil,
+        amount: Decimal,
+        unit: String = "MXN",
+        fromMembershipId: UUID,
+        description: String? = nil,
+        inKind: Bool = false,
+        mandateId: UUID? = nil,
+        clientId: String? = nil
+    ) {
+        self.pGroupId          = groupId
+        self.pResourceId       = resourceId
+        self.pAmount           = amount
+        self.pUnit             = unit
+        self.pFromMembershipId = fromMembershipId
+        self.pDescription      = description
+        self.pInKind           = inKind
+        self.pMandateId        = mandateId
+        self.pClientId         = clientId
+    }
+}
+
 public struct ListMemberPermissionsParams: Encodable, Sendable {
     public let pGroupId: UUID
     public let pUserId: UUID?

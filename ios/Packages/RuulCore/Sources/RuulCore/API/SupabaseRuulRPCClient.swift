@@ -84,6 +84,10 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return SettlementResult(settlementId: row.settlementId, transactionId: row.transactionId)
     }
 
+    public func recordContribution(_ input: RecordContributionParams) async throws -> UUID {
+        try await callReturningUUID("record_contribution", params: input)
+    }
+
     // MARK: - Reads
 
     public func listMyGroups() async throws -> [GroupListItem] {
