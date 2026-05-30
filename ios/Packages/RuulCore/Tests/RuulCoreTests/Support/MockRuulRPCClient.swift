@@ -19,6 +19,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case recordSettlement(draft: SettlementDraft, clientId: String?)
         case paySanction(input: PaySanctionParams)
         case recordContribution(input: RecordContributionParams)
+        case groupPoolBalance(groupId: UUID)
+        case recordPoolCharge(input: RecordPoolChargeParams)
         case listMyGroups
         case groupSummary(groupId: UUID)
         case memberBalance(groupId: UUID, membershipId: UUID)
@@ -131,6 +133,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
         SettlementResult(settlementId: UUID(), transactionId: UUID())
     )
     private var recordContributionStub: Result<UUID, RuulError> = .success(UUID())
+    private var groupPoolBalanceStub: Result<GroupPoolBalance, RuulError> = .success(
+        GroupPoolBalance(groupId: UUID(), contributionsIn: 0, settlementsIn: 0, payoutsOut: 0, reversalsNet: 0, net: 0, unit: "MXN")
+    )
+    private var recordPoolChargeStub: Result<UUID, RuulError> = .success(UUID())
     private var listMyGroupsStub: Result<[GroupListItem], RuulError> = .success([])
     private var groupSummaryStub: Result<CanonicalGroupSummary, RuulError> = .success(
         CanonicalGroupSummary(groupId: UUID(), memberCount: 0, openDecisions: 0, openDisputes: 0, openObligations: 0, recentEvents: [])
@@ -287,6 +293,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setRecordSettlementStub(_ stub: Result<SettlementResult, RuulError>) { recordSettlementStub = stub }
     func setPaySanctionStub(_ stub: Result<SettlementResult, RuulError>) { paySanctionStub = stub }
     func setRecordContributionStub(_ stub: Result<UUID, RuulError>) { recordContributionStub = stub }
+    func setGroupPoolBalanceStub(_ stub: Result<GroupPoolBalance, RuulError>) { groupPoolBalanceStub = stub }
+    func setRecordPoolChargeStub(_ stub: Result<UUID, RuulError>) { recordPoolChargeStub = stub }
     func setListMyGroupsStub(_ stub: Result<[GroupListItem], RuulError>) { listMyGroupsStub = stub }
     func setGroupSummaryStub(_ stub: Result<CanonicalGroupSummary, RuulError>) { groupSummaryStub = stub }
     func setMemberBalanceStub(_ stub: Result<Decimal, RuulError>) { memberBalanceStub = stub }
@@ -422,6 +430,16 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func recordContribution(_ input: RecordContributionParams) async throws -> UUID {
         recorded.append(.recordContribution(input: input))
         return try recordContributionStub.get()
+    }
+
+    func groupPoolBalance(groupId: UUID) async throws -> GroupPoolBalance {
+        recorded.append(.groupPoolBalance(groupId: groupId))
+        return try groupPoolBalanceStub.get()
+    }
+
+    func recordPoolCharge(_ input: RecordPoolChargeParams) async throws -> UUID {
+        recorded.append(.recordPoolCharge(input: input))
+        return try recordPoolChargeStub.get()
     }
 
     func listMyGroups() async throws -> [GroupListItem] {

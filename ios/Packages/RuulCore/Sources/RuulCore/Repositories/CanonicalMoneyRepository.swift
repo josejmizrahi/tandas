@@ -65,6 +65,38 @@ public struct CanonicalMoneyRepository: Sendable {
         )
     }
 
+    /// V3 — `group_pool_balance(p_group_id)` agregado del fondo común.
+    public func poolBalance(groupId: UUID) async throws -> GroupPoolBalance {
+        try await rpc.groupPoolBalance(groupId: groupId)
+    }
+
+    /// V3 — `record_pool_charge(...)` crea una obligation pool-side
+    /// contra un miembro. Backend valida charge_kind in
+    /// (quota/buy_in/fee) + permission `pool_charge.record`.
+    public func recordPoolCharge(
+        groupId: UUID,
+        targetMembershipId: UUID,
+        amount: Decimal,
+        unit: String = "MXN",
+        chargeKind: String,
+        reason: String? = nil,
+        mandateId: UUID? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.recordPoolCharge(
+            RecordPoolChargeParams(
+                groupId: groupId,
+                targetMembershipId: targetMembershipId,
+                amount: amount,
+                unit: unit,
+                chargeKind: chargeKind,
+                reason: reason,
+                mandateId: mandateId,
+                clientId: clientId
+            )
+        )
+    }
+
     /// `member_obligation_summary(p_group_id, p_membership_id)` — open
     /// obligations (debt rows) for the membership in this group, with
     /// human label for the counterparty.

@@ -21,11 +21,15 @@ struct MoneyDashboardView: View {
     @State private var isShowingSettlementSheet: Bool = false
     @State private var isShowingSettleUp: Bool = false
     @State private var isShowingContribute: Bool = false
+    @State private var isShowingPoolCharge: Bool = false
     @State private var pendingPaySanction: GroupSanction?
+    /// V3 — pool balance del grupo, hidratado on appear.
+    @State private var poolBalance: GroupPoolBalance?
 
     var body: some View {
         List {
             heroSection
+            poolBalanceSection
             quickActionsRow
             peerPairsSection
             sanctionsSection
@@ -55,6 +59,7 @@ struct MoneyDashboardView: View {
             await container.moneyStore.refresh(groupId: groupId, membershipId: myMembershipId)
             await container.sanctionsStore.refreshIfNeeded(groupId: groupId)
             await container.movementsStore.refreshIfNeeded(groupId: groupId)
+            await loadPoolBalance()
         }
         .sheet(isPresented: $isShowingExpenseSheet) {
             RecordExpenseSheet(
@@ -101,6 +106,16 @@ struct MoneyDashboardView: View {
                 myMembershipId: myMembershipId
             ) {
                 isShowingContribute = false
+                Task { await refresh() }
+            }
+        }
+        .sheet(isPresented: $isShowingPoolCharge) {
+            IssuePoolChargeSheet(
+                container: container,
+                groupId: groupId,
+                myMembershipId: myMembershipId
+            ) {
+                isShowingPoolCharge = false
                 Task { await refresh() }
             }
         }
@@ -514,6 +529,44 @@ struct MoneyDashboardView: View {
         return "Ver todos (\(count))"
     }
 
+    // MARK: - Pool balance (V3 — Q1 answer)
+    //
+    // El fondo común del grupo. Suma de contributions + multas pagadas
+    // − payouts. Invisible cuando no hay actividad pool (net=0 y zero
+    // movement) — doctrine situational. Tap → expandible (futuro).
+
+    @ViewBuilder
+    private var poolBalanceSection: some View {
+        if let pool = poolBalance, hasPoolActivity(pool) {
+            Section {
+                HStack(spacing: 14) {
+                    Image(systemName: "building.columns.fill")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.tint)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(Color.accentColor.opacity(0.14)))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("El grupo tiene")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(pool.net, format: .currency(code: pool.unit))
+                            .font(.title3.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(pool.net >= 0 ? AnyShapeStyle(.primary) : AnyShapeStyle(Color.red))
+                    }
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private func hasPoolActivity(_ pool: GroupPoolBalance) -> Bool {
+        pool.net != 0
+            || pool.contributionsIn != 0
+            || pool.settlementsIn != 0
+            || pool.payoutsOut != 0
+    }
+
     // MARK: - Quick actions row (V3 — UX redesign)
     //
     // Doctrine ruul_canonical_ux_doctrine: las acciones primarias del
@@ -556,6 +609,13 @@ struct MoneyDashboardView: View {
                     ) {
                         isShowingSettlementSheet = true
                     }
+                    actionChip(
+                        label: "Cobrar cuota",
+                        icon: "arrow.up.to.line.circle.fill",
+                        tint: .orange
+                    ) {
+                        isShowingPoolCharge = true
+                    }
                 }
                 .padding(.horizontal, 4)
             }
@@ -593,6 +653,16 @@ struct MoneyDashboardView: View {
         await container.moneyStore.refresh(groupId: groupId, membershipId: myMembershipId)
         await container.sanctionsStore.refresh(groupId: groupId)
         await container.movementsStore.refresh(groupId: groupId)
+        await loadPoolBalance()
+    }
+
+    /// V3 — silent load; si falla la sección queda invisible.
+    private func loadPoolBalance() async {
+        do {
+            poolBalance = try await container.moneyRepository.poolBalance(groupId: groupId)
+        } catch {
+            poolBalance = nil
+        }
     }
 
     /// Hashable token for the dedicated debts surface (kept private so

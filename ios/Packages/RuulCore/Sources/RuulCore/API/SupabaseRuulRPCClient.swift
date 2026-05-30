@@ -88,6 +88,25 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callReturningUUID("record_contribution", params: input)
     }
 
+    public func groupPoolBalance(groupId: UUID) async throws -> GroupPoolBalance {
+        struct Params: Encodable {
+            let pGroupId: UUID
+            enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+        }
+        do {
+            return try await client
+                .rpc("group_pool_balance", params: Params(pGroupId: groupId))
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func recordPoolCharge(_ input: RecordPoolChargeParams) async throws -> UUID {
+        try await callReturningUUID("record_pool_charge", params: input)
+    }
+
     // MARK: - Reads
 
     public func listMyGroups() async throws -> [GroupListItem] {

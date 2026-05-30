@@ -2227,6 +2227,51 @@ public struct RecordContributionParams: Encodable, Sendable {
     }
 }
 
+/// V3 — `record_pool_charge(p_group_id, p_target_membership_id,
+/// p_amount, p_unit, p_charge_kind, p_reason?, p_mandate_id?,
+/// p_client_id?)`. Backend valid kinds: 'quota'/'buy_in'/'fee'.
+public struct RecordPoolChargeParams: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pTargetMembershipId: UUID
+    public let pAmount: Decimal
+    public let pUnit: String
+    public let pChargeKind: String
+    public let pReason: String?
+    public let pMandateId: UUID?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId            = "p_group_id"
+        case pTargetMembershipId = "p_target_membership_id"
+        case pAmount             = "p_amount"
+        case pUnit               = "p_unit"
+        case pChargeKind         = "p_charge_kind"
+        case pReason             = "p_reason"
+        case pMandateId          = "p_mandate_id"
+        case pClientId           = "p_client_id"
+    }
+
+    public init(
+        groupId: UUID,
+        targetMembershipId: UUID,
+        amount: Decimal,
+        unit: String,
+        chargeKind: String,
+        reason: String? = nil,
+        mandateId: UUID? = nil,
+        clientId: String? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pTargetMembershipId = targetMembershipId
+        self.pAmount = amount
+        self.pUnit = unit
+        self.pChargeKind = chargeKind
+        self.pReason = reason
+        self.pMandateId = mandateId
+        self.pClientId = clientId
+    }
+}
+
 public struct ListMemberPermissionsParams: Encodable, Sendable {
     public let pGroupId: UUID
     public let pUserId: UUID?

@@ -113,6 +113,10 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
         .init(settlementId: UUID(), transactionId: UUID())
     }
     func recordContribution(_ input: RecordContributionParams) async throws -> UUID { UUID() }
+    func groupPoolBalance(groupId: UUID) async throws -> GroupPoolBalance {
+        GroupPoolBalance(groupId: groupId, contributionsIn: 0, settlementsIn: 0, payoutsOut: 0, reversalsNet: 0, net: 0, unit: "MXN")
+    }
+    func recordPoolCharge(_ input: RecordPoolChargeParams) async throws -> UUID { UUID() }
     func listMyGroups() async throws -> [GroupListItem] { [] }
     func groupSummary(groupId: UUID) async throws -> CanonicalGroupSummary {
         .init(groupId: groupId, memberCount: 0, openDecisions: 0, openDisputes: 0, openObligations: 0, recentEvents: [])

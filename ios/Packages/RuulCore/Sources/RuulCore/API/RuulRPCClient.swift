@@ -52,6 +52,18 @@ public protocol RuulRPCClient: Sendable {
     /// es un acredita-al-grupo directo. Returns la transaction_id.
     func recordContribution(_ input: RecordContributionParams) async throws -> UUID
 
+    /// V3 — `group_pool_balance(p_group_id)` agregado del fondo común
+    /// del grupo. Active-member gate. iOS lo muestra como header en el
+    /// dashboard ("El grupo tiene $X").
+    func groupPoolBalance(groupId: UUID) async throws -> GroupPoolBalance
+
+    /// V3 — `record_pool_charge(p_group_id, p_target_membership_id,
+    /// p_amount, p_unit, p_charge_kind, p_reason?, p_mandate_id?,
+    /// p_client_id?)`. Crea una obligation pool-side contra un miembro
+    /// (cuota / buy_in / fee). Requiere permission `pool_charge.record`
+    /// (admin típicamente). Returns la obligation_id.
+    func recordPoolCharge(_ input: RecordPoolChargeParams) async throws -> UUID
+
     // MARK: - Reads
 
     func listMyGroups() async throws -> [GroupListItem]
