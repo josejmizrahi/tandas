@@ -231,6 +231,18 @@
 - `record_expense` con custom split donde payer es participante NO genera self-obligation para payer (correcto — se settle consigo mismo). Solo B (no-payer) tiene obligation. Smoke N.5.6 verifica esto.
 - `reverse_transaction` rechaza tx con dependent obligations/settlements ("use domain-specific reversal" — eg `void_sanction` para sanctions, `cancel_settlement` para settlements). Solo `record_contribution` (no materializa obligations) es reversible directamente.
 
+- **+2 aplicadas 2026-05-29 (PARTE 12 batch 6 — drift sweep + N.13 meta-smoke)**:
+  - `20260529230011 v3_parte12_hotfix_cancel_sanction_payment_plan_perm` — hot-fix: `cancel_sanction_payment_plan` citaba `sanction.review` (singular + "review") que NO existe en catálogo. Real keys son `sanctions.{create,dispute,update}` (plural). Rename mechanical a `sanctions.update` (la authority right correcta para cancelar). Paralelo a hot-fixes de start_vote + emit_mandate_expiring (3 silent breakages total cazados esta sesión).
+  - `20260529230012 v3_parte12_n13_smoke_permission_keys_audit` — `_smoke_permission_keys_audit()` meta-smoke que detecta automáticamente futuros drifts del catálogo de permisos. Sweep regex sobre todas las SECURITY DEFINER en public, extrae permission keys cited en assert_permission y has_permission/has_group_permission, diff vs catálogo `permissions`. 2/2 asserts verde (cero drifts post-hotfix). Útil como guard CI para refactors del catálogo.
+
+**Hallazgos PARTE 12 batch 6 / patrón de drift cazado**:
+- 3 silent breakages cazados en una sesión por meta-sweep:
+  1. `start_vote` → `decisions.propose` (no existía; voting roto). → fix `decisions.create`.
+  2. `emit_mandate_expiring_events` → filter `status='granted'` (no existía; emisor muerto). → fix `status='active'`.
+  3. `cancel_sanction_payment_plan` → `sanction.review` (no existía). → fix `sanctions.update`.
+- Common pattern: someone introdujo nuevo path con permission/status _key intent_ que nunca aterrizó en el catálogo correspondiente. Sin smoke meta-audit estos quedan dormidos hasta que un usuario real los toca.
+- N.13 ahora cierra el gate para permission keys. TODO follow-up: meta-audit similar para status whitelists (regex más complejo, scope mayor).
+
 **Re-audit §0.6 post-PARTE 3**: el catálogo "eventos declarados pero NO emitidos" era parcialmente falso. Lo único que faltaba realmente eran las 3 RPCs zero-emit ya cerradas. Los demás (`dispute.escalated`, `rule.published`, `mandate.granted/revoked`, `money.transaction_reversed`, `dissolution.proposed/finalized`, `resource.ownership_changed`, `dispute.resolved`) **ya están en código** — solo no aparecen en data dev porque no se han ejercido en tests. **Doctrinales pendientes (no slices mecánicos)**:
 - `sanction.paid` vs `sanction.completed` actual: `update_sanction_status` emite `sanction.<new_status>` dinámico (`sanction.completed/reversed/cancelled`); el doc pide `sanction.paid` separado. Decisión: ¿rename `completed` → `paid` cuando origen es settlement? ¿O emit alias?
 - `mandate.used`: no hay emisor; el FK guard `assert_mandate_authorizes` corre por cada uso pero no emite. ¿Vale la inflación del log?
