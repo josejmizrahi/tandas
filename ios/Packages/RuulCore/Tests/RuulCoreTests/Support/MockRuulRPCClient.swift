@@ -21,6 +21,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case recordContribution(input: RecordContributionParams)
         case groupPoolBalance(groupId: UUID)
         case recordPoolCharge(input: RecordPoolChargeParams)
+        case recordPoolChargeBatch(input: RecordPoolChargeBatchParams)
         case listMyGroups
         case groupSummary(groupId: UUID)
         case memberBalance(groupId: UUID, membershipId: UUID)
@@ -137,6 +138,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         GroupPoolBalance(groupId: UUID(), contributionsIn: 0, settlementsIn: 0, payoutsOut: 0, reversalsNet: 0, net: 0, unit: "MXN")
     )
     private var recordPoolChargeStub: Result<UUID, RuulError> = .success(UUID())
+    private var recordPoolChargeBatchStub: Result<Int, RuulError> = .success(0)
     private var listMyGroupsStub: Result<[GroupListItem], RuulError> = .success([])
     private var groupSummaryStub: Result<CanonicalGroupSummary, RuulError> = .success(
         CanonicalGroupSummary(groupId: UUID(), memberCount: 0, openDecisions: 0, openDisputes: 0, openObligations: 0, recentEvents: [])
@@ -295,6 +297,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setRecordContributionStub(_ stub: Result<UUID, RuulError>) { recordContributionStub = stub }
     func setGroupPoolBalanceStub(_ stub: Result<GroupPoolBalance, RuulError>) { groupPoolBalanceStub = stub }
     func setRecordPoolChargeStub(_ stub: Result<UUID, RuulError>) { recordPoolChargeStub = stub }
+    func setRecordPoolChargeBatchStub(_ stub: Result<Int, RuulError>) { recordPoolChargeBatchStub = stub }
     func setListMyGroupsStub(_ stub: Result<[GroupListItem], RuulError>) { listMyGroupsStub = stub }
     func setGroupSummaryStub(_ stub: Result<CanonicalGroupSummary, RuulError>) { groupSummaryStub = stub }
     func setMemberBalanceStub(_ stub: Result<Decimal, RuulError>) { memberBalanceStub = stub }
@@ -440,6 +443,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func recordPoolCharge(_ input: RecordPoolChargeParams) async throws -> UUID {
         recorded.append(.recordPoolCharge(input: input))
         return try recordPoolChargeStub.get()
+    }
+
+    func recordPoolChargeBatch(_ input: RecordPoolChargeBatchParams) async throws -> Int {
+        recorded.append(.recordPoolChargeBatch(input: input))
+        return try recordPoolChargeBatchStub.get()
     }
 
     func listMyGroups() async throws -> [GroupListItem] {

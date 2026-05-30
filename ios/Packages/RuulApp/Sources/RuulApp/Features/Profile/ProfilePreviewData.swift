@@ -117,6 +117,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
         GroupPoolBalance(groupId: groupId, contributionsIn: 0, settlementsIn: 0, payoutsOut: 0, reversalsNet: 0, net: 0, unit: "MXN")
     }
     func recordPoolCharge(_ input: RecordPoolChargeParams) async throws -> UUID { UUID() }
+    func recordPoolChargeBatch(_ input: RecordPoolChargeBatchParams) async throws -> Int { input.pTargetMembershipIds.count }
     func listMyGroups() async throws -> [GroupListItem] { [] }
     func groupSummary(groupId: UUID) async throws -> CanonicalGroupSummary {
         .init(groupId: groupId, memberCount: 0, openDecisions: 0, openDisputes: 0, openObligations: 0, recentEvents: [])

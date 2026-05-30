@@ -64,6 +64,11 @@ public protocol RuulRPCClient: Sendable {
     /// (admin típicamente). Returns la obligation_id.
     func recordPoolCharge(_ input: RecordPoolChargeParams) async throws -> UUID
 
+    /// V3 — `record_pool_charge_batch(...)` cobra el mismo cargo a N
+    /// miembros atómicamente. Si una falla, rollback total. iOS lo
+    /// usa cuando admin marca múltiples targets en IssuePoolChargeSheet.
+    func recordPoolChargeBatch(_ input: RecordPoolChargeBatchParams) async throws -> Int
+
     // MARK: - Reads
 
     func listMyGroups() async throws -> [GroupListItem]

@@ -97,6 +97,32 @@ public struct CanonicalMoneyRepository: Sendable {
         )
     }
 
+    /// V3 — `record_pool_charge_batch(...)`. Atomic: si una falla,
+    /// rollback total. Returns count de obligations creadas.
+    public func recordPoolChargeBatch(
+        groupId: UUID,
+        targetMembershipIds: [UUID],
+        amount: Decimal,
+        unit: String = "MXN",
+        chargeKind: String,
+        reason: String? = nil,
+        mandateId: UUID? = nil,
+        clientIdBase: String? = nil
+    ) async throws -> Int {
+        try await rpc.recordPoolChargeBatch(
+            RecordPoolChargeBatchParams(
+                groupId: groupId,
+                targetMembershipIds: targetMembershipIds,
+                amount: amount,
+                unit: unit,
+                chargeKind: chargeKind,
+                reason: reason,
+                mandateId: mandateId,
+                clientIdBase: clientIdBase
+            )
+        )
+    }
+
     /// `member_obligation_summary(p_group_id, p_membership_id)` — open
     /// obligations (debt rows) for the membership in this group, with
     /// human label for the counterparty.

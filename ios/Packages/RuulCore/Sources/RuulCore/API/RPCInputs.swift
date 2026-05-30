@@ -2272,6 +2272,51 @@ public struct RecordPoolChargeParams: Encodable, Sendable, Equatable {
     }
 }
 
+/// V3 — `record_pool_charge_batch(p_group_id, p_target_membership_ids[],
+/// p_amount, p_unit, p_charge_kind, p_reason?, p_mandate_id?,
+/// p_client_id_base?)`. Atómico: si una falla, rollback total.
+public struct RecordPoolChargeBatchParams: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pTargetMembershipIds: [UUID]
+    public let pAmount: Decimal
+    public let pUnit: String
+    public let pChargeKind: String
+    public let pReason: String?
+    public let pMandateId: UUID?
+    public let pClientIdBase: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId             = "p_group_id"
+        case pTargetMembershipIds = "p_target_membership_ids"
+        case pAmount              = "p_amount"
+        case pUnit                = "p_unit"
+        case pChargeKind          = "p_charge_kind"
+        case pReason              = "p_reason"
+        case pMandateId           = "p_mandate_id"
+        case pClientIdBase        = "p_client_id_base"
+    }
+
+    public init(
+        groupId: UUID,
+        targetMembershipIds: [UUID],
+        amount: Decimal,
+        unit: String,
+        chargeKind: String,
+        reason: String? = nil,
+        mandateId: UUID? = nil,
+        clientIdBase: String? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pTargetMembershipIds = targetMembershipIds
+        self.pAmount = amount
+        self.pUnit = unit
+        self.pChargeKind = chargeKind
+        self.pReason = reason
+        self.pMandateId = mandateId
+        self.pClientIdBase = clientIdBase
+    }
+}
+
 public struct ListMemberPermissionsParams: Encodable, Sendable {
     public let pGroupId: UUID
     public let pUserId: UUID?

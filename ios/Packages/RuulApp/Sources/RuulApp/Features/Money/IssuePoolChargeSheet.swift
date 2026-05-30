@@ -19,14 +19,16 @@ struct IssuePoolChargeSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedTargetId: UUID?
+    /// V3 — multi-target. Set vacío = no se cobra a nadie. Soporta
+    /// hasta 100 targets (backend guard); UI no impone limit.
+    @State private var selectedTargetIds: Set<UUID> = []
     @State private var amountText: String = ""
     @State private var reason: String = ""
     @State private var selectedKind: ChargeKind = .quota
     @State private var selectedMandateId: UUID?
     @State private var isSubmitting: Bool = false
     @State private var error: UserFacingError?
-    @State private var clientId: String?
+    @State private var clientIdBase: String?
 
     enum ChargeKind: String, CaseIterable, Identifiable, Hashable {
         case quota = "quota"
@@ -68,20 +70,36 @@ struct IssuePoolChargeSheet: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("A quién le cobras") {
+                Section {
                     if eligibleTargets.isEmpty {
                         Text("No hay miembros activos para cobrar.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     } else {
-                        Picker(selection: $selectedTargetId) {
-                            Text("Selecciona…").tag(UUID?.none)
-                            ForEach(eligibleTargets, id: \.id) { item in
-                                Text(item.displayName).tag(Optional(item.membershipId!))
-                            }
-                        } label: {
-                            Text("Miembro")
+                        ForEach(eligibleTargets, id: \.id) { item in
+                            targetRow(for: item)
                         }
+                    }
+                } header: {
+                    HStack {
+                        Text("A quién le cobras")
+                        Spacer()
+                        if !eligibleTargets.isEmpty {
+                            Button(allSelected ? "Quitar todos" : "Todos") {
+                                toggleAll()
+                            }
+                            .font(.footnote)
+                        }
+                    }
+                } footer: {
+                    if selectedTargetIds.isEmpty {
+                        Text("Selecciona al menos un miembro.")
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                    } else if let summary = batchSummary {
+                        Text(summary)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -101,7 +119,7 @@ struct IssuePoolChargeSheet: View {
                 )
 
                 Section {
-                    Text("Genera una deuda a favor del grupo. Cuando \(targetDisplayName) la pague, el balance del grupo crece.")
+                    Text(effectExplainer)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -115,7 +133,7 @@ struct IssuePoolChargeSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") {
-                        clientId = nil
+                        clientIdBase = nil
                         dismiss()
                     }
                     .disabled(isSubmitting)
@@ -171,36 +189,109 @@ struct IssuePoolChargeSheet: View {
     }
 
     private var isFormValid: Bool {
-        selectedTargetId != nil && parsedAmount != nil
+        !selectedTargetIds.isEmpty && parsedAmount != nil
     }
 
-    private var targetDisplayName: String {
-        guard let id = selectedTargetId,
-              let item = eligibleTargets.first(where: { $0.membershipId == id })
-        else { return "el miembro" }
-        return item.displayName
+    private var allSelected: Bool {
+        let allIds = Set(eligibleTargets.compactMap(\.membershipId))
+        return !allIds.isEmpty && allIds == selectedTargetIds
+    }
+
+    /// Pluraliza el resumen del batch: "1 miembro · $50" / "3 miembros
+    /// · $150 total". Visible cuando hay amount válido.
+    private var batchSummary: String? {
+        guard let amount = parsedAmount, !selectedTargetIds.isEmpty else { return nil }
+        let count = selectedTargetIds.count
+        let total = amount * Decimal(count)
+        let label = count == 1 ? "1 miembro" : "\(count) miembros"
+        return "\(label) · \(total.formatted()) MXN total"
+    }
+
+    private var effectExplainer: String {
+        if selectedTargetIds.count <= 1 {
+            return "Genera una deuda a favor del grupo. Cuando paguen, el balance del grupo crece."
+        }
+        return "Se crearán \(selectedTargetIds.count) deudas iguales, una por miembro. Si una falla (mandato vencido, miembro inactivo, etc.) ninguna se crea — la operación es atómica."
+    }
+
+    // MARK: - Mutations
+
+    @ViewBuilder
+    private func targetRow(for item: MembershipBoundaryItem) -> some View {
+        if let mid = item.membershipId {
+            Button {
+                toggleTarget(mid)
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: selectedTargetIds.contains(mid)
+                          ? "checkmark.circle.fill"
+                          : "circle")
+                        .foregroundStyle(selectedTargetIds.contains(mid)
+                                         ? Color.accentColor
+                                         : Color.secondary)
+                    Text(item.displayName)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func toggleTarget(_ id: UUID) {
+        if selectedTargetIds.contains(id) {
+            selectedTargetIds.remove(id)
+        } else {
+            selectedTargetIds.insert(id)
+        }
+    }
+
+    private func toggleAll() {
+        let allIds = Set(eligibleTargets.compactMap(\.membershipId))
+        if allSelected {
+            selectedTargetIds = []
+        } else {
+            selectedTargetIds = allIds
+        }
     }
 
     // MARK: - Submit
 
     private func submit() async {
-        guard let amount = parsedAmount, let targetId = selectedTargetId else { return }
+        guard let amount = parsedAmount, !selectedTargetIds.isEmpty else { return }
         isSubmitting = true
         defer { isSubmitting = false }
-        if clientId == nil { clientId = UUID().uuidString }
+        if clientIdBase == nil { clientIdBase = UUID().uuidString }
         let reasonClean = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let targets = Array(selectedTargetIds)
         do {
-            _ = try await container.moneyRepository.recordPoolCharge(
-                groupId: groupId,
-                targetMembershipId: targetId,
-                amount: amount,
-                unit: "MXN",
-                chargeKind: selectedKind.rawValue,
-                reason: reasonClean.isEmpty ? nil : reasonClean,
-                mandateId: selectedMandateId,
-                clientId: clientId
-            )
-            clientId = nil
+            // V3: single target → record_pool_charge; multi target →
+            // record_pool_charge_batch (atomic).
+            if targets.count == 1 {
+                _ = try await container.moneyRepository.recordPoolCharge(
+                    groupId: groupId,
+                    targetMembershipId: targets[0],
+                    amount: amount,
+                    unit: "MXN",
+                    chargeKind: selectedKind.rawValue,
+                    reason: reasonClean.isEmpty ? nil : reasonClean,
+                    mandateId: selectedMandateId,
+                    clientId: clientIdBase
+                )
+            } else {
+                _ = try await container.moneyRepository.recordPoolChargeBatch(
+                    groupId: groupId,
+                    targetMembershipIds: targets,
+                    amount: amount,
+                    unit: "MXN",
+                    chargeKind: selectedKind.rawValue,
+                    reason: reasonClean.isEmpty ? nil : reasonClean,
+                    mandateId: selectedMandateId,
+                    clientIdBase: clientIdBase
+                )
+            }
+            clientIdBase = nil
             onSubmitted()
         } catch {
             self.error = UserFacingError.from(error)

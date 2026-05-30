@@ -107,6 +107,26 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callReturningUUID("record_pool_charge", params: input)
     }
 
+    public func recordPoolChargeBatch(_ input: RecordPoolChargeBatchParams) async throws -> Int {
+        struct Row: Decodable {
+            let targetMembershipId: UUID
+            let obligationId: UUID
+            enum CodingKeys: String, CodingKey {
+                case targetMembershipId = "target_membership_id"
+                case obligationId       = "obligation_id"
+            }
+        }
+        do {
+            let rows: [Row] = try await client
+                .rpc("record_pool_charge_batch", params: input)
+                .execute()
+                .value
+            return rows.count
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Reads
 
     public func listMyGroups() async throws -> [GroupListItem] {
