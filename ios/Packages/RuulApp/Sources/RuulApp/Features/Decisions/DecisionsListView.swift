@@ -235,6 +235,8 @@ private struct DecisionRow: View {
             case .rejected:  return .red
             case .cancelled: return .gray
             case .draft:     return .secondary
+            case .executed:  return .green
+            case .closed:    return .green
             }
         }()
         Text(decision.status.label)

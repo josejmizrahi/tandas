@@ -452,6 +452,59 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - V3-D.18 — Decisions Deep
+
+    public func listDecisionTemplates() async throws -> [DecisionTemplate] {
+        do {
+            return try await client
+                .rpc("list_decision_templates")
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func executeDecision(decisionId: UUID) async throws -> ExecuteDecisionResult {
+        let params = ExecuteDecisionParams(decisionId: decisionId)
+        do {
+            let rows: [ExecuteDecisionResult] = try await client
+                .rpc("execute_decision", params: params)
+                .execute()
+                .value
+            guard let head = rows.first else {
+                throw URLError(.cannotParseResponse)
+            }
+            return head
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func decisionProvenance(decisionId: UUID) async throws -> DecisionProvenance {
+        let params = DecisionProvenanceParams(decisionId: decisionId)
+        do {
+            return try await client
+                .rpc("decision_provenance", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func decisionSummary(groupId: UUID) async throws -> DecisionSummary {
+        let params = DecisionSummaryParams(groupId: groupId)
+        do {
+            return try await client
+                .rpc("decision_summary", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func groupSanctionPaymentStatus(
         sanctionId: UUID
     ) async throws -> SanctionPaymentStatus {

@@ -46,6 +46,7 @@ public struct DecisionDetailView: View {
                     resultSection(detail: detail)
                     outcomeAppliedSection(detail: detail)
                 }
+                provenanceSection(detail: detail)
                 actionsSection(detail: detail)
             } else {
                 loadingPlaceholder
@@ -55,6 +56,7 @@ public struct DecisionDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: decisionId) {
             await store.loadDetail(decisionId: decisionId)
+            await store.loadProvenance(decisionId: decisionId)
         }
         .refreshable {
             await store.refreshDetail()
@@ -546,6 +548,36 @@ public struct DecisionDetailView: View {
         }
     }
 
+    // V3-D.18 — "¿Por qué existe esta decisión?" Inline section under
+    // the detail. Hidden when provenance hasn't loaded yet or when the
+    // RPC reports it doesn't know.
+    @ViewBuilder
+    private func provenanceSection(detail: GroupDecisionDetail) -> some View {
+        if let p = store.provenance, p.decisionId == detail.id, p.found {
+            Section("¿Por qué existe?") {
+                if p.sourceType == .rule {
+                    if let title = p.sourceRuleTitle {
+                        LabeledContent("Regla", value: title)
+                    }
+                    if let kind = p.sourceConsequenceKind {
+                        LabeledContent("Consecuencia", value: kind)
+                    }
+                    if let src = p.sourceEvent {
+                        LabeledContent("Disparador", value: src.summary ?? src.eventType)
+                    }
+                } else {
+                    Text("Esta decisión se creó manualmente.")
+                        .font(.body)
+                }
+                if let tk = p.templateKey {
+                    LabeledContent("Plantilla", value: tk)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private func actionsSection(detail: GroupDecisionDetail) -> some View {
         if detail.isOpenForVoting {
@@ -560,6 +592,18 @@ public struct DecisionDetailView: View {
                 } label: {
                     Label(L10n.Decisions.cancelDecisionButton, systemImage: "xmark.circle")
                 }
+            }
+        } else if detail.status == .passed {
+            // V3-D.18 — passed but not yet executed. execution_mode=manual /
+            // secondary_approval, or auto-execution was skipped by permission.
+            Section {
+                Button {
+                    Task { _ = await store.execute(decisionId: detail.id, groupId: groupId) }
+                } label: {
+                    Label("Ejecutar decisi\u{00f3}n", systemImage: "play.fill")
+                }
+            } footer: {
+                Text("La decisi\u{00f3}n pas\u{00f3} pero todav\u{00ed}a no se aplic\u{00f3}. Ejecutarla produce sus efectos.")
             }
         }
     }
@@ -584,6 +628,8 @@ public struct DecisionDetailView: View {
             case .rejected:  return .red
             case .cancelled: return .gray
             case .draft:     return .secondary
+            case .executed:  return .green
+            case .closed:    return .green
             }
         }()
         Text(status.label)

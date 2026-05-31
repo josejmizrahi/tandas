@@ -95,6 +95,31 @@ public struct CanonicalDecisionsRepository: Sendable {
     public func cancel(decisionId: UUID, reason: String? = nil) async throws {
         try await rpc.cancelVote(CancelVoteParams(decisionId: decisionId, reason: reason?.trimmedOrNil))
     }
+
+    // MARK: - V3-D.18
+
+    /// `list_decision_templates()` — governance recipes for the propose
+    /// sheet. Static catalog; safe to cache locally per session.
+    public func listTemplates() async throws -> [DecisionTemplate] {
+        try await rpc.listDecisionTemplates()
+    }
+
+    /// `execute_decision(p_decision_id)` — produces the side effects of a
+    /// passed decision. Server-gated by `decisions.execute`.
+    public func execute(decisionId: UUID) async throws -> ExecuteDecisionResult {
+        try await rpc.executeDecision(decisionId: decisionId)
+    }
+
+    /// `decision_provenance(p_decision_id)` — manual vs rule + rule
+    /// title + consequence kind. `found=false` is a normal answer.
+    public func provenance(decisionId: UUID) async throws -> DecisionProvenance {
+        try await rpc.decisionProvenance(decisionId: decisionId)
+    }
+
+    /// `decision_summary(p_group_id)` — founder dashboard payload.
+    public func summary(groupId: UUID) async throws -> DecisionSummary {
+        try await rpc.decisionSummary(groupId: groupId)
+    }
 }
 
 private extension String {

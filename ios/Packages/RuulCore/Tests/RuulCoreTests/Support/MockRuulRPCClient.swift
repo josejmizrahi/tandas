@@ -45,6 +45,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case ruleEvaluationSummary(groupId: UUID, since: Date)
         case setGroupEngineActive(groupId: UUID, active: Bool)
         case groupRuleEngineQuota(groupId: UUID)
+        case listDecisionTemplates
+        case executeDecision(decisionId: UUID)
+        case decisionProvenance(decisionId: UUID)
+        case decisionSummary(groupId: UUID)
         case groupSanctionPaymentStatus(sanctionId: UUID)
         case proposeSanctionPaymentPlan(input: ProposeSanctionPaymentPlanParams)
         case cancelSanctionPaymentPlan(input: CancelSanctionPaymentPlanParams)
@@ -653,6 +657,48 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func groupRuleEngineQuota(groupId: UUID) async throws -> GroupRuleEngineQuota? {
         recorded.append(.groupRuleEngineQuota(groupId: groupId))
         return try groupRuleEngineQuotaStub.get()
+    }
+
+    // MARK: - V3-D.18
+
+    private var listDecisionTemplatesStub: Result<[DecisionTemplate], RuulError> = .success([])
+    private var executeDecisionStub: Result<ExecuteDecisionResult, RuulError> = .success(
+        ExecuteDecisionResult(decisionId: UUID(), status: "executed")
+    )
+    private var decisionProvenanceStub: Result<DecisionProvenance, RuulError> = .success(
+        DecisionProvenance(found: false, reason: "not_found")
+    )
+    private var decisionSummaryStub: Result<DecisionSummary, RuulError> = .success(
+        DecisionSummary(
+            groupId: UUID(), activeMembers: 0,
+            open: 0, passed: 0, rejected: 0, executed: 0, cancelled: 0,
+            avgTurnout: 0, participationRate: 0
+        )
+    )
+
+    func setListDecisionTemplatesStub(_ stub: Result<[DecisionTemplate], RuulError>) { listDecisionTemplatesStub = stub }
+    func setExecuteDecisionStub(_ stub: Result<ExecuteDecisionResult, RuulError>) { executeDecisionStub = stub }
+    func setDecisionProvenanceStub(_ stub: Result<DecisionProvenance, RuulError>) { decisionProvenanceStub = stub }
+    func setDecisionSummaryStub(_ stub: Result<DecisionSummary, RuulError>) { decisionSummaryStub = stub }
+
+    func listDecisionTemplates() async throws -> [DecisionTemplate] {
+        recorded.append(.listDecisionTemplates)
+        return try listDecisionTemplatesStub.get()
+    }
+
+    func executeDecision(decisionId: UUID) async throws -> ExecuteDecisionResult {
+        recorded.append(.executeDecision(decisionId: decisionId))
+        return try executeDecisionStub.get()
+    }
+
+    func decisionProvenance(decisionId: UUID) async throws -> DecisionProvenance {
+        recorded.append(.decisionProvenance(decisionId: decisionId))
+        return try decisionProvenanceStub.get()
+    }
+
+    func decisionSummary(groupId: UUID) async throws -> DecisionSummary {
+        recorded.append(.decisionSummary(groupId: groupId))
+        return try decisionSummaryStub.get()
     }
 
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {

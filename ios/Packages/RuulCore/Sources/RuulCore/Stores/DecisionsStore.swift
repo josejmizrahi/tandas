@@ -557,6 +557,42 @@ public final class DecisionsStore {
         }
     }
 
+    /// V3-D.18 — provenance state for the decision currently in `detail`.
+    /// Loaded lazily by `loadProvenance(decisionId:)` and cleared each
+    /// time `loadDetail` switches to a different decision.
+    public private(set) var provenance: DecisionProvenance?
+
+    /// V3-D.18 — produce the side effects of a passed decision. Returns
+    /// the resulting status string (`executed` on success). Refreshes the
+    /// list + detail so the new state is reflected immediately.
+    @discardableResult
+    public func execute(decisionId: UUID, groupId: UUID) async -> Bool {
+        do {
+            _ = try await repository.execute(decisionId: decisionId)
+            await refresh(groupId: groupId)
+            if detail?.id == decisionId {
+                await refreshDetail()
+            }
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    /// V3-D.18 — "¿Por qué existe esta decisión?" reverse lookup. Silent
+    /// failure: provenance is non-critical chrome, no error surface.
+    public func loadProvenance(decisionId: UUID) async {
+        if provenance?.decisionId == decisionId { return }
+        do {
+            provenance = try await repository.provenance(decisionId: decisionId)
+        } catch {
+            // keep previous value; banner remains hidden
+        }
+    }
+
+    public func clearProvenance() { provenance = nil }
+
     public func clearError() {
         errorMessage = nil
         draftErrorMessage = nil

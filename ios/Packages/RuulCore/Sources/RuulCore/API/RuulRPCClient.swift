@@ -209,6 +209,21 @@ public protocol RuulRPCClient: Sendable {
         groupId: UUID
     ) async throws -> GroupRuleEngineQuota?
 
+    // MARK: - V3-D.18 — Decisions Deep
+
+    /// `list_decision_templates()` — catalog of governance recipes.
+    func listDecisionTemplates() async throws -> [DecisionTemplate]
+
+    /// `execute_decision(p_decision_id)` — produces the side effects of
+    /// a passed decision. Gated by `decisions.execute`.
+    func executeDecision(decisionId: UUID) async throws -> ExecuteDecisionResult
+
+    /// `decision_provenance(p_decision_id)` — "¿Por qué existe?" lookup.
+    func decisionProvenance(decisionId: UUID) async throws -> DecisionProvenance
+
+    /// `decision_summary(p_group_id)` — founder dashboard payload.
+    func decisionSummary(groupId: UUID) async throws -> DecisionSummary
+
     /// `group_sanction_payment_status(p_sanction_id)` — V2-G4.1 read
     /// RPC for "Pendiente X de Y" + payment history per sanction. The
     /// backend already supports partial payments via the FIFO settlement

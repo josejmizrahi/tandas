@@ -173,6 +173,24 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func groupRuleEngineQuota(groupId: UUID) async throws -> GroupRuleEngineQuota? {
         nil
     }
+
+    func listDecisionTemplates() async throws -> [DecisionTemplate] { [] }
+
+    func executeDecision(decisionId: UUID) async throws -> ExecuteDecisionResult {
+        ExecuteDecisionResult(decisionId: decisionId, status: "executed")
+    }
+
+    func decisionProvenance(decisionId: UUID) async throws -> DecisionProvenance {
+        DecisionProvenance(found: false, reason: "preview_stub")
+    }
+
+    func decisionSummary(groupId: UUID) async throws -> DecisionSummary {
+        DecisionSummary(
+            groupId: groupId, activeMembers: 0,
+            open: 0, passed: 0, rejected: 0, executed: 0, cancelled: 0,
+            avgTurnout: 0, participationRate: 0
+        )
+    }
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
         SanctionPaymentStatus(
             sanctionId: sanctionId,

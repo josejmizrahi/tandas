@@ -570,6 +570,47 @@ public struct SetGroupEngineActiveParams: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - V3-D.18 — Decisions Deep
+
+/// `execute_decision(p_decision_id)` — gated by decisions.execute.
+public struct ExecuteDecisionParams: Encodable, Sendable, Equatable {
+    public let pDecisionId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case pDecisionId = "p_decision_id"
+    }
+
+    public init(decisionId: UUID) {
+        self.pDecisionId = decisionId
+    }
+}
+
+/// `decision_provenance(p_decision_id)` — active-member gate.
+public struct DecisionProvenanceParams: Encodable, Sendable, Equatable {
+    public let pDecisionId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case pDecisionId = "p_decision_id"
+    }
+
+    public init(decisionId: UUID) {
+        self.pDecisionId = decisionId
+    }
+}
+
+/// `decision_summary(p_group_id)` — active-member gate.
+public struct DecisionSummaryParams: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+    }
+
+    public init(groupId: UUID) {
+        self.pGroupId = groupId
+    }
+}
+
 public struct GroupSanctionPaymentStatusParams: Encodable, Sendable, Equatable {
     public let pSanctionId: UUID
 

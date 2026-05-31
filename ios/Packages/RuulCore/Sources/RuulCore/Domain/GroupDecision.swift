@@ -15,6 +15,12 @@ public enum DecisionStatus: String, Codable, CaseIterable, Sendable, Hashable {
     case passed
     case rejected
     case cancelled
+    /// V3-D.18 — passed AND its side effects ran (execute_decision).
+    case executed
+    /// Legacy from the original schema. Backend CHECK keeps it for compat;
+    /// no row currently uses it. iOS treats it as a synonym of `.passed`
+    /// for display purposes.
+    case closed
 
     public var label: LocalizedStringResource {
         switch self {
@@ -23,10 +29,14 @@ public enum DecisionStatus: String, Codable, CaseIterable, Sendable, Hashable {
         case .passed:    return L10n.Decisions.statusPassed
         case .rejected:  return L10n.Decisions.statusRejected
         case .cancelled: return L10n.Decisions.statusCancelled
+        case .executed:  return L10n.Decisions.statusPassed
+        case .closed:    return L10n.Decisions.statusPassed
         }
     }
 
     public var isOpen: Bool { self == .open }
+    /// V3-D.18 — true when a passed decision still awaits execute_decision.
+    public var awaitsExecution: Bool { self == .passed }
 }
 
 /// Voting methods as written by `start_vote`. Mirrors the small set
