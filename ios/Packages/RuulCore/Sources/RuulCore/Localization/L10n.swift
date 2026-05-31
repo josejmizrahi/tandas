@@ -193,6 +193,13 @@ public enum L10n {
         public static let fundKindPool       = LocalizedStringResource("resources.fund.kind.pool",        defaultValue: "Pool")
         public static let fundKindProtected  = LocalizedStringResource("resources.fund.kind.protected",   defaultValue: "Protegido")
         public static let fundKindSharedPool = LocalizedStringResource("resources.fund.kind.shared_pool", defaultValue: "Pool compartido")
+
+        // Right kind labels (Fase B.4).
+        public static let rightKindAccess     = LocalizedStringResource("resources.right.kind.access",     defaultValue: "Acceso")
+        public static let rightKindMembership = LocalizedStringResource("resources.right.kind.membership", defaultValue: "Membresía")
+        public static let rightKindSeat       = LocalizedStringResource("resources.right.kind.seat",       defaultValue: "Lugar")
+        public static let rightKindBenefit    = LocalizedStringResource("resources.right.kind.benefit",    defaultValue: "Beneficio")
+        public static let rightKindOther      = LocalizedStringResource("resources.right.kind.other",      defaultValue: "Otro")
         public static let privateLabel       = LocalizedStringResource("resources.visibility.private", defaultValue: "Privado")
         public static let membersLabel       = LocalizedStringResource("resources.visibility.members", defaultValue: "Miembros")
         public static let publicLabel        = LocalizedStringResource("resources.visibility.public",  defaultValue: "Público")
@@ -893,6 +900,25 @@ public enum L10n {
         public static let archiveAction      = LocalizedStringResource("resource_detail.action.archive",     defaultValue: "Archivar recurso")
         public static let transferAction     = LocalizedStringResource("resource_detail.action.transfer",    defaultValue: "Transferir propiedad")
 
+        // Right Fase B.4 — Access block + lifecycle actions.
+        public static let rightKindLabel        = LocalizedStringResource("resource_detail.right.kind",         defaultValue: "Tipo de derecho")
+        public static let rightHolderLabel      = LocalizedStringResource("resource_detail.right.holder",       defaultValue: "Titular")
+        public static let rightHolderNone       = LocalizedStringResource("resource_detail.right.holder.none",  defaultValue: "Sin titular")
+        public static let rightExpiresLabel     = LocalizedStringResource("resource_detail.right.expires",      defaultValue: "Vence")
+        public static let rightExpiresNone      = LocalizedStringResource("resource_detail.right.expires.none", defaultValue: "Sin vencimiento")
+        public static let rightTransferableYes  = LocalizedStringResource("resource_detail.right.transferable.yes", defaultValue: "Transferible")
+        public static let rightTransferableNo   = LocalizedStringResource("resource_detail.right.transferable.no",  defaultValue: "No transferible")
+        public static let rightConditionsLabel  = LocalizedStringResource("resource_detail.right.conditions",   defaultValue: "Condiciones")
+        public static let rightStatusActive     = LocalizedStringResource("resource_detail.right.status.active",     defaultValue: "Activo")
+        public static let rightStatusExpired    = LocalizedStringResource("resource_detail.right.status.expired",    defaultValue: "Expirado")
+        public static let rightStatusRevoked    = LocalizedStringResource("resource_detail.right.status.revoked",    defaultValue: "Revocado")
+        public static let rightStatusUnassigned = LocalizedStringResource("resource_detail.right.status.unassigned", defaultValue: "Sin asignar")
+        public static let rightGrantAction      = LocalizedStringResource("resource_detail.right.action.grant",     defaultValue: "Otorgar derecho")
+        public static let rightRegrantAction    = LocalizedStringResource("resource_detail.right.action.regrant",   defaultValue: "Otorgar a otra persona")
+        public static let rightTransferAction   = LocalizedStringResource("resource_detail.right.action.transfer",  defaultValue: "Transferir derecho")
+        public static let rightRevokeAction     = LocalizedStringResource("resource_detail.right.action.revoke",    defaultValue: "Revocar derecho")
+        public static let rightExpireAction     = LocalizedStringResource("resource_detail.right.action.expire",    defaultValue: "Marcar como vencido")
+
         // Space Fase B.3 — Schedule block + booking actions.
         public static let spaceAddressLabel  = LocalizedStringResource("resource_detail.space.address",   defaultValue: "Dirección")
         public static let spaceCapacityLabel = LocalizedStringResource("resource_detail.space.capacity",  defaultValue: "Capacidad")
@@ -951,6 +977,32 @@ public enum L10n {
         public static let reasonPlaceholder = LocalizedStringResource("mark_condition.reason.placeholder", defaultValue: "Qué pasó…")
         public static let save            = LocalizedStringResource("mark_condition.save",           defaultValue: "Guardar")
         public static let cancel          = LocalizedStringResource("mark_condition.cancel",         defaultValue: "Cancelar")
+    }
+
+    public enum GrantRight {
+        public static let title           = LocalizedStringResource("grant_right.title",           defaultValue: "Otorgar derecho")
+        public static let memberSection   = LocalizedStringResource("grant_right.section.member",  defaultValue: "Titular")
+        public static let memberPlaceholder = LocalizedStringResource("grant_right.member.placeholder", defaultValue: "Elige a quién")
+        public static let kindSection     = LocalizedStringResource("grant_right.section.kind",    defaultValue: "Tipo")
+        public static let expiresSection  = LocalizedStringResource("grant_right.section.expires", defaultValue: "Vencimiento (opcional)")
+        public static let expiresToggle   = LocalizedStringResource("grant_right.expires.toggle",  defaultValue: "Con vencimiento")
+        public static let transferableToggle = LocalizedStringResource("grant_right.transferable.toggle", defaultValue: "Permitir transferir")
+        public static let conditionsSection = LocalizedStringResource("grant_right.section.conditions", defaultValue: "Condiciones (opcional)")
+        public static let conditionsPlaceholder = LocalizedStringResource("grant_right.conditions.placeholder", defaultValue: "Cómo y cuándo aplica…")
+        public static let reasonSection   = LocalizedStringResource("grant_right.section.reason",  defaultValue: "Motivo (opcional)")
+        public static let reasonPlaceholder = LocalizedStringResource("grant_right.reason.placeholder", defaultValue: "Por qué se otorga…")
+        public static let save            = LocalizedStringResource("grant_right.save",            defaultValue: "Otorgar")
+        public static let cancel          = LocalizedStringResource("grant_right.cancel",          defaultValue: "Cancelar")
+        public static let memberRequired  = LocalizedStringResource("grant_right.member.required", defaultValue: "Elige al titular.")
+        public static let expiresFuture   = LocalizedStringResource("grant_right.expires.future",  defaultValue: "El vencimiento debe ser futuro.")
+        public static let revokeConfirmTitle = LocalizedStringResource("grant_right.revoke.confirm_title", defaultValue: "Revocar derecho")
+        public static let revokeConfirmBody  = LocalizedStringResource("grant_right.revoke.confirm_body",  defaultValue: "El titular pierde el derecho. Esta acción queda registrada.")
+        public static let revokeConfirm   = LocalizedStringResource("grant_right.revoke.confirm",  defaultValue: "Revocar")
+        public static let expireConfirmTitle = LocalizedStringResource("grant_right.expire.confirm_title", defaultValue: "Marcar como vencido")
+        public static let expireConfirmBody  = LocalizedStringResource("grant_right.expire.confirm_body",  defaultValue: "El derecho queda marcado como vencido a partir de ahora.")
+        public static let expireConfirm   = LocalizedStringResource("grant_right.expire.confirm",  defaultValue: "Vencer")
+        public static let transferTitle   = LocalizedStringResource("grant_right.transfer.title",  defaultValue: "Transferir derecho")
+        public static let transferConfirm = LocalizedStringResource("grant_right.transfer.confirm", defaultValue: "Transferir")
     }
 
     public enum Bookings {

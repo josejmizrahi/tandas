@@ -820,6 +820,100 @@ public struct LockFundParams: Encodable, Sendable {
 
 public typealias UnlockFundParams = LockFundParams
 
+// MARK: - Right Fase B.4
+
+public struct GrantRightParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pHolderMembershipId: UUID
+    public let pRightKind: String?
+    public let pExpiresAt: Date?
+    public let pConditions: String?
+    public let pTransferable: Bool
+    public let pReason: String?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId         = "p_resource_id"
+        case pHolderMembershipId = "p_holder_membership_id"
+        case pRightKind          = "p_right_kind"
+        case pExpiresAt          = "p_expires_at"
+        case pConditions         = "p_conditions"
+        case pTransferable       = "p_transferable"
+        case pReason             = "p_reason"
+        case pClientId           = "p_client_id"
+    }
+
+    public init(
+        resourceId: UUID,
+        holderMembershipId: UUID,
+        rightKind: String?,
+        expiresAt: Date?,
+        conditions: String?,
+        transferable: Bool,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) {
+        self.pResourceId = resourceId
+        self.pHolderMembershipId = holderMembershipId
+        self.pRightKind = rightKind
+        self.pExpiresAt = expiresAt
+        self.pConditions = conditions
+        self.pTransferable = transferable
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public struct TransferRightParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pNewHolderMembershipId: UUID
+    public let pReason: String?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId            = "p_resource_id"
+        case pNewHolderMembershipId = "p_new_holder_membership_id"
+        case pReason                = "p_reason"
+        case pClientId              = "p_client_id"
+    }
+
+    public init(resourceId: UUID, newHolderMembershipId: UUID, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pNewHolderMembershipId = newHolderMembershipId
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public struct RevokeRightParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pReason: String?
+    public let pClientId: String?
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pReason     = "p_reason"
+        case pClientId   = "p_client_id"
+    }
+    public init(resourceId: UUID, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public struct ExpireRightParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pClientId: String?
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pClientId   = "p_client_id"
+    }
+    public init(resourceId: UUID, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pClientId = clientId
+    }
+}
+
 // MARK: - Space / Bookings Fase B.3
 
 public struct BookResourceParams: Encodable, Sendable {

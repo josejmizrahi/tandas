@@ -297,6 +297,27 @@ public protocol RuulRPCClient: Sendable {
     /// optionally filtered by date window. Active-member gate.
     func listBookingsForResource(_ input: ListBookingsForResourceParams) async throws -> [GroupResourceBooking]
 
+    // MARK: - Right Fase B.4
+
+    /// `grant_right(...)` — grants or re-grants a right to a holder.
+    /// Refreshes granted_at and clears expired_at/revoked_at. Requires
+    /// `resources.update`. Emits `resource.assigned` (role=holder).
+    func grantRight(_ input: GrantRightParams) async throws -> UUID
+
+    /// `transfer_right(...)` — transfers an active transferable right.
+    /// Backend rejects when not active or not transferable.
+    /// Requires `resources.update`. Emits `resource.transferred`.
+    func transferRight(_ input: TransferRightParams) async throws -> UUID
+
+    /// `revoke_right(...)` — sets revoked_at. Requires `resources.update`.
+    /// Emits `resource.status_changed` (to=revoked).
+    func revokeRight(_ input: RevokeRightParams) async throws -> UUID
+
+    /// `expire_right(...)` — marks a right as expired once its
+    /// expires_at deadline has passed. Requires `resources.update`.
+    /// Emits `resource.status_changed` (to=expired).
+    func expireRight(_ input: ExpireRightParams) async throws -> UUID
+
     // MARK: - Foundation status
 
     /// `group_foundation_status(p_group_id)` — per-primitive readiness

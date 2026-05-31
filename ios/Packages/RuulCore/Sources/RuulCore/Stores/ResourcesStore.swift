@@ -85,6 +85,20 @@ public final class ResourcesStore {
     public var pendingCancelBookingId: UUID?
     public var isConfirmingCancelBooking: Bool = false
 
+    // Right Fase B.4 state
+    public var isGrantRightPresented: Bool = false
+    public var grantRightHolderId: UUID?
+    public var grantRightKind: ResourceRightKind = .access
+    public var grantRightHasExpiry: Bool = false
+    public var grantRightExpiresAt: Date = Date().addingTimeInterval(60 * 60 * 24 * 30)
+    public var grantRightTransferable: Bool = false
+    public var grantRightConditions: String = ""
+    public var grantRightReason: String = ""
+    public var isTransferRightPresented: Bool = false
+    public var transferRightNewHolderId: UUID?
+    public var isConfirmingRevokeRight: Bool = false
+    public var isConfirmingExpireRight: Bool = false
+
     private let repository: CanonicalResourcesRepository
     private var loadedGroupId: UUID?
 
@@ -654,6 +668,161 @@ extension ResourcesStore {
             await refreshBookings(resourceId: resourceId)
             isConfirmingCancelBooking = false
             pendingCancelBookingId = nil
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+}
+
+// MARK: - Right Fase B.4 actions
+
+@MainActor
+extension ResourcesStore {
+    public func presentGrantRight(seed: RightSubtypeData? = nil) {
+        grantRightHolderId = seed?.holderMembershipId
+        if let raw = seed?.rightKind, let kind = ResourceRightKind(rawValue: raw) {
+            grantRightKind = kind
+        } else {
+            grantRightKind = .access
+        }
+        if let expires = seed?.expiresAt {
+            grantRightHasExpiry = true
+            grantRightExpiresAt = expires
+        } else {
+            grantRightHasExpiry = false
+            grantRightExpiresAt = Date().addingTimeInterval(60 * 60 * 24 * 30)
+        }
+        grantRightTransferable = seed?.transferable ?? false
+        grantRightConditions = seed?.conditions ?? ""
+        grantRightReason = ""
+        errorMessage = nil
+        isGrantRightPresented = true
+    }
+
+    public var canSaveGrantRight: Bool {
+        guard activeResourceId != nil, grantRightHolderId != nil else { return false }
+        if grantRightHasExpiry, grantRightExpiresAt <= Date() { return false }
+        return true
+    }
+
+    @discardableResult
+    public func saveGrantRight() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        guard let holder = grantRightHolderId else {
+            errorMessage = String(localized: L10n.GrantRight.memberRequired)
+            return false
+        }
+        if grantRightHasExpiry, grantRightExpiresAt <= Date() {
+            errorMessage = String(localized: L10n.GrantRight.expiresFuture)
+            return false
+        }
+        do {
+            _ = try await repository.grantRight(
+                resourceId: resourceId,
+                holderMembershipId: holder,
+                rightKind: grantRightKind,
+                expiresAt: grantRightHasExpiry ? grantRightExpiresAt : nil,
+                conditions: grantRightConditions,
+                transferable: grantRightTransferable,
+                reason: grantRightReason,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isGrantRightPresented = false
+            grantRightReason = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    public func presentTransferRight() {
+        transferRightNewHolderId = nil
+        errorMessage = nil
+        isTransferRightPresented = true
+    }
+
+    public var canSaveTransferRight: Bool {
+        activeResourceId != nil && transferRightNewHolderId != nil
+    }
+
+    @discardableResult
+    public func saveTransferRight() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        guard let newHolder = transferRightNewHolderId else {
+            errorMessage = String(localized: L10n.GrantRight.memberRequired)
+            return false
+        }
+        do {
+            _ = try await repository.transferRight(
+                resourceId: resourceId,
+                newHolderMembershipId: newHolder,
+                reason: nil,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isTransferRightPresented = false
+            transferRightNewHolderId = nil
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    public func presentRevokeRight() {
+        errorMessage = nil
+        isConfirmingRevokeRight = true
+    }
+
+    @discardableResult
+    public func confirmRevokeRight() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.revokeRight(
+                resourceId: resourceId,
+                reason: nil,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isConfirmingRevokeRight = false
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    public func presentExpireRight() {
+        errorMessage = nil
+        isConfirmingExpireRight = true
+    }
+
+    @discardableResult
+    public func confirmExpireRight() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.expireRight(
+                resourceId: resourceId,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isConfirmingExpireRight = false
             return true
         } catch {
             errorMessage = UserFacingError.from(error).message

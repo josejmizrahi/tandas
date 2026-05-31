@@ -571,6 +571,24 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Right Fase B.4
+
+    public func grantRight(_ input: GrantRightParams) async throws -> UUID {
+        try await callReturningUUID("grant_right", params: input)
+    }
+
+    public func transferRight(_ input: TransferRightParams) async throws -> UUID {
+        try await callReturningUUID("transfer_right", params: input)
+    }
+
+    public func revokeRight(_ input: RevokeRightParams) async throws -> UUID {
+        try await callReturningUUID("revoke_right", params: input)
+    }
+
+    public func expireRight(_ input: ExpireRightParams) async throws -> UUID {
+        try await callReturningUUID("expire_right", params: input)
+    }
+
     // MARK: - Foundation status
 
     public func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {

@@ -244,6 +244,78 @@ public struct CanonicalResourcesRepository: Sendable {
             )
         )
     }
+
+    // MARK: - Right Fase B.4
+
+    @discardableResult
+    public func grantRight(
+        resourceId: UUID,
+        holderMembershipId: UUID,
+        rightKind: ResourceRightKind?,
+        expiresAt: Date? = nil,
+        conditions: String? = nil,
+        transferable: Bool = false,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.grantRight(
+            GrantRightParams(
+                resourceId: resourceId,
+                holderMembershipId: holderMembershipId,
+                rightKind: rightKind?.rawValue,
+                expiresAt: expiresAt,
+                conditions: conditions?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                transferable: transferable,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func transferRight(
+        resourceId: UUID,
+        newHolderMembershipId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.transferRight(
+            TransferRightParams(
+                resourceId: resourceId,
+                newHolderMembershipId: newHolderMembershipId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func revokeRight(
+        resourceId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.revokeRight(
+            RevokeRightParams(
+                resourceId: resourceId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func expireRight(
+        resourceId: UUID,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.expireRight(
+            ExpireRightParams(
+                resourceId: resourceId,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
 }
 
 private extension String {

@@ -53,6 +53,11 @@ public struct ResourceDetailView: View {
         return store.detail?.spaceSubtype
     }
 
+    private var rightSubtype: RightSubtypeData? {
+        guard store.detail?.resource.id == resource.id else { return nil }
+        return store.detail?.rightSubtype
+    }
+
     public var body: some View {
         List {
             identitySection
@@ -137,6 +142,40 @@ public struct ResourceDetailView: View {
         }
         .sheet(isPresented: $store.isBookSpacePresented) {
             BookSpaceSheet(store: store)
+        }
+        .sheet(isPresented: $store.isGrantRightPresented) {
+            GrantRightSheet(store: store, membersStore: membersStore, groupId: groupId)
+        }
+        .sheet(isPresented: $store.isTransferRightPresented) {
+            TransferRightSheet(store: store, membersStore: membersStore, groupId: groupId)
+        }
+        .confirmationDialog(
+            Text(L10n.GrantRight.revokeConfirmTitle),
+            isPresented: $store.isConfirmingRevokeRight,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await store.confirmRevokeRight() }
+            } label: {
+                Text(L10n.GrantRight.revokeConfirm)
+            }
+            Button(role: .cancel) {} label: { Text(L10n.GrantRight.cancel) }
+        } message: {
+            Text(L10n.GrantRight.revokeConfirmBody)
+        }
+        .confirmationDialog(
+            Text(L10n.GrantRight.expireConfirmTitle),
+            isPresented: $store.isConfirmingExpireRight,
+            titleVisibility: .visible
+        ) {
+            Button {
+                Task { await store.confirmExpireRight() }
+            } label: {
+                Text(L10n.GrantRight.expireConfirm)
+            }
+            Button(role: .cancel) {} label: { Text(L10n.GrantRight.cancel) }
+        } message: {
+            Text(L10n.GrantRight.expireConfirmBody)
         }
         .confirmationDialog(
             Text(L10n.BookSpace.cancelConfirmTitle),
@@ -322,9 +361,19 @@ public struct ResourceDetailView: View {
                 phase: store.bookingsPhase,
                 onCancel: { store.presentCancelBooking($0) }
             )
+        case (.right, .access):
+            RightAccessSection(
+                subtype: rightSubtype,
+                holderMember: rightHolderMember(for: rightSubtype)
+            )
         default:
             stubCoordinationRow(kind)
         }
+    }
+
+    private func rightHolderMember(for subtype: RightSubtypeData?) -> MembershipBoundaryItem? {
+        guard let mid = subtype?.holderMembershipId else { return nil }
+        return membersStore.items.first(where: { $0.membershipId == mid })
     }
 
     @ViewBuilder
@@ -406,6 +455,41 @@ public struct ResourceDetailView: View {
                     store.presentBookSpace()
                 } label: {
                     Label(L10n.ResourceDetail.spaceBookAction, systemImage: "calendar.badge.plus")
+                }
+            }
+            if resource.resourceType == .right {
+                let state = rightSubtype?.lifecycleState ?? .unassigned
+                Button {
+                    store.presentGrantRight(seed: rightSubtype)
+                } label: {
+                    Label(
+                        state == .active ? L10n.ResourceDetail.rightRegrantAction
+                                         : L10n.ResourceDetail.rightGrantAction,
+                        systemImage: state == .active
+                            ? "person.crop.circle.badge.checkmark"
+                            : "key.horizontal"
+                    )
+                }
+                if state == .active, rightSubtype?.transferable == true {
+                    Button {
+                        store.presentTransferRight()
+                    } label: {
+                        Label(L10n.ResourceDetail.rightTransferAction, systemImage: "arrow.left.arrow.right")
+                    }
+                }
+                if state == .active {
+                    Button(role: .destructive) {
+                        store.presentRevokeRight()
+                    } label: {
+                        Label(L10n.ResourceDetail.rightRevokeAction, systemImage: "xmark.shield")
+                    }
+                    if let expires = rightSubtype?.expiresAt, expires <= Date() {
+                        Button(role: .destructive) {
+                            store.presentExpireRight()
+                        } label: {
+                            Label(L10n.ResourceDetail.rightExpireAction, systemImage: "hourglass")
+                        }
+                    }
                 }
             }
             if descriptor.supportsLocking {
@@ -711,5 +795,141 @@ private struct SpaceScheduleSection: View {
             .foregroundStyle(.secondary)
             .accessibilityLabel(Text(L10n.BookSpace.cancelAction))
         }
+    }
+}
+
+// MARK: - RightAccessSection
+
+/// Real Coordination > Access block for `right`. Surfaces holder +
+/// right_kind + expires_at + transferable + conditions + lifecycle
+/// status. Empty rows collapse per the situational doctrine.
+private struct RightAccessSection: View {
+    let subtype: RightSubtypeData?
+    let holderMember: MembershipBoundaryItem?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: statusIcon)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(statusLabel)
+                        .font(.body.weight(.semibold))
+                    if let grantedAt = subtype?.grantedAt {
+                        Text(grantedAt, format: .dateTime.day().month().year())
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            HStack(spacing: 12) {
+                Image(systemName: "person.crop.circle")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.ResourceDetail.rightHolderLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text(holderText)
+                        .font(.body.weight(.semibold))
+                }
+            }
+            if let kind = subtype?.rightKind, !kind.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "tag")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.tint)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.ResourceDetail.rightKindLabel)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Text(kindLabel(kind))
+                            .font(.body.weight(.semibold))
+                    }
+                }
+            }
+            HStack(spacing: 12) {
+                Image(systemName: "hourglass")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.ResourceDetail.rightExpiresLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    expiresContent
+                }
+            }
+            HStack(spacing: 12) {
+                Image(systemName: (subtype?.transferable == true) ? "arrow.left.arrow.right" : "lock")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                Text((subtype?.transferable == true)
+                     ? L10n.ResourceDetail.rightTransferableYes
+                     : L10n.ResourceDetail.rightTransferableNo)
+                    .font(.body.weight(.semibold))
+            }
+            if let conditions = subtype?.conditions, !conditions.isEmpty {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "doc.plaintext")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.tint)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.ResourceDetail.rightConditionsLabel)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Text(conditions)
+                            .font(.body)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var statusLabel: LocalizedStringResource {
+        switch subtype?.lifecycleState ?? .unassigned {
+        case .active:     return L10n.ResourceDetail.rightStatusActive
+        case .expired:    return L10n.ResourceDetail.rightStatusExpired
+        case .revoked:    return L10n.ResourceDetail.rightStatusRevoked
+        case .unassigned: return L10n.ResourceDetail.rightStatusUnassigned
+        }
+    }
+
+    private var statusIcon: String {
+        switch subtype?.lifecycleState ?? .unassigned {
+        case .active:     return "checkmark.shield"
+        case .expired:    return "hourglass.tophalf.filled"
+        case .revoked:    return "xmark.shield"
+        case .unassigned: return "person.crop.circle.badge.questionmark"
+        }
+    }
+
+    private var holderText: String {
+        holderMember?.displayName ?? String(localized: L10n.ResourceDetail.rightHolderNone)
+    }
+
+    @ViewBuilder
+    private var expiresContent: some View {
+        if let expires = subtype?.expiresAt {
+            Text(expires, format: .dateTime.day().month().year().hour().minute())
+                .font(.body.weight(.semibold))
+        } else {
+            Text(L10n.ResourceDetail.rightExpiresNone)
+                .font(.body.weight(.semibold))
+        }
+    }
+
+    private func kindLabel(_ rawKind: String) -> String {
+        if let known = ResourceRightKind(rawValue: rawKind) {
+            return String(localized: known.label)
+        }
+        return rawKind
     }
 }

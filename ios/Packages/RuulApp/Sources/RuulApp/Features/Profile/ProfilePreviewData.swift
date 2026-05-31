@@ -188,6 +188,10 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func bookResource(_ input: BookResourceParams) async throws -> UUID { UUID() }
     func cancelBooking(_ input: CancelBookingParams) async throws -> UUID { UUID() }
     func listBookingsForResource(_ input: ListBookingsForResourceParams) async throws -> [GroupResourceBooking] { [] }
+    func grantRight(_ input: GrantRightParams) async throws -> UUID { UUID() }
+    func transferRight(_ input: TransferRightParams) async throws -> UUID { UUID() }
+    func revokeRight(_ input: RevokeRightParams) async throws -> UUID { UUID() }
+    func expireRight(_ input: ExpireRightParams) async throws -> UUID { UUID() }
     func setMembershipState(_ input: SetMembershipStateParams) async throws {}
     func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {
         GroupFoundationStatus(

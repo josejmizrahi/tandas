@@ -47,6 +47,11 @@ public extension GroupResourceDetail {
         decodedSubtype(expected: .space)
     }
 
+    /// Lazily decode the right subtype payload.
+    var rightSubtype: RightSubtypeData? {
+        decodedSubtype(expected: .right)
+    }
+
     private func decodedSubtype<T: Decodable>(expected type: GroupResourceType) -> T? {
         guard resource.resourceType == type,
               let raw = subtype,

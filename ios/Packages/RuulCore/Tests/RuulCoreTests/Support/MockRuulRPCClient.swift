@@ -61,6 +61,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case bookResource(input: BookResourceParams)
         case cancelBooking(input: CancelBookingParams)
         case listBookingsForResource(input: ListBookingsForResourceParams)
+        case grantRight(input: GrantRightParams)
+        case transferRight(input: TransferRightParams)
+        case revokeRight(input: RevokeRightParams)
+        case expireRight(input: ExpireRightParams)
         case setMembershipState(input: SetMembershipStateParams)
         case groupFoundationStatus(groupId: UUID)
         case groupDecisionRules(groupId: UUID)
@@ -220,6 +224,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var bookResourceStub: Result<UUID, RuulError> = .success(UUID())
     private var cancelBookingStub: Result<UUID, RuulError> = .success(UUID())
     private var listBookingsForResourceStub: Result<[GroupResourceBooking], RuulError> = .success([])
+    private var grantRightStub: Result<UUID, RuulError> = .success(UUID())
+    private var transferRightStub: Result<UUID, RuulError> = .success(UUID())
+    private var revokeRightStub: Result<UUID, RuulError> = .success(UUID())
+    private var expireRightStub: Result<UUID, RuulError> = .success(UUID())
     private var setMembershipStateStub: Result<Void, RuulError> = .success(())
     private var groupFoundationStatusStub: Result<GroupFoundationStatus, RuulError> = .success(
         GroupFoundationStatus(
@@ -363,6 +371,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setBookResourceStub(_ stub: Result<UUID, RuulError>) { bookResourceStub = stub }
     func setCancelBookingStub(_ stub: Result<UUID, RuulError>) { cancelBookingStub = stub }
     func setListBookingsForResourceStub(_ stub: Result<[GroupResourceBooking], RuulError>) { listBookingsForResourceStub = stub }
+    func setGrantRightStub(_ stub: Result<UUID, RuulError>) { grantRightStub = stub }
+    func setTransferRightStub(_ stub: Result<UUID, RuulError>) { transferRightStub = stub }
+    func setRevokeRightStub(_ stub: Result<UUID, RuulError>) { revokeRightStub = stub }
+    func setExpireRightStub(_ stub: Result<UUID, RuulError>) { expireRightStub = stub }
     func setSetMembershipStateStub(_ stub: Result<Void, RuulError>) { setMembershipStateStub = stub }
     func setGroupFoundationStatusStub(_ stub: Result<GroupFoundationStatus, RuulError>) { groupFoundationStatusStub = stub }
     func setGroupDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { groupDecisionRulesStub = stub }
@@ -680,6 +692,26 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func listBookingsForResource(_ input: ListBookingsForResourceParams) async throws -> [GroupResourceBooking] {
         recorded.append(.listBookingsForResource(input: input))
         return try listBookingsForResourceStub.get()
+    }
+
+    func grantRight(_ input: GrantRightParams) async throws -> UUID {
+        recorded.append(.grantRight(input: input))
+        return try grantRightStub.get()
+    }
+
+    func transferRight(_ input: TransferRightParams) async throws -> UUID {
+        recorded.append(.transferRight(input: input))
+        return try transferRightStub.get()
+    }
+
+    func revokeRight(_ input: RevokeRightParams) async throws -> UUID {
+        recorded.append(.revokeRight(input: input))
+        return try revokeRightStub.get()
+    }
+
+    func expireRight(_ input: ExpireRightParams) async throws -> UUID {
+        recorded.append(.expireRight(input: input))
+        return try expireRightStub.get()
     }
 
     func setMembershipState(_ input: SetMembershipStateParams) async throws {
