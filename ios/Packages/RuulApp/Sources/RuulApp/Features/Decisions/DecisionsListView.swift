@@ -23,6 +23,8 @@ public struct DecisionsListView: View {
     /// group's `default_method` + `default_legitimacy_source` instead of
     /// hardcoded majority/majority.
     let decisionRulesStore: DecisionRulesStore?
+    /// V3-D.18 — repository used by the propose sheet's Plantilla picker.
+    let decisionsRepository: CanonicalDecisionsRepository?
 
     @State private var filter: DecisionFilter = .open
 
@@ -34,7 +36,8 @@ public struct DecisionsListView: View {
         mandatesStore: MandatesStore? = nil,
         membersStore: MembersStore? = nil,
         rulesStore: RulesStore? = nil,
-        decisionRulesStore: DecisionRulesStore? = nil
+        decisionRulesStore: DecisionRulesStore? = nil,
+        decisionsRepository: CanonicalDecisionsRepository? = nil
     ) {
         self.store = store
         self.groupId = groupId
@@ -44,6 +47,7 @@ public struct DecisionsListView: View {
         self.membersStore = membersStore
         self.rulesStore = rulesStore
         self.decisionRulesStore = decisionRulesStore
+        self.decisionsRepository = decisionsRepository
     }
 
     public var body: some View {
@@ -72,7 +76,8 @@ public struct DecisionsListView: View {
                 sanctionsStore: sanctionsStore,
                 mandatesStore: mandatesStore,
                 membersStore: membersStore,
-                rulesStore: rulesStore
+                rulesStore: rulesStore,
+                decisionsRepository: decisionsRepository
             )
         }
         .sheet(isPresented: $store.isVotePresented) {

@@ -191,6 +191,10 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
             avgTurnout: 0, participationRate: 0
         )
     }
+
+    func applyDecisionTemplate(decisionId: UUID, templateKey: String) async throws -> ApplyDecisionTemplateResult {
+        ApplyDecisionTemplateResult(decisionId: decisionId, templateKey: templateKey, executionMode: .manual)
+    }
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
         SanctionPaymentStatus(
             sanctionId: sanctionId,

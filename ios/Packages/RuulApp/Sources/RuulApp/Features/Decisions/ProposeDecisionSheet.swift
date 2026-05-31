@@ -16,9 +16,14 @@ public struct ProposeDecisionSheet: View {
     let mandatesStore: MandatesStore?
     let membersStore: MembersStore?
     let rulesStore: RulesStore?
+    /// V3-D.18 — repository used to load the decision template catalog
+    /// for the new "Plantilla" picker. Optional: when nil the picker
+    /// hides and the sheet behaves as freeform (legacy).
+    let decisionsRepository: CanonicalDecisionsRepository?
 
     @Environment(\.dismiss) private var dismiss
     @State private var isSaving: Bool = false
+    @State private var templates: [DecisionTemplate] = []
 
     public init(
         store: DecisionsStore,
@@ -26,7 +31,8 @@ public struct ProposeDecisionSheet: View {
         sanctionsStore: SanctionsStore? = nil,
         mandatesStore: MandatesStore? = nil,
         membersStore: MembersStore? = nil,
-        rulesStore: RulesStore? = nil
+        rulesStore: RulesStore? = nil,
+        decisionsRepository: CanonicalDecisionsRepository? = nil
     ) {
         self.store = store
         self.groupId = groupId
@@ -34,11 +40,13 @@ public struct ProposeDecisionSheet: View {
         self.mandatesStore = mandatesStore
         self.membersStore = membersStore
         self.rulesStore = rulesStore
+        self.decisionsRepository = decisionsRepository
     }
 
     public var body: some View {
         NavigationStack {
             Form {
+                templateSection
                 titleSection
                 bodySection
                 typeSection
@@ -57,6 +65,16 @@ public struct ProposeDecisionSheet: View {
             }
             .navigationTitle(L10n.Decisions.proposeTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                // V3-D.18 — load the template catalog once per
+                // presentation. Silent failure: picker stays empty
+                // (treated as freeform).
+                if templates.isEmpty, let repo = decisionsRepository {
+                    if let rows = try? await repo.listTemplates() {
+                        templates = rows
+                    }
+                }
+            }
             .task(id: store.draftType) {
                 // Lazy-refresh the relevant entity list when the type
                 // changes so the picker has fresh rows. Avoids forcing
@@ -87,6 +105,63 @@ public struct ProposeDecisionSheet: View {
                     .disabled(!store.canSaveDraftDecision || isSaving)
                 }
             }
+        }
+    }
+
+    // V3-D.18 — "Plantilla" picker. Hidden when no repository was
+    // injected or when no template was loaded. Selecting one prefills
+    // the type, method, legitimacy_source, threshold_pct and
+    // quorum_pct so the user sees the recipe immediately.
+    @ViewBuilder
+    private var templateSection: some View {
+        if !templates.isEmpty {
+            Section {
+                Picker(selection: Binding(
+                    get: { store.draftTemplateKey },
+                    set: { newKey in
+                        store.draftTemplateKey = newKey
+                        if let key = newKey,
+                           let template = templates.first(where: { $0.templateKey == key }) {
+                            applyTemplate(template)
+                        }
+                    }
+                )) {
+                    Text("Sin plantilla").tag(String?.none)
+                    ForEach(templates) { template in
+                        Text(template.displayName).tag(String?.some(template.templateKey))
+                    }
+                } label: {
+                    EmptyView()
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                if let key = store.draftTemplateKey,
+                   let template = templates.first(where: { $0.templateKey == key }),
+                   let description = template.description {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Plantilla")
+            } footer: {
+                Text("Una plantilla pre-rellena tipo, m\u{00e9}todo y ejecuci\u{00f3}n. Puedes editar todo antes de proponer.")
+            }
+        }
+    }
+
+    /// Mutates the store draft to match the selected template's defaults.
+    /// Values the user already changed are overwritten — the picker is
+    /// meant to be the first thing they touch.
+    private func applyTemplate(_ template: DecisionTemplate) {
+        if let type = DecisionType(rawValue: template.decisionType) {
+            store.draftType = type
+        }
+        if let method = DecisionMethod(rawValue: template.defaultMethod) {
+            store.draftMethod = method
+        }
+        if let legitimacy = LegitimacySource(rawValue: template.defaultLegitimacySource) {
+            store.draftLegitimacySource = legitimacy
         }
     }
 

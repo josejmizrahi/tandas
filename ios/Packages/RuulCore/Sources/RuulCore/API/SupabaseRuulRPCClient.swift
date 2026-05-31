@@ -505,6 +505,25 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func applyDecisionTemplate(
+        decisionId: UUID,
+        templateKey: String
+    ) async throws -> ApplyDecisionTemplateResult {
+        let params = ApplyDecisionTemplateParams(decisionId: decisionId, templateKey: templateKey)
+        do {
+            let rows: [ApplyDecisionTemplateResult] = try await client
+                .rpc("apply_decision_template", params: params)
+                .execute()
+                .value
+            guard let head = rows.first else {
+                throw URLError(.cannotParseResponse)
+            }
+            return head
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func groupSanctionPaymentStatus(
         sanctionId: UUID
     ) async throws -> SanctionPaymentStatus {

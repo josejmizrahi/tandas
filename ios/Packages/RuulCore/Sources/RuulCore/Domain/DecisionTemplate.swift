@@ -89,3 +89,23 @@ public struct ExecuteDecisionResult: Codable, Sendable, Hashable, Equatable {
         self.effects = effects
     }
 }
+
+// MARK: - V3-D.18 — apply_decision_template result
+
+public struct ApplyDecisionTemplateResult: Codable, Sendable, Hashable, Equatable {
+    public let decisionId: UUID
+    public let templateKey: String
+    public let executionMode: DecisionExecutionMode
+
+    enum CodingKeys: String, CodingKey {
+        case decisionId    = "decision_id"
+        case templateKey   = "template_key"
+        case executionMode = "execution_mode"
+    }
+
+    public init(decisionId: UUID, templateKey: String, executionMode: DecisionExecutionMode) {
+        self.decisionId = decisionId
+        self.templateKey = templateKey
+        self.executionMode = executionMode
+    }
+}

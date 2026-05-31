@@ -279,7 +279,8 @@ public struct GroupSettingsView: View {
                 mandatesStore: container.mandatesStore,
                 membersStore: container.membersStore,
                 rulesStore: container.rulesStore,
-                decisionRulesStore: container.decisionRulesStore
+                decisionRulesStore: container.decisionRulesStore,
+                decisionsRepository: container.decisionsRepository
             )
         case .disputes:
             DisputesListView(

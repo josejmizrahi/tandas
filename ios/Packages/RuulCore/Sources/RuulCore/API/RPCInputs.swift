@@ -611,6 +611,24 @@ public struct DecisionSummaryParams: Encodable, Sendable, Equatable {
     }
 }
 
+/// `apply_decision_template(p_decision_id, p_template_key)` — stamps
+/// template_key + execution_mode on a freshly-created decision. Called
+/// right after start_vote when the user picked a template.
+public struct ApplyDecisionTemplateParams: Encodable, Sendable, Equatable {
+    public let pDecisionId: UUID
+    public let pTemplateKey: String
+
+    enum CodingKeys: String, CodingKey {
+        case pDecisionId  = "p_decision_id"
+        case pTemplateKey = "p_template_key"
+    }
+
+    public init(decisionId: UUID, templateKey: String) {
+        self.pDecisionId = decisionId
+        self.pTemplateKey = templateKey
+    }
+}
+
 public struct GroupSanctionPaymentStatusParams: Encodable, Sendable, Equatable {
     public let pSanctionId: UUID
 

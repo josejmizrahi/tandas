@@ -22,6 +22,11 @@ public final class DecisionsStore {
     // MARK: - Propose draft
 
     public var isProposePresented: Bool = false
+    /// V3-D.18 — template the user picked in ProposeDecisionSheet.
+    /// Nil = freeform. When set, `saveDraftDecision` calls
+    /// `apply_decision_template(...)` right after `start_vote` so the
+    /// new decision row carries template_key + execution_mode.
+    public var draftTemplateKey: String?
     public var draftTitle: String = ""
     public var draftBody: String = ""
     public var draftMethod: DecisionMethod = .majority {
@@ -281,6 +286,7 @@ public final class DecisionsStore {
     /// stays on so a method change still re-syncs the source unless the
     /// proposer touches it.
     public func beginProposing(defaults: GroupDecisionRules? = nil) {
+        draftTemplateKey = nil
         draftTitle = ""
         draftBody = ""
         // Initialize draftMethod + draftLegitimacySource *before* we
@@ -364,7 +370,7 @@ public final class DecisionsStore {
             ? nil
             : cleanedOptions.map { StartVoteParams.OptionDraft(label: $0, body: nil) }
         do {
-            _ = try await repository.propose(
+            let newDecisionId = try await repository.propose(
                 groupId: groupId,
                 title: trimmedTitle,
                 body: draftBody,
@@ -376,6 +382,16 @@ public final class DecisionsStore {
                 metadata: draftMetadata,
                 options: payload
             )
+            // V3-D.18 — if the user picked a template, stamp it on the
+            // brand new decision so execution_mode + template_key are
+            // persisted. Failure is swallowed: the decision exists and
+            // is functional in auto mode (the safe default).
+            if let templateKey = draftTemplateKey {
+                _ = try? await repository.applyTemplate(
+                    decisionId: newDecisionId,
+                    templateKey: templateKey
+                )
+            }
             await refresh(groupId: groupId)
             isProposePresented = false
             clearDraft()
@@ -387,6 +403,7 @@ public final class DecisionsStore {
     }
 
     public func clearDraft() {
+        draftTemplateKey = nil
         draftTitle = ""
         draftBody = ""
         draftMethod = .majority

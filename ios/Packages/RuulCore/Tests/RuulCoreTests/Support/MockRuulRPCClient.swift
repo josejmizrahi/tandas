@@ -49,6 +49,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case executeDecision(decisionId: UUID)
         case decisionProvenance(decisionId: UUID)
         case decisionSummary(groupId: UUID)
+        case applyDecisionTemplate(decisionId: UUID, templateKey: String)
         case groupSanctionPaymentStatus(sanctionId: UUID)
         case proposeSanctionPaymentPlan(input: ProposeSanctionPaymentPlanParams)
         case cancelSanctionPaymentPlan(input: CancelSanctionPaymentPlanParams)
@@ -699,6 +700,19 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func decisionSummary(groupId: UUID) async throws -> DecisionSummary {
         recorded.append(.decisionSummary(groupId: groupId))
         return try decisionSummaryStub.get()
+    }
+
+    private var applyDecisionTemplateStub: Result<ApplyDecisionTemplateResult, RuulError> = .success(
+        ApplyDecisionTemplateResult(decisionId: UUID(), templateKey: "decision.custom", executionMode: .manual)
+    )
+
+    func setApplyDecisionTemplateStub(_ stub: Result<ApplyDecisionTemplateResult, RuulError>) {
+        applyDecisionTemplateStub = stub
+    }
+
+    func applyDecisionTemplate(decisionId: UUID, templateKey: String) async throws -> ApplyDecisionTemplateResult {
+        recorded.append(.applyDecisionTemplate(decisionId: decisionId, templateKey: templateKey))
+        return try applyDecisionTemplateStub.get()
     }
 
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {

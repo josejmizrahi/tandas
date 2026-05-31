@@ -120,6 +120,16 @@ public struct CanonicalDecisionsRepository: Sendable {
     public func summary(groupId: UUID) async throws -> DecisionSummary {
         try await rpc.decisionSummary(groupId: groupId)
     }
+
+    /// `apply_decision_template(p_decision_id, p_template_key)` — call
+    /// right after `propose(...)` when a template was selected so the
+    /// decision carries the template_key + execution_mode.
+    public func applyTemplate(
+        decisionId: UUID,
+        templateKey: String
+    ) async throws -> ApplyDecisionTemplateResult {
+        try await rpc.applyDecisionTemplate(decisionId: decisionId, templateKey: templateKey)
+    }
 }
 
 private extension String {

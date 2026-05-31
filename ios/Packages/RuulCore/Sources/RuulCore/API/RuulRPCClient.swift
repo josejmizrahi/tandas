@@ -224,6 +224,14 @@ public protocol RuulRPCClient: Sendable {
     /// `decision_summary(p_group_id)` — founder dashboard payload.
     func decisionSummary(groupId: UUID) async throws -> DecisionSummary
 
+    /// `apply_decision_template(p_decision_id, p_template_key)` —
+    /// stamps template + execution_mode + metadata on a brand new
+    /// decision. Only valid while status='open'.
+    func applyDecisionTemplate(
+        decisionId: UUID,
+        templateKey: String
+    ) async throws -> ApplyDecisionTemplateResult
+
     /// `group_sanction_payment_status(p_sanction_id)` — V2-G4.1 read
     /// RPC for "Pendiente X de Y" + payment history per sanction. The
     /// backend already supports partial payments via the FIFO settlement
