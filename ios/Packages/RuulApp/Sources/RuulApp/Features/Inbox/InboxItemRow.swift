@@ -9,7 +9,7 @@ struct InboxItemRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: systemImage)
-                .foregroundStyle(item.isRead ? .secondary : .tint)
+                .foregroundStyle(item.isRead ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                 .font(.title3)
                 .frame(width: 28, height: 28)
 

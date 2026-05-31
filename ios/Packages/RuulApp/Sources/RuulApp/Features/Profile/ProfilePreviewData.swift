@@ -354,4 +354,8 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func registerMyNotificationToken(_ input: RegisterMyNotificationTokenInput) async throws -> UUID { UUID() }
     func groupVisibility(groupId: UUID) async throws -> String { "private" }
     func setGroupVisibility(_ input: SetGroupVisibilityInput) async throws -> String { input.pVisibility }
+    func listMyInbox(_ input: ListMyInboxParams) async throws -> [InboxItem] { [] }
+    func markInboxRead(_ input: MarkInboxReadParams) async throws {}
+    func markAllInboxRead(_ input: MarkAllInboxReadParams) async throws -> Int { 0 }
+    func myInboxUnreadCount(_ input: MyInboxUnreadCountParams) async throws -> Int { 0 }
 }
