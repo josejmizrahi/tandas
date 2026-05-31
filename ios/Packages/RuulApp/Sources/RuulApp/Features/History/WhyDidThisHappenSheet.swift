@@ -88,6 +88,12 @@ struct WhyDidThisHappenSheet: View {
                 if let title = p.ruleTitle {
                     LabeledContent("Regla", value: title)
                 }
+                if let kind = p.consequenceKind {
+                    LabeledContent("Consecuencia", value: consequenceLabel(kind))
+                }
+                if let target = p.targetKind {
+                    LabeledContent("Aplicada a", value: targetKindLabel(target))
+                }
                 if let pred = p.matchedPredicate, let reason = pred.reason {
                     HStack(spacing: 6) {
                         Image(systemName: pred.passed ? "checkmark.seal.fill" : "xmark.seal")
@@ -162,6 +168,36 @@ struct WhyDidThisHappenSheet: View {
             return "El evento ya no está en el registro."
         default:
             return raw
+        }
+    }
+
+    /// V3-D.17 — friendly labels for the consequence kinds emitted by
+    /// the D.14/D.15 dispatcher. Fall back to the raw key so future
+    /// consequences ship without a code change blocking explainability.
+    private func consequenceLabel(_ raw: String) -> String {
+        switch raw {
+        case "consequence.send_notification":   return "Enviar notificación"
+        case "consequence.create_pool_charge":  return "Crear cobro al fondo"
+        case "consequence.peer_obligation":     return "Crear obligación entre miembros"
+        case "consequence.create_obligation":   return "Crear obligación"
+        case "consequence.issue_sanction":      return "Aplicar sanción"
+        case "consequence.start_vote":          return "Abrir votación"
+        case "consequence.set_member_state":    return "Cambiar estado de miembro"
+        case "consequence.archive_resource":    return "Archivar recurso"
+        case "consequence.transfer_resource":   return "Transferir recurso"
+        default:                                return raw
+        }
+    }
+
+    private func targetKindLabel(_ raw: String) -> String {
+        switch raw {
+        case "notification":   return "Notificación"
+        case "obligation":     return "Obligación"
+        case "sanction":       return "Sanción"
+        case "decision":       return "Decisión"
+        case "membership":     return "Miembro"
+        case "resource":       return "Recurso"
+        default:               return raw
         }
     }
 

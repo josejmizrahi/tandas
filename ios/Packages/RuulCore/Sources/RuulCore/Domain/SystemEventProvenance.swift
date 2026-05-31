@@ -42,6 +42,13 @@ public struct SystemEventProvenance: Codable, Sendable, Hashable, Equatable {
     public let evaluatedAt: Date?
     public let sourceEvent: ProvenanceSourceEvent?
 
+    // V3-D.17 — enrichment carried back by the extended provenance RPC.
+    // Lets the sheet render "ejecutó consequence.create_pool_charge →
+    // obligation" without a second hop. Nil on legacy payloads.
+    public let consequenceKind: String?
+    public let targetKind: String?
+    public let targetId: UUID?
+
     // Populated when found == false on the "not engine actionable" /
     // "no engine origin" branches — gives the UI enough to render the
     // human attribution fallback without a second hop.
@@ -58,6 +65,9 @@ public struct SystemEventProvenance: Codable, Sendable, Hashable, Equatable {
         case depth
         case evaluatedAt       = "evaluated_at"
         case sourceEvent       = "source_event"
+        case consequenceKind   = "consequence_kind"
+        case targetKind        = "target_kind"
+        case targetId          = "target_id"
         case eventType         = "event_type"
         case actorUserId       = "actor_user_id"
     }
@@ -73,6 +83,9 @@ public struct SystemEventProvenance: Codable, Sendable, Hashable, Equatable {
         depth: Int? = nil,
         evaluatedAt: Date? = nil,
         sourceEvent: ProvenanceSourceEvent? = nil,
+        consequenceKind: String? = nil,
+        targetKind: String? = nil,
+        targetId: UUID? = nil,
         eventType: String? = nil,
         actorUserId: UUID? = nil
     ) {
@@ -86,6 +99,9 @@ public struct SystemEventProvenance: Codable, Sendable, Hashable, Equatable {
         self.depth = depth
         self.evaluatedAt = evaluatedAt
         self.sourceEvent = sourceEvent
+        self.consequenceKind = consequenceKind
+        self.targetKind = targetKind
+        self.targetId = targetId
         self.eventType = eventType
         self.actorUserId = actorUserId
     }

@@ -180,6 +180,35 @@ public protocol RuulRPCClient: Sendable {
         eventUuid: UUID
     ) async throws -> SystemEventProvenance
 
+    // MARK: - V3-D.17 — Engine UX Surface
+
+    /// `rule_evaluation_summary(p_group_id, p_since)` — rich aggregate
+    /// used by `GroupEngineSettingsView`. Returns `engine_active`,
+    /// total / matched / unmatched counts, action counts by status,
+    /// by-trigger / by-consequence histograms, and the
+    /// `engine_skipped_breakdown` (kill switch + rate limit). Active-
+    /// member gate.
+    func ruleEvaluationSummary(
+        groupId: UUID,
+        since: Date
+    ) async throws -> GroupRuleEngineSummary
+
+    /// `set_group_engine_active(p_group_id, p_active)` — kill switch
+    /// RPC. Gated server-side by the `engine.toggle` permission;
+    /// callers without it get a 42501 mapped to `.permissionDenied`.
+    /// Idempotent — `changed=false` means already in requested state.
+    func setGroupEngineActive(
+        groupId: UUID,
+        active: Bool
+    ) async throws -> GroupEngineToggleResult
+
+    /// `group_rule_engine_quotas` row for the group. Read-only in D.17.
+    /// Falls back to the system default (60/60s) when no override row
+    /// exists. Active-member gate (RLS).
+    func groupRuleEngineQuota(
+        groupId: UUID
+    ) async throws -> GroupRuleEngineQuota?
+
     /// `group_sanction_payment_status(p_sanction_id)` — V2-G4.1 read
     /// RPC for "Pendiente X de Y" + payment history per sanction. The
     /// backend already supports partial payments via the FIFO settlement

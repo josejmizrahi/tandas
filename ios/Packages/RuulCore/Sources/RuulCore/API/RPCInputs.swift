@@ -531,6 +531,45 @@ public struct SystemEventEngineProvenanceParams: Encodable, Sendable, Equatable 
     }
 }
 
+// MARK: - V3-D.17 — Engine UX Surface
+
+/// `rule_evaluation_summary(p_group_id, p_since)` — rich aggregate the
+/// GroupEngineSettingsView consumes (engine_active, total/matched, by
+/// trigger, by consequence, engine_skipped_breakdown). Distinct from
+/// the V2-G8.1 banner aggregate which keeps its own params struct.
+public struct RuleEvaluationSummaryParams: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pSince: Date
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pSince   = "p_since"
+    }
+
+    public init(groupId: UUID, since: Date) {
+        self.pGroupId = groupId
+        self.pSince = since
+    }
+}
+
+/// `set_group_engine_active(p_group_id, p_active)` — kill switch RPC
+/// gated by `engine.toggle` permission. Server logs `group.engine_toggled`
+/// on every actual flip.
+public struct SetGroupEngineActiveParams: Encodable, Sendable, Equatable {
+    public let pGroupId: UUID
+    public let pActive: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pActive  = "p_active"
+    }
+
+    public init(groupId: UUID, active: Bool) {
+        self.pGroupId = groupId
+        self.pActive = active
+    }
+}
+
 public struct GroupSanctionPaymentStatusParams: Encodable, Sendable, Equatable {
     public let pSanctionId: UUID
 

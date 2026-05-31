@@ -152,6 +152,27 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func systemEventEngineProvenance(eventUuid: UUID) async throws -> SystemEventProvenance {
         SystemEventProvenance(found: false, reason: "no_engine_origin")
     }
+
+    func ruleEvaluationSummary(groupId: UUID, since: Date) async throws -> GroupRuleEngineSummary {
+        GroupRuleEngineSummary(
+            groupId: groupId,
+            since: since,
+            engineActive: true,
+            totalEvaluations: 0,
+            matchedCount: 0,
+            unmatchedCount: 0,
+            emittedActionsCount: 0,
+            failedActionsCount: 0
+        )
+    }
+
+    func setGroupEngineActive(groupId: UUID, active: Bool) async throws -> GroupEngineToggleResult {
+        GroupEngineToggleResult(groupId: groupId, engineActive: active, changed: false)
+    }
+
+    func groupRuleEngineQuota(groupId: UUID) async throws -> GroupRuleEngineQuota? {
+        nil
+    }
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
         SanctionPaymentStatus(
             sanctionId: sanctionId,

@@ -42,6 +42,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupRuleEvaluations(groupId: UUID, limit: Int, before: Date?)
         case groupRuleEvaluationSummary(groupId: UUID, windowHours: Int)
         case systemEventEngineProvenance(eventUuid: UUID)
+        case ruleEvaluationSummary(groupId: UUID, since: Date)
+        case setGroupEngineActive(groupId: UUID, active: Bool)
+        case groupRuleEngineQuota(groupId: UUID)
         case groupSanctionPaymentStatus(sanctionId: UUID)
         case proposeSanctionPaymentPlan(input: ProposeSanctionPaymentPlanParams)
         case cancelSanctionPaymentPlan(input: CancelSanctionPaymentPlanParams)
@@ -612,6 +615,44 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func systemEventEngineProvenance(eventUuid: UUID) async throws -> SystemEventProvenance {
         recorded.append(.systemEventEngineProvenance(eventUuid: eventUuid))
         return try systemEventEngineProvenanceStub.get()
+    }
+
+    // MARK: - V3-D.17
+
+    private var ruleEvaluationSummaryStub: Result<GroupRuleEngineSummary, RuulError> = .success(
+        GroupRuleEngineSummary(
+            groupId: UUID(),
+            since: Date(timeIntervalSince1970: 0),
+            engineActive: true,
+            totalEvaluations: 0,
+            matchedCount: 0,
+            unmatchedCount: 0,
+            emittedActionsCount: 0,
+            failedActionsCount: 0
+        )
+    )
+    private var setGroupEngineActiveStub: Result<GroupEngineToggleResult, RuulError> = .success(
+        GroupEngineToggleResult(groupId: UUID(), engineActive: true, changed: false)
+    )
+    private var groupRuleEngineQuotaStub: Result<GroupRuleEngineQuota?, RuulError> = .success(nil)
+
+    func setRuleEvaluationSummaryStub(_ stub: Result<GroupRuleEngineSummary, RuulError>) { ruleEvaluationSummaryStub = stub }
+    func setSetGroupEngineActiveStub(_ stub: Result<GroupEngineToggleResult, RuulError>) { setGroupEngineActiveStub = stub }
+    func setGroupRuleEngineQuotaStub(_ stub: Result<GroupRuleEngineQuota?, RuulError>) { groupRuleEngineQuotaStub = stub }
+
+    func ruleEvaluationSummary(groupId: UUID, since: Date) async throws -> GroupRuleEngineSummary {
+        recorded.append(.ruleEvaluationSummary(groupId: groupId, since: since))
+        return try ruleEvaluationSummaryStub.get()
+    }
+
+    func setGroupEngineActive(groupId: UUID, active: Bool) async throws -> GroupEngineToggleResult {
+        recorded.append(.setGroupEngineActive(groupId: groupId, active: active))
+        return try setGroupEngineActiveStub.get()
+    }
+
+    func groupRuleEngineQuota(groupId: UUID) async throws -> GroupRuleEngineQuota? {
+        recorded.append(.groupRuleEngineQuota(groupId: groupId))
+        return try groupRuleEngineQuotaStub.get()
     }
 
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {

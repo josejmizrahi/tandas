@@ -396,6 +396,62 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - V3-D.17 — Engine UX Surface
+
+    public func ruleEvaluationSummary(
+        groupId: UUID,
+        since: Date
+    ) async throws -> GroupRuleEngineSummary {
+        let params = RuleEvaluationSummaryParams(groupId: groupId, since: since)
+        do {
+            return try await client
+                .rpc("rule_evaluation_summary", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func setGroupEngineActive(
+        groupId: UUID,
+        active: Bool
+    ) async throws -> GroupEngineToggleResult {
+        let params = SetGroupEngineActiveParams(groupId: groupId, active: active)
+        do {
+            // SQL is `RETURNS TABLE(...)` — comes back as a single-row
+            // array on the wire; collapse to the first element here so
+            // callers get a flat struct.
+            let rows: [GroupEngineToggleResult] = try await client
+                .rpc("set_group_engine_active", params: params)
+                .execute()
+                .value
+            guard let head = rows.first else {
+                throw URLError(.cannotParseResponse)
+            }
+            return head
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func groupRuleEngineQuota(
+        groupId: UUID
+    ) async throws -> GroupRuleEngineQuota? {
+        do {
+            let rows: [GroupRuleEngineQuota] = try await client
+                .from("group_rule_engine_quotas")
+                .select("group_id,max_evals_per_window,window_seconds")
+                .eq("group_id", value: groupId.uuidString.lowercased())
+                .limit(1)
+                .execute()
+                .value
+            return rows.first
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func groupSanctionPaymentStatus(
         sanctionId: UUID
     ) async throws -> SanctionPaymentStatus {

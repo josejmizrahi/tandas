@@ -34,4 +34,30 @@ public struct CanonicalRuleEvaluationsRepository: Sendable {
     ) async throws -> SystemEventProvenance {
         try await rpc.systemEventEngineProvenance(eventUuid: eventUuid)
     }
+
+    // MARK: - V3-D.17
+
+    /// Rich engine summary for `GroupEngineSettingsView`. Distinct
+    /// from `summary(...)` which feeds the home banner.
+    public func engineSummary(
+        groupId: UUID,
+        since: Date
+    ) async throws -> GroupRuleEngineSummary {
+        try await rpc.ruleEvaluationSummary(groupId: groupId, since: since)
+    }
+
+    /// Kill switch toggle. Server enforces `engine.toggle` permission.
+    public func setEngineActive(
+        groupId: UUID,
+        active: Bool
+    ) async throws -> GroupEngineToggleResult {
+        try await rpc.setGroupEngineActive(groupId: groupId, active: active)
+    }
+
+    /// Read-only quota for the settings view.
+    public func engineQuota(
+        groupId: UUID
+    ) async throws -> GroupRuleEngineQuota? {
+        try await rpc.groupRuleEngineQuota(groupId: groupId)
+    }
 }

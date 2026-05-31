@@ -25,6 +25,10 @@ public struct GroupSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirmingLeave: Bool = false
     @State private var leaveError: UserFacingError?
+    /// V3-D.17 — cached permission keys for gating engine-related rows.
+    /// Loaded once per appearance; nil means "still loading" → hide
+    /// admin-shaped rows until the answer is known (no tap-and-error).
+    @State private var permissionKeys: Set<String>?
 
     public init(container: DependencyContainer, group: GroupListItem) {
         self.container = container
@@ -80,6 +84,7 @@ public struct GroupSettingsView: View {
             await container.rulesStore.refreshIfNeeded(groupId: group.id)
             await container.decisionRulesStore.refreshIfNeeded(groupId: group.id)
             await container.resourcesStore.refreshIfNeeded(groupId: group.id)
+            await loadPermissionsIfNeeded()
         }
     }
 
@@ -187,6 +192,14 @@ public struct GroupSettingsView: View {
             }
             NavigationLink(value: GroupSettingsDestination.mandates) {
                 Label("Mandatos", systemImage: "signature")
+            }
+            // V3-D.17 — engine settings row gated on `engine.toggle`.
+            // Hidden entirely (no tap-and-error) when the caller lacks
+            // the permission or while it's still loading.
+            if permissionKeys?.contains("engine.toggle") == true {
+                NavigationLink(value: GroupSettingsDestination.engine) {
+                    Label("Motor de reglas", systemImage: "gearshape.2")
+                }
             }
         }
     }
@@ -318,6 +331,12 @@ public struct GroupSettingsView: View {
             GroupPrivacyView(store: container.privacyStore, groupId: group.id)
         case .dissolution:
             DissolutionStatusView(store: container.dissolutionStore, groupId: group.id)
+        case .engine:
+            GroupEngineSettingsView(
+                container: container,
+                groupId: group.id,
+                canToggle: permissionKeys?.contains("engine.toggle") == true
+            )
         }
     }
 
@@ -403,5 +422,24 @@ public struct GroupSettingsView: View {
         case notifications
         case privacy
         case dissolution
+        case engine
+    }
+
+    // MARK: - V3-D.17 — Permission gate
+
+    private func loadPermissionsIfNeeded() async {
+        guard permissionKeys == nil else { return }
+        do {
+            let keys = try await container.groupRepository.listMemberPermissions(
+                groupId: group.id,
+                userId: nil
+            )
+            permissionKeys = Set(keys)
+        } catch {
+            // Treat "unknown permissions" as "no permission" — keeps
+            // the engine row hidden rather than surfacing a soft error
+            // in a settings hub.
+            permissionKeys = []
+        }
     }
 }
