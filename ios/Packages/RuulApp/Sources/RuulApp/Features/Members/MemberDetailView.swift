@@ -35,6 +35,9 @@ public struct MemberDetailView: View {
     /// el grupo (`list_member_permissions(p_group_id, p_user_id=NULL)`).
     /// Default vacío para previews → buttons quedan ocultos.
     let permissionsFetcher: (UUID) async throws -> [String]
+    /// V3-D.20 — fetcher de membership_provenance. Default `nil` retorna
+    /// `nil` y la sección "Origen del estado" no se renderea.
+    let provenanceFetcher: (UUID) async throws -> MembershipProvenance?
     /// Opt-in. Cuando los 3 stores se proveen + hay perms suficientes,
     /// MemberDetailView renderiza Quick Actions con sheets directos.
     /// Nil = la sección queda invisible (back-compat para previews).
@@ -48,6 +51,8 @@ public struct MemberDetailView: View {
     /// V3 Batch B-1 — caller permissions resueltos server-side. Set
     /// vacío inicial = nada visible (fail-closed UX).
     @State private var callerPermissions: Set<String> = []
+    /// V3-D.20 — provenance del estado de membresía. Lazy load.
+    @State private var membershipProvenance: MembershipProvenance?
 
     /// How many recent history rows to render inline before linking out
     /// to the full `MemberHistoryView`.
@@ -76,6 +81,7 @@ public struct MemberDetailView: View {
         memberItem: MembershipBoundaryItem,
         activityFetcher: @escaping (UUID, UUID, Int) async throws -> [GroupEvent] = { _, _, _ in [] },
         permissionsFetcher: @escaping (UUID) async throws -> [String] = { _ in [] },
+        provenanceFetcher: @escaping (UUID) async throws -> MembershipProvenance? = { _ in nil },
         quickActionStores: QuickActionStores? = nil
     ) {
         self.sanctionsStore = sanctionsStore
@@ -87,6 +93,7 @@ public struct MemberDetailView: View {
         self.memberItem = memberItem
         self.activityFetcher = activityFetcher
         self.permissionsFetcher = permissionsFetcher
+        self.provenanceFetcher = provenanceFetcher
         self.quickActionStores = quickActionStores
     }
 
@@ -109,6 +116,7 @@ public struct MemberDetailView: View {
                 moneySection
             }
             activitySection(item: item)
+            provenanceSection(item: item)
             historySection(item: item)
             stateActionsSection(item: item)
         }
@@ -144,6 +152,9 @@ public struct MemberDetailView: View {
             await sanctionsStore.refreshIfNeeded(groupId: groupId)
             await rolesStore.refreshIfNeeded(groupId: groupId)
             await loadPermissions()
+            if let mid = item.membershipId {
+                await loadMembershipProvenance(membershipId: mid)
+            }
         }
         .sheet(isPresented: sanctionSheetBinding) {
             IssueSanctionSheet(
@@ -198,6 +209,51 @@ public struct MemberDetailView: View {
             callerPermissions = Set(try await permissionsFetcher(groupId))
         } catch {
             callerPermissions = []
+        }
+    }
+
+    private func loadMembershipProvenance(membershipId: UUID) async {
+        do {
+            membershipProvenance = try await provenanceFetcher(membershipId)
+        } catch {
+            // Silent: la sección queda invisible.
+            membershipProvenance = nil
+        }
+    }
+
+    // V3-D.20 — "Origen del estado". Sección inline reutilizando el
+    // patrón visual de DecisionDetailView D.18 provenance.
+    @ViewBuilder
+    private func provenanceSection(item: MembershipBoundaryItem) -> some View {
+        if let p = membershipProvenance, p.found,
+           p.membershipId == item.membershipId {
+            Section("Origen del estado") {
+                if let state = p.currentState {
+                    LabeledContent("Estado actual", value: state)
+                }
+                if let reason = p.currentReason, !reason.isEmpty {
+                    LabeledContent("Raz\u{00f3}n", value: reason)
+                }
+                if let last = p.lastTransition {
+                    LabeledContent("\u{00DA}ltima transici\u{00F3}n", value: last.eventType)
+                    if let at = last.at {
+                        LabeledContent("Cu\u{00e1}ndo") {
+                            Text(at, format: .dateTime.day().month().year().hour().minute())
+                        }
+                    }
+                }
+                if let decision = p.sourceDecision {
+                    LabeledContent("Decisi\u{00f3}n origen", value: decision.title ?? decision.decisionId.uuidString)
+                }
+                if let ruleTitle = p.sourceRuleTitle {
+                    LabeledContent("Regla origen", value: ruleTitle)
+                }
+                if let via = p.joinedVia {
+                    LabeledContent("Ingres\u{00f3} v\u{00ed}a", value: via)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
@@ -616,29 +672,85 @@ public struct MemberDetailView: View {
     private func stateActionsSection(item: MembershipBoundaryItem) -> some View {
         if let mid = item.membershipId,
            !item.isCurrentUser,
-           item.kind == .membership,
-           item.status != .left,
-           item.status != .banned
+           item.kind == .membership
         {
             Section(L10n.MemberDetail.stateSection) {
-                if item.status == .active {
+                // V3-D.20 — Aprobar solicitud (requested → active)
+                if item.status == .requested, callerPermissions.contains("members.invite") {
                     Button {
-                        membersStore.beginChangingState(membershipId: mid, target: .suspended)
+                        Task { _ = await membersStore.approveRequest(membershipId: mid, groupId: groupId) }
                     } label: {
-                        Label(L10n.MemberDetail.suspendAction, systemImage: "pause.circle")
+                        Label("Aprobar solicitud", systemImage: "checkmark.circle")
                     }
                 }
-                if item.status == .suspended {
+                // active → paused / suspended
+                if item.status == .active {
+                    if callerPermissions.contains("members.pause") {
+                        Button {
+                            membersStore.beginChangingState(membershipId: mid, target: .paused)
+                        } label: {
+                            Label("Pausar", systemImage: "pause.circle")
+                        }
+                    }
+                    if callerPermissions.contains("members.suspend") {
+                        Button {
+                            membersStore.beginChangingState(membershipId: mid, target: .suspended)
+                        } label: {
+                            Label(L10n.MemberDetail.suspendAction, systemImage: "exclamationmark.octagon")
+                        }
+                    }
+                }
+                // paused → active
+                if item.status == .paused, callerPermissions.contains("members.update") {
+                    Button {
+                        membersStore.beginChangingState(membershipId: mid, target: .active)
+                    } label: {
+                        Label("Reanudar", systemImage: "play.circle")
+                    }
+                }
+                // suspended → active
+                if item.status == .suspended, callerPermissions.contains("members.update") {
                     Button {
                         membersStore.beginChangingState(membershipId: mid, target: .active)
                     } label: {
                         Label(L10n.MemberDetail.reactivateAction, systemImage: "play.circle")
                     }
                 }
-                Button(role: .destructive) {
-                    membersStore.beginChangingState(membershipId: mid, target: .banned)
-                } label: {
-                    Label(L10n.MemberDetail.removeAction, systemImage: "person.crop.circle.badge.xmark")
+                // removed → active (Reinstalar)
+                if item.status == .removed, callerPermissions.contains("members.update") {
+                    Button {
+                        membersStore.beginChangingState(membershipId: mid, target: .active)
+                    } label: {
+                        Label("Reinstalar", systemImage: "arrow.uturn.backward.circle")
+                    }
+                }
+                // left → active (reingreso)
+                if item.status == .left, callerPermissions.contains("members.update") {
+                    Button {
+                        membersStore.beginChangingState(membershipId: mid, target: .active)
+                    } label: {
+                        Label("Reingreso", systemImage: "arrow.uturn.backward.circle")
+                    }
+                }
+                // banned: reinstate requires decision — surface info, not button.
+                if item.status == .banned {
+                    Text("Reinstalar a un miembro baneado requiere una decisi\u{00f3}n del grupo (plantilla “Reinstalar miembro”).")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                // Destructive actions: removed (reversible) + banned (hard).
+                if item.status != .left, item.status != .banned, item.status != .removed,
+                   callerPermissions.contains("members.remove") {
+                    Button(role: .destructive) {
+                        membersStore.beginChangingState(membershipId: mid, target: .removed)
+                    } label: {
+                        Label("Remover (reversible)", systemImage: "person.crop.circle.badge.minus")
+                    }
+                    Button(role: .destructive) {
+                        membersStore.beginChangingState(membershipId: mid, target: .banned)
+                    } label: {
+                        Label(L10n.MemberDetail.removeAction, systemImage: "person.crop.circle.badge.xmark")
+                    }
                 }
             }
         }

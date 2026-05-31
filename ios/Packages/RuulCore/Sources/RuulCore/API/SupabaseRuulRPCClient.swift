@@ -524,6 +524,47 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - V3-D.20 — Membership Deep
+
+    public func membershipProvenance(membershipId: UUID) async throws -> MembershipProvenance {
+        let params = MembershipProvenanceParams(membershipId: membershipId)
+        do {
+            return try await client
+                .rpc("membership_provenance", params: params)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func approveMembershipRequest(membershipId: UUID) async throws -> ApproveMembershipRequestResult {
+        let params = ApproveMembershipRequestParams(membershipId: membershipId)
+        do {
+            let rows: [ApproveMembershipRequestResult] = try await client
+                .rpc("approve_membership_request", params: params)
+                .execute()
+                .value
+            guard let head = rows.first else {
+                throw URLError(.cannotParseResponse)
+            }
+            return head
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func listMembershipTransitions() async throws -> [MembershipStateTransition] {
+        do {
+            return try await client
+                .rpc("list_membership_transitions")
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func groupSanctionPaymentStatus(
         sanctionId: UUID
     ) async throws -> SanctionPaymentStatus {

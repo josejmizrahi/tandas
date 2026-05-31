@@ -50,6 +50,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case decisionProvenance(decisionId: UUID)
         case decisionSummary(groupId: UUID)
         case applyDecisionTemplate(decisionId: UUID, templateKey: String)
+        case membershipProvenance(membershipId: UUID)
+        case approveMembershipRequest(membershipId: UUID)
+        case listMembershipTransitions
         case groupSanctionPaymentStatus(sanctionId: UUID)
         case proposeSanctionPaymentPlan(input: ProposeSanctionPaymentPlanParams)
         case cancelSanctionPaymentPlan(input: CancelSanctionPaymentPlanParams)
@@ -713,6 +716,44 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func applyDecisionTemplate(decisionId: UUID, templateKey: String) async throws -> ApplyDecisionTemplateResult {
         recorded.append(.applyDecisionTemplate(decisionId: decisionId, templateKey: templateKey))
         return try applyDecisionTemplateStub.get()
+    }
+
+    // MARK: - V3-D.20
+
+    private var membershipProvenanceStub: Result<MembershipProvenance, RuulError> = .success(
+        MembershipProvenance(
+            found: false, reason: "not_found",
+            membershipId: nil, groupId: nil, userId: nil,
+            currentState: nil, membershipType: nil, currentReason: nil,
+            joinedAt: nil, confirmedAt: nil,
+            pausedUntil: nil, suspendedUntil: nil, leftAt: nil, removedAt: nil, unbannedAt: nil,
+            joinedVia: nil, invitedBy: nil,
+            lastTransition: nil, sourceEvent: nil, sourceDecision: nil,
+            sourceRuleTitle: nil, sourceConsequenceKind: nil
+        )
+    )
+    private var approveMembershipRequestStub: Result<ApproveMembershipRequestResult, RuulError> = .success(
+        ApproveMembershipRequestResult(membershipId: UUID(), groupId: UUID(), status: "active", changed: true)
+    )
+    private var listMembershipTransitionsStub: Result<[MembershipStateTransition], RuulError> = .success([])
+
+    func setMembershipProvenanceStub(_ stub: Result<MembershipProvenance, RuulError>) { membershipProvenanceStub = stub }
+    func setApproveMembershipRequestStub(_ stub: Result<ApproveMembershipRequestResult, RuulError>) { approveMembershipRequestStub = stub }
+    func setListMembershipTransitionsStub(_ stub: Result<[MembershipStateTransition], RuulError>) { listMembershipTransitionsStub = stub }
+
+    func membershipProvenance(membershipId: UUID) async throws -> MembershipProvenance {
+        recorded.append(.membershipProvenance(membershipId: membershipId))
+        return try membershipProvenanceStub.get()
+    }
+
+    func approveMembershipRequest(membershipId: UUID) async throws -> ApproveMembershipRequestResult {
+        recorded.append(.approveMembershipRequest(membershipId: membershipId))
+        return try approveMembershipRequestStub.get()
+    }
+
+    func listMembershipTransitions() async throws -> [MembershipStateTransition] {
+        recorded.append(.listMembershipTransitions)
+        return try listMembershipTransitionsStub.get()
     }
 
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {

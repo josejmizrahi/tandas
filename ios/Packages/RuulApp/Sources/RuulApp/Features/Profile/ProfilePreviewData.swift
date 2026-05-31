@@ -195,6 +195,25 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func applyDecisionTemplate(decisionId: UUID, templateKey: String) async throws -> ApplyDecisionTemplateResult {
         ApplyDecisionTemplateResult(decisionId: decisionId, templateKey: templateKey, executionMode: .manual)
     }
+
+    func membershipProvenance(membershipId: UUID) async throws -> MembershipProvenance {
+        MembershipProvenance(
+            found: false, reason: "preview_stub",
+            membershipId: nil, groupId: nil, userId: nil,
+            currentState: nil, membershipType: nil, currentReason: nil,
+            joinedAt: nil, confirmedAt: nil,
+            pausedUntil: nil, suspendedUntil: nil, leftAt: nil, removedAt: nil, unbannedAt: nil,
+            joinedVia: nil, invitedBy: nil,
+            lastTransition: nil, sourceEvent: nil, sourceDecision: nil,
+            sourceRuleTitle: nil, sourceConsequenceKind: nil
+        )
+    }
+
+    func approveMembershipRequest(membershipId: UUID) async throws -> ApproveMembershipRequestResult {
+        ApproveMembershipRequestResult(membershipId: membershipId, groupId: UUID(), status: "active", changed: true)
+    }
+
+    func listMembershipTransitions() async throws -> [MembershipStateTransition] { [] }
     func groupSanctionPaymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {
         SanctionPaymentStatus(
             sanctionId: sanctionId,

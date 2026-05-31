@@ -232,6 +232,18 @@ public protocol RuulRPCClient: Sendable {
         templateKey: String
     ) async throws -> ApplyDecisionTemplateResult
 
+    // MARK: - V3-D.20 — Membership Deep
+
+    /// `membership_provenance(p_membership_id)` — "¿por qué este estado?"
+    func membershipProvenance(membershipId: UUID) async throws -> MembershipProvenance
+
+    /// `approve_membership_request(p_membership_id)` — requested → active.
+    /// Gated server-side by `members.invite`.
+    func approveMembershipRequest(membershipId: UUID) async throws -> ApproveMembershipRequestResult
+
+    /// `list_membership_transitions()` — read-only catalog (D.20).
+    func listMembershipTransitions() async throws -> [MembershipStateTransition]
+
     /// `group_sanction_payment_status(p_sanction_id)` — V2-G4.1 read
     /// RPC for "Pendiente X de Y" + payment history per sanction. The
     /// backend already supports partial payments via the FIFO settlement

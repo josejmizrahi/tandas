@@ -611,6 +611,28 @@ public struct DecisionSummaryParams: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - V3-D.20 — Membership Deep
+
+public struct MembershipProvenanceParams: Encodable, Sendable, Equatable {
+    public let pMembershipId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case pMembershipId = "p_membership_id"
+    }
+
+    public init(membershipId: UUID) { self.pMembershipId = membershipId }
+}
+
+public struct ApproveMembershipRequestParams: Encodable, Sendable, Equatable {
+    public let pMembershipId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case pMembershipId = "p_membership_id"
+    }
+
+    public init(membershipId: UUID) { self.pMembershipId = membershipId }
+}
+
 /// `apply_decision_template(p_decision_id, p_template_key)` — stamps
 /// template_key + execution_mode on a freshly-created decision. Called
 /// right after start_vote when the user picked a template.

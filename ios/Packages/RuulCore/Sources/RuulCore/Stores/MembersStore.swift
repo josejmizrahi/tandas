@@ -205,6 +205,24 @@ public final class MembersStore {
 
     public func clearError() { errorMessage = nil }
 
+    // MARK: - V3-D.20 — Approve membership request
+
+    /// `approve_membership_request(p_membership_id)`. iOS-side wrapper;
+    /// refresca el boundary on success.
+    @discardableResult
+    public func approveRequest(membershipId: UUID, groupId: UUID) async -> Bool {
+        guard let repository else { return false }
+        do {
+            _ = try await repository.approveRequest(membershipId: membershipId)
+            await refresh(groupId: groupId)
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
     // MARK: - Membership state (Primitiva 2)
 
     /// Drives `MembershipStateSheet`. Caller decides the target state
@@ -285,7 +303,7 @@ public final class MembersStore {
                 return item.membershipType == .provisional ? .provisional : .active
             case .invited, .requested:
                 return .invited
-            case .suspended, .banned, .left:
+            case .paused, .suspended, .removed, .banned, .left:
                 return .suspended
             }
         }

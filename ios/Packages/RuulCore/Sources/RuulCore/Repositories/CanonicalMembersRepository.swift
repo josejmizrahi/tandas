@@ -74,9 +74,28 @@ public struct CanonicalMembersRepository: Sendable {
                 membershipId: membershipId,
                 newState: newState.rawValue,
                 reason: trimmed,
-                until: newState == .suspended ? until : nil
+                until: (newState == .suspended || newState == .paused) ? until : nil
             )
         )
+    }
+
+    // MARK: - V3-D.20
+
+    /// `approve_membership_request(p_membership_id)` — admin-side
+    /// acceptance of a join request. Gated server-side by
+    /// `members.invite`. Idempotent.
+    public func approveRequest(membershipId: UUID) async throws -> ApproveMembershipRequestResult {
+        try await rpc.approveMembershipRequest(membershipId: membershipId)
+    }
+
+    /// `membership_provenance(p_membership_id)` — "¿por qué este estado?"
+    public func provenance(membershipId: UUID) async throws -> MembershipProvenance {
+        try await rpc.membershipProvenance(membershipId: membershipId)
+    }
+
+    /// `list_membership_transitions()` — canonical catalog (read-only).
+    public func transitions() async throws -> [MembershipStateTransition] {
+        try await rpc.listMembershipTransitions()
     }
 }
 

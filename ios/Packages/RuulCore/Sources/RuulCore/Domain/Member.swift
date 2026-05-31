@@ -41,11 +41,15 @@ public struct MemberListItem: Identifiable, Equatable, Sendable, Hashable {
 /// Mirrors the canonical `group_memberships.status` enum. Strings match
 /// the dev backend values one-to-one so direct decoding from the future
 /// repository will work without remapping.
-public enum MembershipStatus: String, Codable, Sendable, Hashable {
+public enum MembershipStatus: String, Codable, Sendable, Hashable, CaseIterable {
     case requested
     case invited
     case active
+    /// V3-D.20 — pausa voluntaria/temporal, no punitiva.
+    case paused
     case suspended
+    /// V3-D.20 — salida administrativa reversible (banned = irreversible).
+    case removed
     case left
     case banned
 
@@ -54,11 +58,24 @@ public enum MembershipStatus: String, Codable, Sendable, Hashable {
         case .requested: return LocalizedStringResource("members.status.requested", defaultValue: "Solicitó")
         case .invited:   return LocalizedStringResource("members.status.invited",   defaultValue: "Invitado")
         case .active:    return LocalizedStringResource("members.status.active",    defaultValue: "Activo")
+        case .paused:    return LocalizedStringResource("members.status.paused",    defaultValue: "En pausa")
         case .suspended: return LocalizedStringResource("members.status.suspended", defaultValue: "Suspendido")
+        case .removed:   return LocalizedStringResource("members.status.removed",   defaultValue: "Removido")
         case .left:      return LocalizedStringResource("members.status.left",      defaultValue: "Se fue")
         case .banned:    return LocalizedStringResource("members.status.banned",    defaultValue: "Baneado")
         }
     }
+
+    /// V3-D.20 — true cuando el estado impide actuar / votar en el grupo.
+    public var isInactive: Bool {
+        switch self {
+        case .active: return false
+        case .requested, .invited, .paused, .suspended, .removed, .left, .banned: return true
+        }
+    }
+
+    /// V3-D.20 — true cuando la reactivación requiere una decisión explícita.
+    public var requiresDecisionToReinstate: Bool { self == .banned }
 }
 
 /// Mirrors the canonical `group_memberships.membership_type` enum.
