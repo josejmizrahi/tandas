@@ -46,6 +46,8 @@ public final class ResourcesStore {
     public private(set) var detailPhase: StorePhase = .idle
     public private(set) var activity: [GroupEvent] = []
     public private(set) var activityPhase: StorePhase = .idle
+    public private(set) var movements: [MoneyMovement] = []
+    public private(set) var movementsPhase: StorePhase = .idle
     /// Active resource id that the detail surface (and Asset sheets) is
     /// operating on. Used to scope sheet saves correctly.
     public private(set) var activeResourceId: UUID?
@@ -323,7 +325,30 @@ public final class ResourcesStore {
         detailPhase = .idle
         activity = []
         activityPhase = .idle
+        movements = []
+        movementsPhase = .idle
         activeResourceId = nil
+    }
+
+    /// Pull money movements linked to a resource via `resource_id` or
+    /// `source_resource_id`. Drives the MoneyBlock for asset/fund/etc.
+    public func loadMovements(resourceId: UUID, groupId: UUID) async {
+        if movements.isEmpty {
+            movementsPhase = .loading
+        }
+        do {
+            let fetched = try await repository.recentMovements(
+                groupId: groupId,
+                resourceId: resourceId,
+                limit: 100
+            )
+            movements = fetched
+            movementsPhase = .loaded
+        } catch {
+            let message = UserFacingError.from(error).message
+            movementsPhase = .failed(message: message)
+            errorMessage = message
+        }
     }
 
     /// Reload activity for the currently-active resource, filtered to

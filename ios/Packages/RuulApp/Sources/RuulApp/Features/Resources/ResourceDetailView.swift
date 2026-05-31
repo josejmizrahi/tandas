@@ -83,6 +83,9 @@ public struct ResourceDetailView: View {
                 await store.refreshBookings(resourceId: resource.id)
             }
             await store.loadActivity(resourceId: resource.id, groupId: groupId)
+            if descriptor.coordinationBlocks.contains(.money) {
+                await store.loadMovements(resourceId: resource.id, groupId: groupId)
+            }
         }
         .refreshable {
             if descriptor.subtypeTable != nil {
@@ -92,6 +95,9 @@ public struct ResourceDetailView: View {
                 await store.refreshBookings(resourceId: resource.id)
             }
             await store.loadActivity(resourceId: resource.id, groupId: groupId)
+            if descriptor.coordinationBlocks.contains(.money) {
+                await store.loadMovements(resourceId: resource.id, groupId: groupId)
+            }
         }
         .confirmationDialog(
             Text(L10n.Resources.archiveConfirmTitle),
@@ -394,7 +400,9 @@ public struct ResourceDetailView: View {
                 custodianMember: custodianMember(for: assetSubtype)
             )
         case (.fund, .money):
-            FundMoneySection(subtype: fundSubtype)
+            FundMoneySection(subtype: fundSubtype, movements: store.movements)
+        case (_, .money):
+            ResourceMoneyMovementsSection(movements: store.movements)
         case (.space, .schedule):
             SpaceScheduleSection(
                 subtype: spaceSubtype,
@@ -762,6 +770,7 @@ private struct AssetResponsibilitySection: View {
 /// cluster collapses by row when no data is present.
 private struct FundMoneySection: View {
     let subtype: FundSubtypeData?
+    let movements: [MoneyMovement]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -823,6 +832,11 @@ private struct FundMoneySection: View {
                         .font(.body.weight(.semibold))
                 }
             }
+            if !movements.isEmpty {
+                Divider()
+                    .padding(.vertical, 4)
+                ResourceMoneyMovementsSection(movements: movements)
+            }
         }
         .padding(.vertical, 4)
     }
@@ -836,6 +850,64 @@ private struct FundMoneySection: View {
             return "\(amount) \(currency)"
         }
         return amount
+    }
+}
+
+// MARK: - ResourceMoneyMovementsSection
+
+/// Shared Money block for resource types that carry monetary movements
+/// without a dedicated subtype (asset/inventory/real_estate/IP/vehicle
+/// /points/money). Surfaces the top 3 movements linked via resource_id
+/// or source_resource_id.
+private struct ResourceMoneyMovementsSection: View {
+    let movements: [MoneyMovement]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                Image(systemName: "creditcard")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                Text(L10n.ResourceDetail.coordinationMoney)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if movements.isEmpty {
+                Text(L10n.ResourceDetail.coordinationStub)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 36)
+            } else {
+                ForEach(movements.prefix(3)) { movement in
+                    movementRow(movement)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func movementRow(_ movement: MoneyMovement) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "arrow.up.arrow.down.circle")
+                .font(.body.weight(.medium))
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(NSDecimalNumber(decimal: movement.amount).stringValue) \(movement.unit)")
+                    .font(.body.weight(.semibold))
+                Text(movement.type.rawValue.capitalized)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                if let description = movement.description, !description.isEmpty {
+                    Text(description)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+        }
     }
 }
 

@@ -93,6 +93,24 @@ public struct CanonicalResourcesRepository: Sendable {
         return events.filter { $0.entityKind == "resource" && $0.entityId == resourceId }
     }
 
+    /// Movements linked to this resource, client-side filtered on
+    /// `resource_id` or `source_resource_id`. record_expense/
+    /// record_contribution accept p_resource_id; pool_charge does not
+    /// (yet).
+    public func recentMovements(
+        groupId: UUID,
+        resourceId: UUID,
+        limit: Int = 100
+    ) async throws -> [MoneyMovement] {
+        let all = try await rpc.groupMoneyMovements(
+            groupId: groupId,
+            limit: limit,
+            filter: nil,
+            beforeSeq: nil
+        )
+        return all.filter { $0.resourceId == resourceId || $0.sourceResourceId == resourceId }
+    }
+
     /// Envelope-only metadata edit. Backend merges `p_metadata` with
     /// the existing jsonb (set value to `.null` to remove a key, since
     /// `metadata || {"k": null}` keeps the key with a JSON null —
