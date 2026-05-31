@@ -1,4 +1,4 @@
--- 20260529204315 — V3-R0: invite_member creates placeholder membership.
+-- 20260529220000 — V3-R0: invite_member creates placeholder membership.
 --
 -- Cierra el caso "registré un gasto pagado por alguien que aún no
 -- aceptó la invitación". Hoy invite_member solo escribía a
@@ -68,6 +68,13 @@ BEGIN
   -- status='invited' keeps it out of "active member" queries; joined_via
   -- 'placeholder_claim' marks the lifecycle for the reconciliation path in
   -- accept_invite.
+  --
+  -- Important: when v_user_id is non-null (the invitee already had a profile),
+  -- we still create a *fresh* placeholder rather than upserting onto an
+  -- existing membership. Reason: if the invitee was already an active member
+  -- of this group, we'd corrupt their record; the conflict path is handled
+  -- by accept_invite which checks for an existing membership of the same
+  -- user_id in the group before falling back to the placeholder branch.
   INSERT INTO public.group_memberships (
     group_id, user_id, status, joined_via, membership_type
   ) VALUES (
@@ -109,4 +116,4 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public.invite_member(uuid, text, text, text, text) IS
-  'V3-R0 (mig 20260529204315): invite_member now creates a placeholder group_memberships row (status=invited, joined_via=placeholder_claim, membership_type=p_membership_type) and links it via group_invites.placeholder_membership_id. The invitee gets a real membership_id immediately so they can be a payer/participant in splits before they accept. accept_invite reconciles by setting user_id + status=active on the existing row.';
+  'V3-R0 (mig 20260529220000): invite_member now creates a placeholder group_memberships row (status=invited, joined_via=placeholder_claim, membership_type=p_membership_type) and links it via group_invites.placeholder_membership_id. The invitee gets a real membership_id immediately so they can be a payer/participant in splits before they accept. accept_invite reconciles by setting user_id + status=active on the existing row.';

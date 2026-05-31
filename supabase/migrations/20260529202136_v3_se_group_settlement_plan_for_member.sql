@@ -1,4 +1,4 @@
--- 20260529202136 — V3-SE-1: settle-up plan per member (Splitwise-style).
+-- 20260529210000 — V3-SE-1: settle-up plan per member (Splitwise-style).
 --
 -- Cierra el segundo feature icónico de Splitwise. Hoy iOS solo tiene
 -- las obligations donde el caller debe (member_obligation_summary).
@@ -107,4 +107,4 @@ REVOKE EXECUTE ON FUNCTION public.group_settlement_plan_for_member(uuid, uuid) F
 GRANT  EXECUTE ON FUNCTION public.group_settlement_plan_for_member(uuid, uuid) TO authenticated;
 
 COMMENT ON FUNCTION public.group_settlement_plan_for_member(uuid, uuid) IS
-  'V3-SE-1 (mig 20260529202136): "Settle up" plan from the caller''s perspective. Returns one row per peer counterparty with net_amount: >0 caller owes, <0 caller is owed. Pool obligations excluded by doctrine. Ordered by ABS(net_amount) DESC.';
+  'V3-SE-1 (mig 20260529210000): "Settle up" plan from the caller''s perspective. Returns one row per peer counterparty with net_amount: >0 caller owes, <0 caller is owed. Pool obligations excluded by doctrine. Ordered by ABS(net_amount) DESC.';

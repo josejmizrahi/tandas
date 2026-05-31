@@ -1,8 +1,17 @@
--- 20260529205628: V3-INV — group_membership_boundary now joins the
+-- 20260529...: V3-INV — group_membership_boundary now joins the
 -- placeholder membership to its source invite (V3-R0) so iOS can
 -- expose the invite_id on the placeholder row for swipe-to-revoke,
 -- and so the legacy "invite" branch stops duplicating the row when a
 -- placeholder already exists.
+--
+-- Changes vs the previous version:
+--   1. memberships CTE LEFT JOINs group_invites by
+--      placeholder_membership_id and carries the invite_id forward.
+--   2. The display_name fallback for invited placeholders without a
+--      profile now pulls from the invite's email/phone metadata
+--      (which is what the inviter typed) instead of "Miembro".
+--   3. invites CTE filter additionally excludes rows whose
+--      placeholder_membership_id is already represented in memberships.
 
 DROP FUNCTION IF EXISTS public.group_membership_boundary(uuid);
 
@@ -113,7 +122,7 @@ BEGIN
     WHERE gi.group_id = p_group_id
       AND gi.status   = 'pending'
       AND (gi.expires_at IS NULL OR gi.expires_at > now())
-      AND gi.placeholder_membership_id IS NULL
+      AND gi.placeholder_membership_id IS NULL   -- V3-INV: placeholder rows already surface via memberships CTE
       AND (
         gi.invited_user_id IS NULL
         OR NOT EXISTS (
@@ -148,4 +157,4 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public.group_membership_boundary(uuid) IS
-  'V3-INV (mig 20260529205628): group_membership_boundary now exposes the linked invite_id on placeholder memberships (via LEFT JOIN to group_invites on placeholder_membership_id) so iOS can swipe-to-revoke directly from the row. Display name falls back to invite email/phone when the placeholder has no profile yet. Invites whose placeholder already exists are excluded from the invite CTE to avoid duplicates.';
+  'V3-INV (mig 20260529221000): group_membership_boundary now exposes the linked invite_id on placeholder memberships (via LEFT JOIN to group_invites on placeholder_membership_id) so iOS can swipe-to-revoke directly from the row. Display name falls back to invite email/phone when the placeholder has no profile yet. Invites whose placeholder already exists are excluded from the invite CTE to avoid duplicates.';

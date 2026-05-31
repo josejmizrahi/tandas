@@ -1,4 +1,4 @@
--- 20260529210833: V3-INV fix — group_memberships.user_id NULLABLE for
+-- 20260529...: V3-INV fix — group_memberships.user_id NULLABLE for
 -- placeholder claims.
 --
 -- Founder hit "null value in column user_id violates not-null constraint"

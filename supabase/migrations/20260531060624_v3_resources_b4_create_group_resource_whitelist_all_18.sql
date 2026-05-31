@@ -1,7 +1,7 @@
 -- Hot-fix detected during Fase B.4 smoke: create_group_resource validates
 -- p_resource_type against a 10-element whitelist while the CHECK on
 -- group_resources.resource_type allows 18. Sync the RPC to the canonical
--- 18-element whitelist + expand ownership_kind whitelist from 3 to 5.
+-- 18-element whitelist.
 
 CREATE OR REPLACE FUNCTION public.create_group_resource(
   p_group_id uuid,

@@ -1,8 +1,8 @@
--- 20260529192246 — V3-A4b: emisor de mandate.expiring_in_24h.
+-- 20260530000400 — V3-A4b: emisor de mandate.expiring_in_24h.
 --
 -- Cierra parcialmente §K.3 fanout (mandate por vencer). Esta RPC se
 -- diseña para ser invocada por edge function con cron schedule diario
--- (pg_cron no está activo en este proyecto Supabase).
+-- (cron pg_cron no está activo en este proyecto Supabase).
 --
 -- A4a (obligation.overdue) NO se aterriza aquí: group_obligations no tiene
 -- columna due_at — la doctrina de "cuándo vence una obligación" requiere
@@ -74,8 +74,9 @@ BEGIN
 END;
 $function$;
 
+-- SECURITY DEFINER: invocable por edge function (service-role) o por admin.
 REVOKE EXECUTE ON FUNCTION public.emit_mandate_expiring_events() FROM public, anon;
 GRANT  EXECUTE ON FUNCTION public.emit_mandate_expiring_events() TO authenticated;
 
 COMMENT ON FUNCTION public.emit_mandate_expiring_events() IS
-  'V3-A4b (mig 20260529192246): emisor cron-invocable de mandate.expiring_in_24h. Scanea group_mandates con status=granted, revoked_at NULL, ends_at en próximas 24h. Idempotent vía dedup contra group_events del mismo mandate en últimas 24h. Retorna count de events emitidos. Diseñado para edge function con schedule diario; pg_cron no disponible en proyecto.';
+  'V3-A4b (mig 20260530000400): emisor cron-invocable de mandate.expiring_in_24h. Scanea group_mandates con status=granted, revoked_at NULL, ends_at en próximas 24h. Idempotent vía dedup contra group_events del mismo mandate en últimas 24h. Retorna count de events emitidos. Diseñado para edge function con schedule diario; pg_cron no disponible en proyecto.';

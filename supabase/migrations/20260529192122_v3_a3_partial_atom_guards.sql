@@ -1,4 +1,4 @@
--- 20260529192122 — V3-A3: partial atom guards para notifications_outbox y group_decisions.
+-- 20260530000300 — V3-A3: partial atom guards para notifications_outbox y group_decisions.
 --
 -- Cierra §1.2-(12) "Faltan guards (decisión pendiente)".
 -- group_rule_evaluations YA tiene guard completo (verificado §0.2); aquí cubrimos
@@ -30,7 +30,7 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public._notifications_outbox_partial_guard() IS
-  'V3-A3a (mig 20260529192122): partial atom guard. Solo dispatch_status, attempts, last_error, dispatched_at son mutables (cron drain). Resto inmutable.';
+  'V3-A3a (mig 20260530000300): partial atom guard. Solo dispatch_status, attempts, last_error, dispatched_at son mutables (cron drain). Resto inmutable.';
 
 DROP TRIGGER IF EXISTS notifications_outbox_partial_guard ON public.notifications_outbox;
 CREATE TRIGGER notifications_outbox_partial_guard
@@ -38,6 +38,7 @@ BEFORE UPDATE ON public.notifications_outbox
 FOR EACH ROW
 EXECUTE FUNCTION public._notifications_outbox_partial_guard();
 
+-- DELETE guard: outbox rows son históricas. retention via cron separado.
 CREATE OR REPLACE FUNCTION public._notifications_outbox_no_delete()
 RETURNS trigger
 LANGUAGE plpgsql AS $function$
@@ -46,7 +47,9 @@ BEGIN
 END;
 $function$;
 
--- NOTE: cron retention podría querer DELETE. Cuando se implemente, ajustar.
+-- NOTE: cron retention podría querer DELETE. Cuando se implemente, hacer
+-- DROP TRIGGER ON ... + ALTER FUNCTION ... + recrear con bypass por settings.
+-- Por ahora: bloqueo total para evitar pérdida accidental.
 DROP TRIGGER IF EXISTS notifications_outbox_no_delete ON public.notifications_outbox;
 CREATE TRIGGER notifications_outbox_no_delete
 BEFORE DELETE ON public.notifications_outbox
@@ -61,10 +64,14 @@ CREATE OR REPLACE FUNCTION public._group_decisions_partial_guard()
 RETURNS trigger
 LANGUAGE plpgsql AS $function$
 BEGIN
+  -- Solo bloqueamos cuando OLD ya estaba en estado terminal. Una transición
+  -- legítima open → passed/rejected pasa porque OLD.status = 'open'.
   IF OLD.status NOT IN ('passed','rejected') THEN
     RETURN NEW;
   END IF;
 
+  -- En estado terminal: bloquear mutación de campos materiales.
+  -- updated_at queda mutable (set_updated_at trigger BEFORE UPDATE).
   IF NEW.status            IS DISTINCT FROM OLD.status            THEN RAISE EXCEPTION 'immutable after terminal: group_decisions.status'            USING errcode = '23514'; END IF;
   IF NEW.decision_type     IS DISTINCT FROM OLD.decision_type     THEN RAISE EXCEPTION 'immutable after terminal: group_decisions.decision_type'     USING errcode = '23514'; END IF;
   IF NEW.method            IS DISTINCT FROM OLD.method            THEN RAISE EXCEPTION 'immutable after terminal: group_decisions.method'            USING errcode = '23514'; END IF;
@@ -89,7 +96,7 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public._group_decisions_partial_guard() IS
-  'V3-A3b (mig 20260529192122): partial guard. Tras OLD.status ∈ (passed, rejected) ningún campo material cambia. updated_at queda mutable para set_updated_at trigger.';
+  'V3-A3b (mig 20260530000300): partial guard. Tras OLD.status ∈ (passed, rejected) ningún campo material cambia. updated_at queda mutable para set_updated_at trigger.';
 
 DROP TRIGGER IF EXISTS group_decisions_partial_guard ON public.group_decisions;
 CREATE TRIGGER group_decisions_partial_guard

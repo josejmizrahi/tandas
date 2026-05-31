@@ -44,7 +44,7 @@ BEGIN
     IF v_id IS NOT NULL THEN RETURN v_id; END IF;
   END IF;
 
-  -- Overlap guard: confirmed booking whose window overlaps blocks.
+  -- Overlap guard: any confirmed booking whose window overlaps blocks.
   -- NULL ends_at treated as starts_at + 1 minute for the guard math.
   SELECT id INTO v_overlap_id
     FROM public.group_resource_bookings b

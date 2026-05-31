@@ -1,4 +1,4 @@
--- 20260529192006 — V3-A2: auto-promote cultural_norm → rule on endorsement threshold.
+-- 20260530000200 — V3-A2: auto-promote cultural_norm → rule on endorsement threshold.
 --
 -- Cierra §C.4 + §C.18: "cultural_norm.endorsed (≥ N) → opcional promote a regla".
 --
@@ -93,7 +93,7 @@ $function$;
 REVOKE EXECUTE ON FUNCTION public._auto_promote_norm_internal(uuid) FROM public, anon, authenticated;
 
 COMMENT ON FUNCTION public._auto_promote_norm_internal(uuid) IS
-  'V3-A2 (mig 20260529192006): promoción interna de cultural_norm → rule, sin permission check. Llamada exclusivamente desde trigger public._check_norm_promotion_threshold cuando endorsed_count >= groups.settings.cultural_norm_auto_promote_threshold. created_by/published_by NULL = legitimidad por umbral, no por actor. Idempotent: no-op si la norma ya está retired.';
+  'V3-A2 (mig 20260530000200): promoción interna de cultural_norm → rule, sin permission check. Llamada exclusivamente desde trigger public._check_norm_promotion_threshold cuando endorsed_count >= groups.settings.cultural_norm_auto_promote_threshold. created_by/published_by NULL = legitimidad por umbral, no por actor. Idempotent: no-op si la norma ya está retired.';
 
 -- Trigger function: detecta cruce de umbral.
 CREATE OR REPLACE FUNCTION public._check_norm_promotion_threshold()
@@ -138,7 +138,7 @@ $function$;
 REVOKE EXECUTE ON FUNCTION public._check_norm_promotion_threshold() FROM public, anon, authenticated;
 
 COMMENT ON FUNCTION public._check_norm_promotion_threshold() IS
-  'V3-A2 (mig 20260529192006): trigger AFTER UPDATE OF endorsed_count en group_cultural_norms. Lee groups.settings->>cultural_norm_auto_promote_threshold (int opt-in). Si endorsed_count >= threshold y status sigue proposed/endorsed → invoca public._auto_promote_norm_internal. NULL/≤0/parse-error ⇒ no-op.';
+  'V3-A2 (mig 20260530000200): trigger AFTER UPDATE OF endorsed_count en group_cultural_norms. Lee groups.settings->>cultural_norm_auto_promote_threshold (int opt-in). Si endorsed_count >= threshold y status sigue proposed/endorsed → invoca public._auto_promote_norm_internal. NULL/≤0/parse-error ⇒ no-op.';
 
 DROP TRIGGER IF EXISTS group_cultural_norms_auto_promote_on_threshold ON public.group_cultural_norms;
 

@@ -62,7 +62,7 @@ BEGIN
          || ' locked_at_set=' || (v_locked_at IS NOT NULL)::text
          || ' delta=' || (v_status_post - v_status_pre); RETURN NEXT;
 
-  -- B2.2: lock idempotent.
+  -- B2.2: lock idempotent (re-lock returns prior event uuid, no new event).
   v_event_uuid2 := public.lock_fund(v_fund, 'smoke lock', 'cid-lock-1');
   SELECT count(*) INTO v_idemp_post FROM public.group_events
    WHERE group_id = v_group_x AND event_type = 'resource.status_changed' AND entity_id = v_fund

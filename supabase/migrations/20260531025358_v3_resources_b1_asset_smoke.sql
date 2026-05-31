@@ -31,6 +31,7 @@ DECLARE
   v_repaired_post int;
   v_status_pre    int;
   v_status_post   int;
+  v_idemp_pre     int;
   v_idemp_post    int;
 
   v_cond          text;
@@ -133,7 +134,7 @@ BEGIN
   step := 'B1.6.release_without_custodian_blocked'; ok := v_release_empty_blocked;
   detail := 'blocked=' || v_release_empty_blocked::text; RETURN NEXT;
 
-  -- B1.7: mark_asset_condition 'damaged' -> resource.damaged.
+  -- B1.7: mark_asset_condition 'damaged' → resource.damaged.
   SELECT count(*) INTO v_damaged_pre FROM public.group_events
    WHERE group_id = v_group_x AND event_type = 'resource.damaged' AND entity_id = v_asset;
   v_event_uuid := public.mark_asset_condition(v_asset, 'damaged', 'smoke damaged', 'cid-cond-1');
@@ -147,7 +148,7 @@ BEGIN
   detail := 'cond=' || COALESCE(v_cond, 'NULL')
          || ' delta=' || (v_damaged_post - v_damaged_pre); RETURN NEXT;
 
-  -- B1.8: mark_asset_condition 'repaired' after damaged -> resource.repaired.
+  -- B1.8: mark_asset_condition 'repaired' after damaged → resource.repaired.
   SELECT count(*) INTO v_repaired_pre FROM public.group_events
    WHERE group_id = v_group_x AND event_type = 'resource.repaired' AND entity_id = v_asset;
   v_event_uuid := public.mark_asset_condition(v_asset, 'repaired', 'smoke repaired', 'cid-cond-2');
@@ -161,7 +162,7 @@ BEGIN
   detail := 'cond=' || COALESCE(v_cond, 'NULL')
          || ' delta=' || (v_repaired_post - v_repaired_pre); RETURN NEXT;
 
-  -- B1.9: mark_asset_condition 'good' from 'repaired' -> resource.status_changed.
+  -- B1.9: mark_asset_condition 'good' from 'repaired' → resource.status_changed.
   SELECT count(*) INTO v_status_pre FROM public.group_events
    WHERE group_id = v_group_x AND event_type = 'resource.status_changed' AND entity_id = v_asset;
   v_event_uuid := public.mark_asset_condition(v_asset, 'good', 'smoke good', 'cid-cond-3');

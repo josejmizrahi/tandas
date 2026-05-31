@@ -287,4 +287,4 @@ REVOKE ALL ON FUNCTION public.mark_asset_condition(uuid, text, text, text) FROM 
 GRANT EXECUTE ON FUNCTION public.mark_asset_condition(uuid, text, text, text) TO authenticated;
 
 COMMENT ON FUNCTION public.mark_asset_condition(uuid, text, text, text) IS
-'Asset Fase B.1: updates asset condition. Emits resource.damaged (->damaged), resource.repaired (damaged->repaired), or resource.status_changed otherwise. Idempotent via p_client_id.';
+'Asset Fase B.1: updates asset condition. Emits resource.damaged (→damaged), resource.repaired (damaged→repaired), or resource.status_changed otherwise. Idempotent via p_client_id.';

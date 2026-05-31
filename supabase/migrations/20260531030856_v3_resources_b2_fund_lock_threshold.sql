@@ -50,6 +50,7 @@ BEGIN
   END IF;
 
   IF v_locked IS NOT NULL THEN
+    -- Already locked: no-op, return latest matching event (or NULL).
     SELECT ge.uuid_id INTO v_event
       FROM public.group_events ge
      WHERE ge.group_id = v_r.group_id

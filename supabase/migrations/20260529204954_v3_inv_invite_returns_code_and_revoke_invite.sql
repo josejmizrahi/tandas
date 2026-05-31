@@ -1,4 +1,4 @@
--- 20260529204954: V3-INV — invite_member returns shareable code +
+-- 20260529...: INV slice — invite_member returns shareable code +
 -- new revoke_invite RPC for admin-initiated cancellation of a pending invite.
 --
 -- Why:
@@ -16,6 +16,7 @@
 -- Breaking change controlado: invite_member ahora RETURNS TABLE en vez
 -- de UUID. iOS se actualiza en el mismo slice.
 
+-- 1. Reshape invite_member to return the shareable code + placeholder id.
 DROP FUNCTION IF EXISTS public.invite_member(uuid, text, text, text, text);
 
 CREATE OR REPLACE FUNCTION public.invite_member(
@@ -101,7 +102,12 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public.invite_member(uuid, text, text, text, text) IS
-  'V3-INV (mig 20260529204954): now returns TABLE(invite_id, code, placeholder_membership_id) so iOS can show the code for share/copy actions right after the invitation is created. Placeholder membership created with status=invited as in V3-R0.';
+  'V3-INV (mig 20260529220500): now returns TABLE(invite_id, code, placeholder_membership_id) so iOS can show the code for share/copy actions right after the invitation is created. Placeholder membership created with status=invited as in V3-R0.';
+
+-- 2. revoke_invite — admin / inviter cancels a pending invitation.
+--    Blocks revocation if the placeholder membership has any open
+--    obligations (peer-to-peer or pool). The inviter is expected to
+--    either settle them first or wait for the invitee to accept.
 
 CREATE OR REPLACE FUNCTION public.revoke_invite(
   p_invite_id uuid,
@@ -126,6 +132,8 @@ BEGIN
     RAISE EXCEPTION 'invite not found' USING errcode = 'P0002';
   END IF;
 
+  -- Authorization: any of (a) the original inviter, (b) anyone with
+  -- members.invite permission on the group.
   IF v_invite.invited_by IS DISTINCT FROM auth.uid() THEN
     PERFORM public.assert_permission(v_invite.group_id, 'members.invite');
   END IF;
@@ -135,6 +143,8 @@ BEGIN
       USING errcode = '22023';
   END IF;
 
+  -- Block if the placeholder membership has any open obligations.
+  -- Both directions count: invitee-owes-someone and someone-owes-invitee.
   IF v_invite.placeholder_membership_id IS NOT NULL THEN
     SELECT COUNT(*)
       INTO v_open_count
@@ -153,6 +163,7 @@ BEGIN
 
   v_reason := NULLIF(btrim(COALESCE(p_reason, '')), '');
 
+  -- Mark invite as revoked.
   UPDATE public.group_invites
      SET status   = 'revoked',
          metadata = COALESCE(metadata, '{}'::jsonb)
@@ -163,6 +174,8 @@ BEGIN
                      )
    WHERE id = p_invite_id;
 
+  -- Soft-close the placeholder membership so it stops appearing in
+  -- pickers / boundary reads. Preserves history.
   IF v_invite.placeholder_membership_id IS NOT NULL THEN
     UPDATE public.group_memberships
        SET status      = 'left',
@@ -189,4 +202,4 @@ REVOKE EXECUTE ON FUNCTION public.revoke_invite(uuid, text) FROM public, anon;
 GRANT  EXECUTE ON FUNCTION public.revoke_invite(uuid, text) TO authenticated;
 
 COMMENT ON FUNCTION public.revoke_invite(uuid, text) IS
-  'V3-INV (mig 20260529204954): cancel a pending invitation. Authorized to the inviter or anyone with members.invite. Blocks if the linked placeholder membership has open obligations (must be settled first). Soft-closes the placeholder (status=left) and marks the invite revoked. Emits member.invite_revoked event.';
+  'V3-INV (mig 20260529220500): cancel a pending invitation. Authorized to the inviter or anyone with members.invite. Blocks if the linked placeholder membership has open obligations (must be settled first). Soft-closes the placeholder (status=left) and marks the invite revoked. Emits member.invite_revoked event.';

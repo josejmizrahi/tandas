@@ -1,4 +1,4 @@
--- 20260529200725 — V3-S3: expose split_breakdown in group_money_movements.
+-- 20260530000500 — V3-S3: expose split_breakdown in group_money_movements.
 --
 -- Cierra el loop visual del split engine (S1). Hoy la lista de movimientos
 -- expone split_mode pero NO el breakdown row-by-row, así que MoneyMovement
@@ -116,4 +116,4 @@ REVOKE EXECUTE ON FUNCTION public.group_money_movements(uuid, integer, text[], b
 GRANT  EXECUTE ON FUNCTION public.group_money_movements(uuid, integer, text[], bigint) TO authenticated;
 
 COMMENT ON FUNCTION public.group_money_movements(uuid, integer, text[], bigint) IS
-  'V3-S3 (mig 20260529200725): returns pre-joined money movements with split_breakdown enriched per-participant (membership_id + display_name + amount). amount may be null for legacy rows where split_mode=even was emitted with only membership_id (pre-S1).';
+  'V3-S3 (mig 20260529...): returns pre-joined money movements with split_breakdown enriched per-participant (membership_id + display_name + amount). amount may be null for legacy rows where split_mode=even was emitted with only membership_id (pre-S1).';
