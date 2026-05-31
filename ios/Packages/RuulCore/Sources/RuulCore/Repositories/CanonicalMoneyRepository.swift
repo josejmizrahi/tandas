@@ -81,7 +81,8 @@ public struct CanonicalMoneyRepository: Sendable {
         chargeKind: String,
         reason: String? = nil,
         mandateId: UUID? = nil,
-        clientId: String? = nil
+        clientId: String? = nil,
+        resourceId: UUID? = nil
     ) async throws -> UUID {
         try await rpc.recordPoolCharge(
             RecordPoolChargeParams(
@@ -92,7 +93,8 @@ public struct CanonicalMoneyRepository: Sendable {
                 chargeKind: chargeKind,
                 reason: reason,
                 mandateId: mandateId,
-                clientId: clientId
+                clientId: clientId,
+                resourceId: resourceId
             )
         )
     }
