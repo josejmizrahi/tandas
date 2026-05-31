@@ -4,6 +4,21 @@
 > de detalle siguiendo Universal Detail layered doctrine. **Ejecutable
 > en una sesión nueva**. Cada fase tiene Inputs / Outputs / DoD / Smoke
 > explícito para que el agente que la tome no necesite re-derivar.
+>
+> ## ⚠️ Orden recomendado vs `ResourcesPolish.md`
+>
+> **Ejecutar `Plans/Active/ResourcesPolish.md` ANTES de este plan.**
+> Las ocurrencias de rituales materializan como `group_resources`
+> rows tipo `event`. Si `ResourceDetailView` ya está polimórfico
+> (Resources shipped en main), RitualDetailView reusa
+> `coordinationBlock=.schedule` y Fase 3 se reduce ~30%. Si no, esta
+> sesión debe añadir manualmente el `event` case + bloque
+> Coordination específico.
+>
+> **Verificación**: `git log --oneline --grep="v3-deep: Resources"
+> -n 5` debe mostrar 4+ commits del slice Resources antes de
+> arrancar Fase 0 de Rituals. Si no aparecen, considera ejecutar
+> ResourcesPolish primero.
 
 ## TL;DR
 
