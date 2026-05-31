@@ -1,9 +1,12 @@
 import SwiftUI
 import RuulCore
 
-/// Row used by both `GroupResourcesCard` (compact) and
-/// `ResourcesListView`. Type-icon + name + subtitle (type · ownership);
-/// optional one-line description preview when not compact.
+/// Row used by `GroupResourcesCard` (compact) and `ResourcesListView`.
+/// Icon + name + subtitle (type · ownership), plus a per-type hint
+/// pulled from the descriptor's metadata schema (e.g. mileage for
+/// vehicle, address for space, quantity for inventory). The hint only
+/// renders when the underlying metadata key is present, so envelope
+/// rows without per-type data still look correct.
 public struct ResourceRowView: View {
     let resource: GroupResource
     let compact: Bool
@@ -29,6 +32,12 @@ public struct ResourceRowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                if let hint = descriptorHint {
+                    Text(hint)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 if !compact, !resource.previewText.isEmpty {
                     Text(resource.previewText)
                         .font(.subheadline)
@@ -41,6 +50,18 @@ public struct ResourceRowView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("\(resource.name). \(resource.subtitle)"))
     }
+
+    /// First populated metadata field from the descriptor schema,
+    /// rendered as "label: value". Returns nil when none of the
+    /// per-type fields carry a value.
+    private var descriptorHint: String? {
+        for field in resource.resourceType.descriptor.metadataSchema {
+            if let value = resource.metadataString(forKey: field.key) {
+                return "\(String(localized: field.label)): \(value)"
+            }
+        }
+        return nil
+    }
 }
 
 #Preview("Rows") {
@@ -49,5 +70,7 @@ public struct ResourceRowView: View {
         Section { ResourceRowView(resource: ResourcesPreviewData.space) }
         Section { ResourceRowView(resource: ResourcesPreviewData.asset, compact: true) }
         Section { ResourceRowView(resource: ResourcesPreviewData.document) }
+        Section { ResourceRowView(resource: ResourcesPreviewData.vehicle) }
+        Section { ResourceRowView(resource: ResourcesPreviewData.inventory) }
     }
 }

@@ -1,15 +1,21 @@
 import SwiftUI
 import RuulCore
 
-/// Detail surface for a single `GroupResource` envelope (Primitiva 5).
-/// Read-only Foundation slice — identity hero + descripción + detalles
-/// (type/ownership/visibility/timestamps) + actividad placeholder +
-/// acciones (Archivar). Subtype-specific fields (fund balance, space
-/// booking calendar, asset custody history, document attachments) are
-/// deferred to dedicated slices.
+/// Universal Detail (layered scroll, no segmented tabs) for a single
+/// `GroupResource` envelope. Fase A: 6 blocks render in order —
+/// Identity / Context / Participation / Coordination / Activity /
+/// Actions. The Coordination block is a dispatcher; sub-blocks
+/// (`money`, `schedule`, `access`, `responsibility`, `rules`, `usage`)
+/// only render when the resource's
+/// `descriptor.coordinationBlocks.contains(.kind)`. Per-type sheets
+/// (valuation, booking, lock, lifecycle event) land in Fase B/C; this
+/// surface ships their headers + placeholders so the layered shape is
+/// stable and visible to founders.
 ///
-/// Pattern: Wallet card hero + grouped sections. Empty sections collapse
-/// per `doctrine_group_space_situational`.
+/// Doctrines applied: `ruul_universal_detail_layered_doctrine`,
+/// `doctrine_resource_detail_v2`, `doctrine_button_styles`,
+/// `doctrine_card_styles`, `doctrine_group_space_situational` (empty
+/// sub-block = invisible).
 public struct ResourceDetailView: View {
     @Bindable var store: ResourcesStore
     @Bindable var membersStore: MembersStore
@@ -31,11 +37,14 @@ public struct ResourceDetailView: View {
         self.resource = resource
     }
 
+    private var descriptor: ResourceTypeDescriptor { resource.resourceType.descriptor }
+
     public var body: some View {
         List {
-            heroSection
-            aboutSection
-            detailsSection
+            identitySection
+            contextSection
+            participationSection
+            coordinationSection
             activitySection
             actionsSection
         }
@@ -67,13 +76,13 @@ public struct ResourceDetailView: View {
         }
     }
 
-    // MARK: - Hero
+    // MARK: - 1. Identity
 
     @ViewBuilder
-    private var heroSection: some View {
-        Section {
+    private var identitySection: some View {
+        Section(L10n.ResourceDetail.identitySection) {
             VStack(spacing: 12) {
-                Image(systemName: resource.resourceType.systemImageName)
+                Image(systemName: descriptor.icon)
                     .font(.system(size: 44, weight: .semibold))
                     .foregroundStyle(.tint)
                     .frame(width: 80, height: 80)
@@ -83,9 +92,13 @@ public struct ResourceDetailView: View {
                     Text(resource.name)
                         .font(.title2.weight(.semibold))
                         .multilineTextAlignment(.center)
-                    Text(resource.resourceType.label)
+                    Text(descriptor.label)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    Text(descriptor.subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -95,27 +108,20 @@ public struct ResourceDetailView: View {
         }
     }
 
-    // MARK: - About
+    // MARK: - 2. Context
 
     @ViewBuilder
-    private var aboutSection: some View {
-        Section(L10n.ResourceDetail.aboutSection) {
+    private var contextSection: some View {
+        Section(L10n.ResourceDetail.contextSection) {
             if resource.previewText.isEmpty {
-                Text(L10n.ResourceDetail.aboutEmpty)
+                Text(L10n.ResourceDetail.descriptionEmpty)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
                 Text(resource.previewText)
                     .font(.body)
             }
-        }
-    }
 
-    // MARK: - Details
-
-    @ViewBuilder
-    private var detailsSection: some View {
-        Section(L10n.ResourceDetail.detailsSection) {
             LabeledContent {
                 Text(resource.resourceType.label)
             } label: {
@@ -150,21 +156,86 @@ public struct ResourceDetailView: View {
                     Text(L10n.ResourceDetail.updatedAtLabel)
                 }
             }
+
+            // Per-type metadata fields driven by the descriptor schema.
+            // Empty values stay invisible (situational doctrine).
+            ForEach(descriptor.metadataSchema, id: \.key) { field in
+                if let value = resource.metadataString(forKey: field.key) {
+                    LabeledContent {
+                        Text(value)
+                            .multilineTextAlignment(.trailing)
+                    } label: {
+                        Text(field.label)
+                    }
+                }
+            }
         }
     }
 
-    // MARK: - Activity (placeholder)
+    // MARK: - 3. Participation
+
+    @ViewBuilder
+    private var participationSection: some View {
+        Section(L10n.ResourceDetail.participationSection) {
+            Label {
+                Text(L10n.ResourceDetail.participationStub)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } icon: {
+                Image(systemName: "person.crop.circle.badge.questionmark")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - 4. Coordination (descriptor-gated sub-blocks)
+
+    @ViewBuilder
+    private var coordinationSection: some View {
+        Section(L10n.ResourceDetail.coordinationSection) {
+            ForEach(CoordinationBlockKind.renderOrder, id: \.self) { kind in
+                if descriptor.coordinationBlocks.contains(kind) {
+                    coordinationRow(kind)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func coordinationRow(_ kind: CoordinationBlockKind) -> some View {
+        // Fase A: stub row per sub-block. Fase B/C wires real surfaces
+        // (Money pool balance, schedule bookings, access rules, etc.).
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(kind.label)
+                    .font(.body.weight(.medium))
+                Text(L10n.ResourceDetail.coordinationStub)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: kind.systemImageName)
+                .foregroundStyle(.tint)
+        }
+    }
+
+    // MARK: - 5. Activity
 
     @ViewBuilder
     private var activitySection: some View {
         Section(L10n.ResourceDetail.activitySection) {
-            Text(L10n.ResourceDetail.activityPlaceholder)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Label {
+                Text(L10n.ResourceDetail.activityStub)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } icon: {
+                Image(systemName: "clock.arrow.circlepath")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
-    // MARK: - Actions
+    // MARK: - 6. Actions
 
     @ViewBuilder
     private var actionsSection: some View {

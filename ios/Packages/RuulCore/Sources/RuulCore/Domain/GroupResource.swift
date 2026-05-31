@@ -1,41 +1,52 @@
 import Foundation
 
-/// Primitiva 5: las cosas que el grupo tiene. Mirrors the envelope
-/// `public.group_resources` row returned by
-/// `group_resources_active(...)`. Subtype tables (fund/space/asset
-/// specifics, bookings, transactions) are intentionally invisible at
-/// the Foundation surface.
+/// Primitiva 5 (Resources / Property). Mirrors the envelope
+/// `public.group_resources` row plus the projection returned by
+/// `group_resource_detail(...)` (which denormalizes `unit`, `metadata`,
+/// `series_id`, `archived_at`, `ownership_metadata` and the per-type
+/// `subtype` jsonb).
+///
+/// All per-type rendering metadata (icon, subtitle, supported
+/// coordination sub-blocks, valuation/custody/booking/assignment
+/// switches, lifecycle whitelist, editable metadata schema) lives in
+/// `ResourceTypeRegistry` / `ResourceTypeDescriptor`. Views, stores
+/// and tests should resolve those via the registry instead of branching
+/// on the raw enum.
 public enum GroupResourceType: String, Codable, CaseIterable, Identifiable, Sendable, Hashable {
+    case event
     case fund
+    case slot
     case space
     case asset
+    case right
+    case money
+    case time
+    case points
     case document
+    case data
+    case access
     case other
+    case vehicle
+    case tool
+    case inventory
+    case realEstate           = "real_estate"
+    case intellectualProperty = "intellectual_property"
 
     public var id: String { rawValue }
 
-    public static let displayOrder: [GroupResourceType] = [
-        .fund, .space, .asset, .document, .other
-    ]
-
-    public var label: LocalizedStringResource {
-        switch self {
-        case .fund:     return L10n.Resources.fundLabel
-        case .space:    return L10n.Resources.spaceLabel
-        case .asset:    return L10n.Resources.assetLabel
-        case .document: return L10n.Resources.documentLabel
-        case .other:    return L10n.Resources.otherLabel
-        }
+    /// Routing helper — pulls the descriptor from the registry.
+    public var descriptor: ResourceTypeDescriptor {
+        ResourceTypeRegistry.descriptor(for: self)
     }
 
-    public var systemImageName: String {
-        switch self {
-        case .fund:     return "banknote"
-        case .space:    return "house"
-        case .asset:    return "shippingbox"
-        case .document: return "doc.text"
-        case .other:    return "square.stack.3d.up"
-        }
+    public var label: LocalizedStringResource    { descriptor.label }
+    public var systemImageName: String           { descriptor.icon }
+    public var subtitle: LocalizedStringResource { descriptor.subtitle }
+
+    /// Canonical picker / grouped-list order, owned by the registry so
+    /// the source of truth stays in one place.
+    public static var displayOrder: [GroupResourceType] {
+        ResourceTypeRegistry.displayOrder
     }
 }
 
@@ -55,27 +66,32 @@ public enum ResourceVisibility: String, Codable, CaseIterable, Identifiable, Sen
     }
 }
 
-/// Wire tokens use `individual` for member-owned; `.member` is the
-/// iOS-facing alias so the UI reads naturally. `rawValue` is what
-/// the backend wants on the wire.
+/// Wire tokens are `group | individual | shared | custodial | external`
+/// (see `group_resources_ownership_kind_check`). `.member` is the
+/// iOS-facing alias for `individual` so the UI reads naturally; the
+/// other four match the wire 1:1.
 public enum ResourceOwnershipKind: String, Codable, CaseIterable, Identifiable, Sendable, Hashable {
     case group
     case member     = "individual"
+    case shared
+    case custodial
     case external
 
     public var id: String { rawValue }
 
     public var label: LocalizedStringResource {
         switch self {
-        case .group:    return L10n.Resources.groupOwnedLabel
-        case .member:   return L10n.Resources.memberOwnedLabel
-        case .external: return L10n.Resources.externalOwnedLabel
+        case .group:     return L10n.Resources.groupOwnedLabel
+        case .member:    return L10n.Resources.memberOwnedLabel
+        case .shared:    return L10n.Resources.sharedOwnedLabel
+        case .custodial: return L10n.Resources.custodialOwnedLabel
+        case .external:  return L10n.Resources.externalOwnedLabel
         }
     }
 }
 
 public struct GroupResource: Identifiable, Codable, Equatable, Sendable, Hashable {
-    public let id: UUID                            // resource_id
+    public let id: UUID
     public let groupId: UUID
     public let resourceType: GroupResourceType
     public let name: String
@@ -84,25 +100,33 @@ public struct GroupResource: Identifiable, Codable, Equatable, Sendable, Hashabl
     public let visibility: ResourceVisibility
     public let ownershipKind: ResourceOwnershipKind
     public let ownerMembershipId: UUID?
-    public let custodianMembershipId: UUID?
+    public let ownershipMetadata: [String: RPCJSONValue]?
+    public let unit: String?
+    public let metadata: [String: RPCJSONValue]?
+    public let seriesId: UUID?
     public let createdBy: UUID?
     public let createdAt: Date?
     public let updatedAt: Date?
+    public let archivedAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case id                     = "resource_id"
-        case groupId                = "group_id"
-        case resourceType           = "resource_type"
+        case id                = "resource_id"
+        case groupId           = "group_id"
+        case resourceType      = "resource_type"
         case name
         case description
         case status
         case visibility
-        case ownershipKind          = "ownership_kind"
-        case ownerMembershipId      = "owner_membership_id"
-        case custodianMembershipId  = "custodian_membership_id"
-        case createdBy              = "created_by"
-        case createdAt              = "created_at"
-        case updatedAt              = "updated_at"
+        case ownershipKind     = "ownership_kind"
+        case ownerMembershipId = "owner_membership_id"
+        case ownershipMetadata = "ownership_metadata"
+        case unit
+        case metadata
+        case seriesId          = "series_id"
+        case createdBy         = "created_by"
+        case createdAt         = "created_at"
+        case updatedAt         = "updated_at"
+        case archivedAt        = "archived_at"
     }
 
     public init(
@@ -115,10 +139,14 @@ public struct GroupResource: Identifiable, Codable, Equatable, Sendable, Hashabl
         visibility: ResourceVisibility = .members,
         ownershipKind: ResourceOwnershipKind = .group,
         ownerMembershipId: UUID? = nil,
-        custodianMembershipId: UUID? = nil,
+        ownershipMetadata: [String: RPCJSONValue]? = nil,
+        unit: String? = nil,
+        metadata: [String: RPCJSONValue]? = nil,
+        seriesId: UUID? = nil,
         createdBy: UUID? = nil,
         createdAt: Date? = nil,
-        updatedAt: Date? = nil
+        updatedAt: Date? = nil,
+        archivedAt: Date? = nil
     ) {
         self.id = id
         self.groupId = groupId
@@ -129,16 +157,21 @@ public struct GroupResource: Identifiable, Codable, Equatable, Sendable, Hashabl
         self.visibility = visibility
         self.ownershipKind = ownershipKind
         self.ownerMembershipId = ownerMembershipId
-        self.custodianMembershipId = custodianMembershipId
+        self.ownershipMetadata = ownershipMetadata
+        self.unit = unit
+        self.metadata = metadata
+        self.seriesId = seriesId
         self.createdBy = createdBy
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.archivedAt = archivedAt
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        // group_resources_active returns 'resource_id'; the create RPC
-        // returns the raw public.group_resources row with 'id'. Accept both.
+        // `group_resources_active` returns 'resource_id'; the raw
+        // `group_resources` row (and `group_resource_detail`) returns
+        // 'id'. Accept both.
         if let v = try c.decodeIfPresent(UUID.self, forKey: .id) {
             self.id = v
         } else {
@@ -155,18 +188,24 @@ public struct GroupResource: Identifiable, Codable, Equatable, Sendable, Hashabl
         self.visibility = ResourceVisibility(rawValue: rawVis) ?? .members
         let rawOwn = try c.decode(String.self, forKey: .ownershipKind)
         self.ownershipKind = ResourceOwnershipKind(rawValue: rawOwn) ?? .group
-        self.ownerMembershipId = try c.decodeIfPresent(UUID.self, forKey: .ownerMembershipId)
-        self.custodianMembershipId = try c.decodeIfPresent(UUID.self, forKey: .custodianMembershipId)
-        self.createdBy = try c.decodeIfPresent(UUID.self, forKey: .createdBy)
-        self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
-        self.updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+        self.ownerMembershipId  = try c.decodeIfPresent(UUID.self, forKey: .ownerMembershipId)
+        self.ownershipMetadata  = try c.decodeIfPresent([String: RPCJSONValue].self, forKey: .ownershipMetadata)
+        self.unit               = try c.decodeIfPresent(String.self, forKey: .unit)
+        self.metadata           = try c.decodeIfPresent([String: RPCJSONValue].self, forKey: .metadata)
+        self.seriesId           = try c.decodeIfPresent(UUID.self, forKey: .seriesId)
+        self.createdBy          = try c.decodeIfPresent(UUID.self, forKey: .createdBy)
+        self.createdAt          = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        self.updatedAt          = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+        self.archivedAt         = try c.decodeIfPresent(Date.self, forKey: .archivedAt)
     }
 
     private enum AltKeys: String, CodingKey { case idAlt = "id" }
 }
 
 public extension GroupResource {
-    /// Compact subtitle for list rows: type + ownership.
+    /// Compact subtitle for list rows: type · ownership. Per-type
+    /// renderers may prepend a hint pulled from the descriptor metadata
+    /// schema (e.g. condition, balance) — see `descriptorHint(in:)`.
     var subtitle: String {
         let parts: [String] = [String(localized: resourceType.label),
                                String(localized: ownershipKind.label)]
@@ -176,5 +215,25 @@ public extension GroupResource {
     /// Trimmed body preview.
     var previewText: String {
         (description ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Best-effort leaf reader for the metadata jsonb. Returns nil for
+    /// missing / null / blank values. Numbers render with their natural
+    /// `String` form, bools as Sí/No; objects + arrays fall back to a
+    /// JSON snippet so the surface can still show something. Used by
+    /// the descriptor-driven row + detail renderers.
+    func metadataString(forKey key: String) -> String? {
+        guard let raw = metadata?[key] else { return nil }
+        switch raw {
+        case .string(let s): return s.isEmpty ? nil : s
+        case .number(let n): return NSDecimalNumber(decimal: n).stringValue
+        case .bool(let b):   return b ? "Sí" : "No"
+        case .null:          return nil
+        case .array, .object:
+            let encoder = JSONEncoder()
+            if let data = try? encoder.encode(raw),
+               let s = String(data: data, encoding: .utf8) { return s }
+            return nil
+        }
     }
 }

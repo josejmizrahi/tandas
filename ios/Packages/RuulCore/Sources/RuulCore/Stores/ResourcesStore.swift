@@ -1,10 +1,18 @@
 import Foundation
 import Observation
 
+/// 2-step Create flow state machine. Step 1 is the type picker (forces
+/// the user to pick from the 18 canonical types before seeing per-type
+/// fields); Step 2 is the common form.
+public enum CreateResourceStep: String, Sendable, Hashable {
+    case type
+    case details
+}
+
 /// `@MainActor` store for Primitiva 5 (Resources). Holds active
-/// envelope rows + the create draft. Foundation surface: no detail
-/// screen, no edit-existing-resource flow, no subtype-specific
-/// fields.
+/// envelope rows + the create draft. Foundation surface focuses on the
+/// envelope: subtype-specific writes (assign custodian, lock fund, book
+/// space, …) ship in Fase B/C with dedicated sheets.
 @MainActor
 @Observable
 public final class ResourcesStore {
@@ -13,13 +21,17 @@ public final class ResourcesStore {
     public private(set) var errorMessage: String?
 
     public var isCreatePresented: Bool = false
+
+    /// 2-step Create flow: type picker → form. The store drives the
+    /// step so the sheet can present either screen on open and the
+    /// store decides what "Back" / "Continue" buttons do.
+    public var createStep: CreateResourceStep = .type
     public var draftName: String = ""
     public var draftDescription: String = ""
-    public var draftType: GroupResourceType = .other
+    public var draftType: GroupResourceType = .fund
     public var draftVisibility: ResourceVisibility = .members
     public var draftOwnershipKind: ResourceOwnershipKind = .group
     public var draftOwnerMembershipId: UUID?
-    public var draftCustodianMembershipId: UUID?
 
     /// Drives the `TransferOwnershipSheet` for an existing resource.
     public var isTransferPresented: Bool = false
@@ -79,17 +91,31 @@ public final class ResourcesStore {
         await refresh(groupId: groupId)
     }
 
-    /// Opens the create sheet with a fresh draft.
+    /// Opens the create sheet with a fresh draft. When `type` is `nil`
+    /// the flow starts on the type picker (Step 1); when provided we
+    /// skip straight to the details form (Step 2).
     public func beginCreating(type: GroupResourceType? = nil) {
         draftName = ""
         draftDescription = ""
-        draftType = type ?? .other
+        draftType = type ?? .fund
         draftVisibility = .members
         draftOwnershipKind = .group
         draftOwnerMembershipId = nil
-        draftCustodianMembershipId = nil
+        createStep = (type == nil) ? .type : .details
         errorMessage = nil
         isCreatePresented = true
+    }
+
+    /// Step 1 → Step 2 of the Create flow.
+    public func advanceFromTypePicker() {
+        createStep = .details
+        errorMessage = nil
+    }
+
+    /// Step 2 → Step 1 of the Create flow.
+    public func returnToTypePicker() {
+        createStep = .type
+        errorMessage = nil
     }
 
     @discardableResult
@@ -107,8 +133,7 @@ public final class ResourcesStore {
                 description: draftDescription,
                 visibility: draftVisibility,
                 ownershipKind: draftOwnershipKind,
-                ownerMembershipId: draftOwnerMembershipId,
-                custodianMembershipId: draftCustodianMembershipId
+                ownerMembershipId: draftOwnerMembershipId
             )
             // Refetch so we get the canonical sort + the wire shape
             // from `group_resources_active` (rather than a one-off
@@ -138,11 +163,11 @@ public final class ResourcesStore {
     public func clearDraft() {
         draftName = ""
         draftDescription = ""
-        draftType = .other
+        draftType = .fund
         draftVisibility = .members
         draftOwnershipKind = .group
         draftOwnerMembershipId = nil
-        draftCustodianMembershipId = nil
+        createStep = .type
         errorMessage = nil
     }
 

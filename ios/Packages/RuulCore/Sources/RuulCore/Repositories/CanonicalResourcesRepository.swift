@@ -22,9 +22,11 @@ public struct CanonicalResourcesRepository: Sendable {
         description: String? = nil,
         visibility: ResourceVisibility = .members,
         ownershipKind: ResourceOwnershipKind = .group,
-        ownerMembershipId: UUID? = nil,
-        custodianMembershipId: UUID? = nil
+        ownerMembershipId: UUID? = nil
     ) async throws -> GroupResource {
+        // `create_group_resource` keeps `p_custodian_membership_id` on
+        // the wire for Fase B (AssetSubtypeData); the Foundation surface
+        // does not expose a custodian picker, so we pass NULL.
         let input = CreateGroupResourceInput(
             pGroupId: groupId,
             pResourceType: type.rawValue,
@@ -35,7 +37,7 @@ public struct CanonicalResourcesRepository: Sendable {
             pVisibility: visibility.rawValue,
             pOwnershipKind: ownershipKind.rawValue,
             pOwnerMembershipId: ownerMembershipId,
-            pCustodianMembershipId: custodianMembershipId
+            pCustodianMembershipId: nil
         )
         return try await rpc.createGroupResource(input)
     }
