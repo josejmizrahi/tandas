@@ -765,4 +765,20 @@ public protocol RuulRPCClient: Sendable {
     /// returns public.profiles`. Caller pre-trims; backend lowercases
     /// username and enforces uniqueness.
     func updateMyProfile(_ input: UpdateMyProfileInput) async throws -> Profile
+
+    // MARK: - V3-D.21 — Inbox
+
+    /// `list_my_inbox(p_group_id, p_unread_only, p_limit) returns jsonb`.
+    /// Reads `notifications_outbox` filtered by recipient. iOS feeds the
+    /// in-app inbox surface; APNs push is best-effort and orthogonal.
+    func listMyInbox(_ input: ListMyInboxParams) async throws -> [InboxItem]
+
+    /// `mark_inbox_read(p_outbox_id)`. Idempotent. No-op for foreign rows.
+    func markInboxRead(_ input: MarkInboxReadParams) async throws
+
+    /// `mark_all_inbox_read(p_group_id)`. Returns rows affected.
+    func markAllInboxRead(_ input: MarkAllInboxReadParams) async throws -> Int
+
+    /// `my_inbox_unread_count(p_group_id)`. Cheap counter for badges.
+    func myInboxUnreadCount(_ input: MyInboxUnreadCountParams) async throws -> Int
 }

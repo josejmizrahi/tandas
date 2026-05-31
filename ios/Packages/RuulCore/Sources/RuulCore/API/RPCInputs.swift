@@ -2860,3 +2860,40 @@ public struct ListMemberPermissionsParams: Encodable, Sendable {
         self.pUserId = userId
     }
 }
+
+// MARK: - V3-D.21 — Inbox
+
+public struct ListMyInboxParams: Encodable, Sendable {
+    public let pGroupId: UUID?
+    public let pUnreadOnly: Bool
+    public let pLimit: Int
+    enum CodingKeys: String, CodingKey {
+        case pGroupId    = "p_group_id"
+        case pUnreadOnly = "p_unread_only"
+        case pLimit      = "p_limit"
+    }
+    public init(groupId: UUID? = nil, unreadOnly: Bool = false, limit: Int = 50) {
+        self.pGroupId = groupId
+        self.pUnreadOnly = unreadOnly
+        self.pLimit = limit
+    }
+}
+
+public struct MarkInboxReadParams: Encodable, Sendable {
+    public let pOutboxId: UUID
+    enum CodingKeys: String, CodingKey { case pOutboxId = "p_outbox_id" }
+    public init(outboxId: UUID) { self.pOutboxId = outboxId }
+}
+
+public struct MarkAllInboxReadParams: Encodable, Sendable {
+    public let pGroupId: UUID?
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID? = nil) { self.pGroupId = groupId }
+}
+
+public struct MyInboxUnreadCountParams: Encodable, Sendable {
+    public let pGroupId: UUID?
+    enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+    public init(groupId: UUID? = nil) { self.pGroupId = groupId }
+}
+

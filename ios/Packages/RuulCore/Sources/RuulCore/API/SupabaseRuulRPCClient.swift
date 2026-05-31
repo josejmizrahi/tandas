@@ -1502,4 +1502,47 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             throw RPCErrorMapper.map(error)
         }
     }
+
+    // MARK: - V3-D.21 — Inbox
+
+    public func listMyInbox(_ input: ListMyInboxParams) async throws -> [InboxItem] {
+        do {
+            return try await client
+                .rpc("list_my_inbox", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func markInboxRead(_ input: MarkInboxReadParams) async throws {
+        do {
+            _ = try await client.rpc("mark_inbox_read", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func markAllInboxRead(_ input: MarkAllInboxReadParams) async throws -> Int {
+        do {
+            return try await client
+                .rpc("mark_all_inbox_read", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func myInboxUnreadCount(_ input: MyInboxUnreadCountParams) async throws -> Int {
+        do {
+            return try await client
+                .rpc("my_inbox_unread_count", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
 }

@@ -27,6 +27,7 @@ public struct GroupTabsHost: View {
 
     @State private var isShowingSwitcher: Bool = false
     @State private var isShowingPersonalProfile: Bool = false
+    @State private var isShowingInbox: Bool = false
     /// Drives the `MemberDetailView` push from the Personas tab.
     @State private var pendingMemberSelection: MembershipBoundaryItem?
 
@@ -58,6 +59,15 @@ public struct GroupTabsHost: View {
         }
         .sheet(isPresented: $isShowingPersonalProfile) {
             PersonalProfileSheet(container: container)
+        }
+        .sheet(isPresented: $isShowingInbox) {
+            NavigationStack {
+                InboxView(store: container.inboxStore, scopeGroupId: group.id)
+            }
+        }
+        // D.21B — keep badge fresh when scope changes or app foregrounds
+        .task(id: group.id) {
+            await container.inboxStore.refreshBadge(groupId: group.id)
         }
         // V3-A1 — wire realtime listeners to the active group. The
         // `.task(id:)` lifecycle cancels-and-replaces on group switch
@@ -192,6 +202,20 @@ public struct GroupTabsHost: View {
                 .foregroundStyle(.primary)
             }
             .accessibilityLabel(Text(L10n.GroupSwitcher.title))
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                isShowingInbox = true
+            } label: {
+                Label("Bandeja", systemImage: "tray.fill")
+                    .labelStyle(.iconOnly)
+            }
+            .badge(container.inboxStore.unreadCount)
+            .accessibilityLabel(
+                Text(container.inboxStore.unreadCount > 0
+                     ? "Bandeja (\(container.inboxStore.unreadCount) sin leer)"
+                     : "Bandeja")
+            )
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button {

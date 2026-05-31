@@ -140,6 +140,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case myNotificationPreferences(groupId: UUID)
         case setNotificationPreference(input: SetNotificationPreferenceInput)
         case registerMyNotificationToken(input: RegisterMyNotificationTokenInput)
+        case listMyInbox(input: ListMyInboxParams)
+        case markInboxRead(input: MarkInboxReadParams)
+        case markAllInboxRead(input: MarkAllInboxReadParams)
+        case myInboxUnreadCount(input: MyInboxUnreadCountParams)
         case groupVisibility(groupId: UUID)
         case setGroupVisibility(input: SetGroupVisibilityInput)
     }
@@ -1210,5 +1214,37 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setGroupVisibility(_ input: SetGroupVisibilityInput) async throws -> String {
         recorded.append(.setGroupVisibility(input: input))
         return try setGroupVisibilityStub.get()
+    }
+
+    // MARK: - V3-D.21 — Inbox
+
+    private var listMyInboxStub: Result<[InboxItem], RuulError> = .success([])
+    private var markInboxReadStub: Result<Void, RuulError> = .success(())
+    private var markAllInboxReadStub: Result<Int, RuulError> = .success(0)
+    private var myInboxUnreadCountStub: Result<Int, RuulError> = .success(0)
+
+    func stubListMyInbox(_ result: Result<[InboxItem], RuulError>) { listMyInboxStub = result }
+    func stubMarkInboxRead(_ result: Result<Void, RuulError>) { markInboxReadStub = result }
+    func stubMarkAllInboxRead(_ result: Result<Int, RuulError>) { markAllInboxReadStub = result }
+    func stubMyInboxUnreadCount(_ result: Result<Int, RuulError>) { myInboxUnreadCountStub = result }
+
+    func listMyInbox(_ input: ListMyInboxParams) async throws -> [InboxItem] {
+        recorded.append(.listMyInbox(input: input))
+        return try listMyInboxStub.get()
+    }
+
+    func markInboxRead(_ input: MarkInboxReadParams) async throws {
+        recorded.append(.markInboxRead(input: input))
+        try markInboxReadStub.get()
+    }
+
+    func markAllInboxRead(_ input: MarkAllInboxReadParams) async throws -> Int {
+        recorded.append(.markAllInboxRead(input: input))
+        return try markAllInboxReadStub.get()
+    }
+
+    func myInboxUnreadCount(_ input: MyInboxUnreadCountParams) async throws -> Int {
+        recorded.append(.myInboxUnreadCount(input: input))
+        return try myInboxUnreadCountStub.get()
     }
 }
