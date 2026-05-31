@@ -75,6 +75,16 @@ public final class ResourcesStore {
     public var fundThresholdUnit: String = "MXN"
     public var fundThresholdReason: String = ""
 
+    // Space Fase B.3 state
+    public private(set) var bookings: [GroupResourceBooking] = []
+    public private(set) var bookingsPhase: StorePhase = .idle
+    public var isBookSpacePresented: Bool = false
+    public var bookStartsAt: Date = Date()
+    public var bookEndsAt: Date = Date().addingTimeInterval(60 * 60)
+    public var bookReason: String = ""
+    public var pendingCancelBookingId: UUID?
+    public var isConfirmingCancelBooking: Bool = false
+
     private let repository: CanonicalResourcesRepository
     private var loadedGroupId: UUID?
 
@@ -540,6 +550,110 @@ extension ResourcesStore {
             await loadDetail(resourceId: resourceId)
             isSetFundThresholdPresented = false
             fundThresholdReason = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+}
+
+// MARK: - Space Fase B.3 actions
+
+@MainActor
+extension ResourcesStore {
+    public func presentBookSpace() {
+        let now = Date()
+        // Default window: next top-of-hour to one hour later, in the
+        // device timezone. Users can override before save.
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month, .day, .hour], from: now)
+        let topOfNextHour = cal.date(from: comps).map { $0.addingTimeInterval(60 * 60) } ?? now
+        bookStartsAt = topOfNextHour
+        bookEndsAt = topOfNextHour.addingTimeInterval(60 * 60)
+        bookReason = ""
+        errorMessage = nil
+        isBookSpacePresented = true
+    }
+
+    public var canSaveBookSpace: Bool {
+        activeResourceId != nil && bookEndsAt > bookStartsAt
+    }
+
+    @discardableResult
+    public func saveBookSpace() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        guard bookEndsAt > bookStartsAt else {
+            errorMessage = String(localized: L10n.BookSpace.invalidWindow)
+            return false
+        }
+        do {
+            _ = try await repository.bookResource(
+                resourceId: resourceId,
+                startsAt: bookStartsAt,
+                endsAt: bookEndsAt,
+                reason: bookReason,
+                clientId: UUID().uuidString
+            )
+            await refreshBookings(resourceId: resourceId)
+            isBookSpacePresented = false
+            bookReason = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    public func refreshBookings(resourceId: UUID) async {
+        if bookings.isEmpty {
+            bookingsPhase = .loading
+        }
+        do {
+            let fetched = try await repository.listBookingsForResource(
+                resourceId: resourceId,
+                startsAfter: nil,
+                endsBefore: nil,
+                limit: 50
+            )
+            bookings = fetched
+            bookingsPhase = .loaded
+        } catch {
+            let message = UserFacingError.from(error).message
+            errorMessage = message
+            bookingsPhase = .failed(message: message)
+        }
+    }
+
+    public func clearBookings() {
+        bookings = []
+        bookingsPhase = .idle
+    }
+
+    public func presentCancelBooking(_ bookingId: UUID) {
+        pendingCancelBookingId = bookingId
+        errorMessage = nil
+        isConfirmingCancelBooking = true
+    }
+
+    @discardableResult
+    public func confirmCancelBooking() async -> Bool {
+        guard let bookingId = pendingCancelBookingId else {
+            isConfirmingCancelBooking = false
+            return false
+        }
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.cancelBooking(bookingId: bookingId, reason: nil)
+            await refreshBookings(resourceId: resourceId)
+            isConfirmingCancelBooking = false
+            pendingCancelBookingId = nil
             return true
         } catch {
             errorMessage = UserFacingError.from(error).message

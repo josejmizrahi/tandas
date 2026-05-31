@@ -48,6 +48,11 @@ public struct ResourceDetailView: View {
         return store.detail?.fundSubtype
     }
 
+    private var spaceSubtype: SpaceSubtypeData? {
+        guard store.detail?.resource.id == resource.id else { return nil }
+        return store.detail?.spaceSubtype
+    }
+
     public var body: some View {
         List {
             identitySection
@@ -64,10 +69,16 @@ public struct ResourceDetailView: View {
             if descriptor.subtypeTable != nil {
                 await store.loadDetail(resourceId: resource.id)
             }
+            if resource.resourceType == .space {
+                await store.refreshBookings(resourceId: resource.id)
+            }
         }
         .refreshable {
             if descriptor.subtypeTable != nil {
                 await store.loadDetail(resourceId: resource.id)
+            }
+            if resource.resourceType == .space {
+                await store.refreshBookings(resourceId: resource.id)
             }
         }
         .confirmationDialog(
@@ -123,6 +134,23 @@ public struct ResourceDetailView: View {
         }
         .sheet(isPresented: $store.isSetFundThresholdPresented) {
             SetFundThresholdSheet(store: store)
+        }
+        .sheet(isPresented: $store.isBookSpacePresented) {
+            BookSpaceSheet(store: store)
+        }
+        .confirmationDialog(
+            Text(L10n.BookSpace.cancelConfirmTitle),
+            isPresented: $store.isConfirmingCancelBooking,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await store.confirmCancelBooking() }
+            } label: {
+                Text(L10n.BookSpace.cancelConfirm)
+            }
+            Button(role: .cancel) {} label: { Text(L10n.BookSpace.cancel) }
+        } message: {
+            Text(L10n.BookSpace.cancelConfirmBody)
         }
         .confirmationDialog(
             Text(L10n.ResourceDetail.fundLockConfirmTitle),
@@ -287,6 +315,13 @@ public struct ResourceDetailView: View {
             )
         case (.fund, .money):
             FundMoneySection(subtype: fundSubtype)
+        case (.space, .schedule):
+            SpaceScheduleSection(
+                subtype: spaceSubtype,
+                bookings: store.bookings,
+                phase: store.bookingsPhase,
+                onCancel: { store.presentCancelBooking($0) }
+            )
         default:
             stubCoordinationRow(kind)
         }
@@ -364,6 +399,13 @@ public struct ResourceDetailView: View {
                     store.presentRecordValuation(seed: assetSubtype)
                 } label: {
                     Label(L10n.ResourceDetail.assetRecordValuation, systemImage: "dollarsign.circle")
+                }
+            }
+            if descriptor.supportsBooking, resource.resourceType == .space {
+                Button {
+                    store.presentBookSpace()
+                } label: {
+                    Label(L10n.ResourceDetail.spaceBookAction, systemImage: "calendar.badge.plus")
                 }
             }
             if descriptor.supportsLocking {
@@ -553,5 +595,121 @@ private struct FundMoneySection: View {
             return "\(amount) \(currency)"
         }
         return amount
+    }
+}
+
+// MARK: - SpaceScheduleSection
+
+/// Real Coordination > Schedule block for `space`. Surfaces address /
+/// capacity / rules + upcoming confirmed bookings (filtered against
+/// cancellation audit rows). Empty rows collapse per the situational
+/// doctrine.
+private struct SpaceScheduleSection: View {
+    let subtype: SpaceSubtypeData?
+    let bookings: [GroupResourceBooking]
+    let phase: StorePhase
+    let onCancel: (UUID) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let address = subtype?.address, !address.isEmpty {
+                row(icon: "mappin.and.ellipse",
+                    label: L10n.ResourceDetail.spaceAddressLabel,
+                    value: address)
+            }
+            if let capacity = subtype?.capacity {
+                row(icon: "person.2",
+                    label: L10n.ResourceDetail.spaceCapacityLabel,
+                    value: "\(capacity)")
+            }
+            if let rules = subtype?.rules, !rules.isEmpty {
+                row(icon: "list.bullet.rectangle",
+                    label: L10n.ResourceDetail.spaceRulesLabel,
+                    value: rules)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    Image(systemName: "calendar")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.tint)
+                        .frame(width: 24)
+                    Text(L10n.ResourceDetail.spaceUpcomingLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if upcomingActive.isEmpty {
+                    Text(L10n.ResourceDetail.spaceUpcomingNone)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.leading, 36)
+                } else {
+                    ForEach(upcomingActive) { booking in
+                        bookingRow(booking)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var upcomingActive: [GroupResourceBooking] {
+        let cancelled = Set(bookings.compactMap { $0.status == .cancelled ? $0.id : nil })
+        return bookings
+            .filter { $0.status == .confirmed && !cancelled.contains($0.id) }
+            .sorted(by: { $0.startsAt < $1.startsAt })
+            .prefix(5)
+            .map { $0 }
+    }
+
+    @ViewBuilder
+    private func row(icon: String, label: LocalizedStringResource, value: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.body.weight(.medium))
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.body.weight(.semibold))
+                    .multilineTextAlignment(.leading)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func bookingRow(_ booking: GroupResourceBooking) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "calendar.badge.clock")
+                .font(.body.weight(.medium))
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(booking.startsAt, format: .dateTime.weekday().day().month().hour().minute())
+                    .font(.body.weight(.semibold))
+                if let ends = booking.endsAt {
+                    Text(ends, format: .dateTime.hour().minute())
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let reason = booking.reason, !reason.isEmpty {
+                    Text(reason)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 8)
+            Button(role: .destructive) {
+                onCancel(booking.id)
+            } label: {
+                Image(systemName: "xmark.circle")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel(Text(L10n.BookSpace.cancelAction))
+        }
     }
 }

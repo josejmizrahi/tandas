@@ -282,6 +282,21 @@ public protocol RuulRPCClient: Sendable {
     /// Idempotent via `p_client_id`.
     func setFundThreshold(_ input: SetFundThresholdParams) async throws -> UUID
 
+    // MARK: - Space / Bookings Fase B.3
+
+    /// `book_resource(...)` — creates a confirmed booking. Backend
+    /// rejects overlapping confirmed bookings + invalid windows.
+    /// Requires `bookings.create`. Idempotent via `p_client_id`.
+    func bookResource(_ input: BookResourceParams) async throws -> UUID
+
+    /// `cancel_booking(...)` — inserts a cancellation audit row.
+    /// Requires `bookings.cancel` OR self-ownership of the booking.
+    func cancelBooking(_ input: CancelBookingParams) async throws -> UUID
+
+    /// `list_bookings_for_resource(...)` — bookings for a resource
+    /// optionally filtered by date window. Active-member gate.
+    func listBookingsForResource(_ input: ListBookingsForResourceParams) async throws -> [GroupResourceBooking]
+
     // MARK: - Foundation status
 
     /// `group_foundation_status(p_group_id)` — per-primitive readiness

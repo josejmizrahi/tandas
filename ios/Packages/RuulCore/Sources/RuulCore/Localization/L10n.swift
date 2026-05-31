@@ -893,6 +893,14 @@ public enum L10n {
         public static let archiveAction      = LocalizedStringResource("resource_detail.action.archive",     defaultValue: "Archivar recurso")
         public static let transferAction     = LocalizedStringResource("resource_detail.action.transfer",    defaultValue: "Transferir propiedad")
 
+        // Space Fase B.3 — Schedule block + booking actions.
+        public static let spaceAddressLabel  = LocalizedStringResource("resource_detail.space.address",   defaultValue: "Dirección")
+        public static let spaceCapacityLabel = LocalizedStringResource("resource_detail.space.capacity",  defaultValue: "Capacidad")
+        public static let spaceRulesLabel    = LocalizedStringResource("resource_detail.space.rules",     defaultValue: "Reglas de uso")
+        public static let spaceUpcomingLabel = LocalizedStringResource("resource_detail.space.upcoming",  defaultValue: "Próximas reservas")
+        public static let spaceUpcomingNone  = LocalizedStringResource("resource_detail.space.upcoming.none", defaultValue: "Sin reservas próximas")
+        public static let spaceBookAction    = LocalizedStringResource("resource_detail.space.action.book", defaultValue: "Reservar espacio")
+
         // Fund Fase B.2 — Money block + sheets.
         public static let fundKindLabel        = LocalizedStringResource("resource_detail.fund.kind",        defaultValue: "Tipo de fondo")
         public static let fundCurrencyLabel    = LocalizedStringResource("resource_detail.fund.currency",    defaultValue: "Moneda")
@@ -943,6 +951,32 @@ public enum L10n {
         public static let reasonPlaceholder = LocalizedStringResource("mark_condition.reason.placeholder", defaultValue: "Qué pasó…")
         public static let save            = LocalizedStringResource("mark_condition.save",           defaultValue: "Guardar")
         public static let cancel          = LocalizedStringResource("mark_condition.cancel",         defaultValue: "Cancelar")
+    }
+
+    public enum Bookings {
+        public static let statusRequested = LocalizedStringResource("bookings.status.requested", defaultValue: "Pendiente")
+        public static let statusConfirmed = LocalizedStringResource("bookings.status.confirmed", defaultValue: "Confirmada")
+        public static let statusCancelled = LocalizedStringResource("bookings.status.cancelled", defaultValue: "Cancelada")
+        public static let statusNoShow    = LocalizedStringResource("bookings.status.no_show",   defaultValue: "No asistió")
+        public static let statusCompleted = LocalizedStringResource("bookings.status.completed", defaultValue: "Completada")
+    }
+
+    public enum BookSpace {
+        public static let title          = LocalizedStringResource("book_space.title",            defaultValue: "Reservar espacio")
+        public static let startsSection  = LocalizedStringResource("book_space.section.starts",   defaultValue: "Inicio")
+        public static let endsSection    = LocalizedStringResource("book_space.section.ends",     defaultValue: "Fin")
+        public static let reasonSection  = LocalizedStringResource("book_space.section.reason",   defaultValue: "Motivo (opcional)")
+        public static let reasonPlaceholder = LocalizedStringResource("book_space.reason.placeholder", defaultValue: "Para qué…")
+        public static let save           = LocalizedStringResource("book_space.save",             defaultValue: "Reservar")
+        public static let cancel         = LocalizedStringResource("book_space.cancel",           defaultValue: "Cancelar")
+        public static let invalidWindow  = LocalizedStringResource("book_space.invalid_window",   defaultValue: "El fin debe ser después del inicio.")
+        public static let upcomingTitle  = LocalizedStringResource("book_space.upcoming.title",   defaultValue: "Próximas reservas")
+        public static let noUpcoming     = LocalizedStringResource("book_space.upcoming.none",    defaultValue: "Sin reservas próximas")
+        public static let bookAction     = LocalizedStringResource("book_space.action.book",      defaultValue: "Reservar")
+        public static let cancelAction   = LocalizedStringResource("book_space.action.cancel",    defaultValue: "Cancelar reserva")
+        public static let cancelConfirm  = LocalizedStringResource("book_space.cancel.confirm",   defaultValue: "Cancelar")
+        public static let cancelConfirmTitle = LocalizedStringResource("book_space.cancel.confirm_title", defaultValue: "Cancelar reserva")
+        public static let cancelConfirmBody  = LocalizedStringResource("book_space.cancel.confirm_body",  defaultValue: "La reserva queda cancelada y el horario vuelve a estar disponible.")
     }
 
     public enum SetFundThreshold {

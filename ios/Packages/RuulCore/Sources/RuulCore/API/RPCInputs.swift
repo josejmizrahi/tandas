@@ -820,6 +820,68 @@ public struct LockFundParams: Encodable, Sendable {
 
 public typealias UnlockFundParams = LockFundParams
 
+// MARK: - Space / Bookings Fase B.3
+
+public struct BookResourceParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pStartsAt: Date
+    public let pEndsAt: Date?
+    public let pReason: String?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pStartsAt   = "p_starts_at"
+        case pEndsAt     = "p_ends_at"
+        case pReason     = "p_reason"
+        case pClientId   = "p_client_id"
+    }
+
+    public init(resourceId: UUID, startsAt: Date, endsAt: Date? = nil, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pStartsAt = startsAt
+        self.pEndsAt = endsAt
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public struct CancelBookingParams: Encodable, Sendable {
+    public let pBookingId: UUID
+    public let pReason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pBookingId = "p_booking_id"
+        case pReason    = "p_reason"
+    }
+
+    public init(bookingId: UUID, reason: String? = nil) {
+        self.pBookingId = bookingId
+        self.pReason = reason
+    }
+}
+
+public struct ListBookingsForResourceParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pStartsAfter: Date?
+    public let pEndsBefore: Date?
+    public let pLimit: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId  = "p_resource_id"
+        case pStartsAfter = "p_starts_after"
+        case pEndsBefore  = "p_ends_before"
+        case pLimit       = "p_limit"
+    }
+
+    public init(resourceId: UUID, startsAfter: Date? = nil, endsBefore: Date? = nil, limit: Int = 50) {
+        self.pResourceId = resourceId
+        self.pStartsAfter = startsAfter
+        self.pEndsBefore = endsBefore
+        self.pLimit = limit
+    }
+}
+
 public struct SetFundThresholdParams: Encodable, Sendable {
     public let pResourceId: UUID
     public let pThresholdTarget: Decimal

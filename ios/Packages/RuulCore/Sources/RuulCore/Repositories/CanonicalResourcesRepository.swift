@@ -194,6 +194,56 @@ public struct CanonicalResourcesRepository: Sendable {
             )
         )
     }
+
+    // MARK: - Space / Bookings Fase B.3
+
+    @discardableResult
+    public func bookResource(
+        resourceId: UUID,
+        startsAt: Date,
+        endsAt: Date? = nil,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.bookResource(
+            BookResourceParams(
+                resourceId: resourceId,
+                startsAt: startsAt,
+                endsAt: endsAt,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func cancelBooking(
+        bookingId: UUID,
+        reason: String? = nil
+    ) async throws -> UUID {
+        try await rpc.cancelBooking(
+            CancelBookingParams(
+                bookingId: bookingId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
+            )
+        )
+    }
+
+    public func listBookingsForResource(
+        resourceId: UUID,
+        startsAfter: Date? = nil,
+        endsBefore: Date? = nil,
+        limit: Int = 50
+    ) async throws -> [GroupResourceBooking] {
+        try await rpc.listBookingsForResource(
+            ListBookingsForResourceParams(
+                resourceId: resourceId,
+                startsAfter: startsAfter,
+                endsBefore: endsBefore,
+                limit: limit
+            )
+        )
+    }
 }
 
 private extension String {

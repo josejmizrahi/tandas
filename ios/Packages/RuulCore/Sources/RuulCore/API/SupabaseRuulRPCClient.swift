@@ -550,6 +550,27 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callReturningUUID("set_fund_threshold", params: input)
     }
 
+    // MARK: - Space / Bookings Fase B.3
+
+    public func bookResource(_ input: BookResourceParams) async throws -> UUID {
+        try await callReturningUUID("book_resource", params: input)
+    }
+
+    public func cancelBooking(_ input: CancelBookingParams) async throws -> UUID {
+        try await callReturningUUID("cancel_booking", params: input)
+    }
+
+    public func listBookingsForResource(_ input: ListBookingsForResourceParams) async throws -> [GroupResourceBooking] {
+        do {
+            return try await client
+                .rpc("list_bookings_for_resource", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Foundation status
 
     public func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {
