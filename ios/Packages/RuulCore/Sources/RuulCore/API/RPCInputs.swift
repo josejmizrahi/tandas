@@ -800,6 +800,50 @@ public struct RecordAssetValuationParams: Encodable, Sendable {
     }
 }
 
+// MARK: - Fund Fase B.2
+
+public struct LockFundParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pReason: String?
+    public let pClientId: String?
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pReason     = "p_reason"
+        case pClientId   = "p_client_id"
+    }
+    public init(resourceId: UUID, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public typealias UnlockFundParams = LockFundParams
+
+public struct SetFundThresholdParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pThresholdTarget: Decimal
+    public let pUnit: String?
+    public let pReason: String?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId      = "p_resource_id"
+        case pThresholdTarget = "p_threshold_target"
+        case pUnit            = "p_unit"
+        case pReason          = "p_reason"
+        case pClientId        = "p_client_id"
+    }
+
+    public init(resourceId: UUID, thresholdTarget: Decimal, unit: String?, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pThresholdTarget = thresholdTarget
+        self.pUnit = unit
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
 // MARK: - Foundation status
 
 public struct GroupFoundationStatusParams: Encodable, Sendable {

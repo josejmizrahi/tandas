@@ -536,6 +536,20 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Fund Fase B.2
+
+    public func lockFund(_ input: LockFundParams) async throws -> UUID {
+        try await callReturningUUID("lock_fund", params: input)
+    }
+
+    public func unlockFund(_ input: UnlockFundParams) async throws -> UUID {
+        try await callReturningUUID("unlock_fund", params: input)
+    }
+
+    public func setFundThreshold(_ input: SetFundThresholdParams) async throws -> UUID {
+        try await callReturningUUID("set_fund_threshold", params: input)
+    }
+
     // MARK: - Foundation status
 
     public func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {

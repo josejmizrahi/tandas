@@ -43,6 +43,11 @@ public struct ResourceDetailView: View {
         return store.detail?.assetSubtype
     }
 
+    private var fundSubtype: FundSubtypeData? {
+        guard store.detail?.resource.id == resource.id else { return nil }
+        return store.detail?.fundSubtype
+    }
+
     public var body: some View {
         List {
             identitySection
@@ -115,6 +120,37 @@ public struct ResourceDetailView: View {
         }
         .sheet(isPresented: $store.isRecordValuationPresented) {
             RecordValuationSheet(store: store)
+        }
+        .sheet(isPresented: $store.isSetFundThresholdPresented) {
+            SetFundThresholdSheet(store: store)
+        }
+        .confirmationDialog(
+            Text(L10n.ResourceDetail.fundLockConfirmTitle),
+            isPresented: $store.isConfirmingLockFund,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await store.confirmLockFund() }
+            } label: {
+                Text(L10n.SetFundThreshold.confirmLock)
+            }
+            Button(role: .cancel) {} label: { Text(L10n.SetFundThreshold.cancel) }
+        } message: {
+            Text(L10n.ResourceDetail.fundLockConfirmBody)
+        }
+        .confirmationDialog(
+            Text(L10n.ResourceDetail.fundUnlockConfirmTitle),
+            isPresented: $store.isConfirmingUnlockFund,
+            titleVisibility: .visible
+        ) {
+            Button {
+                Task { await store.confirmUnlockFund() }
+            } label: {
+                Text(L10n.SetFundThreshold.confirmUnlock)
+            }
+            Button(role: .cancel) {} label: { Text(L10n.SetFundThreshold.cancel) }
+        } message: {
+            Text(L10n.ResourceDetail.fundUnlockConfirmBody)
         }
     }
 
@@ -249,6 +285,8 @@ public struct ResourceDetailView: View {
                 subtype: assetSubtype,
                 custodianMember: custodianMember(for: assetSubtype)
             )
+        case (.fund, .money):
+            FundMoneySection(subtype: fundSubtype)
         default:
             stubCoordinationRow(kind)
         }
@@ -326,6 +364,26 @@ public struct ResourceDetailView: View {
                     store.presentRecordValuation(seed: assetSubtype)
                 } label: {
                     Label(L10n.ResourceDetail.assetRecordValuation, systemImage: "dollarsign.circle")
+                }
+            }
+            if descriptor.supportsLocking {
+                Button {
+                    store.presentSetFundThreshold(seed: fundSubtype)
+                } label: {
+                    Label(L10n.ResourceDetail.fundSetThresholdAction, systemImage: "target")
+                }
+                if fundSubtype?.isLocked == true {
+                    Button {
+                        store.presentUnlockFund()
+                    } label: {
+                        Label(L10n.ResourceDetail.fundUnlockAction, systemImage: "lock.open")
+                    }
+                } else {
+                    Button {
+                        store.presentLockFund()
+                    } label: {
+                        Label(L10n.ResourceDetail.fundLockAction, systemImage: "lock")
+                    }
                 }
             }
             Button {
@@ -409,6 +467,90 @@ private struct AssetResponsibilitySection: View {
         let amount = NSDecimalNumber(decimal: value).stringValue
         if let unit, !unit.isEmpty {
             return "\(amount) \(unit)"
+        }
+        return amount
+    }
+}
+
+// MARK: - FundMoneySection
+
+/// Real Coordination > Money block for `fund`. Surfaces lock status,
+/// fund kind, currency and threshold target (when defined). Empty
+/// cluster collapses by row when no data is present.
+private struct FundMoneySection: View {
+    let subtype: FundSubtypeData?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: subtype?.isLocked == true ? "lock.fill" : "lock.open")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(subtype?.isLocked == true ? L10n.ResourceDetail.fundLockedBadge : L10n.ResourceDetail.fundUnlockedBadge)
+                        .font(.body.weight(.semibold))
+                    if let lockedAt = subtype?.lockedAt {
+                        Text(lockedAt, format: .dateTime.day().month().year())
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if let kind = subtype?.fundKind {
+                HStack(spacing: 12) {
+                    Image(systemName: "tag")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.tint)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.ResourceDetail.fundKindLabel)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Text(kind.label)
+                            .font(.body.weight(.semibold))
+                    }
+                }
+            }
+            if let currency = subtype?.currency, !currency.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "dollarsign.circle")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.tint)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.ResourceDetail.fundCurrencyLabel)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Text(currency)
+                            .font(.body.weight(.semibold))
+                    }
+                }
+            }
+            HStack(spacing: 12) {
+                Image(systemName: "target")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.ResourceDetail.fundThresholdLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text(thresholdText)
+                        .font(.body.weight(.semibold))
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var thresholdText: String {
+        guard let value = subtype?.thresholdTarget else {
+            return String(localized: L10n.ResourceDetail.fundThresholdNone)
+        }
+        let amount = NSDecimalNumber(decimal: value).stringValue
+        if let currency = subtype?.currency, !currency.isEmpty {
+            return "\(amount) \(currency)"
         }
         return amount
     }

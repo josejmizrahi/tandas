@@ -143,6 +143,57 @@ public struct CanonicalResourcesRepository: Sendable {
             )
         )
     }
+
+    // MARK: - Fund Fase B.2
+
+    @discardableResult
+    public func lockFund(
+        resourceId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.lockFund(
+            LockFundParams(
+                resourceId: resourceId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func unlockFund(
+        resourceId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.unlockFund(
+            UnlockFundParams(
+                resourceId: resourceId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func setFundThreshold(
+        resourceId: UUID,
+        thresholdTarget: Decimal,
+        unit: String?,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.setFundThreshold(
+            SetFundThresholdParams(
+                resourceId: resourceId,
+                thresholdTarget: thresholdTarget,
+                unit: unit?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
 }
 
 private extension String {

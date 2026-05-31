@@ -188,6 +188,11 @@ public enum L10n {
         public static let conditionDamaged  = LocalizedStringResource("resources.asset.condition.damaged",  defaultValue: "Dañado")
         public static let conditionRepaired = LocalizedStringResource("resources.asset.condition.repaired", defaultValue: "Reparado")
         public static let conditionRetired  = LocalizedStringResource("resources.asset.condition.retired",  defaultValue: "Retirado")
+
+        // Fund kind labels (Fase B.2).
+        public static let fundKindPool       = LocalizedStringResource("resources.fund.kind.pool",        defaultValue: "Pool")
+        public static let fundKindProtected  = LocalizedStringResource("resources.fund.kind.protected",   defaultValue: "Protegido")
+        public static let fundKindSharedPool = LocalizedStringResource("resources.fund.kind.shared_pool", defaultValue: "Pool compartido")
         public static let privateLabel       = LocalizedStringResource("resources.visibility.private", defaultValue: "Privado")
         public static let membersLabel       = LocalizedStringResource("resources.visibility.members", defaultValue: "Miembros")
         public static let publicLabel        = LocalizedStringResource("resources.visibility.public",  defaultValue: "Público")
@@ -888,6 +893,21 @@ public enum L10n {
         public static let archiveAction      = LocalizedStringResource("resource_detail.action.archive",     defaultValue: "Archivar recurso")
         public static let transferAction     = LocalizedStringResource("resource_detail.action.transfer",    defaultValue: "Transferir propiedad")
 
+        // Fund Fase B.2 — Money block + sheets.
+        public static let fundKindLabel        = LocalizedStringResource("resource_detail.fund.kind",        defaultValue: "Tipo de fondo")
+        public static let fundCurrencyLabel    = LocalizedStringResource("resource_detail.fund.currency",    defaultValue: "Moneda")
+        public static let fundThresholdLabel   = LocalizedStringResource("resource_detail.fund.threshold",   defaultValue: "Meta")
+        public static let fundThresholdNone    = LocalizedStringResource("resource_detail.fund.threshold.none", defaultValue: "Sin meta definida")
+        public static let fundLockedBadge      = LocalizedStringResource("resource_detail.fund.locked",      defaultValue: "Bloqueado")
+        public static let fundUnlockedBadge    = LocalizedStringResource("resource_detail.fund.unlocked",    defaultValue: "Activo")
+        public static let fundLockAction       = LocalizedStringResource("resource_detail.fund.action.lock",      defaultValue: "Bloquear fondo")
+        public static let fundUnlockAction     = LocalizedStringResource("resource_detail.fund.action.unlock",    defaultValue: "Desbloquear fondo")
+        public static let fundSetThresholdAction = LocalizedStringResource("resource_detail.fund.action.threshold", defaultValue: "Cambiar meta")
+        public static let fundLockConfirmTitle = LocalizedStringResource("resource_detail.fund.lock.confirm_title",   defaultValue: "Bloquear fondo")
+        public static let fundLockConfirmBody  = LocalizedStringResource("resource_detail.fund.lock.confirm_body",    defaultValue: "El fondo queda inmovilizado hasta que se desbloquee.")
+        public static let fundUnlockConfirmTitle = LocalizedStringResource("resource_detail.fund.unlock.confirm_title", defaultValue: "Desbloquear fondo")
+        public static let fundUnlockConfirmBody = LocalizedStringResource("resource_detail.fund.unlock.confirm_body",  defaultValue: "El fondo vuelve a estar disponible para mover dinero.")
+
         // Asset Fase B.1 — Responsibility block + sheets.
         public static let assetCustodianLabel    = LocalizedStringResource("resource_detail.asset.custodian",       defaultValue: "Custodio actual")
         public static let assetCustodianNone     = LocalizedStringResource("resource_detail.asset.custodian.none",  defaultValue: "Sin custodio asignado")
@@ -923,6 +943,22 @@ public enum L10n {
         public static let reasonPlaceholder = LocalizedStringResource("mark_condition.reason.placeholder", defaultValue: "Qué pasó…")
         public static let save            = LocalizedStringResource("mark_condition.save",           defaultValue: "Guardar")
         public static let cancel          = LocalizedStringResource("mark_condition.cancel",         defaultValue: "Cancelar")
+    }
+
+    public enum SetFundThreshold {
+        public static let title         = LocalizedStringResource("set_fund_threshold.title",         defaultValue: "Cambiar meta del fondo")
+        public static let amountSection = LocalizedStringResource("set_fund_threshold.section.amount", defaultValue: "Meta")
+        public static let amountLabel   = LocalizedStringResource("set_fund_threshold.amount.label",   defaultValue: "Monto objetivo")
+        public static let unitLabel     = LocalizedStringResource("set_fund_threshold.unit.label",     defaultValue: "Moneda")
+        public static let unitPlaceholder = LocalizedStringResource("set_fund_threshold.unit.placeholder", defaultValue: "MXN")
+        public static let reasonSection = LocalizedStringResource("set_fund_threshold.section.reason", defaultValue: "Motivo (opcional)")
+        public static let reasonPlaceholder = LocalizedStringResource("set_fund_threshold.reason.placeholder", defaultValue: "Por qué cambia la meta…")
+        public static let save          = LocalizedStringResource("set_fund_threshold.save",         defaultValue: "Guardar")
+        public static let cancel        = LocalizedStringResource("set_fund_threshold.cancel",       defaultValue: "Cancelar")
+        public static let confirmLock   = LocalizedStringResource("set_fund_threshold.confirm.lock", defaultValue: "Bloquear")
+        public static let confirmUnlock = LocalizedStringResource("set_fund_threshold.confirm.unlock", defaultValue: "Desbloquear")
+        public static let amountRequired = LocalizedStringResource("set_fund_threshold.amount.required", defaultValue: "Monto >= 0 requerido.")
+        public static let unitRequired   = LocalizedStringResource("set_fund_threshold.unit.required",   defaultValue: "Indica la moneda.")
     }
 
     public enum RecordValuation {

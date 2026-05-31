@@ -264,6 +264,24 @@ public protocol RuulRPCClient: Sendable {
     /// `resources.update_value`.
     func recordAssetValuation(_ input: RecordAssetValuationParams) async throws
 
+    // MARK: - Fund Fase B.2
+
+    /// `lock_fund(...)` — sets `locked_at=now()` if not already locked.
+    /// Emits `resource.status_changed` (`to=locked`). Requires
+    /// `resources.update`. Idempotent.
+    func lockFund(_ input: LockFundParams) async throws -> UUID
+
+    /// `unlock_fund(...)` — sets `locked_at=NULL`. Emits
+    /// `resource.status_changed` (`to=unlocked`). Requires
+    /// `resources.update`. Idempotent.
+    func unlockFund(_ input: UnlockFundParams) async throws -> UUID
+
+    /// `set_fund_threshold(...)` — updates `threshold_target` (and
+    /// optionally `currency`). Emits `resource.status_changed`
+    /// (`kind=threshold_updated`). Requires `resources.update`.
+    /// Idempotent via `p_client_id`.
+    func setFundThreshold(_ input: SetFundThresholdParams) async throws -> UUID
+
     // MARK: - Foundation status
 
     /// `group_foundation_status(p_group_id)` — per-primitive readiness

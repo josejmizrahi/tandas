@@ -55,6 +55,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case releaseAssetCustodian(input: ReleaseAssetCustodianParams)
         case markAssetCondition(input: MarkAssetConditionParams)
         case recordAssetValuation(input: RecordAssetValuationParams)
+        case lockFund(input: LockFundParams)
+        case unlockFund(input: UnlockFundParams)
+        case setFundThreshold(input: SetFundThresholdParams)
         case setMembershipState(input: SetMembershipStateParams)
         case groupFoundationStatus(groupId: UUID)
         case groupDecisionRules(groupId: UUID)
@@ -208,6 +211,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var releaseAssetCustodianStub: Result<UUID, RuulError> = .success(UUID())
     private var markAssetConditionStub: Result<UUID, RuulError> = .success(UUID())
     private var recordAssetValuationStub: Result<Void, RuulError> = .success(())
+    private var lockFundStub: Result<UUID, RuulError> = .success(UUID())
+    private var unlockFundStub: Result<UUID, RuulError> = .success(UUID())
+    private var setFundThresholdStub: Result<UUID, RuulError> = .success(UUID())
     private var setMembershipStateStub: Result<Void, RuulError> = .success(())
     private var groupFoundationStatusStub: Result<GroupFoundationStatus, RuulError> = .success(
         GroupFoundationStatus(
@@ -345,6 +351,9 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setReleaseAssetCustodianStub(_ stub: Result<UUID, RuulError>) { releaseAssetCustodianStub = stub }
     func setMarkAssetConditionStub(_ stub: Result<UUID, RuulError>) { markAssetConditionStub = stub }
     func setRecordAssetValuationStub(_ stub: Result<Void, RuulError>) { recordAssetValuationStub = stub }
+    func setLockFundStub(_ stub: Result<UUID, RuulError>) { lockFundStub = stub }
+    func setUnlockFundStub(_ stub: Result<UUID, RuulError>) { unlockFundStub = stub }
+    func setSetFundThresholdStub(_ stub: Result<UUID, RuulError>) { setFundThresholdStub = stub }
     func setSetMembershipStateStub(_ stub: Result<Void, RuulError>) { setMembershipStateStub = stub }
     func setGroupFoundationStatusStub(_ stub: Result<GroupFoundationStatus, RuulError>) { groupFoundationStatusStub = stub }
     func setGroupDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { groupDecisionRulesStub = stub }
@@ -632,6 +641,21 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func recordAssetValuation(_ input: RecordAssetValuationParams) async throws {
         recorded.append(.recordAssetValuation(input: input))
         try recordAssetValuationStub.get()
+    }
+
+    func lockFund(_ input: LockFundParams) async throws -> UUID {
+        recorded.append(.lockFund(input: input))
+        return try lockFundStub.get()
+    }
+
+    func unlockFund(_ input: UnlockFundParams) async throws -> UUID {
+        recorded.append(.unlockFund(input: input))
+        return try unlockFundStub.get()
+    }
+
+    func setFundThreshold(_ input: SetFundThresholdParams) async throws -> UUID {
+        recorded.append(.setFundThreshold(input: input))
+        return try setFundThresholdStub.get()
     }
 
     func setMembershipState(_ input: SetMembershipStateParams) async throws {

@@ -67,6 +67,14 @@ public final class ResourcesStore {
     // Release custodian confirmation (no sheet, dialog only)
     public var isConfirmingReleaseCustodian: Bool = false
 
+    // Fund Fase B.2 state
+    public var isConfirmingLockFund: Bool = false
+    public var isConfirmingUnlockFund: Bool = false
+    public var isSetFundThresholdPresented: Bool = false
+    public var fundThresholdAmount: String = ""
+    public var fundThresholdUnit: String = "MXN"
+    public var fundThresholdReason: String = ""
+
     private let repository: CanonicalResourcesRepository
     private var loadedGroupId: UUID?
 
@@ -418,6 +426,120 @@ public final class ResourcesStore {
             await loadDetail(resourceId: resourceId)
             isRecordValuationPresented = false
             valuationAmount = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+}
+
+// MARK: - Fund Fase B.2 actions
+
+@MainActor
+extension ResourcesStore {
+    public func presentLockFund() {
+        errorMessage = nil
+        isConfirmingLockFund = true
+    }
+
+    public func presentUnlockFund() {
+        errorMessage = nil
+        isConfirmingUnlockFund = true
+    }
+
+    @discardableResult
+    public func confirmLockFund() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.lockFund(
+                resourceId: resourceId,
+                reason: nil,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isConfirmingLockFund = false
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    @discardableResult
+    public func confirmUnlockFund() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.unlockFund(
+                resourceId: resourceId,
+                reason: nil,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isConfirmingUnlockFund = false
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    public func presentSetFundThreshold(seed: FundSubtypeData? = nil) {
+        if let threshold = seed?.thresholdTarget {
+            fundThresholdAmount = NSDecimalNumber(decimal: threshold).stringValue
+        } else {
+            fundThresholdAmount = ""
+        }
+        fundThresholdUnit = seed?.currency ?? "MXN"
+        fundThresholdReason = ""
+        errorMessage = nil
+        isSetFundThresholdPresented = true
+    }
+
+    public var decimalFundThresholdAmount: Decimal? {
+        let trimmed = fundThresholdAmount.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return Decimal(string: trimmed)
+    }
+
+    public var canSaveFundThreshold: Bool {
+        guard activeResourceId != nil else { return false }
+        guard let value = decimalFundThresholdAmount, value >= 0 else { return false }
+        return !fundThresholdUnit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    @discardableResult
+    public func saveFundThreshold() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        guard let value = decimalFundThresholdAmount, value >= 0 else {
+            errorMessage = String(localized: L10n.SetFundThreshold.amountRequired)
+            return false
+        }
+        let unit = fundThresholdUnit.trimmingCharacters(in: .whitespacesAndNewlines)
+        if unit.isEmpty {
+            errorMessage = String(localized: L10n.SetFundThreshold.unitRequired)
+            return false
+        }
+        do {
+            _ = try await repository.setFundThreshold(
+                resourceId: resourceId,
+                thresholdTarget: value,
+                unit: unit,
+                reason: fundThresholdReason,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isSetFundThresholdPresented = false
+            fundThresholdReason = ""
             return true
         } catch {
             errorMessage = UserFacingError.from(error).message

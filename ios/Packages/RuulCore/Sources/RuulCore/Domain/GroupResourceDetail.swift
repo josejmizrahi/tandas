@@ -34,12 +34,21 @@ public extension GroupResourceDetail {
     /// Lazily decode the asset subtype payload. Returns `nil` when the
     /// resource isn't an asset or the subtype row is missing.
     var assetSubtype: AssetSubtypeData? {
-        guard resource.resourceType == .asset,
+        decodedSubtype(expected: .asset)
+    }
+
+    /// Lazily decode the fund subtype payload.
+    var fundSubtype: FundSubtypeData? {
+        decodedSubtype(expected: .fund)
+    }
+
+    private func decodedSubtype<T: Decodable>(expected type: GroupResourceType) -> T? {
+        guard resource.resourceType == type,
               let raw = subtype,
               case .object = raw else { return nil }
         do {
             let data = try JSONEncoder.tandas.encode(raw)
-            return try JSONDecoder.tandas.decode(AssetSubtypeData.self, from: data)
+            return try JSONDecoder.tandas.decode(T.self, from: data)
         } catch {
             return nil
         }
