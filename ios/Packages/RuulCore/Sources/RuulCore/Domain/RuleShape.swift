@@ -12,6 +12,13 @@ public enum RuleAtomCategory: String, Codable, Sendable, Hashable, CaseIterable 
     case trigger
     case condition
     case consequence
+    /// D.14 — atom-as-shape rows in `rule_shapes_catalog`. They expose
+    /// individual `resource.*` atoms (with `atom_key`/`atom_type` only,
+    /// no `fields`) so the engine can resolve them. They are NOT user-
+    /// pickable from the Rule Builder — `triggerShapes` / `conditionShapes`
+    /// / `consequenceShapes` filter them out by category — but they must
+    /// decode cleanly so the catalog as a whole is loadable.
+    case atom
 }
 
 /// Sync = canonical consequence that mutates state in the same transaction
