@@ -82,6 +82,7 @@ public struct ResourceDetailView: View {
             if resource.resourceType == .space {
                 await store.refreshBookings(resourceId: resource.id)
             }
+            await store.loadActivity(resourceId: resource.id, groupId: groupId)
         }
         .refreshable {
             if descriptor.subtypeTable != nil {
@@ -90,6 +91,7 @@ public struct ResourceDetailView: View {
             if resource.resourceType == .space {
                 await store.refreshBookings(resourceId: resource.id)
             }
+            await store.loadActivity(resourceId: resource.id, groupId: groupId)
         }
         .confirmationDialog(
             Text(L10n.Resources.archiveConfirmTitle),
@@ -451,14 +453,84 @@ public struct ResourceDetailView: View {
     @ViewBuilder
     private var activitySection: some View {
         Section(L10n.ResourceDetail.activitySection) {
-            Label {
-                Text(L10n.ResourceDetail.activityStub)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } icon: {
-                Image(systemName: "clock.arrow.circlepath")
-                    .foregroundStyle(.secondary)
+            if store.activity.isEmpty {
+                Label {
+                    Text(L10n.ResourceDetail.activityStub)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                ForEach(store.activity.prefix(15)) { event in
+                    activityRow(event)
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func activityRow(_ event: GroupEvent) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: activityIcon(for: event.eventType))
+                .font(.body.weight(.medium))
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(activityLabel(for: event.eventType))
+                    .font(.body.weight(.medium))
+                if let summary = event.summary, !summary.isEmpty {
+                    Text(summary)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if let occurredAt = event.occurredAt {
+                    Text(occurredAt, style: .relative)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func activityIcon(for eventType: String) -> String {
+        switch eventType {
+        case "resource.created":         return "plus.circle"
+        case "resource.archived":        return "archivebox"
+        case "resource.assigned":        return "person.crop.circle.badge.checkmark"
+        case "resource.returned":        return "arrow.uturn.backward.circle"
+        case "resource.transferred":     return "arrow.left.arrow.right.circle"
+        case "resource.used":            return "play.circle"
+        case "resource.damaged":         return "exclamationmark.triangle"
+        case "resource.repaired":        return "wrench.adjustable"
+        case "resource.value_updated":   return "dollarsign.circle"
+        case "resource.status_changed":  return "arrow.triangle.2.circlepath"
+        case "resource.updated":         return "pencil.circle"
+        case "booking.created":          return "calendar.badge.plus"
+        case "booking.cancelled":        return "calendar.badge.minus"
+        default:                         return "circle"
+        }
+    }
+
+    private func activityLabel(for eventType: String) -> String {
+        switch eventType {
+        case "resource.created":         return "Creado"
+        case "resource.archived":        return "Archivado"
+        case "resource.assigned":        return "Asignado"
+        case "resource.returned":        return "Liberado"
+        case "resource.transferred":     return "Transferido"
+        case "resource.used":            return "Uso registrado"
+        case "resource.damaged":         return "Marcado como dañado"
+        case "resource.repaired":        return "Reparado"
+        case "resource.value_updated":   return "Valuación actualizada"
+        case "resource.status_changed":  return "Cambio de estado"
+        case "resource.updated":         return "Campos actualizados"
+        case "booking.created":          return "Reservado"
+        case "booking.cancelled":        return "Reserva cancelada"
+        default:                         return eventType
         }
     }
 

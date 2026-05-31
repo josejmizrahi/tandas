@@ -44,6 +44,8 @@ public final class ResourcesStore {
 
     public private(set) var detail: GroupResourceDetail?
     public private(set) var detailPhase: StorePhase = .idle
+    public private(set) var activity: [GroupEvent] = []
+    public private(set) var activityPhase: StorePhase = .idle
     /// Active resource id that the detail surface (and Asset sheets) is
     /// operating on. Used to scope sheet saves correctly.
     public private(set) var activeResourceId: UUID?
@@ -319,7 +321,31 @@ public final class ResourcesStore {
     public func clearDetail() {
         detail = nil
         detailPhase = .idle
+        activity = []
+        activityPhase = .idle
         activeResourceId = nil
+    }
+
+    /// Reload activity for the currently-active resource, filtered to
+    /// the resource's entity_id. Renders the Activity block in the
+    /// detail view.
+    public func loadActivity(resourceId: UUID, groupId: UUID) async {
+        if activity.isEmpty {
+            activityPhase = .loading
+        }
+        do {
+            let events = try await repository.recentActivity(
+                groupId: groupId,
+                resourceId: resourceId,
+                limit: 100
+            )
+            activity = events
+            activityPhase = .loaded
+        } catch {
+            let message = UserFacingError.from(error).message
+            activityPhase = .failed(message: message)
+            errorMessage = message
+        }
     }
 
     // MARK: - Asset Fase B.1 — Assign / Release custodian

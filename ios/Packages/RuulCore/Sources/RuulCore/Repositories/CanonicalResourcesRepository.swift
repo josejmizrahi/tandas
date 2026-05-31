@@ -77,6 +77,22 @@ public struct CanonicalResourcesRepository: Sendable {
         try await rpc.groupResourceDetail(resourceId: resourceId)
     }
 
+    /// Pulls the most-recent group activity and filters by resource id
+    /// client-side. `group_events_recent` does not (yet) support an
+    /// entity_id parameter; once it does, swap to server-side filtering.
+    public func recentActivity(
+        groupId: UUID,
+        resourceId: UUID,
+        limit: Int = 100
+    ) async throws -> [GroupEvent] {
+        let events = try await rpc.groupEventsRecent(
+            groupId: groupId,
+            limit: limit,
+            before: nil
+        )
+        return events.filter { $0.entityKind == "resource" && $0.entityId == resourceId }
+    }
+
     /// Envelope-only metadata edit. Backend merges `p_metadata` with
     /// the existing jsonb (set value to `.null` to remove a key, since
     /// `metadata || {"k": null}` keeps the key with a JSON null —
