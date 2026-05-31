@@ -2646,6 +2646,7 @@ public struct RecordPoolChargeParams: Encodable, Sendable, Equatable {
     public let pReason: String?
     public let pMandateId: UUID?
     public let pClientId: String?
+    public let pResourceId: UUID?
 
     enum CodingKeys: String, CodingKey {
         case pGroupId            = "p_group_id"
@@ -2656,6 +2657,7 @@ public struct RecordPoolChargeParams: Encodable, Sendable, Equatable {
         case pReason             = "p_reason"
         case pMandateId          = "p_mandate_id"
         case pClientId           = "p_client_id"
+        case pResourceId         = "p_resource_id"
     }
 
     public init(
@@ -2666,7 +2668,8 @@ public struct RecordPoolChargeParams: Encodable, Sendable, Equatable {
         chargeKind: String,
         reason: String? = nil,
         mandateId: UUID? = nil,
-        clientId: String? = nil
+        clientId: String? = nil,
+        resourceId: UUID? = nil
     ) {
         self.pGroupId = groupId
         self.pTargetMembershipId = targetMembershipId
@@ -2676,6 +2679,7 @@ public struct RecordPoolChargeParams: Encodable, Sendable, Equatable {
         self.pReason = reason
         self.pMandateId = mandateId
         self.pClientId = clientId
+        self.pResourceId = resourceId
     }
 }
 
