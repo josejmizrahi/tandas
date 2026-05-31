@@ -50,6 +50,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case createGroupResource(input: CreateGroupResourceInput)
         case archiveGroupResource(input: ArchiveGroupResourceInput)
         case setResourceOwnership(input: SetResourceOwnershipParams)
+        case groupResourceDetail(resourceId: UUID)
+        case assignAssetCustodian(input: AssignAssetCustodianParams)
+        case releaseAssetCustodian(input: ReleaseAssetCustodianParams)
+        case markAssetCondition(input: MarkAssetConditionParams)
+        case recordAssetValuation(input: RecordAssetValuationParams)
         case setMembershipState(input: SetMembershipStateParams)
         case groupFoundationStatus(groupId: UUID)
         case groupDecisionRules(groupId: UUID)
@@ -194,6 +199,15 @@ final actor MockRuulRPCClient: RuulRPCClient {
     )
     private var archiveGroupResourceStub: Result<Void, RuulError> = .success(())
     private var setResourceOwnershipStub: Result<Void, RuulError> = .success(())
+    private var groupResourceDetailStub: Result<GroupResourceDetail, RuulError> = .success(
+        GroupResourceDetail(
+            resource: GroupResource(id: UUID(), groupId: UUID(), resourceType: .asset, name: "")
+        )
+    )
+    private var assignAssetCustodianStub: Result<UUID, RuulError> = .success(UUID())
+    private var releaseAssetCustodianStub: Result<UUID, RuulError> = .success(UUID())
+    private var markAssetConditionStub: Result<UUID, RuulError> = .success(UUID())
+    private var recordAssetValuationStub: Result<Void, RuulError> = .success(())
     private var setMembershipStateStub: Result<Void, RuulError> = .success(())
     private var groupFoundationStatusStub: Result<GroupFoundationStatus, RuulError> = .success(
         GroupFoundationStatus(
@@ -326,6 +340,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setCreateGroupResourceStub(_ stub: Result<GroupResource, RuulError>) { createGroupResourceStub = stub }
     func setArchiveGroupResourceStub(_ stub: Result<Void, RuulError>) { archiveGroupResourceStub = stub }
     func setSetResourceOwnershipStub(_ stub: Result<Void, RuulError>) { setResourceOwnershipStub = stub }
+    func setGroupResourceDetailStub(_ stub: Result<GroupResourceDetail, RuulError>) { groupResourceDetailStub = stub }
+    func setAssignAssetCustodianStub(_ stub: Result<UUID, RuulError>) { assignAssetCustodianStub = stub }
+    func setReleaseAssetCustodianStub(_ stub: Result<UUID, RuulError>) { releaseAssetCustodianStub = stub }
+    func setMarkAssetConditionStub(_ stub: Result<UUID, RuulError>) { markAssetConditionStub = stub }
+    func setRecordAssetValuationStub(_ stub: Result<Void, RuulError>) { recordAssetValuationStub = stub }
     func setSetMembershipStateStub(_ stub: Result<Void, RuulError>) { setMembershipStateStub = stub }
     func setGroupFoundationStatusStub(_ stub: Result<GroupFoundationStatus, RuulError>) { groupFoundationStatusStub = stub }
     func setGroupDecisionRulesStub(_ stub: Result<GroupDecisionRules, RuulError>) { groupDecisionRulesStub = stub }
@@ -588,6 +607,31 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setResourceOwnership(_ input: SetResourceOwnershipParams) async throws {
         recorded.append(.setResourceOwnership(input: input))
         try setResourceOwnershipStub.get()
+    }
+
+    func groupResourceDetail(resourceId: UUID) async throws -> GroupResourceDetail {
+        recorded.append(.groupResourceDetail(resourceId: resourceId))
+        return try groupResourceDetailStub.get()
+    }
+
+    func assignAssetCustodian(_ input: AssignAssetCustodianParams) async throws -> UUID {
+        recorded.append(.assignAssetCustodian(input: input))
+        return try assignAssetCustodianStub.get()
+    }
+
+    func releaseAssetCustodian(_ input: ReleaseAssetCustodianParams) async throws -> UUID {
+        recorded.append(.releaseAssetCustodian(input: input))
+        return try releaseAssetCustodianStub.get()
+    }
+
+    func markAssetCondition(_ input: MarkAssetConditionParams) async throws -> UUID {
+        recorded.append(.markAssetCondition(input: input))
+        return try markAssetConditionStub.get()
+    }
+
+    func recordAssetValuation(_ input: RecordAssetValuationParams) async throws {
+        recorded.append(.recordAssetValuation(input: input))
+        try recordAssetValuationStub.get()
     }
 
     func setMembershipState(_ input: SetMembershipStateParams) async throws {

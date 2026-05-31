@@ -711,6 +711,95 @@ public struct ArchiveGroupResourceInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - Resource detail + Asset Fase B.1
+
+public struct GroupResourceDetailParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
+    public init(resourceId: UUID) { self.pResourceId = resourceId }
+}
+
+public struct AssignAssetCustodianParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pMembershipId: UUID
+    public let pReason: String?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId   = "p_resource_id"
+        case pMembershipId = "p_membership_id"
+        case pReason       = "p_reason"
+        case pClientId     = "p_client_id"
+    }
+
+    public init(resourceId: UUID, membershipId: UUID, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pMembershipId = membershipId
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public struct ReleaseAssetCustodianParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pReason: String?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pReason     = "p_reason"
+        case pClientId   = "p_client_id"
+    }
+
+    public init(resourceId: UUID, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public struct MarkAssetConditionParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pCondition: String
+    public let pReason: String?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pCondition  = "p_condition"
+        case pReason     = "p_reason"
+        case pClientId   = "p_client_id"
+    }
+
+    public init(resourceId: UUID, condition: String, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pCondition = condition
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public struct RecordAssetValuationParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pValue: Decimal
+    public let pUnit: String
+    public let pBasis: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pValue      = "p_value"
+        case pUnit       = "p_unit"
+        case pBasis      = "p_basis"
+    }
+
+    public init(resourceId: UUID, value: Decimal, unit: String, basis: String? = nil) {
+        self.pResourceId = resourceId
+        self.pValue = value
+        self.pUnit = unit
+        self.pBasis = basis
+    }
+}
+
 // MARK: - Foundation status
 
 public struct GroupFoundationStatusParams: Encodable, Sendable {

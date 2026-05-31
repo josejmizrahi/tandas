@@ -72,6 +72,77 @@ public struct CanonicalResourcesRepository: Sendable {
             )
         )
     }
+
+    public func resourceDetail(resourceId: UUID) async throws -> GroupResourceDetail {
+        try await rpc.groupResourceDetail(resourceId: resourceId)
+    }
+
+    // MARK: - Asset Fase B.1
+
+    @discardableResult
+    public func assignAssetCustodian(
+        resourceId: UUID,
+        membershipId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.assignAssetCustodian(
+            AssignAssetCustodianParams(
+                resourceId: resourceId,
+                membershipId: membershipId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func releaseAssetCustodian(
+        resourceId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.releaseAssetCustodian(
+            ReleaseAssetCustodianParams(
+                resourceId: resourceId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func markAssetCondition(
+        resourceId: UUID,
+        condition: AssetCondition,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.markAssetCondition(
+            MarkAssetConditionParams(
+                resourceId: resourceId,
+                condition: condition.rawValue,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    public func recordAssetValuation(
+        resourceId: UUID,
+        value: Decimal,
+        unit: String,
+        basis: String? = nil
+    ) async throws {
+        try await rpc.recordAssetValuation(
+            RecordAssetValuationParams(
+                resourceId: resourceId,
+                value: value,
+                unit: unit.trimmingCharacters(in: .whitespacesAndNewlines),
+                basis: basis?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
+            )
+        )
+    }
 }
 
 private extension String {

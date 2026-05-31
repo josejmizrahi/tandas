@@ -40,6 +40,33 @@ public final class ResourcesStore {
     public var transferOwnerMembershipId: UUID?
     public var transferNote: String = ""
 
+    // MARK: - Detail + Asset Fase B.1 state
+
+    public private(set) var detail: GroupResourceDetail?
+    public private(set) var detailPhase: StorePhase = .idle
+    /// Active resource id that the detail surface (and Asset sheets) is
+    /// operating on. Used to scope sheet saves correctly.
+    public private(set) var activeResourceId: UUID?
+
+    // AssignCustodianSheet
+    public var isAssignCustodianPresented: Bool = false
+    public var assignCustodianMembershipId: UUID?
+    public var assignCustodianReason: String = ""
+
+    // MarkConditionSheet
+    public var isMarkConditionPresented: Bool = false
+    public var markConditionDraft: AssetCondition = .good
+    public var markConditionReason: String = ""
+
+    // RecordValuationSheet
+    public var isRecordValuationPresented: Bool = false
+    public var valuationAmount: String = ""
+    public var valuationUnit: String = "MXN"
+    public var valuationBasis: AssetValuationBasis = .memberEstimate
+
+    // Release custodian confirmation (no sheet, dialog only)
+    public var isConfirmingReleaseCustodian: Bool = false
+
     private let repository: CanonicalResourcesRepository
     private var loadedGroupId: UUID?
 
@@ -216,6 +243,206 @@ public final class ResourcesStore {
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false
+        }
+    }
+
+    // MARK: - Detail load
+
+    public func loadDetail(resourceId: UUID) async {
+        if detail?.resource.id != resourceId {
+            detail = nil
+            detailPhase = .loading
+        }
+        activeResourceId = resourceId
+        do {
+            let fetched = try await repository.resourceDetail(resourceId: resourceId)
+            detail = fetched
+            detailPhase = .loaded
+            errorMessage = nil
+        } catch {
+            let message = UserFacingError.from(error).message
+            errorMessage = message
+            detailPhase = .failed(message: message)
+        }
+    }
+
+    public func clearDetail() {
+        detail = nil
+        detailPhase = .idle
+        activeResourceId = nil
+    }
+
+    // MARK: - Asset Fase B.1 — Assign / Release custodian
+
+    public func presentAssignCustodian(seed: AssetSubtypeData? = nil) {
+        assignCustodianMembershipId = seed?.custodianMembershipId
+        assignCustodianReason = ""
+        errorMessage = nil
+        isAssignCustodianPresented = true
+    }
+
+    public var canSaveAssignCustodian: Bool {
+        activeResourceId != nil && assignCustodianMembershipId != nil
+    }
+
+    @discardableResult
+    public func saveAssignCustodian() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        guard let membershipId = assignCustodianMembershipId else {
+            errorMessage = String(localized: L10n.AssignCustodian.memberRequired)
+            return false
+        }
+        do {
+            _ = try await repository.assignAssetCustodian(
+                resourceId: resourceId,
+                membershipId: membershipId,
+                reason: assignCustodianReason,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isAssignCustodianPresented = false
+            assignCustodianMembershipId = nil
+            assignCustodianReason = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    public func presentReleaseCustodian() {
+        errorMessage = nil
+        isConfirmingReleaseCustodian = true
+    }
+
+    @discardableResult
+    public func confirmReleaseCustodian() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.releaseAssetCustodian(
+                resourceId: resourceId,
+                reason: nil,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isConfirmingReleaseCustodian = false
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    // MARK: - Asset Fase B.1 — Mark condition
+
+    public func presentMarkCondition(seed: AssetSubtypeData? = nil) {
+        markConditionDraft = seed?.condition ?? .good
+        markConditionReason = ""
+        errorMessage = nil
+        isMarkConditionPresented = true
+    }
+
+    @discardableResult
+    public func saveMarkCondition() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.markAssetCondition(
+                resourceId: resourceId,
+                condition: markConditionDraft,
+                reason: markConditionReason,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isMarkConditionPresented = false
+            markConditionReason = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    // MARK: - Asset Fase B.1 — Record valuation
+
+    public func presentRecordValuation(seed: AssetSubtypeData? = nil) {
+        valuationAmount = ""
+        valuationUnit = seed?.currentValueUnit ?? "MXN"
+        valuationBasis = .memberEstimate
+        errorMessage = nil
+        isRecordValuationPresented = true
+    }
+
+    public var canSaveValuation: Bool {
+        guard activeResourceId != nil else { return false }
+        guard let value = decimalValuationAmount, value > 0 else { return false }
+        return !valuationUnit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    public var decimalValuationAmount: Decimal? {
+        let trimmed = valuationAmount.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return Decimal(string: trimmed)
+    }
+
+    @discardableResult
+    public func saveRecordValuation() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        guard let value = decimalValuationAmount, value > 0 else {
+            errorMessage = String(localized: L10n.RecordValuation.amountRequired)
+            return false
+        }
+        let unit = valuationUnit.trimmingCharacters(in: .whitespacesAndNewlines)
+        if unit.isEmpty {
+            errorMessage = String(localized: L10n.RecordValuation.unitRequired)
+            return false
+        }
+        do {
+            try await repository.recordAssetValuation(
+                resourceId: resourceId,
+                value: value,
+                unit: unit,
+                basis: valuationBasis.rawValue
+            )
+            await loadDetail(resourceId: resourceId)
+            isRecordValuationPresented = false
+            valuationAmount = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+}
+
+/// Valuation basis whitelist matching `record_asset_valuation.p_basis`
+/// default + common conventions. Backend currently accepts any text;
+/// the iOS surface narrows to a stable set so the picker stays sane.
+public enum AssetValuationBasis: String, CaseIterable, Identifiable, Sendable, Hashable {
+    case memberEstimate = "member_estimate"
+    case invoice
+    case kbb
+    case other
+
+    public var id: String { rawValue }
+
+    public var label: LocalizedStringResource {
+        switch self {
+        case .memberEstimate: return L10n.RecordValuation.basisMemberEstimate
+        case .invoice:        return L10n.RecordValuation.basisInvoice
+        case .kbb:            return L10n.RecordValuation.basisKbb
+        case .other:          return L10n.RecordValuation.basisOther
         }
     }
 }

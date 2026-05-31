@@ -181,6 +181,13 @@ public enum L10n {
         public static let typeStepTitle    = LocalizedStringResource("resources.create.type_step.title", defaultValue: "Tipo de recurso")
         public static let typeStepContinue = LocalizedStringResource("resources.create.type_step.next",  defaultValue: "Continuar")
         public static let typeStepBack     = LocalizedStringResource("resources.create.type_step.back",  defaultValue: "Cambiar tipo")
+
+        // Asset condition labels (Fase B.1).
+        public static let conditionGood     = LocalizedStringResource("resources.asset.condition.good",     defaultValue: "Bueno")
+        public static let conditionUsed     = LocalizedStringResource("resources.asset.condition.used",     defaultValue: "Usado")
+        public static let conditionDamaged  = LocalizedStringResource("resources.asset.condition.damaged",  defaultValue: "Dañado")
+        public static let conditionRepaired = LocalizedStringResource("resources.asset.condition.repaired", defaultValue: "Reparado")
+        public static let conditionRetired  = LocalizedStringResource("resources.asset.condition.retired",  defaultValue: "Retirado")
         public static let privateLabel       = LocalizedStringResource("resources.visibility.private", defaultValue: "Privado")
         public static let membersLabel       = LocalizedStringResource("resources.visibility.members", defaultValue: "Miembros")
         public static let publicLabel        = LocalizedStringResource("resources.visibility.public",  defaultValue: "Público")
@@ -880,6 +887,59 @@ public enum L10n {
 
         public static let archiveAction      = LocalizedStringResource("resource_detail.action.archive",     defaultValue: "Archivar recurso")
         public static let transferAction     = LocalizedStringResource("resource_detail.action.transfer",    defaultValue: "Transferir propiedad")
+
+        // Asset Fase B.1 — Responsibility block + sheets.
+        public static let assetCustodianLabel    = LocalizedStringResource("resource_detail.asset.custodian",       defaultValue: "Custodio actual")
+        public static let assetCustodianNone     = LocalizedStringResource("resource_detail.asset.custodian.none",  defaultValue: "Sin custodio asignado")
+        public static let assetConditionLabel    = LocalizedStringResource("resource_detail.asset.condition",       defaultValue: "Estado")
+        public static let assetConditionNone     = LocalizedStringResource("resource_detail.asset.condition.none",  defaultValue: "Sin registro")
+        public static let assetValuationLabel    = LocalizedStringResource("resource_detail.asset.valuation",       defaultValue: "Valuación")
+        public static let assetValuationNone     = LocalizedStringResource("resource_detail.asset.valuation.none",  defaultValue: "Sin valuación registrada")
+        public static let assetAssignCustodian   = LocalizedStringResource("resource_detail.asset.action.assign",   defaultValue: "Asignar custodio")
+        public static let assetReassignCustodian = LocalizedStringResource("resource_detail.asset.action.reassign", defaultValue: "Cambiar custodio")
+        public static let assetReleaseCustodian  = LocalizedStringResource("resource_detail.asset.action.release", defaultValue: "Liberar custodio")
+        public static let assetMarkCondition     = LocalizedStringResource("resource_detail.asset.action.condition", defaultValue: "Marcar estado")
+        public static let assetRecordValuation   = LocalizedStringResource("resource_detail.asset.action.valuation", defaultValue: "Registrar valuación")
+    }
+
+    public enum AssignCustodian {
+        public static let title           = LocalizedStringResource("assign_custodian.title",           defaultValue: "Asignar custodio")
+        public static let memberSection   = LocalizedStringResource("assign_custodian.section.member",  defaultValue: "Miembro")
+        public static let memberPlaceholder = LocalizedStringResource("assign_custodian.member.placeholder", defaultValue: "Elige a quién")
+        public static let reasonSection   = LocalizedStringResource("assign_custodian.section.reason",  defaultValue: "Motivo (opcional)")
+        public static let reasonPlaceholder = LocalizedStringResource("assign_custodian.reason.placeholder", defaultValue: "Por qué pasa la custodia…")
+        public static let save            = LocalizedStringResource("assign_custodian.save",            defaultValue: "Asignar")
+        public static let cancel          = LocalizedStringResource("assign_custodian.cancel",          defaultValue: "Cancelar")
+        public static let memberRequired  = LocalizedStringResource("assign_custodian.member.required", defaultValue: "Elige al nuevo custodio.")
+        public static let releaseConfirmTitle = LocalizedStringResource("assign_custodian.release.confirm_title", defaultValue: "Liberar custodio")
+        public static let releaseConfirmBody  = LocalizedStringResource("assign_custodian.release.confirm_body",  defaultValue: "El recurso queda sin custodio asignado.")
+        public static let releaseConfirm  = LocalizedStringResource("assign_custodian.release.confirm",  defaultValue: "Liberar")
+    }
+
+    public enum MarkCondition {
+        public static let title           = LocalizedStringResource("mark_condition.title",          defaultValue: "Marcar estado")
+        public static let conditionSection = LocalizedStringResource("mark_condition.section.condition", defaultValue: "Estado")
+        public static let reasonSection   = LocalizedStringResource("mark_condition.section.reason", defaultValue: "Motivo (opcional)")
+        public static let reasonPlaceholder = LocalizedStringResource("mark_condition.reason.placeholder", defaultValue: "Qué pasó…")
+        public static let save            = LocalizedStringResource("mark_condition.save",           defaultValue: "Guardar")
+        public static let cancel          = LocalizedStringResource("mark_condition.cancel",         defaultValue: "Cancelar")
+    }
+
+    public enum RecordValuation {
+        public static let title           = LocalizedStringResource("record_valuation.title",          defaultValue: "Registrar valuación")
+        public static let amountSection   = LocalizedStringResource("record_valuation.section.amount", defaultValue: "Valor")
+        public static let amountLabel     = LocalizedStringResource("record_valuation.amount.label",   defaultValue: "Monto")
+        public static let unitLabel       = LocalizedStringResource("record_valuation.unit.label",     defaultValue: "Moneda")
+        public static let unitPlaceholder = LocalizedStringResource("record_valuation.unit.placeholder", defaultValue: "MXN")
+        public static let basisSection    = LocalizedStringResource("record_valuation.section.basis",  defaultValue: "Cómo lo calculaste")
+        public static let basisMemberEstimate = LocalizedStringResource("record_valuation.basis.member_estimate", defaultValue: "Estimación del miembro")
+        public static let basisInvoice    = LocalizedStringResource("record_valuation.basis.invoice", defaultValue: "Factura / Recibo")
+        public static let basisKbb        = LocalizedStringResource("record_valuation.basis.kbb",     defaultValue: "Tabla de referencia")
+        public static let basisOther      = LocalizedStringResource("record_valuation.basis.other",   defaultValue: "Otro")
+        public static let save            = LocalizedStringResource("record_valuation.save",          defaultValue: "Guardar")
+        public static let cancel          = LocalizedStringResource("record_valuation.cancel",        defaultValue: "Cancelar")
+        public static let amountRequired  = LocalizedStringResource("record_valuation.amount.required", defaultValue: "Monto > 0 requerido.")
+        public static let unitRequired    = LocalizedStringResource("record_valuation.unit.required",   defaultValue: "Indica la moneda.")
     }
 
     public enum TransferOwnership {

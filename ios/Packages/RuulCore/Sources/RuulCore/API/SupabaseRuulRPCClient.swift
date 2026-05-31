@@ -498,6 +498,44 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func groupResourceDetail(resourceId: UUID) async throws -> GroupResourceDetail {
+        let params = GroupResourceDetailParams(resourceId: resourceId)
+        do {
+            let rows: [GroupResourceDetail] = try await client
+                .rpc("group_resource_detail", params: params)
+                .execute()
+                .value
+            guard let first = rows.first else {
+                throw RuulError.unexpected(message: "group_resource_detail returned no rows")
+            }
+            return first
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    // MARK: - Asset Fase B.1
+
+    public func assignAssetCustodian(_ input: AssignAssetCustodianParams) async throws -> UUID {
+        try await callReturningUUID("assign_asset_custodian", params: input)
+    }
+
+    public func releaseAssetCustodian(_ input: ReleaseAssetCustodianParams) async throws -> UUID {
+        try await callReturningUUID("release_asset_custodian", params: input)
+    }
+
+    public func markAssetCondition(_ input: MarkAssetConditionParams) async throws -> UUID {
+        try await callReturningUUID("mark_asset_condition", params: input)
+    }
+
+    public func recordAssetValuation(_ input: RecordAssetValuationParams) async throws {
+        do {
+            _ = try await client.rpc("record_asset_valuation", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Foundation status
 
     public func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {

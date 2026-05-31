@@ -237,6 +237,33 @@ public protocol RuulRPCClient: Sendable {
     /// system event.
     func setResourceOwnership(_ input: SetResourceOwnershipParams) async throws
 
+    /// `group_resource_detail(p_resource_id)` — augmented envelope +
+    /// per-type `subtype` jsonb. Active-member gate.
+    func groupResourceDetail(resourceId: UUID) async throws -> GroupResourceDetail
+
+    // MARK: - Asset Fase B.1
+
+    /// `assign_asset_custodian(...)` — sets or replaces the custodian.
+    /// Requires `resources.update`. Emits `resource.assigned` with
+    /// `role=custodian`. Idempotent via `p_client_id`.
+    func assignAssetCustodian(_ input: AssignAssetCustodianParams) async throws -> UUID
+
+    /// `release_asset_custodian(...)` — clears the custodian. Requires
+    /// `resources.update`. Emits `resource.returned`. Idempotent.
+    func releaseAssetCustodian(_ input: ReleaseAssetCustodianParams) async throws -> UUID
+
+    /// `mark_asset_condition(...)` — updates condition. Emits
+    /// `resource.damaged` (→damaged), `resource.repaired`
+    /// (damaged→repaired) or `resource.status_changed`. Requires
+    /// `resources.update`. Idempotent via `p_client_id`.
+    func markAssetCondition(_ input: MarkAssetConditionParams) async throws -> UUID
+
+    /// `record_asset_valuation(...)` — appends a row to
+    /// `group_resource_asset_valuations` and updates
+    /// `group_resource_assets.current_value`. Requires
+    /// `resources.update_value`.
+    func recordAssetValuation(_ input: RecordAssetValuationParams) async throws
+
     // MARK: - Foundation status
 
     /// `group_foundation_status(p_group_id)` — per-primitive readiness
