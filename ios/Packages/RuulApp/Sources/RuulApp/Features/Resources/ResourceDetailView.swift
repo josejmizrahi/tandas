@@ -157,6 +157,9 @@ public struct ResourceDetailView: View {
         .sheet(isPresented: $store.isAssignSlotPresented) {
             AssignSlotSheet(store: store, membersStore: membersStore, groupId: groupId)
         }
+        .sheet(isPresented: $store.isEditMetadataPresented) {
+            EditMetadataSheet(store: store, resource: resource, groupId: groupId)
+        }
         .confirmationDialog(
             Text(L10n.AssignSlot.releaseConfirmTitle),
             isPresented: $store.isConfirmingReleaseSlot,
@@ -585,6 +588,13 @@ public struct ResourceDetailView: View {
                     } label: {
                         Label(L10n.ResourceDetail.fundLockAction, systemImage: "lock")
                     }
+                }
+            }
+            if !descriptor.metadataSchema.isEmpty {
+                Button {
+                    store.presentEditMetadata(resource: resource)
+                } label: {
+                    Label(L10n.ResourceDetail.editMetadataAction, systemImage: "pencil")
                 }
             }
             Button {

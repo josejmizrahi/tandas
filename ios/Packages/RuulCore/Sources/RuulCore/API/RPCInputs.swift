@@ -711,6 +711,42 @@ public struct ArchiveGroupResourceInput: Encodable, Sendable, Equatable {
     }
 }
 
+// MARK: - update_resource (envelope edits)
+
+public struct UpdateResourceParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pName: String?
+    public let pDescription: String?
+    public let pVisibility: String?
+    public let pMetadata: [String: RPCJSONValue]?
+    public let pSubtypePayload: [String: RPCJSONValue]?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId      = "p_resource_id"
+        case pName            = "p_name"
+        case pDescription     = "p_description"
+        case pVisibility      = "p_visibility"
+        case pMetadata        = "p_metadata"
+        case pSubtypePayload  = "p_subtype_payload"
+    }
+
+    public init(
+        resourceId: UUID,
+        name: String? = nil,
+        description: String? = nil,
+        visibility: String? = nil,
+        metadata: [String: RPCJSONValue]? = nil,
+        subtypePayload: [String: RPCJSONValue]? = nil
+    ) {
+        self.pResourceId = resourceId
+        self.pName = name
+        self.pDescription = description
+        self.pVisibility = visibility
+        self.pMetadata = metadata
+        self.pSubtypePayload = subtypePayload
+    }
+}
+
 // MARK: - Resource detail + Asset Fase B.1
 
 public struct GroupResourceDetailParams: Encodable, Sendable {

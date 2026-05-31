@@ -900,6 +900,9 @@ public enum L10n {
         public static let archiveAction      = LocalizedStringResource("resource_detail.action.archive",     defaultValue: "Archivar recurso")
         public static let transferAction     = LocalizedStringResource("resource_detail.action.transfer",    defaultValue: "Transferir propiedad")
 
+        // Envelope-only Fase C — generic metadata editor.
+        public static let editMetadataAction = LocalizedStringResource("resource_detail.metadata.edit.action", defaultValue: "Editar campos")
+
         // Slot Fase B.5 — Responsibility block + lifecycle actions.
         public static let slotWindowLabel    = LocalizedStringResource("resource_detail.slot.window",       defaultValue: "Ventana")
         public static let slotWindowNone     = LocalizedStringResource("resource_detail.slot.window.none",  defaultValue: "Sin ventana definida")
@@ -991,6 +994,16 @@ public enum L10n {
         public static let reasonPlaceholder = LocalizedStringResource("mark_condition.reason.placeholder", defaultValue: "Qué pasó…")
         public static let save            = LocalizedStringResource("mark_condition.save",           defaultValue: "Guardar")
         public static let cancel          = LocalizedStringResource("mark_condition.cancel",         defaultValue: "Cancelar")
+    }
+
+    public enum EditMetadata {
+        public static let title             = LocalizedStringResource("edit_metadata.title",          defaultValue: "Editar campos")
+        public static let fieldsSection     = LocalizedStringResource("edit_metadata.section.fields", defaultValue: "Datos")
+        public static let save              = LocalizedStringResource("edit_metadata.save",           defaultValue: "Guardar")
+        public static let cancel            = LocalizedStringResource("edit_metadata.cancel",         defaultValue: "Cancelar")
+        public static let invalidInteger    = LocalizedStringResource("edit_metadata.invalid_integer", defaultValue: "Solo números enteros.")
+        public static let invalidDecimal    = LocalizedStringResource("edit_metadata.invalid_decimal", defaultValue: "Número inválido.")
+        public static let invalidUrl        = LocalizedStringResource("edit_metadata.invalid_url",     defaultValue: "Enlace inválido.")
     }
 
     public enum AssignSlot {

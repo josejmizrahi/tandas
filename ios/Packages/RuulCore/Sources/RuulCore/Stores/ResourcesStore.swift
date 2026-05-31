@@ -109,6 +109,14 @@ public final class ResourcesStore {
     public var isConfirmingReleaseSlot: Bool = false
     public var isConfirmingExpireSlot: Bool = false
 
+    // Envelope-only metadata Fase C state
+    public var isEditMetadataPresented: Bool = false
+    /// Per-field text buffers keyed by metadata field key. Booleans and
+    /// dates live in their own dictionaries so SwiftUI can bind directly.
+    public var metadataDraftStrings: [String: String] = [:]
+    public var metadataDraftBools: [String: Bool] = [:]
+    public var metadataDraftDates: [String: Date] = [:]
+
     private let repository: CanonicalResourcesRepository
     private var loadedGroupId: UUID?
 
@@ -833,6 +841,126 @@ extension ResourcesStore {
             )
             await loadDetail(resourceId: resourceId)
             isConfirmingExpireRight = false
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+}
+
+// MARK: - Envelope-only metadata Fase C
+
+@MainActor
+extension ResourcesStore {
+    /// Seed the per-field buffers from `resource.metadata` for the
+    /// descriptor's schema. Strings/numbers/urls/multiline all share
+    /// `metadataDraftStrings`; bools and dates use dedicated maps.
+    public func presentEditMetadata(resource: GroupResource) {
+        let schema = resource.resourceType.descriptor.metadataSchema
+        var strings: [String: String] = [:]
+        var bools: [String: Bool] = [:]
+        var dates: [String: Date] = [:]
+        let formatter = ISO8601DateFormatter()
+        for field in schema {
+            let raw = resource.metadata?[field.key]
+            switch field.kind {
+            case .boolean:
+                if case .bool(let b) = raw { bools[field.key] = b }
+                else { bools[field.key] = false }
+            case .date:
+                if case .string(let s) = raw, let d = formatter.date(from: s) {
+                    dates[field.key] = d
+                } else {
+                    dates[field.key] = Date()
+                }
+            default:
+                strings[field.key] = resource.metadataString(forKey: field.key) ?? ""
+            }
+        }
+        metadataDraftStrings = strings
+        metadataDraftBools = bools
+        metadataDraftDates = dates
+        errorMessage = nil
+        isEditMetadataPresented = true
+    }
+
+    /// Compose the merge payload from the per-field buffers + the
+    /// descriptor's schema. Empty strings (other than multiline) drop
+    /// the key by sending `.null`. Invalid integer/decimal/url surfaces
+    /// as an error on save.
+    public func metadataDraftPayload(
+        for descriptor: ResourceTypeDescriptor
+    ) -> (payload: [String: RPCJSONValue]?, error: String?) {
+        var payload: [String: RPCJSONValue] = [:]
+        let isoEncoder = ISO8601DateFormatter()
+        for field in descriptor.metadataSchema {
+            switch field.kind {
+            case .string, .multilineString:
+                let trimmed = (metadataDraftStrings[field.key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    payload[field.key] = .null
+                } else {
+                    payload[field.key] = .string(trimmed)
+                }
+            case .integer:
+                let trimmed = (metadataDraftStrings[field.key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    payload[field.key] = .null
+                } else if let i = Int(trimmed) {
+                    payload[field.key] = .number(Decimal(i))
+                } else {
+                    return (nil, String(localized: L10n.EditMetadata.invalidInteger))
+                }
+            case .decimal:
+                let trimmed = (metadataDraftStrings[field.key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    payload[field.key] = .null
+                } else if let d = Decimal(string: trimmed) {
+                    payload[field.key] = .number(d)
+                } else {
+                    return (nil, String(localized: L10n.EditMetadata.invalidDecimal))
+                }
+            case .url:
+                let trimmed = (metadataDraftStrings[field.key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    payload[field.key] = .null
+                } else if URL(string: trimmed) != nil {
+                    payload[field.key] = .string(trimmed)
+                } else {
+                    return (nil, String(localized: L10n.EditMetadata.invalidUrl))
+                }
+            case .boolean:
+                payload[field.key] = .bool(metadataDraftBools[field.key] ?? false)
+            case .date:
+                if let date = metadataDraftDates[field.key] {
+                    payload[field.key] = .string(isoEncoder.string(from: date))
+                } else {
+                    payload[field.key] = .null
+                }
+            }
+        }
+        return (payload, nil)
+    }
+
+    @discardableResult
+    public func saveEditMetadata(resource: GroupResource, groupId: UUID) async -> Bool {
+        let descriptor = resource.resourceType.descriptor
+        let result = metadataDraftPayload(for: descriptor)
+        if let message = result.error {
+            errorMessage = message
+            return false
+        }
+        guard let payload = result.payload else {
+            return false
+        }
+        do {
+            try await repository.updateMetadata(resourceId: resource.id, metadata: payload)
+            if descriptor.subtypeTable != nil {
+                await loadDetail(resourceId: resource.id)
+            }
+            await refresh(groupId: groupId)
+            isEditMetadataPresented = false
             return true
         } catch {
             errorMessage = UserFacingError.from(error).message

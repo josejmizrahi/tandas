@@ -77,6 +77,20 @@ public struct CanonicalResourcesRepository: Sendable {
         try await rpc.groupResourceDetail(resourceId: resourceId)
     }
 
+    /// Envelope-only metadata edit. Backend merges `p_metadata` with
+    /// the existing jsonb (set value to `.null` to remove a key, since
+    /// `metadata || {"k": null}` keeps the key with a JSON null —
+    /// good enough for the descriptor-driven UI).
+    public func updateMetadata(
+        resourceId: UUID,
+        metadata: [String: RPCJSONValue]
+    ) async throws {
+        guard !metadata.isEmpty else { return }
+        try await rpc.updateResource(
+            UpdateResourceParams(resourceId: resourceId, metadata: metadata)
+        )
+    }
+
     // MARK: - Asset Fase B.1
 
     @discardableResult

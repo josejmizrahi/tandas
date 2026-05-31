@@ -514,6 +514,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func updateResource(_ input: UpdateResourceParams) async throws {
+        do {
+            _ = try await client.rpc("update_resource", params: input).execute()
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Asset Fase B.1
 
     public func assignAssetCustodian(_ input: AssignAssetCustodianParams) async throws -> UUID {
