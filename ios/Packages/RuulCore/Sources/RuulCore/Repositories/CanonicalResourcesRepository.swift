@@ -77,20 +77,22 @@ public struct CanonicalResourcesRepository: Sendable {
         try await rpc.groupResourceDetail(resourceId: resourceId)
     }
 
-    /// Pulls the most-recent group activity and filters by resource id
-    /// client-side. `group_events_recent` does not (yet) support an
-    /// entity_id parameter; once it does, swap to server-side filtering.
+    /// Server-side filtered activity for a resource via
+    /// `group_events_for_entity` (entity_kind='resource', entity_id=...).
     public func recentActivity(
         groupId: UUID,
         resourceId: UUID,
-        limit: Int = 100
+        limit: Int = 50
     ) async throws -> [GroupEvent] {
-        let events = try await rpc.groupEventsRecent(
-            groupId: groupId,
-            limit: limit,
-            before: nil
+        try await rpc.groupEventsForEntity(
+            GroupEventsForEntityParams(
+                groupId: groupId,
+                entityKind: "resource",
+                entityId: resourceId,
+                limit: limit,
+                before: nil
+            )
         )
-        return events.filter { $0.entityKind == "resource" && $0.entityId == resourceId }
     }
 
     /// Movements linked to this resource, client-side filtered on

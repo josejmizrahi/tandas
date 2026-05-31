@@ -52,6 +52,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case setResourceOwnership(input: SetResourceOwnershipParams)
         case groupResourceDetail(resourceId: UUID)
         case updateResource(input: UpdateResourceParams)
+        case groupEventsForEntity(input: GroupEventsForEntityParams)
         case assignAssetCustodian(input: AssignAssetCustodianParams)
         case releaseAssetCustodian(input: ReleaseAssetCustodianParams)
         case markAssetCondition(input: MarkAssetConditionParams)
@@ -219,6 +220,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         )
     )
     private var updateResourceStub: Result<Void, RuulError> = .success(())
+    private var groupEventsForEntityStub: Result<[GroupEvent], RuulError> = .success([])
     private var assignAssetCustodianStub: Result<UUID, RuulError> = .success(UUID())
     private var releaseAssetCustodianStub: Result<UUID, RuulError> = .success(UUID())
     private var markAssetConditionStub: Result<UUID, RuulError> = .success(UUID())
@@ -370,6 +372,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func setSetResourceOwnershipStub(_ stub: Result<Void, RuulError>) { setResourceOwnershipStub = stub }
     func setGroupResourceDetailStub(_ stub: Result<GroupResourceDetail, RuulError>) { groupResourceDetailStub = stub }
     func setUpdateResourceStub(_ stub: Result<Void, RuulError>) { updateResourceStub = stub }
+    func setGroupEventsForEntityStub(_ stub: Result<[GroupEvent], RuulError>) { groupEventsForEntityStub = stub }
     func setAssignAssetCustodianStub(_ stub: Result<UUID, RuulError>) { assignAssetCustodianStub = stub }
     func setReleaseAssetCustodianStub(_ stub: Result<UUID, RuulError>) { releaseAssetCustodianStub = stub }
     func setMarkAssetConditionStub(_ stub: Result<UUID, RuulError>) { markAssetConditionStub = stub }
@@ -659,6 +662,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func updateResource(_ input: UpdateResourceParams) async throws {
         recorded.append(.updateResource(input: input))
         try updateResourceStub.get()
+    }
+
+    func groupEventsForEntity(_ input: GroupEventsForEntityParams) async throws -> [GroupEvent] {
+        recorded.append(.groupEventsForEntity(input: input))
+        return try groupEventsForEntityStub.get()
     }
 
     func assignAssetCustodian(_ input: AssignAssetCustodianParams) async throws -> UUID {

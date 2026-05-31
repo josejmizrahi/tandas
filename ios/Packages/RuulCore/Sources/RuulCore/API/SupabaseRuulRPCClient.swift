@@ -522,6 +522,17 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func groupEventsForEntity(_ input: GroupEventsForEntityParams) async throws -> [GroupEvent] {
+        do {
+            return try await client
+                .rpc("group_events_for_entity", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Asset Fase B.1
 
     public func assignAssetCustodian(_ input: AssignAssetCustodianParams) async throws -> UUID {

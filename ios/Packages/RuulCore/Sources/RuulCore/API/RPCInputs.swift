@@ -711,6 +711,30 @@ public struct ArchiveGroupResourceInput: Encodable, Sendable, Equatable {
     }
 }
 
+public struct GroupEventsForEntityParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pEntityKind: String
+    public let pEntityId: UUID
+    public let pLimit: Int
+    public let pBefore: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId    = "p_group_id"
+        case pEntityKind = "p_entity_kind"
+        case pEntityId   = "p_entity_id"
+        case pLimit      = "p_limit"
+        case pBefore     = "p_before"
+    }
+
+    public init(groupId: UUID, entityKind: String, entityId: UUID, limit: Int = 50, before: Date? = nil) {
+        self.pGroupId = groupId
+        self.pEntityKind = entityKind
+        self.pEntityId = entityId
+        self.pLimit = limit
+        self.pBefore = before
+    }
+}
+
 // MARK: - update_resource (envelope edits)
 
 public struct UpdateResourceParams: Encodable, Sendable {

@@ -246,6 +246,11 @@ public protocol RuulRPCClient: Sendable {
     /// `resources.update`. Emits `resource.updated`.
     func updateResource(_ input: UpdateResourceParams) async throws
 
+    /// `group_events_for_entity(...)` — server-side filter por
+    /// entity_kind+entity_id. Active-member gate. Reemplaza client-side
+    /// filter cuando el grupo emite muchos eventos.
+    func groupEventsForEntity(_ input: GroupEventsForEntityParams) async throws -> [GroupEvent]
+
     // MARK: - Asset Fase B.1
 
     /// `assign_asset_custodian(...)` — sets or replaces the custodian.

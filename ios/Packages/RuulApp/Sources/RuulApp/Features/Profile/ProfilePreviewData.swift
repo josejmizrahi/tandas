@@ -179,6 +179,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
         )
     }
     func updateResource(_ input: UpdateResourceParams) async throws {}
+    func groupEventsForEntity(_ input: GroupEventsForEntityParams) async throws -> [GroupEvent] { [] }
     func assignAssetCustodian(_ input: AssignAssetCustodianParams) async throws -> UUID { UUID() }
     func releaseAssetCustodian(_ input: ReleaseAssetCustodianParams) async throws -> UUID { UUID() }
     func markAssetCondition(_ input: MarkAssetConditionParams) async throws -> UUID { UUID() }
