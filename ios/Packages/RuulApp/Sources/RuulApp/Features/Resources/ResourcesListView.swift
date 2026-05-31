@@ -9,13 +9,20 @@ public struct ResourcesListView: View {
     @Bindable var store: ResourcesStore
     @Bindable var membersStore: MembersStore
     let groupId: UUID
+    let permissionsFetcher: (UUID) async throws -> [String]
 
     @State private var toArchive: GroupResource?
 
-    public init(store: ResourcesStore, membersStore: MembersStore, groupId: UUID) {
+    public init(
+        store: ResourcesStore,
+        membersStore: MembersStore,
+        groupId: UUID,
+        permissionsFetcher: @escaping (UUID) async throws -> [String] = { _ in [] }
+    ) {
         self.store = store
         self.membersStore = membersStore
         self.groupId = groupId
+        self.permissionsFetcher = permissionsFetcher
     }
 
     public var body: some View {
@@ -40,7 +47,13 @@ public struct ResourcesListView: View {
             CreateResourceView(store: store, groupId: groupId)
         }
         .navigationDestination(for: GroupResource.self) { resource in
-            ResourceDetailView(store: store, membersStore: membersStore, groupId: groupId, resource: resource)
+            ResourceDetailView(
+                store: store,
+                membersStore: membersStore,
+                groupId: groupId,
+                resource: resource,
+                permissionsFetcher: permissionsFetcher
+            )
         }
         .confirmationDialog(
             Text(L10n.Resources.archiveConfirmTitle),

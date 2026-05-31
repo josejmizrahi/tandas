@@ -241,7 +241,13 @@ public struct GroupSettingsView: View {
             ResourcesListView(
                 store: container.resourcesStore,
                 membersStore: container.membersStore,
-                groupId: group.id
+                groupId: group.id,
+                permissionsFetcher: { gid in
+                    try await container.groupRepository.listMemberPermissions(
+                        groupId: gid,
+                        userId: nil
+                    )
+                }
             )
         case .contributions:
             ContributionsListView(

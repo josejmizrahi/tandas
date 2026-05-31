@@ -17,20 +17,31 @@ public struct ResourceDetailView: View {
     @Bindable var membersStore: MembersStore
     let groupId: UUID
     let resource: GroupResource
+    let permissionsFetcher: (UUID) async throws -> [String]
 
     @Environment(\.dismiss) private var dismiss
     @State private var isConfirmingArchive: Bool = false
+    @State private var callerPermissions: Set<String> = []
 
     public init(
         store: ResourcesStore,
         membersStore: MembersStore,
         groupId: UUID,
-        resource: GroupResource
+        resource: GroupResource,
+        permissionsFetcher: @escaping (UUID) async throws -> [String] = { _ in [] }
     ) {
         self.store = store
         self.membersStore = membersStore
         self.groupId = groupId
         self.resource = resource
+        self.permissionsFetcher = permissionsFetcher
+    }
+
+    /// Gate every action behind a known permission key. Defaults to
+    /// false until the fetch finishes — tap-then-error is worse than
+    /// briefly-missing-actions.
+    private func can(_ key: String) -> Bool {
+        callerPermissions.contains(key)
     }
 
     private var descriptor: ResourceTypeDescriptor { resource.resourceType.descriptor }
@@ -85,6 +96,11 @@ public struct ResourceDetailView: View {
             await store.loadActivity(resourceId: resource.id, groupId: groupId)
             if descriptor.coordinationBlocks.contains(.money) {
                 await store.loadMovements(resourceId: resource.id, groupId: groupId)
+            }
+            do {
+                callerPermissions = Set(try await permissionsFetcher(groupId))
+            } catch {
+                callerPermissions = []
             }
         }
         .refreshable {
@@ -547,7 +563,7 @@ public struct ResourceDetailView: View {
     @ViewBuilder
     private var actionsSection: some View {
         Section(L10n.ResourceDetail.actionsSection) {
-            if descriptor.supportsCustody {
+            if descriptor.supportsCustody, can("resources.update") {
                 if assetSubtype?.custodianMembershipId == nil {
                     Button {
                         store.presentAssignCustodian(seed: assetSubtype)
@@ -572,21 +588,21 @@ public struct ResourceDetailView: View {
                     Label(L10n.ResourceDetail.assetMarkCondition, systemImage: "wrench.and.screwdriver")
                 }
             }
-            if descriptor.supportsValuation {
+            if descriptor.supportsValuation, can("resources.update_value") {
                 Button {
                     store.presentRecordValuation(seed: assetSubtype)
                 } label: {
                     Label(L10n.ResourceDetail.assetRecordValuation, systemImage: "dollarsign.circle")
                 }
             }
-            if descriptor.supportsBooking, resource.resourceType == .space {
+            if descriptor.supportsBooking, resource.resourceType == .space, can("bookings.create") {
                 Button {
                     store.presentBookSpace()
                 } label: {
                     Label(L10n.ResourceDetail.spaceBookAction, systemImage: "calendar.badge.plus")
                 }
             }
-            if resource.resourceType == .slot {
+            if resource.resourceType == .slot, can("resources.update") {
                 let slotState = slotSubtype?.lifecycleState ?? .unassigned
                 Button {
                     store.presentAssignSlot(seed: slotSubtype)
@@ -615,7 +631,7 @@ public struct ResourceDetailView: View {
                     }
                 }
             }
-            if resource.resourceType == .right {
+            if resource.resourceType == .right, can("resources.update") {
                 let state = rightSubtype?.lifecycleState ?? .unassigned
                 Button {
                     store.presentGrantRight(seed: rightSubtype)
@@ -650,7 +666,7 @@ public struct ResourceDetailView: View {
                     }
                 }
             }
-            if descriptor.supportsLocking {
+            if descriptor.supportsLocking, can("resources.update") {
                 Button {
                     store.presentSetFundThreshold(seed: fundSubtype)
                 } label: {
@@ -670,22 +686,26 @@ public struct ResourceDetailView: View {
                     }
                 }
             }
-            if !descriptor.metadataSchema.isEmpty {
+            if !descriptor.metadataSchema.isEmpty, can("resources.update") {
                 Button {
                     store.presentEditMetadata(resource: resource)
                 } label: {
                     Label(L10n.ResourceDetail.editMetadataAction, systemImage: "pencil")
                 }
             }
-            Button {
-                store.beginTransferring(resource)
-            } label: {
-                Label(L10n.ResourceDetail.transferAction, systemImage: "arrow.left.arrow.right")
+            if can("resources.transfer") {
+                Button {
+                    store.beginTransferring(resource)
+                } label: {
+                    Label(L10n.ResourceDetail.transferAction, systemImage: "arrow.left.arrow.right")
+                }
             }
-            Button(role: .destructive) {
-                isConfirmingArchive = true
-            } label: {
-                Label(L10n.ResourceDetail.archiveAction, systemImage: "archivebox")
+            if can("resources.archive") {
+                Button(role: .destructive) {
+                    isConfirmingArchive = true
+                } label: {
+                    Label(L10n.ResourceDetail.archiveAction, systemImage: "archivebox")
+                }
             }
         }
     }
