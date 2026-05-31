@@ -316,6 +316,57 @@ public struct CanonicalResourcesRepository: Sendable {
             )
         )
     }
+
+    // MARK: - Slot Fase B.5
+
+    @discardableResult
+    public func assignSlot(
+        resourceId: UUID,
+        membershipId: UUID,
+        startsAt: Date? = nil,
+        endsAt: Date? = nil,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.assignSlot(
+            AssignSlotParams(
+                resourceId: resourceId,
+                membershipId: membershipId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank,
+                startsAt: startsAt,
+                endsAt: endsAt
+            )
+        )
+    }
+
+    @discardableResult
+    public func releaseSlot(
+        resourceId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.releaseSlot(
+            ReleaseSlotParams(
+                resourceId: resourceId,
+                reason: reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
+
+    @discardableResult
+    public func expireSlot(
+        resourceId: UUID,
+        clientId: String? = nil
+    ) async throws -> UUID {
+        try await rpc.expireSlot(
+            ExpireSlotParams(
+                resourceId: resourceId,
+                clientId: clientId?.nilIfBlank
+            )
+        )
+    }
 }
 
 private extension String {

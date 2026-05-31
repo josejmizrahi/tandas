@@ -820,6 +820,64 @@ public struct LockFundParams: Encodable, Sendable {
 
 public typealias UnlockFundParams = LockFundParams
 
+// MARK: - Slot Fase B.5
+
+public struct AssignSlotParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pMembershipId: UUID
+    public let pReason: String?
+    public let pClientId: String?
+    public let pStartsAt: Date?
+    public let pEndsAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case pResourceId   = "p_resource_id"
+        case pMembershipId = "p_membership_id"
+        case pReason       = "p_reason"
+        case pClientId     = "p_client_id"
+        case pStartsAt     = "p_starts_at"
+        case pEndsAt       = "p_ends_at"
+    }
+
+    public init(resourceId: UUID, membershipId: UUID, reason: String? = nil, clientId: String? = nil, startsAt: Date? = nil, endsAt: Date? = nil) {
+        self.pResourceId = resourceId
+        self.pMembershipId = membershipId
+        self.pReason = reason
+        self.pClientId = clientId
+        self.pStartsAt = startsAt
+        self.pEndsAt = endsAt
+    }
+}
+
+public struct ReleaseSlotParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pReason: String?
+    public let pClientId: String?
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pReason     = "p_reason"
+        case pClientId   = "p_client_id"
+    }
+    public init(resourceId: UUID, reason: String? = nil, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pReason = reason
+        self.pClientId = clientId
+    }
+}
+
+public struct ExpireSlotParams: Encodable, Sendable {
+    public let pResourceId: UUID
+    public let pClientId: String?
+    enum CodingKeys: String, CodingKey {
+        case pResourceId = "p_resource_id"
+        case pClientId   = "p_client_id"
+    }
+    public init(resourceId: UUID, clientId: String? = nil) {
+        self.pResourceId = resourceId
+        self.pClientId = clientId
+    }
+}
+
 // MARK: - Right Fase B.4
 
 public struct GrantRightParams: Encodable, Sendable {

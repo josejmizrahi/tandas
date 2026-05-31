@@ -192,6 +192,9 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func transferRight(_ input: TransferRightParams) async throws -> UUID { UUID() }
     func revokeRight(_ input: RevokeRightParams) async throws -> UUID { UUID() }
     func expireRight(_ input: ExpireRightParams) async throws -> UUID { UUID() }
+    func assignSlot(_ input: AssignSlotParams) async throws -> UUID { UUID() }
+    func releaseSlot(_ input: ReleaseSlotParams) async throws -> UUID { UUID() }
+    func expireSlot(_ input: ExpireSlotParams) async throws -> UUID { UUID() }
     func setMembershipState(_ input: SetMembershipStateParams) async throws {}
     func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {
         GroupFoundationStatus(

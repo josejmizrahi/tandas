@@ -99,6 +99,16 @@ public final class ResourcesStore {
     public var isConfirmingRevokeRight: Bool = false
     public var isConfirmingExpireRight: Bool = false
 
+    // Slot Fase B.5 state
+    public var isAssignSlotPresented: Bool = false
+    public var assignSlotMemberId: UUID?
+    public var assignSlotCustomWindow: Bool = false
+    public var assignSlotStartsAt: Date = Date()
+    public var assignSlotEndsAt: Date = Date().addingTimeInterval(60 * 60)
+    public var assignSlotReason: String = ""
+    public var isConfirmingReleaseSlot: Bool = false
+    public var isConfirmingExpireSlot: Bool = false
+
     private let repository: CanonicalResourcesRepository
     private var loadedGroupId: UUID?
 
@@ -823,6 +833,120 @@ extension ResourcesStore {
             )
             await loadDetail(resourceId: resourceId)
             isConfirmingExpireRight = false
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+}
+
+// MARK: - Slot Fase B.5 actions
+
+@MainActor
+extension ResourcesStore {
+    public func presentAssignSlot(seed: SlotSubtypeData? = nil) {
+        assignSlotMemberId = seed?.assignedMembershipId
+        if let starts = seed?.slotStartsAt, let ends = seed?.slotEndsAt {
+            assignSlotCustomWindow = true
+            assignSlotStartsAt = starts
+            assignSlotEndsAt = ends
+        } else {
+            assignSlotCustomWindow = false
+            let cal = Calendar.current
+            let topNext = cal.date(from: cal.dateComponents([.year, .month, .day, .hour], from: Date()))?
+                .addingTimeInterval(60 * 60) ?? Date()
+            assignSlotStartsAt = topNext
+            assignSlotEndsAt = topNext.addingTimeInterval(60 * 60)
+        }
+        assignSlotReason = ""
+        errorMessage = nil
+        isAssignSlotPresented = true
+    }
+
+    public var canSaveAssignSlot: Bool {
+        guard activeResourceId != nil, assignSlotMemberId != nil else { return false }
+        if assignSlotCustomWindow, assignSlotEndsAt <= assignSlotStartsAt { return false }
+        return true
+    }
+
+    @discardableResult
+    public func saveAssignSlot() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        guard let memberId = assignSlotMemberId else {
+            errorMessage = String(localized: L10n.AssignSlot.memberRequired)
+            return false
+        }
+        if assignSlotCustomWindow, assignSlotEndsAt <= assignSlotStartsAt {
+            errorMessage = String(localized: L10n.AssignSlot.invalidWindow)
+            return false
+        }
+        do {
+            _ = try await repository.assignSlot(
+                resourceId: resourceId,
+                membershipId: memberId,
+                startsAt: assignSlotCustomWindow ? assignSlotStartsAt : nil,
+                endsAt: assignSlotCustomWindow ? assignSlotEndsAt : nil,
+                reason: assignSlotReason,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isAssignSlotPresented = false
+            assignSlotReason = ""
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    public func presentReleaseSlot() {
+        errorMessage = nil
+        isConfirmingReleaseSlot = true
+    }
+
+    @discardableResult
+    public func confirmReleaseSlot() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.releaseSlot(
+                resourceId: resourceId,
+                reason: nil,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isConfirmingReleaseSlot = false
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
+    public func presentExpireSlot() {
+        errorMessage = nil
+        isConfirmingExpireSlot = true
+    }
+
+    @discardableResult
+    public func confirmExpireSlot() async -> Bool {
+        guard let resourceId = activeResourceId else {
+            errorMessage = "No hay recurso activo."
+            return false
+        }
+        do {
+            _ = try await repository.expireSlot(
+                resourceId: resourceId,
+                clientId: UUID().uuidString
+            )
+            await loadDetail(resourceId: resourceId)
+            isConfirmingExpireSlot = false
             return true
         } catch {
             errorMessage = UserFacingError.from(error).message

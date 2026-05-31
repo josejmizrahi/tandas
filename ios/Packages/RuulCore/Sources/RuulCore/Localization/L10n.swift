@@ -900,6 +900,20 @@ public enum L10n {
         public static let archiveAction      = LocalizedStringResource("resource_detail.action.archive",     defaultValue: "Archivar recurso")
         public static let transferAction     = LocalizedStringResource("resource_detail.action.transfer",    defaultValue: "Transferir propiedad")
 
+        // Slot Fase B.5 — Responsibility block + lifecycle actions.
+        public static let slotWindowLabel    = LocalizedStringResource("resource_detail.slot.window",       defaultValue: "Ventana")
+        public static let slotWindowNone     = LocalizedStringResource("resource_detail.slot.window.none",  defaultValue: "Sin ventana definida")
+        public static let slotAssigneeLabel  = LocalizedStringResource("resource_detail.slot.assignee",     defaultValue: "Asignado a")
+        public static let slotAssigneeNone   = LocalizedStringResource("resource_detail.slot.assignee.none", defaultValue: "Sin asignar")
+        public static let slotStatusUnassigned = LocalizedStringResource("resource_detail.slot.status.unassigned", defaultValue: "Disponible")
+        public static let slotStatusAssigned   = LocalizedStringResource("resource_detail.slot.status.assigned",   defaultValue: "Asignado")
+        public static let slotStatusReleased   = LocalizedStringResource("resource_detail.slot.status.released",   defaultValue: "Liberado")
+        public static let slotStatusExpired    = LocalizedStringResource("resource_detail.slot.status.expired",    defaultValue: "Expirado")
+        public static let slotAssignAction   = LocalizedStringResource("resource_detail.slot.action.assign",   defaultValue: "Asignar turno")
+        public static let slotReassignAction = LocalizedStringResource("resource_detail.slot.action.reassign", defaultValue: "Reasignar turno")
+        public static let slotReleaseAction  = LocalizedStringResource("resource_detail.slot.action.release", defaultValue: "Liberar turno")
+        public static let slotExpireAction   = LocalizedStringResource("resource_detail.slot.action.expire",  defaultValue: "Marcar como vencido")
+
         // Right Fase B.4 — Access block + lifecycle actions.
         public static let rightKindLabel        = LocalizedStringResource("resource_detail.right.kind",         defaultValue: "Tipo de derecho")
         public static let rightHolderLabel      = LocalizedStringResource("resource_detail.right.holder",       defaultValue: "Titular")
@@ -977,6 +991,28 @@ public enum L10n {
         public static let reasonPlaceholder = LocalizedStringResource("mark_condition.reason.placeholder", defaultValue: "Qué pasó…")
         public static let save            = LocalizedStringResource("mark_condition.save",           defaultValue: "Guardar")
         public static let cancel          = LocalizedStringResource("mark_condition.cancel",         defaultValue: "Cancelar")
+    }
+
+    public enum AssignSlot {
+        public static let title           = LocalizedStringResource("assign_slot.title",            defaultValue: "Asignar turno")
+        public static let memberSection   = LocalizedStringResource("assign_slot.section.member",   defaultValue: "Miembro")
+        public static let memberPlaceholder = LocalizedStringResource("assign_slot.member.placeholder", defaultValue: "Elige a quién")
+        public static let windowSection   = LocalizedStringResource("assign_slot.section.window",   defaultValue: "Ventana")
+        public static let startsLabel     = LocalizedStringResource("assign_slot.starts",           defaultValue: "Inicio")
+        public static let endsLabel       = LocalizedStringResource("assign_slot.ends",             defaultValue: "Fin")
+        public static let customWindowToggle = LocalizedStringResource("assign_slot.custom_window.toggle", defaultValue: "Ventana personalizada")
+        public static let reasonSection   = LocalizedStringResource("assign_slot.section.reason",   defaultValue: "Motivo (opcional)")
+        public static let reasonPlaceholder = LocalizedStringResource("assign_slot.reason.placeholder", defaultValue: "Por qué se asigna…")
+        public static let save            = LocalizedStringResource("assign_slot.save",             defaultValue: "Asignar")
+        public static let cancel          = LocalizedStringResource("assign_slot.cancel",           defaultValue: "Cancelar")
+        public static let memberRequired  = LocalizedStringResource("assign_slot.member.required",  defaultValue: "Elige al asignado.")
+        public static let invalidWindow   = LocalizedStringResource("assign_slot.invalid_window",   defaultValue: "El fin debe ser después del inicio.")
+        public static let releaseConfirmTitle = LocalizedStringResource("assign_slot.release.confirm_title", defaultValue: "Liberar turno")
+        public static let releaseConfirmBody  = LocalizedStringResource("assign_slot.release.confirm_body",  defaultValue: "El turno queda disponible para otra persona.")
+        public static let releaseConfirm  = LocalizedStringResource("assign_slot.release.confirm",  defaultValue: "Liberar")
+        public static let expireConfirmTitle = LocalizedStringResource("assign_slot.expire.confirm_title", defaultValue: "Marcar como vencido")
+        public static let expireConfirmBody  = LocalizedStringResource("assign_slot.expire.confirm_body",  defaultValue: "El turno queda registrado como vencido.")
+        public static let expireConfirm   = LocalizedStringResource("assign_slot.expire.confirm",  defaultValue: "Vencer")
     }
 
     public enum GrantRight {

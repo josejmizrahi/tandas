@@ -318,6 +318,22 @@ public protocol RuulRPCClient: Sendable {
     /// Emits `resource.status_changed` (to=expired).
     func expireRight(_ input: ExpireRightParams) async throws -> UUID
 
+    // MARK: - Slot Fase B.5
+
+    /// `assign_slot(...)` — assigns or reassigns a slot, optionally
+    /// setting a starts/ends window. Defaults to now and now+1h.
+    /// Requires `resources.update`. Emits `resource.assigned`.
+    func assignSlot(_ input: AssignSlotParams) async throws -> UUID
+
+    /// `release_slot(...)` — clears the assignee and sets released_at.
+    /// Requires `resources.update`. Emits `resource.returned`.
+    func releaseSlot(_ input: ReleaseSlotParams) async throws -> UUID
+
+    /// `expire_slot(...)` — marks a slot expired after slot_ends_at
+    /// has passed. Requires `resources.update`. Emits
+    /// `resource.status_changed` (to=expired).
+    func expireSlot(_ input: ExpireSlotParams) async throws -> UUID
+
     // MARK: - Foundation status
 
     /// `group_foundation_status(p_group_id)` — per-primitive readiness

@@ -58,6 +58,11 @@ public struct ResourceDetailView: View {
         return store.detail?.rightSubtype
     }
 
+    private var slotSubtype: SlotSubtypeData? {
+        guard store.detail?.resource.id == resource.id else { return nil }
+        return store.detail?.slotSubtype
+    }
+
     public var body: some View {
         List {
             identitySection
@@ -148,6 +153,37 @@ public struct ResourceDetailView: View {
         }
         .sheet(isPresented: $store.isTransferRightPresented) {
             TransferRightSheet(store: store, membersStore: membersStore, groupId: groupId)
+        }
+        .sheet(isPresented: $store.isAssignSlotPresented) {
+            AssignSlotSheet(store: store, membersStore: membersStore, groupId: groupId)
+        }
+        .confirmationDialog(
+            Text(L10n.AssignSlot.releaseConfirmTitle),
+            isPresented: $store.isConfirmingReleaseSlot,
+            titleVisibility: .visible
+        ) {
+            Button(role: .destructive) {
+                Task { await store.confirmReleaseSlot() }
+            } label: {
+                Text(L10n.AssignSlot.releaseConfirm)
+            }
+            Button(role: .cancel) {} label: { Text(L10n.AssignSlot.cancel) }
+        } message: {
+            Text(L10n.AssignSlot.releaseConfirmBody)
+        }
+        .confirmationDialog(
+            Text(L10n.AssignSlot.expireConfirmTitle),
+            isPresented: $store.isConfirmingExpireSlot,
+            titleVisibility: .visible
+        ) {
+            Button {
+                Task { await store.confirmExpireSlot() }
+            } label: {
+                Text(L10n.AssignSlot.expireConfirm)
+            }
+            Button(role: .cancel) {} label: { Text(L10n.AssignSlot.cancel) }
+        } message: {
+            Text(L10n.AssignSlot.expireConfirmBody)
         }
         .confirmationDialog(
             Text(L10n.GrantRight.revokeConfirmTitle),
@@ -366,9 +402,19 @@ public struct ResourceDetailView: View {
                 subtype: rightSubtype,
                 holderMember: rightHolderMember(for: rightSubtype)
             )
+        case (.slot, .responsibility):
+            SlotResponsibilitySection(
+                subtype: slotSubtype,
+                assignedMember: slotAssignedMember(for: slotSubtype)
+            )
         default:
             stubCoordinationRow(kind)
         }
+    }
+
+    private func slotAssignedMember(for subtype: SlotSubtypeData?) -> MembershipBoundaryItem? {
+        guard let mid = subtype?.assignedMembershipId else { return nil }
+        return membersStore.items.first(where: { $0.membershipId == mid })
     }
 
     private func rightHolderMember(for subtype: RightSubtypeData?) -> MembershipBoundaryItem? {
@@ -455,6 +501,35 @@ public struct ResourceDetailView: View {
                     store.presentBookSpace()
                 } label: {
                     Label(L10n.ResourceDetail.spaceBookAction, systemImage: "calendar.badge.plus")
+                }
+            }
+            if resource.resourceType == .slot {
+                let slotState = slotSubtype?.lifecycleState ?? .unassigned
+                Button {
+                    store.presentAssignSlot(seed: slotSubtype)
+                } label: {
+                    Label(
+                        slotState == .assigned ? L10n.ResourceDetail.slotReassignAction
+                                               : L10n.ResourceDetail.slotAssignAction,
+                        systemImage: slotState == .assigned
+                            ? "person.crop.circle.badge.checkmark"
+                            : "person.crop.circle.badge.plus"
+                    )
+                }
+                if slotState == .assigned {
+                    Button(role: .destructive) {
+                        store.presentReleaseSlot()
+                    } label: {
+                        Label(L10n.ResourceDetail.slotReleaseAction, systemImage: "person.crop.circle.badge.minus")
+                    }
+                }
+                if slotState != .expired,
+                   let ends = slotSubtype?.slotEndsAt, ends <= Date() {
+                    Button(role: .destructive) {
+                        store.presentExpireSlot()
+                    } label: {
+                        Label(L10n.ResourceDetail.slotExpireAction, systemImage: "hourglass")
+                    }
                 }
             }
             if resource.resourceType == .right {
@@ -931,5 +1006,94 @@ private struct RightAccessSection: View {
             return String(localized: known.label)
         }
         return rawKind
+    }
+}
+
+// MARK: - SlotResponsibilitySection
+
+/// Real Coordination > Responsibility block for `slot`. Surfaces slot
+/// window + assigned member + lifecycle status. Empty rows collapse
+/// per the situational doctrine.
+private struct SlotResponsibilitySection: View {
+    let subtype: SlotSubtypeData?
+    let assignedMember: MembershipBoundaryItem?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: statusIcon)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                Text(statusLabel)
+                    .font(.body.weight(.semibold))
+            }
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.ResourceDetail.slotWindowLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    windowContent
+                }
+            }
+            HStack(spacing: 12) {
+                Image(systemName: "person.crop.circle")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.ResourceDetail.slotAssigneeLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text(assigneeText)
+                        .font(.body.weight(.semibold))
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var statusLabel: LocalizedStringResource {
+        switch subtype?.lifecycleState ?? .unassigned {
+        case .unassigned: return L10n.ResourceDetail.slotStatusUnassigned
+        case .assigned:   return L10n.ResourceDetail.slotStatusAssigned
+        case .released:   return L10n.ResourceDetail.slotStatusReleased
+        case .expired:    return L10n.ResourceDetail.slotStatusExpired
+        }
+    }
+
+    private var statusIcon: String {
+        switch subtype?.lifecycleState ?? .unassigned {
+        case .unassigned: return "circle.dashed"
+        case .assigned:   return "checkmark.circle"
+        case .released:   return "arrow.uturn.backward.circle"
+        case .expired:    return "hourglass.tophalf.filled"
+        }
+    }
+
+    @ViewBuilder
+    private var windowContent: some View {
+        if let starts = subtype?.slotStartsAt {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(starts, format: .dateTime.weekday().day().month().hour().minute())
+                    .font(.body.weight(.semibold))
+                if let ends = subtype?.slotEndsAt {
+                    Text(ends, format: .dateTime.weekday().day().month().hour().minute())
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } else {
+            Text(L10n.ResourceDetail.slotWindowNone)
+                .font(.body.weight(.semibold))
+        }
+    }
+
+    private var assigneeText: String {
+        assignedMember?.displayName ?? String(localized: L10n.ResourceDetail.slotAssigneeNone)
     }
 }

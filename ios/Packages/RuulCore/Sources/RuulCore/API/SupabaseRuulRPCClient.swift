@@ -589,6 +589,20 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callReturningUUID("expire_right", params: input)
     }
 
+    // MARK: - Slot Fase B.5
+
+    public func assignSlot(_ input: AssignSlotParams) async throws -> UUID {
+        try await callReturningUUID("assign_slot", params: input)
+    }
+
+    public func releaseSlot(_ input: ReleaseSlotParams) async throws -> UUID {
+        try await callReturningUUID("release_slot", params: input)
+    }
+
+    public func expireSlot(_ input: ExpireSlotParams) async throws -> UUID {
+        try await callReturningUUID("expire_slot", params: input)
+    }
+
     // MARK: - Foundation status
 
     public func groupFoundationStatus(groupId: UUID) async throws -> GroupFoundationStatus {
