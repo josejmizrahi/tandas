@@ -336,15 +336,24 @@ Ordenadas por dependencia. Cada una self-contained.
 
 ---
 
-## 5. Preguntas para el founder antes de FASE B
+## 5. Lock-ins founder (resueltos 2026-05-31)
 
-1. **`membership.suspend` requiere decision?** Hoy `members.suspend` permission es admin-direct. Doctrine D.22 propone elevar a decision. **¿Decision o admin-direct?**
-2. **`group.boundary.set` y `group.visibility.set` requieren decision?** Cambiar entry policy = cambiar quién puede entrar. **¿Decision o admin?**
-3. **`role.assign(rol_admin)` requiere decision?** Promover a admin = cambiar autoridad. **¿Tiered: member→direct, admin→decision?**
-4. **Umbrales money:** ¿por grupo configurables, o sólo defaults globales? Si por grupo, dónde se editan (Settings? Decision propio?).
-5. **`mandate.grant` requiere decision SIEMPRE, o sólo para mandatos de tipo "representative"?** Hoy es opcional.
-6. **`reverse_transaction` requiere decision?** Doctrina sugiere sí (revertir dinero = alto riesgo) pero podría ser admin-direct con justificación obligatoria.
-7. **FASE F approach:** ¿cerrar puerta directa con guard (raise exception) o renombrar a `_internal_*` (forzar via dispatcher)?
+1. **`membership.suspend`** → admin-direct con `members.suspend`. NO decisión por default.
+2. **`membership.ban` y `membership.remove`** → SÍ requieren decisión, salvo **founder emergency override**.
+3. **`active→banned` y `active→removed`** → elevar `requires_decision=true` en `membership_state_transitions_catalog`.
+4. **`paused`** → no decisión. Self-service (voluntaria) o admin (administrativa).
+5. **Tiers role** (jerarquía de autoridad):
+   - **founder** — puede ejecutar directo acciones críticas de emergencia (override), emite event `action.founder_emergency_override` para auditoría.
+   - **admin** — solicita/ejecuta operativas, NO constitucionales (decision_rules.set, role.update_permissions, governance_change, group.dissolve, engine.toggle, group.boundary.set, group.visibility.set).
+   - **member** — solicita acciones críticas (abre decisión), no ejecuta crítico. Ejecuta acciones tier 0 (self + low-risk).
+   - **guest/observer/external** — read/participación limitada. Puede votar si tiene `decisions.vote`. No ejecuta acciones críticas.
+6. **Umbrales money** — por grupo, configurables en `groups.governance.action_thresholds.<action_key>`. Default global como fallback en `action_catalog.default_threshold_amount`. Threshold actions: `money.expense.record`, `money.pool_charge.create`, `update_resource_value`. Debajo + permiso → directo; arriba → decisión.
+7. **`ActionOutcome` enum iOS:** `executed`, `decisionOpened`, `denied`, `unsupported`, `failed`.
+
+**Apertura de gating en `decision_templates_catalog`:**
+- Founder override aplica a **acciones críticas no-constitucionales** (membership.ban/remove, resource.archive/transfer, money.payout/transaction.reverse).
+- **Constitucionales** (governance_change, role.update_permissions, group.dissolve.finalize, engine.toggle) NUNCA bypass — ni founder.
+- Cambios `groups.governance.action_overrides` permiten **elevar** una acción a decision (no bajar).
 
 ---
 
