@@ -2930,4 +2930,44 @@ public struct RequestMembershipParams: Encodable, Sendable {
     }
 }
 
+// MARK: - V3-D.22 — Action Governance executor
+
+public struct RequestOrExecuteActionParams: Encodable, Sendable {
+    public let pGroupId: UUID?
+    public let pActionKey: String
+    public let pTargetKind: String?
+    public let pTargetId: UUID?
+    public let pPayload: [String: RPCJSONValue]
+    public let pTitle: String?
+    public let pBody: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId    = "p_group_id"
+        case pActionKey  = "p_action_key"
+        case pTargetKind = "p_target_kind"
+        case pTargetId   = "p_target_id"
+        case pPayload    = "p_payload"
+        case pTitle      = "p_title"
+        case pBody       = "p_body"
+    }
+
+    public init(
+        groupId: UUID? = nil,
+        actionKey: String,
+        targetKind: String? = nil,
+        targetId: UUID? = nil,
+        payload: [String: RPCJSONValue] = [:],
+        title: String? = nil,
+        body: String? = nil
+    ) {
+        self.pGroupId    = groupId
+        self.pActionKey  = actionKey
+        self.pTargetKind = targetKind
+        self.pTargetId   = targetId
+        self.pPayload    = payload
+        self.pTitle      = title
+        self.pBody       = body
+    }
+}
+
 

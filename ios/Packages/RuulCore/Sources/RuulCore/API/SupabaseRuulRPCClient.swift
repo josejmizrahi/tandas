@@ -1564,4 +1564,98 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
     public func requestMembership(_ input: RequestMembershipParams) async throws -> UUID {
         try await callReturningUUID("request_membership", params: input)
     }
+
+    // MARK: - V3-D.22 — Action Governance executor
+
+    public func requestOrExecuteAction(_ input: RequestOrExecuteActionParams) async throws -> ActionOutcome {
+        do {
+            let raw: RPCJSONValue = try await client
+                .rpc("request_or_execute_action", params: input)
+                .execute()
+                .value
+            return Self.decodeActionOutcome(raw, requestedActionKey: input.pActionKey)
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    /// Maps the jsonb response from `request_or_execute_action` into the
+    /// canonical Swift `ActionOutcome` enum. Unknown statuses fall through
+    /// to `.failed` with the raw reason for forward-compat.
+    static func decodeActionOutcome(_ raw: RPCJSONValue, requestedActionKey: String) -> ActionOutcome {
+        guard case .object(let dict) = raw else {
+            return .failed(reason: "malformed_response", message: nil)
+        }
+
+        let status     = dict["status"].flatMap(Self.unwrapString)
+        let reason     = dict["reason"].flatMap(Self.unwrapString) ?? "unknown"
+        let actionKey  = dict["action_key"].flatMap(Self.unwrapString) ?? requestedActionKey
+
+        switch status {
+        case "decision_opened":
+            guard
+                let idStr = dict["decision_id"].flatMap(Self.unwrapString),
+                let decId = UUID(uuidString: idStr)
+            else {
+                return .failed(reason: "missing_decision_id", message: nil)
+            }
+            return .decisionOpened(.init(
+                decisionId:   decId,
+                templateKey:  dict["decision_template_key"].flatMap(Self.unwrapString),
+                actionKey:    actionKey,
+                method:       dict["decision_method"].flatMap(Self.unwrapString),
+                thresholdPct: dict["decision_threshold_pct"].flatMap(Self.unwrapDecimal),
+                quorumPct:    dict["decision_quorum_pct"].flatMap(Self.unwrapDecimal)
+            ))
+
+        case "direct_allowed":
+            return .directAllowed(plan: .init(
+                actionKey:     actionKey,
+                executableRPC: dict["executable_rpc"].flatMap(Self.unwrapString),
+                targetKind:    dict["target_kind"].flatMap(Self.unwrapString),
+                targetId:      dict["target_id"].flatMap(Self.unwrapString).flatMap(UUID.init(uuidString:)),
+                reason:        reason,
+                isFounder:     dict["is_founder"].flatMap(Self.unwrapBool) ?? false,
+                isAdmin:       dict["is_admin"].flatMap(Self.unwrapBool) ?? false,
+                riskLevel:     dict["risk_level"].flatMap(Self.unwrapString)
+            ))
+
+        case "denied":
+            // Unsupported action_key returns status=denied + reason=action_unsupported.
+            if reason == "action_unsupported" {
+                return .unsupported(reason: reason, actionKey: actionKey)
+            }
+            return .denied(
+                reason: reason,
+                missingPermission: dict["missing_permission"].flatMap(Self.unwrapString)
+            )
+
+        case "unsupported":
+            return .unsupported(reason: reason, actionKey: actionKey)
+
+        case "failed", "none", nil:
+            return .failed(
+                reason: dict["error"].flatMap(Self.unwrapString) ?? reason,
+                message: dict["message"].flatMap(Self.unwrapString)
+            )
+
+        default:
+            return .failed(reason: status ?? "unknown_status", message: nil)
+        }
+    }
+
+    private static func unwrapString(_ v: RPCJSONValue) -> String? {
+        if case .string(let s) = v { return s }
+        return nil
+    }
+
+    private static func unwrapBool(_ v: RPCJSONValue) -> Bool? {
+        if case .bool(let b) = v { return b }
+        return nil
+    }
+
+    private static func unwrapDecimal(_ v: RPCJSONValue) -> Decimal? {
+        if case .number(let n) = v { return n }
+        return nil
+    }
 }

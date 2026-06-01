@@ -360,4 +360,7 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func myInboxUnreadCount(_ input: MyInboxUnreadCountParams) async throws -> Int { 0 }
     func globalSearch(_ input: GlobalSearchParams) async throws -> [SearchResult] { [] }
     func requestMembership(_ input: RequestMembershipParams) async throws -> UUID { UUID() }
+    func requestOrExecuteAction(_ input: RequestOrExecuteActionParams) async throws -> ActionOutcome {
+        .unsupported(reason: "preview_mock", actionKey: input.pActionKey)
+    }
 }

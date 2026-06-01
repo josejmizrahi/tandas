@@ -795,4 +795,18 @@ public protocol RuulRPCClient: Sendable {
     /// see it in the "Solicitudes pendientes" cluster + can approve via
     /// `approve_membership_request`.
     func requestMembership(_ input: RequestMembershipParams) async throws -> UUID
+
+    // MARK: - V3-D.22 — Action Governance executor
+
+    /// `request_or_execute_action(p_group_id, p_action_key, p_target_kind,
+    /// p_target_id, p_payload, p_title, p_body) returns jsonb`. Canonical
+    /// entry point for every governable action declared in `action_catalog`.
+    /// Server-side dispatches to:
+    ///   - `decisionOpened` — a vote was created; reference `decisionId`.
+    ///   - `directAllowed`  — caller may proceed with `plan.executableRPC`.
+    ///   - `denied`         — caller lacks `missingPermission`.
+    ///   - `unsupported`    — unknown action_key.
+    ///   - `failed`         — start_vote or template lookup failed.
+    /// iOS pattern: features call this FIRST, then branch on `ActionOutcome`.
+    func requestOrExecuteAction(_ input: RequestOrExecuteActionParams) async throws -> ActionOutcome
 }
