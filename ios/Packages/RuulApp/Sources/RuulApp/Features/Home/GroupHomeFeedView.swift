@@ -1005,7 +1005,7 @@ private struct AttentionRow: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(iconTint)
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(headline)
@@ -1030,6 +1030,14 @@ private struct AttentionRow: View {
         case .decisionNeedsVote:  return "checkmark.seal"
         case .sanctionOnMe:       return "exclamationmark.shield"
         case .pendingRequest:     return "person.crop.circle.badge.questionmark"
+        }
+    }
+
+    private var iconTint: Color {
+        switch item {
+        case .decisionNeedsVote:  return .purple
+        case .sanctionOnMe:       return .red
+        case .pendingRequest:     return .blue
         }
     }
 
@@ -1140,7 +1148,7 @@ private struct DebtRow: View {
             HStack(spacing: 12) {
                 Image(systemName: "creditcard")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(Color.green)
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(headline)
@@ -1222,14 +1230,12 @@ private struct MoneyRecentRow: View {
     }
 
     private var tint: Color {
-        // Doctrine: no hardcoded colors. The system accent + secondary
-        // carry semantic weight; the SF Symbol shape on each row tells
-        // the user what kind of movement it is.
+        // Domain palette: Money = green. SF Symbol shape distingue tipo.
         switch movement.type {
         case .expense, .settlementPayment, .finePayment,
              .contribution, .poolCharge, .bookingCharge,
              .payout, .reversal:
-            return .accentColor
+            return .green
         case .income, .transfer, .refund, .adjustment, .allocation, .other:
             return .secondary
         }
@@ -1265,7 +1271,7 @@ private struct InUseRow: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(Color.orange)
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.resourceName)
@@ -1334,7 +1340,7 @@ private struct DecisionVoteCard: View {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.tint)
+                            .foregroundStyle(Color.purple)
                         Text(decision.title)
                             .font(.body.weight(.semibold))
                             .foregroundStyle(.primary)
@@ -1360,9 +1366,9 @@ private struct DecisionVoteCard: View {
             progressBar
 
             HStack(spacing: 8) {
-                voteButton(.yes,     label: "Sí",       systemImage: "checkmark.circle.fill")
-                voteButton(.no,      label: "No",       systemImage: "xmark.circle.fill")
-                voteButton(.abstain, label: "Abstener", systemImage: "minus.circle")
+                voteButton(.yes,     label: "Sí",       systemImage: "checkmark.circle.fill", tint: .green,     role: nil)
+                voteButton(.no,      label: "No",       systemImage: "xmark.circle.fill",     tint: nil,        role: .destructive)
+                voteButton(.abstain, label: "Abstener", systemImage: "minus.circle",          tint: nil,        role: nil)
             }
         }
         .padding(.vertical, 8)
@@ -1389,15 +1395,15 @@ private struct DecisionVoteCard: View {
                         let no  = NSDecimalNumber(decimal: decision.tally.noCount).doubleValue
                         let abs = NSDecimalNumber(decimal: decision.tally.abstainCount).doubleValue
                         if yes > 0 {
-                            Capsule().fill(.tint)
+                            Capsule().fill(Color.green)
                                 .frame(width: width * (yes / totalDouble))
                         }
                         if no > 0 {
-                            Capsule().fill(.secondary)
+                            Capsule().fill(Color.red)
                                 .frame(width: width * (no / totalDouble))
                         }
                         if abs > 0 {
-                            Capsule().fill(.quaternary)
+                            Capsule().fill(Color.secondary)
                                 .frame(width: width * (abs / totalDouble))
                         }
                     }
@@ -1419,16 +1425,25 @@ private struct DecisionVoteCard: View {
     }
 
     @ViewBuilder
-    private func voteButton(_ value: VoteValue, label: String, systemImage: String) -> some View {
+    private func voteButton(
+        _ value: VoteValue,
+        label: String,
+        systemImage: String,
+        tint: Color?,
+        role: ButtonRole?
+    ) -> some View {
         let isSelected = decision.myVoteValue == value
-        Button {
+        Button(role: role) {
             onVote(value)
         } label: {
             Label(label, systemImage: systemImage)
                 .font(.callout.weight(.medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
+        .tint(tint)
         .opacity(decision.myVoteValue == nil || isSelected ? 1 : 0.5)
     }
 
