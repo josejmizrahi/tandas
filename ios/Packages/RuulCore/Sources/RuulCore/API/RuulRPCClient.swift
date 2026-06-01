@@ -810,6 +810,14 @@ public protocol RuulRPCClient: Sendable {
     /// iOS pattern: features call this FIRST, then branch on `ActionOutcome`.
     func requestOrExecuteAction(_ input: RequestOrExecuteActionParams) async throws -> ActionOutcome
 
+    // MARK: - V3-D.24 P12A — Read Models
+
+    /// `group_home_summary(p_group_id) returns jsonb`. Single round-trip
+    /// para hidratar GroupHomeFeedView: group + my_membership + permissions
+    /// + counts (decisions/obligations/upcoming events) + recent_activity[10].
+    /// iOS adopt iniciado en P12B-1.
+    func groupHomeSummary(groupId: UUID) async throws -> GroupHomeSummary
+
     // MARK: - V3-D.23 — Calendar Events
 
     /// `create_event(...)`. Requires `events.create`. Auto-adds caller as

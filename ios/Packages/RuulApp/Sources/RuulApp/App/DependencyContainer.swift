@@ -92,6 +92,7 @@ public final class DependencyContainer {
     public let inboxStore: InboxStore
     public let searchStore: SearchStore
     public let calendarEventsStore: CalendarEventsStore
+    public let groupHomeSummaryStore: GroupHomeSummaryStore
 
     // MARK: - Routing
 
@@ -179,6 +180,7 @@ public final class DependencyContainer {
         self.inboxStore = InboxStore(repository: inboxRepository)
         self.searchStore = SearchStore(repository: searchRepository)
         self.calendarEventsStore = CalendarEventsStore(repository: calendarEventsRepository)
+        self.groupHomeSummaryStore = GroupHomeSummaryStore(repository: groupRepository)
         self.deepLinkRouter = DeepLinkRouter()
         self.realtime = SupabaseGroupRealtimeService(client: client)
     }

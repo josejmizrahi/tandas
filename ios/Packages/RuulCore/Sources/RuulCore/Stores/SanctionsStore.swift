@@ -11,6 +11,8 @@ public final class SanctionsStore {
     public private(set) var sanctions: [GroupSanction] = []
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
+    /// D24P10B — exponer outcome para UI (decisionOpened banner, etc).
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
 
     /// Drives the `IssueSanctionSheet`.
     public var isIssuePresented: Bool = false
@@ -107,7 +109,9 @@ public final class SanctionsStore {
             }
         }
         do {
-            _ = try await repository.issueSanction(
+            // D24P10B: rutea via governance. Backend resolver decide direct vs decision
+            // (sanctions monetarias > threshold abren decisión per doctrine).
+            let outcome = try await repository.issueSanctionViaGovernance(
                 groupId: groupId,
                 targetMembershipId: target,
                 kind: draftKind,
@@ -117,10 +121,27 @@ public final class SanctionsStore {
                 endsAt: draftEndsAt,
                 clientId: UUID().uuidString
             )
-            await refresh(groupId: groupId)
-            isIssuePresented = false
-            errorMessage = nil
-            return true
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await refresh(groupId: groupId)
+                isIssuePresented = false
+                errorMessage = nil
+                return true
+            case .decisionOpened:
+                isIssuePresented = false
+                errorMessage = nil
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false

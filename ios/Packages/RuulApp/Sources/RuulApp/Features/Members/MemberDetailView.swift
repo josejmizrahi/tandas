@@ -982,9 +982,9 @@ private struct ManageMemberRolesSheet: View {
             defer { pendingRoleId = nil }
             do {
                 if isAssigned {
-                    try await rolesStore.revokeRole(membershipId: mid, roleId: role.id)
+                    _ = try await rolesStore.revokeRole(membershipId: mid, roleId: role.id, groupId: groupId)
                 } else {
-                    try await rolesStore.assignRole(membershipId: mid, roleId: role.id)
+                    _ = try await rolesStore.assignRole(membershipId: mid, roleId: role.id, groupId: groupId)
                 }
                 await membersStore.refresh(groupId: groupId)
                 await rolesStore.refresh(groupId: groupId)

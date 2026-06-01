@@ -88,4 +88,37 @@ public struct CanonicalMandatesRepository: Sendable {
         }
         return outcome
     }
+
+    /// D24P10B — governance-aware revoke. Caller pasa por
+    /// `request_or_execute_action('mandate.revoke')`; si admin/founder
+    /// con perm `mandates.revoke` el resolver retorna `.directAllowed`
+    /// y aquí llamamos `revoke(...)`. Si member solicita, `.decisionOpened`.
+    public func revokeViaGovernance(
+        groupId: UUID,
+        mandateId: UUID,
+        reason: String? = nil
+    ) async throws -> ActionOutcome {
+        let trimmed = reason.flatMap {
+            let t = $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? nil : t
+        }
+        var payload: [String: RPCJSONValue] = [
+            "mandate_id": .string(mandateId.uuidString)
+        ]
+        if let trimmed { payload["reason"] = .string(trimmed) }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "mandate.revoke",
+                targetKind: "mandate",
+                targetId:   mandateId,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            try await revoke(mandateId: mandateId, reason: trimmed)
+        }
+        return outcome
+    }
 }

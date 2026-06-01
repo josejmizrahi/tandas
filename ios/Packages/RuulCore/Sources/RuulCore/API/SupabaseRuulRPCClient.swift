@@ -1579,6 +1579,23 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - V3-D.24 P12A — Read Models
+
+    public func groupHomeSummary(groupId: UUID) async throws -> GroupHomeSummary {
+        struct Params: Encodable {
+            let pGroupId: UUID
+            enum CodingKeys: String, CodingKey { case pGroupId = "p_group_id" }
+        }
+        do {
+            return try await client
+                .rpc("group_home_summary", params: Params(pGroupId: groupId))
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - V3-D.23 — Calendar Events
 
     public func createCalendarEvent(_ input: CreateCalendarEventParams) async throws -> UUID {

@@ -1297,4 +1297,11 @@ final actor MockRuulRPCClient: RuulRPCClient {
         recorded.append(.requestOrExecuteAction(actionKey: input.pActionKey, targetId: input.pTargetId))
         return try requestOrExecuteActionStub.get()
     }
+
+    // MARK: - V3-D.24 P12A — Read Models
+
+    func groupHomeSummary(groupId: UUID) async throws -> GroupHomeSummary {
+        // No tests depend on this yet; surface a clear failure if invoked.
+        throw RuulError.unexpected(message: "MockRuulRPCClient.groupHomeSummary not stubbed")
+    }
 }

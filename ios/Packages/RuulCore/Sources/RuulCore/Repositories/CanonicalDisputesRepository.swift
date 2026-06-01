@@ -86,6 +86,34 @@ public struct CanonicalDisputesRepository: Sendable {
         try await rpc.recordDisputeResolution(input)
     }
 
+    /// D24P10B — governance-aware resolution. Resolver decide direct/decision.
+    public func recordResolutionViaGovernance(
+        groupId: UUID,
+        disputeId: UUID,
+        method: DisputeResolutionMethod,
+        resolutionText: String
+    ) async throws -> ActionOutcome {
+        let cleanedText = resolutionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload: [String: RPCJSONValue] = [
+            "dispute_id":      .string(disputeId.uuidString),
+            "method":          .string(method.rawValue),
+            "resolution_text": .string(cleanedText)
+        ]
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "dispute.resolve",
+                targetKind: "dispute",
+                targetId:   disputeId,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            try await recordResolution(disputeId: disputeId, method: method, resolutionText: cleanedText)
+        }
+        return outcome
+    }
+
     /// Escalates the dispute to a new linked vote. Returns the new
     /// decision id so the caller can navigate straight to it.
     public func escalateToVote(

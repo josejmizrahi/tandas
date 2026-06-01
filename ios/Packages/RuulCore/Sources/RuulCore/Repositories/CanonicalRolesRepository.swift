@@ -116,6 +116,57 @@ public struct CanonicalRolesRepository: Sendable {
         return outcome
     }
 
+    /// D24P10B — governance-aware role.assign. Founder/admin (constitutional)
+    /// roles deben pasar por governance; roles custom pueden ir direct.
+    /// Devuelve `.directAllowed` cuando el resolver decide direct path
+    /// (admin con perm `roles.manage`), `.decisionOpened` cuando member solicita.
+    public func assignRoleViaGovernance(
+        groupId: UUID,
+        membershipId: UUID,
+        roleId: UUID
+    ) async throws -> ActionOutcome {
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "role.assign",
+                targetKind: "membership",
+                targetId:   membershipId,
+                payload:    [
+                    "role_id":       .string(roleId.uuidString),
+                    "membership_id": .string(membershipId.uuidString)
+                ]
+            )
+        )
+        if case .directAllowed = outcome {
+            try await assignRole(membershipId: membershipId, roleId: roleId)
+        }
+        return outcome
+    }
+
+    /// D24P10B — governance-aware role.revoke. Mismo patrón que assign.
+    public func revokeRoleViaGovernance(
+        groupId: UUID,
+        membershipId: UUID,
+        roleId: UUID
+    ) async throws -> ActionOutcome {
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "role.revoke",
+                targetKind: "membership",
+                targetId:   membershipId,
+                payload:    [
+                    "role_id":       .string(roleId.uuidString),
+                    "membership_id": .string(membershipId.uuidString)
+                ]
+            )
+        )
+        if case .directAllowed = outcome {
+            try await revokeRole(membershipId: membershipId, roleId: roleId)
+        }
+        return outcome
+    }
+
     /// D.22 — governance-aware role.update_permissions. CONSTITUTIONAL.
     public func updateRolePermissionsViaGovernance(
         groupId: UUID,

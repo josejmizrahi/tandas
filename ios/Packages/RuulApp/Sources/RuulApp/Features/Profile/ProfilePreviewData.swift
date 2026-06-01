@@ -377,4 +377,8 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func respondCalendarEvent(_ input: RespondCalendarEventParams) async throws -> UUID { UUID() }
     func addCalendarEventReminder(_ input: AddCalendarEventReminderParams) async throws -> UUID { UUID() }
     func removeCalendarEventReminder(_ input: RemoveCalendarEventReminderParams) async throws {}
+    // P12B-1
+    func groupHomeSummary(groupId: UUID) async throws -> GroupHomeSummary {
+        fatalError("preview mock: groupHomeSummary not implemented")
+    }
 }

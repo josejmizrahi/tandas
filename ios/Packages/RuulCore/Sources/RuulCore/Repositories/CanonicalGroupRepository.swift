@@ -65,4 +65,12 @@ public struct CanonicalGroupRepository: Sendable {
     public func requestMembership(groupId: UUID, message: String? = nil) async throws -> UUID {
         try await rpc.requestMembership(RequestMembershipParams(groupId: groupId, message: message))
     }
+
+    /// V3 D.24 P12A — single-round-trip Home payload. Group + membership +
+    /// permissions + 3 counts + last 10 activity. iOS P12B-1 lo adopta en
+    /// `GroupHomeFeedView` via `GroupHomeSummaryStore`. Mantiene fallback
+    /// legacy en la vista si falla esta RPC.
+    public func homeSummary(groupId: UUID) async throws -> GroupHomeSummary {
+        try await rpc.groupHomeSummary(groupId: groupId)
+    }
 }

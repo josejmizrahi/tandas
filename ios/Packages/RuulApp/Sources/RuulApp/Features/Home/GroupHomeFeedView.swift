@@ -499,7 +499,7 @@ struct GroupHomeFeedView: View {
     private var votedOpenDecisionsSection: some View {
         let items = votedOpenDecisions
         if !items.isEmpty {
-            Section("Decisiones abiertas") {
+            Section(decisionsHeaderTitle) {
                 ForEach(items) { summary in
                     DecisionVoteCard(
                         decision: summary,
@@ -525,6 +525,14 @@ struct GroupHomeFeedView: View {
         container.decisionsStore.open
             .filter { $0.myVoteValue != nil }
             .sorted { ($0.closesAt ?? .distantFuture) < ($1.closesAt ?? .distantFuture) }
+    }
+
+    /// P12B-1.x — show total open in the group when the summary count
+    /// is available and exceeds what we render locally (the visible
+    /// list is filtered to "voted already"; the count is global).
+    private var decisionsHeaderTitle: String {
+        let total = openDecisionsCount
+        return total > 0 ? "Decisiones abiertas (\(total))" : "Decisiones abiertas"
     }
 
     // MARK: - Puedes crear (H.3)
@@ -679,12 +687,19 @@ struct GroupHomeFeedView: View {
     @ViewBuilder
     private var nextCalendarEventsHeader: some View {
         HStack {
-            Text("Próximos eventos")
+            Text(calendarEventsHeaderTitle)
             Spacer()
             NavigationLink(value: AllCalendarEventsDestination(groupId: group.id)) {
                 Text("Ver todos").font(.caption)
             }
         }
+    }
+
+    /// P12B-1.x — appends `(count)` when the summary RPC exposed the
+    /// total; falls back to plain title otherwise.
+    private var calendarEventsHeaderTitle: String {
+        let total = upcomingEventsCount
+        return total > 0 ? "Próximos eventos (\(total))" : "Próximos eventos"
     }
 
     @ViewBuilder
@@ -710,7 +725,7 @@ struct GroupHomeFeedView: View {
     private var debtsSection: some View {
         let items = debtItems
         if !items.isEmpty {
-            Section("Deudas") {
+            Section(debtsHeaderTitle) {
                 ForEach(items) { obligation in
                     DebtRow(obligation: obligation) {
                         isShowingSettlementSheet = true
@@ -724,6 +739,11 @@ struct GroupHomeFeedView: View {
         container.moneyStore.obligations
             .filter { $0.amountOutstanding > 0 }
             .sorted { $0.amountOutstanding > $1.amountOutstanding }
+    }
+
+    private var debtsHeaderTitle: String {
+        let total = openObligationsCount
+        return total > 0 ? "Deudas (\(total))" : "Deudas"
     }
 
     // MARK: - Dinero reciente
@@ -819,8 +839,47 @@ struct GroupHomeFeedView: View {
         }
     }
 
+    /// P12B-1.x — prefer `recentActivity[10]` del summary RPC. Si el
+    /// summary no se cargó, caemos al `eventsStore` legacy. Mantiene
+    /// `prefix(5)` para no inflar el cluster (la summary trae hasta 10
+    /// items; el resto vive en `GroupHistoryView`).
     private var recentEvents: [GroupEvent] {
-        Array(container.eventsStore.events.prefix(5))
+        if let summary = container.groupHomeSummaryStore.summary {
+            return summary.recentActivity
+                .prefix(5)
+                .map { $0.toGroupEvent(groupId: group.id) }
+        }
+        return Array(container.eventsStore.events.prefix(5))
+    }
+
+    // MARK: - P12B-1.x — summary-backed counts (prefer summary, fallback to stores)
+
+    /// Total open decisions in the group. Used by section headers as a
+    /// subtle "(\(count))" badge. Falls back to the live store count
+    /// when the summary RPC failed.
+    private var openDecisionsCount: Int {
+        if let summary = container.groupHomeSummaryStore.summary {
+            return summary.openDecisionsCount
+        }
+        return container.decisionsStore.open.count
+    }
+
+    /// Total live obligations with outstanding amount > 0 (the caller's
+    /// view). Drives the "Deudas" section header badge.
+    private var openObligationsCount: Int {
+        if let summary = container.groupHomeSummaryStore.summary {
+            return summary.openObligationsCount
+        }
+        return container.moneyStore.obligations.filter { $0.amountOutstanding > 0 }.count
+    }
+
+    /// Total upcoming calendar events. Drives the "Próximos eventos"
+    /// header "(\(count))" badge.
+    private var upcomingEventsCount: Int {
+        if let summary = container.groupHomeSummaryStore.summary {
+            return summary.upcomingEventsCount
+        }
+        return container.calendarEventsStore.upcoming.count
     }
 
     // MARK: - Empty overlay (presence + invite CTA when literally nothing has happened yet)
@@ -919,12 +978,19 @@ struct GroupHomeFeedView: View {
         await container.resourcesStore.refresh(groupId: group.id)
         // D.23: próximos calendar events para el cluster.
         await container.calendarEventsStore.load(groupId: group.id)
-        // H.3: perms para gatear chips de "Puedes crear".
+        // P12B-1: single round-trip Home summary (permissions + counts + recent_activity).
+        // Si falla, caemos a `loadPermissions()` legacy abajo (errorMessage queda en store).
+        await container.groupHomeSummaryStore.load(groupId: group.id)
+        // H.3: perms para gatear chips de "Puedes crear". Fallback si summary no cargó.
         await loadPermissions()
     }
 
-    /// H.3 — silent perm load; chips quedan vacíos si falla.
+    /// H.3 — silent perm load. P12B-1: prefiere el summary si está disponible.
     private func loadPermissions() async {
+        if let summary = container.groupHomeSummaryStore.summary {
+            permissionKeys = summary.permissions
+            return
+        }
         do {
             permissionKeys = try await container.groupRepository.listMemberPermissions(
                 groupId: group.id,

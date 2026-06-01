@@ -150,12 +150,32 @@ public final class MandatesStore {
         lastGovernanceOutcome = nil
     }
 
+    /// D24P10B — revoke ahora rutea por governance. Admin/founder con
+    /// `mandates.revoke` perm reciben `.directAllowed` y el revoke ocurre;
+    /// member sin perm recibe `.decisionOpened` y se inicia el voto.
     @discardableResult
     public func revoke(mandateId: UUID, reason: String? = nil, groupId: UUID) async -> Bool {
         do {
-            try await repository.revoke(mandateId: mandateId, reason: reason)
-            mandates.removeAll { $0.id == mandateId }
-            return true
+            let outcome = try await repository.revokeViaGovernance(
+                groupId: groupId, mandateId: mandateId, reason: reason)
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                mandates.removeAll { $0.id == mandateId }
+                return true
+            case .decisionOpened:
+                // Mandate sigue activo; se removerá al ejecutarse la decisión.
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false

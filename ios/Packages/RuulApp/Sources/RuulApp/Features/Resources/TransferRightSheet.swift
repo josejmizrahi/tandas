@@ -68,7 +68,7 @@ struct TransferRightSheet: View {
     private func save() async {
         isSaving = true
         defer { isSaving = false }
-        let ok = await store.saveTransferRight()
+        let ok = await store.saveTransferRight(groupId: groupId)
         if ok { dismiss() }
     }
 }

@@ -593,20 +593,37 @@ extension ResourcesStore {
     }
 
     @discardableResult
-    public func confirmLockFund() async -> Bool {
+    public func confirmLockFund(groupId: UUID) async -> Bool {
         guard let resourceId = activeResourceId else {
             errorMessage = "No hay recurso activo."
             return false
         }
         do {
-            _ = try await repository.lockFund(
+            // D24P10B: lock_fund es irreversible → governance.
+            let outcome = try await repository.lockFundViaGovernance(
+                groupId: groupId,
                 resourceId: resourceId,
                 reason: nil,
-                clientId: UUID().uuidString
-            )
-            await loadDetail(resourceId: resourceId)
-            isConfirmingLockFund = false
-            return true
+                clientId: UUID().uuidString)
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await loadDetail(resourceId: resourceId)
+                isConfirmingLockFund = false
+                return true
+            case .decisionOpened:
+                isConfirmingLockFund = false
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false
@@ -873,7 +890,7 @@ extension ResourcesStore {
     }
 
     @discardableResult
-    public func saveTransferRight() async -> Bool {
+    public func saveTransferRight(groupId: UUID) async -> Bool {
         guard let resourceId = activeResourceId else {
             errorMessage = "No hay recurso activo."
             return false
@@ -883,16 +900,36 @@ extension ResourcesStore {
             return false
         }
         do {
-            _ = try await repository.transferRight(
+            // D24P10B: rutea via governance — delegar derecho a tercero
+            // es constitutional.
+            let outcome = try await repository.transferRightViaGovernance(
+                groupId: groupId,
                 resourceId: resourceId,
                 newHolderMembershipId: newHolder,
                 reason: nil,
                 clientId: UUID().uuidString
             )
-            await loadDetail(resourceId: resourceId)
-            isTransferRightPresented = false
-            transferRightNewHolderId = nil
-            return true
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await loadDetail(resourceId: resourceId)
+                isTransferRightPresented = false
+                transferRightNewHolderId = nil
+                return true
+            case .decisionOpened:
+                isTransferRightPresented = false
+                transferRightNewHolderId = nil
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false

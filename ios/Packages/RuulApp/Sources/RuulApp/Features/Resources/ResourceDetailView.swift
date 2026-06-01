@@ -273,7 +273,7 @@ public struct ResourceDetailView: View {
             titleVisibility: .visible
         ) {
             Button(role: .destructive) {
-                Task { await store.confirmLockFund() }
+                Task { await store.confirmLockFund(groupId: groupId) }
             } label: {
                 Text(L10n.SetFundThreshold.confirmLock)
             }

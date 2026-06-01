@@ -47,6 +47,57 @@ public struct CanonicalSanctionsRepository: Sendable {
         return try await rpc.issueSanction(input)
     }
 
+    /// D24P10B — governance-aware issue. Resolver decide direct (admin
+    /// para sanctions menores) vs decisión cuando es monetary > threshold.
+    /// Hoy el threshold lo evalúa el backend resolver (lee
+    /// `groups.governance.action_thresholds.money_sanction_issue` per memory).
+    public func issueSanctionViaGovernance(
+        groupId: UUID,
+        targetMembershipId: UUID,
+        kind: SanctionKind,
+        reason: String,
+        amount: Decimal? = nil,
+        unit: String? = nil,
+        endsAt: Date? = nil,
+        clientId: String? = nil
+    ) async throws -> ActionOutcome {
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedUnit = unit.flatMap {
+            let t = $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? nil : t
+        }
+        var payload: [String: RPCJSONValue] = [
+            "target_membership_id": .string(targetMembershipId.uuidString),
+            "sanction_kind":        .string(kind.rawValue),
+            "reason":               .string(trimmedReason)
+        ]
+        if let amount { payload["amount"] = .number(amount) }
+        if let trimmedUnit { payload["unit"] = .string(trimmedUnit) }
+        if let endsAt {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            payload["ends_at"] = .string(formatter.string(from: endsAt))
+        }
+        if let clientId { payload["client_id"] = .string(clientId) }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "money.sanction.issue",
+                targetKind: "membership",
+                targetId:   targetMembershipId,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            _ = try await issueSanction(
+                groupId: groupId, targetMembershipId: targetMembershipId,
+                kind: kind, reason: trimmedReason, amount: amount,
+                unit: trimmedUnit, endsAt: endsAt, clientId: clientId)
+        }
+        return outcome
+    }
+
     /// V2-G4.1 — payment progress for the PaySanctionSheet pre-fill +
     /// the SanctionDetailView progress bar.
     public func paymentStatus(sanctionId: UUID) async throws -> SanctionPaymentStatus {

@@ -216,16 +216,44 @@ public final class RolesStore {
 
     // MARK: - Membership assignment (Primitiva 17, B3)
 
-    /// Assigns the role to the given membership. Backend gates by
-    /// `roles.manage` and raises a `RuulError` when denied; caller is
-    /// expected to surface the error in the UI.
-    public func assignRole(membershipId: UUID, roleId: UUID) async throws {
-        try await repository.assignRole(membershipId: membershipId, roleId: roleId)
+    /// D24P10B — `founder`/`admin` keys son constitutional → governance;
+    /// roles custom keep direct path. Per `D24P10B_Governance_Routing_Matrix`.
+    private func isConstitutionalRole(_ roleId: UUID) -> Bool {
+        guard let role = roles.first(where: { $0.id == roleId }) else { return false }
+        return role.key == "founder" || role.key == "admin"
     }
 
-    /// Revokes the role from the given membership. Backend gates by
-    /// `roles.manage` and blocks removing the member's last role.
-    public func revokeRole(membershipId: UUID, roleId: UUID) async throws {
+    /// D24P10B — assign rutea por governance cuando role-key es
+    /// `founder`/`admin`. Caller debe pasar `groupId` para que el resolver
+    /// pueda inspeccionar caller perm + role tier.
+    @discardableResult
+    public func assignRole(membershipId: UUID, roleId: UUID, groupId: UUID) async throws -> ActionOutcome {
+        if isConstitutionalRole(roleId) {
+            let outcome = try await repository.assignRoleViaGovernance(
+                groupId: groupId, membershipId: membershipId, roleId: roleId)
+            lastGovernanceOutcome = outcome
+            return outcome
+        }
+        try await repository.assignRole(membershipId: membershipId, roleId: roleId)
+        return .directAllowed(plan: .init(
+            actionKey: "role.assign", executableRPC: "assign_role_to_member",
+            targetKind: "membership", targetId: membershipId,
+            reason: "non_constitutional_role", isFounder: false, isAdmin: false, riskLevel: nil))
+    }
+
+    /// D24P10B — revoke con misma lógica.
+    @discardableResult
+    public func revokeRole(membershipId: UUID, roleId: UUID, groupId: UUID) async throws -> ActionOutcome {
+        if isConstitutionalRole(roleId) {
+            let outcome = try await repository.revokeRoleViaGovernance(
+                groupId: groupId, membershipId: membershipId, roleId: roleId)
+            lastGovernanceOutcome = outcome
+            return outcome
+        }
         try await repository.revokeRole(membershipId: membershipId, roleId: roleId)
+        return .directAllowed(plan: .init(
+            actionKey: "role.revoke", executableRPC: "revoke_role_from_member",
+            targetKind: "membership", targetId: membershipId,
+            reason: "non_constitutional_role", isFounder: false, isAdmin: false, riskLevel: nil))
     }
 }

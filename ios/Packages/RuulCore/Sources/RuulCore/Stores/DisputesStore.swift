@@ -12,6 +12,8 @@ public final class DisputesStore {
     public private(set) var disputes: [GroupDispute] = []
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
+    /// D24P10B — surface ActionOutcome (decisionOpened banner, etc).
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
 
     /// Drives the `DisputeSanctionSheet` from a SanctionRowView action.
     public var isDisputeSanctionPresented: Bool = false
@@ -322,18 +324,33 @@ public final class DisputesStore {
             return false
         }
         do {
-            try await repository.recordResolution(
-                disputeId: disputeId,
-                method: resolveDraftMethod,
-                resolutionText: trimmed
-            )
-            await refresh(groupId: groupId)
-            if detail?.id == disputeId {
-                await refreshDetail()
+            // D24P10B: rutea via governance. Admin/founder con `disputes.mediate`
+            // → directAllowed; member → decisionOpened.
+            let outcome = try await repository.recordResolutionViaGovernance(
+                groupId: groupId, disputeId: disputeId,
+                method: resolveDraftMethod, resolutionText: trimmed)
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await refresh(groupId: groupId)
+                if detail?.id == disputeId { await refreshDetail() }
+                isResolvePresented = false
+                resolveDraftErrorMessage = nil
+                return true
+            case .decisionOpened:
+                isResolvePresented = false
+                resolveDraftErrorMessage = nil
+                return true
+            case .denied(let reason, let missingPermission):
+                resolveDraftErrorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                resolveDraftErrorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                resolveDraftErrorMessage = message ?? reason
+                return false
             }
-            isResolvePresented = false
-            resolveDraftErrorMessage = nil
-            return true
         } catch {
             resolveDraftErrorMessage = UserFacingError.from(error).message
             return false

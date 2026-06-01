@@ -291,6 +291,35 @@ public struct CanonicalResourcesRepository: Sendable {
         )
     }
 
+    /// D24P10B — governance-aware lockFund. Lock irreversible → governance.
+    public func lockFundViaGovernance(
+        groupId: UUID,
+        resourceId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> ActionOutcome {
+        let trimmedReason = reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
+        var payload: [String: RPCJSONValue] = [
+            "resource_id": .string(resourceId.uuidString)
+        ]
+        if let trimmedReason { payload["reason"] = .string(trimmedReason) }
+        if let clientId, !clientId.isEmpty { payload["client_id"] = .string(clientId) }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "resource.fund.lock",
+                targetKind: "resource",
+                targetId:   resourceId,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            _ = try await lockFund(resourceId: resourceId, reason: trimmedReason, clientId: clientId)
+        }
+        return outcome
+    }
+
     @discardableResult
     public func unlockFund(
         resourceId: UUID,
@@ -417,6 +446,42 @@ public struct CanonicalResourcesRepository: Sendable {
                 clientId: clientId?.nilIfBlank
             )
         )
+    }
+
+    /// D24P10B — governance-aware transferRight. Cuando holder ≠ caller,
+    /// rutea por governance (delegación a tercero = constitutional).
+    public func transferRightViaGovernance(
+        groupId: UUID,
+        resourceId: UUID,
+        newHolderMembershipId: UUID,
+        reason: String? = nil,
+        clientId: String? = nil
+    ) async throws -> ActionOutcome {
+        let trimmedReason = reason?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
+        var payload: [String: RPCJSONValue] = [
+            "resource_id":              .string(resourceId.uuidString),
+            "new_holder_membership_id": .string(newHolderMembershipId.uuidString)
+        ]
+        if let trimmedReason { payload["reason"] = .string(trimmedReason) }
+        if let clientId, !clientId.isEmpty { payload["client_id"] = .string(clientId) }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "resource.right.transfer",
+                targetKind: "resource",
+                targetId:   resourceId,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            _ = try await transferRight(
+                resourceId: resourceId,
+                newHolderMembershipId: newHolderMembershipId,
+                reason: trimmedReason,
+                clientId: clientId)
+        }
+        return outcome
     }
 
     @discardableResult
