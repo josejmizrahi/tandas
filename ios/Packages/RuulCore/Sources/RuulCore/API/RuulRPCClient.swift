@@ -825,6 +825,12 @@ public protocol RuulRPCClient: Sendable {
     /// recent_activity[10] filtrado al recurso. iOS adopt en P12B-2.
     func resourceDetailSummary(resourceId: UUID) async throws -> ResourceDetailSummary
 
+    /// `event_detail_summary(p_event_id) returns jsonb`. Strict superset
+    /// de `get_event_detail`: event + attendees + reminders + permissions
+    /// + caller_membership_id + comments_count + attachments_count.
+    /// iOS adopt en P12B-3.
+    func eventDetailSummary(eventId: UUID) async throws -> CalendarEventDetailSummary
+
     // MARK: - V3-D.23 — Calendar Events
 
     /// `create_event(...)`. Requires `events.create`. Auto-adds caller as

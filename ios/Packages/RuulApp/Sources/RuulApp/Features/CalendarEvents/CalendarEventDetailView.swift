@@ -40,7 +40,7 @@ public struct CalendarEventDetailView: View {
     public var body: some View {
         List {
             header
-            if let detail = store.detail {
+            if let detail = effectiveDetail {
                 if let description = detail.event.description, !description.isEmpty {
                     Section("Descripción") {
                         Text(description)
@@ -49,6 +49,7 @@ public struct CalendarEventDetailView: View {
                 rsvpSection(detail: detail)
                 attendeesSection(detail: detail)
                 remindersSection(detail: detail)
+                countsSection
                 actionsSection(detail: detail)
             } else if case .failed(let message) = store.detailPhase {
                 Section {
@@ -65,6 +66,10 @@ public struct CalendarEventDetailView: View {
         .navigationTitle(displayTitle)
         .navigationBarTitleDisplayMode(.inline)
         .task {
+            // P12B-3: single-RPC summary primero (event + attendees +
+            // reminders + permissions + counts). Legacy `loadDetail`
+            // sigue como safety net si la summary RPC falla.
+            await store.loadSummary(eventId: eventId)
             await store.loadDetail(eventId: eventId)
         }
         .alert("Cancelar evento", isPresented: $showCancelConfirm) {
@@ -91,14 +96,28 @@ public struct CalendarEventDetailView: View {
     }
 
     private var displayTitle: String {
-        store.detail?.event.title ?? initial?.title ?? "Evento"
+        summary?.event.title ?? store.detail?.event.title ?? initial?.title ?? "Evento"
+    }
+
+    /// P12B-3 — prefer el read-model summary cuando matchea el event.
+    /// Si la summary falló, queda nil y la vista usa `store.detail` legacy.
+    private var summary: CalendarEventDetailSummary? {
+        guard let s = store.detailSummary, s.event.id == eventId else { return nil }
+        return s
+    }
+
+    /// Single source que la vista consume para render. Prefiere summary
+    /// (vía `asDetail` bridge); fallback al `loadDetail` legacy.
+    private var effectiveDetail: CalendarEventDetail? {
+        if let s = summary { return s.asDetail }
+        return store.detail
     }
 
     // MARK: - Sections
 
     @ViewBuilder
     private var header: some View {
-        let event: CalendarEvent? = store.detail?.event
+        let event: CalendarEvent? = summary?.event ?? store.detail?.event
         let title = event?.title ?? initial?.title ?? "Evento"
         let starts = event?.startsAt ?? initial?.startsAt ?? Date()
         let ends = event?.endsAt ?? initial?.endsAt
@@ -283,6 +302,30 @@ public struct CalendarEventDetailView: View {
         }
     }
 
+    /// P12B-3 — comments_count + attachments_count badges. Sección
+    /// invisible cuando ambos counts son 0 o cuando no hay summary
+    /// (caímos al path legacy y no traemos counts).
+    @ViewBuilder
+    private var countsSection: some View {
+        if let s = summary, s.commentsCount + s.attachmentsCount > 0 {
+            Section {
+                HStack(spacing: 16) {
+                    if s.commentsCount > 0 {
+                        Label("\(s.commentsCount)", systemImage: "bubble.left")
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    if s.attachmentsCount > 0 {
+                        Label("\(s.attachmentsCount)", systemImage: "paperclip")
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private func actionsSection(detail: CalendarEventDetail) -> some View {
         if detail.event.status == .scheduled && (detail.permissions.canCancel || detail.permissions.canArchive) {
@@ -312,7 +355,7 @@ public struct CalendarEventDetailView: View {
         NavigationStack {
             List {
                 if let members = membersStore?.items {
-                    let invited = Set((store.detail?.attendees ?? []).compactMap { $0.membershipId })
+                    let invited = Set((effectiveDetail?.attendees ?? []).compactMap { $0.membershipId })
                     let candidates = members.filter { item in
                         guard item.status == MembershipStatus.active else { return false }
                         guard let mid = item.membershipId else { return false }

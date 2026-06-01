@@ -17,6 +17,12 @@ public final class CalendarEventsStore {
     public private(set) var detailPhase: StorePhase = .idle
     public private(set) var detailErrorMessage: String?
 
+    /// V3 D.24 P12B-3 — single-RPC summary backing CalendarEventDetailView.
+    /// View prefers this over `detail` for rendering counts + everything.
+    /// No-throws: si falla, queda nil y la vista cae a `loadDetail` legacy.
+    public private(set) var detailSummary: CalendarEventDetailSummary?
+    public private(set) var detailSummaryPhase: StorePhase = .idle
+
     // MARK: - Draft state (Create sheet)
 
     public var isCreatePresented: Bool = false
@@ -84,6 +90,8 @@ public final class CalendarEventsStore {
         detail = nil
         detailPhase = .idle
         detailErrorMessage = nil
+        detailSummary = nil
+        detailSummaryPhase = .idle
     }
 
     // MARK: - Detail
@@ -97,6 +105,24 @@ public final class CalendarEventsStore {
         } catch {
             detailPhase = .failed(message: error.localizedDescription)
             detailErrorMessage = error.localizedDescription
+        }
+    }
+
+    /// V3 D.24 P12B-3 — best-effort hydrate del read model
+    /// `event_detail_summary`. NO throws: si falla, `detailSummary`
+    /// queda nil y la vista cae a `loadDetail` legacy.
+    public func loadSummary(eventId: UUID) async {
+        if detailSummary?.event.id != eventId {
+            detailSummary = nil
+            detailSummaryPhase = .loading
+        }
+        do {
+            detailSummary = try await repository.detailSummary(eventId: eventId)
+            detailSummaryPhase = .loaded
+        } catch {
+            detailSummaryPhase = .failed(message: error.localizedDescription)
+            // Intentionally NOT propagating to `detailErrorMessage`; the
+            // legacy `loadDetail` path will surface its own error if needed.
         }
     }
 
@@ -159,7 +185,7 @@ public final class CalendarEventsStore {
         do {
             try await repository.cancel(eventId: eventId, reason: reason)
             await refreshSilently(groupId: groupId)
-            await loadDetail(eventId: eventId)
+            await reloadDetailHydration(eventId: eventId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -183,7 +209,7 @@ public final class CalendarEventsStore {
         do {
             _ = try await repository.respond(eventId: eventId, status: status, note: note)
             await refreshSilently(groupId: groupId)
-            await loadDetail(eventId: eventId)
+            await reloadDetailHydration(eventId: eventId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -205,7 +231,7 @@ public final class CalendarEventsStore {
                 displayName: displayName,
                 role: role
             )
-            await loadDetail(eventId: eventId)
+            await reloadDetailHydration(eventId: eventId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -214,7 +240,7 @@ public final class CalendarEventsStore {
     public func removeAttendee(attendeeId: UUID, eventId: UUID) async {
         do {
             try await repository.removeAttendee(attendeeId: attendeeId)
-            await loadDetail(eventId: eventId)
+            await reloadDetailHydration(eventId: eventId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -223,7 +249,7 @@ public final class CalendarEventsStore {
     public func addReminder(eventId: UUID, offsetMinutes: Int) async {
         do {
             _ = try await repository.addReminder(eventId: eventId, offsetMinutes: offsetMinutes)
-            await loadDetail(eventId: eventId)
+            await reloadDetailHydration(eventId: eventId)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -232,10 +258,18 @@ public final class CalendarEventsStore {
     public func removeReminder(reminderId: UUID, eventId: UUID) async {
         do {
             try await repository.removeReminder(reminderId: reminderId)
-            await loadDetail(eventId: eventId)
+            await reloadDetailHydration(eventId: eventId)
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// V3 D.24 P12B-3 — recarga summary + detail tras cada mutación
+    /// (cancel/respond/attendees/reminders). Mantiene ambos paths
+    /// hidratados para que el view siga consistente en cualquier modo.
+    private func reloadDetailHydration(eventId: UUID) async {
+        await loadSummary(eventId: eventId)
+        await loadDetail(eventId: eventId)
     }
 
     // MARK: - Derived state

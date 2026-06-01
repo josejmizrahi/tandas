@@ -38,6 +38,13 @@ public struct CanonicalCalendarEventsRepository: Sendable {
         )
     }
 
+    /// V3 D.24 P12B-3 — single round-trip detail summary que envuelve
+    /// `get_event_detail` + agrega comments/attachments counts. Caller
+    /// puede caer a `detail(...)` legacy si esta RPC falla.
+    public func detailSummary(eventId: UUID) async throws -> CalendarEventDetailSummary {
+        try await rpc.eventDetailSummary(eventId: eventId)
+    }
+
     public func create(
         groupId: UUID,
         title: String,

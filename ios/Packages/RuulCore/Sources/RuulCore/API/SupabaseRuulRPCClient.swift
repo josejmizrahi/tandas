@@ -1611,6 +1611,21 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func eventDetailSummary(eventId: UUID) async throws -> CalendarEventDetailSummary {
+        struct Params: Encodable {
+            let pEventId: UUID
+            enum CodingKeys: String, CodingKey { case pEventId = "p_event_id" }
+        }
+        do {
+            return try await client
+                .rpc("event_detail_summary", params: Params(pEventId: eventId))
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - V3-D.23 — Calendar Events
 
     public func createCalendarEvent(_ input: CreateCalendarEventParams) async throws -> UUID {

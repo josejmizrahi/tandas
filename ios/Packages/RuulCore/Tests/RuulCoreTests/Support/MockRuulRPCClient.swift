@@ -1308,4 +1308,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func resourceDetailSummary(resourceId: UUID) async throws -> ResourceDetailSummary {
         throw RuulError.unexpected(message: "MockRuulRPCClient.resourceDetailSummary not stubbed")
     }
+
+    func eventDetailSummary(eventId: UUID) async throws -> CalendarEventDetailSummary {
+        throw RuulError.unexpected(message: "MockRuulRPCClient.eventDetailSummary not stubbed")
+    }
 }

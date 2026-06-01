@@ -428,6 +428,55 @@ public struct CalendarEventDetail: Codable, Equatable, Sendable, Hashable {
     }
 }
 
+/// V3 D.24 P12A — payload of `event_detail_summary(p_event_id)` RPC.
+/// Strict superset of `CalendarEventDetail` (wraps `get_event_detail`)
+/// + `comments_count` + `attachments_count`. iOS adopt iniciado en
+/// P12B-3 — `CalendarEventDetailView` prefiere este shape y cae a
+/// `loadDetail` legacy si la RPC summary falla.
+public struct CalendarEventDetailSummary: Codable, Equatable, Sendable, Hashable {
+    public let event: CalendarEvent
+    public let attendees: [CalendarEventAttendee]
+    public let reminders: [CalendarEventReminder]
+    public let permissions: CalendarEventPermissions
+    public let callerMembershipId: UUID?
+    public let commentsCount: Int
+    public let attachmentsCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case event
+        case attendees
+        case reminders
+        case permissions
+        case callerMembershipId = "caller_membership_id"
+        case commentsCount      = "comments_count"
+        case attachmentsCount   = "attachments_count"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.event              = try c.decode(CalendarEvent.self, forKey: .event)
+        self.attendees          = try c.decodeIfPresent([CalendarEventAttendee].self, forKey: .attendees) ?? []
+        self.reminders          = try c.decodeIfPresent([CalendarEventReminder].self, forKey: .reminders) ?? []
+        self.permissions        = try c.decode(CalendarEventPermissions.self, forKey: .permissions)
+        self.callerMembershipId = try c.decodeIfPresent(UUID.self, forKey: .callerMembershipId)
+        self.commentsCount      = try c.decodeIfPresent(Int.self, forKey: .commentsCount) ?? 0
+        self.attachmentsCount   = try c.decodeIfPresent(Int.self, forKey: .attachmentsCount) ?? 0
+    }
+
+    /// Bridge para call-sites que ya consumían `CalendarEventDetail`.
+    /// Permite render unificado en `CalendarEventDetailView` (la vista
+    /// chequea summary first; si está nil, sigue su path legacy).
+    public var asDetail: CalendarEventDetail {
+        CalendarEventDetail(
+            event: event,
+            attendees: attendees,
+            reminders: reminders,
+            permissions: permissions,
+            callerMembershipId: callerMembershipId
+        )
+    }
+}
+
 // MARK: - Light recurrence DSL (UI helper)
 
 public enum CalendarEventRecurrenceKind: String, CaseIterable, Identifiable, Sendable, Hashable {
