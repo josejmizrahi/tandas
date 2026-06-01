@@ -277,12 +277,29 @@ struct GroupHomeFeedView: View {
     private var attentionItems: [AttentionItem] {
         var result: [AttentionItem] = []
 
-        // D.24.1: pending join requests surface first — admins need them
-        // visible without leaving Inicio. Visible to every member; the
-        // approve/reject pills in MembersListView are gated server-side
-        // (non-admins see a 42501 if they try to act).
+        // D.24.3: pending join requests + their voting state.
+        // - No open vote linked → `.pendingRequest` (admin-actionable).
+        // - Linked `decision.membership_accept` open → fall through to
+        //   the standard `.decisionNeedsVote` path so the user sees
+        //   "Falta tu voto: Aceptar nuevo miembro" instead of the
+        //   admin-only request prompt. Avoids double-rendering the same
+        //   request twice as both a pending action and an open vote.
+        var requestsInVote: Set<UUID> = []
+        for decision in container.decisionsStore.open
+        where decision.referenceKind == "membership" {
+            if let referenceId = decision.referenceId {
+                requestsInVote.insert(referenceId)
+            }
+        }
+
         for member in container.membersStore.items
         where member.kind == .membership && member.status == .requested {
+            // If this request already has an open vote, skip — it'll
+            // surface via `.decisionNeedsVote` below with the proper
+            // "Falta tu voto" treatment.
+            if let mid = member.membershipId, requestsInVote.contains(mid) {
+                continue
+            }
             result.append(.pendingRequest(member))
         }
 

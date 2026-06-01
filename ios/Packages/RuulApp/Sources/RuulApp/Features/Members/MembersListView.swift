@@ -173,6 +173,10 @@ public struct MembersListView: View {
             // D.24: Instagram-style — visible Aprobar + Rechazar pills
             // beneath the member row. Tap of the member row still pushes
             // detail when a selection handler is present.
+            // D.24.3: if there's already an open `decision.membership_accept`
+            // referencing this membership, swap the pills for an "En
+            // votación" link — the request is no longer admin-actionable
+            // and goes through the group vote instead.
             VStack(alignment: .leading, spacing: 10) {
                 if onSelectMember != nil {
                     Button {
@@ -184,7 +188,11 @@ public struct MembersListView: View {
                 } else {
                     MemberRowView(item: item)
                 }
-                requestActionButtons(for: mid)
+                if let openVote = openVoteForRequest(mid) {
+                    pendingVoteRow(openVote)
+                } else {
+                    requestActionButtons(for: mid)
+                }
             }
             .padding(.vertical, 4)
         } else if item.kind == .membership, onSelectMember != nil, item.membershipId != nil {
@@ -252,6 +260,50 @@ public struct MembersListView: View {
 
     private func handleReject(membershipId: UUID) {
         Task { _ = await store.rejectRequest(membershipId: membershipId, groupId: groupId) }
+    }
+
+    /// D.24.3 — looks up the currently-open `decision.membership_accept`
+    /// (or any open `membership`-type decision referencing this
+    /// membership) so the row can render an "En votación" state instead
+    /// of admin-actionable pills. Nil = no open vote yet; show pills.
+    private func openVoteForRequest(_ membershipId: UUID) -> GroupDecisionSummary? {
+        guard let container else { return nil }
+        return container.decisionsStore.open.first { decision in
+            decision.referenceKind == "membership" && decision.referenceId == membershipId
+        }
+    }
+
+    /// D.24.3 — replacement for the Aprobar/Rechazar pills when the
+    /// request is already going through a group vote. Renders a single
+    /// "Ver votación" link that pushes the decision detail via the
+    /// shared `DeepLinkRouter` (mirrors the path other surfaces use).
+    @ViewBuilder
+    private func pendingVoteRow(_ summary: GroupDecisionSummary) -> some View {
+        Button {
+            container?.deepLinkRouter.apply(
+                .decision(groupId: groupId, decisionId: summary.id)
+            )
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(.tint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("En votación del grupo")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(summary.title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     /// V3-INV: a queued revoke confirmation. `inviteId` lives on the
