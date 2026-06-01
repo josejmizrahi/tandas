@@ -557,3 +557,53 @@ resource_rights         = 2 (sin cambio)
 ```
 
 **Próximo:** R.0C.2 — pendiente decisión founder sobre Opción A/B/C (universal rights table strategy). Mientras tanto, R.0C.1 NO bloquea otras fases (R.0D Relationship Graph puede arrancar en paralelo si se desea).
+
+---
+
+### R.0C.2a — Universal Rights Table + Backfill + Canonical Sync — SHIPPED 2026-06-01
+
+**Founder decision: Opción C** — Renombrar legacy a `resource_right_subtype` + crear nueva `resource_rights` universal.
+
+**Ajustes founder aplicados (5):**
+1. ✅ `percent` CHECK [0..100] o NULL
+2. ✅ Unique partial index handles NULL holder via `COALESCE(holder_actor_id, sentinel UUID)`
+3. ✅ external_party → holder_actor_id NULL + metadata.external_party_id
+4. ✅ Sync trigger ignora revoked/expired/ends_at < now()/holder NULL
+5. ✅ Sin OWN activo → canonical_owner_actor_id NO se borra (legacy cache permanece)
+
+**Preflight verde:** 77 resource_owners (69 group + 8 member + 0 external), 100% memberships resolubles a person actor, resource_right_subtype no existía.
+
+**Migraciones (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260602000000` | `r0c2a_universal_rights_table_and_backfill` | ATÓMICA 9 steps: RENAME legacy + repoint compat INSTEAD OF + CREATE universal table (15-kind whitelist + percent CHECK + FK actors/group_decisions) + 5 indexes (unique active vía COALESCE) + RLS + touch trigger + backfill 77 desde resource_owners + sync trigger (founder #4+#5) + one-shot canonical backfill |
+| `20260602000100` | `r0c2a_smoke_universal_rights` | `_smoke_r0c2a_universal_rights()` 8 casos verde |
+
+**Smoke 8 casos verdes:** backfill verify (0 mismatch) / sync UP/DOWN/revoke-resync/founder-#5-no-clear / whitelist CHECK / percent CHECK (150 + -5) / unique partial index.
+
+**Post-state DB:**
+
+```
+resource_right_subtype  = 2    (legacy preservada, compat view funcional)
+resource_rights         = 77   (nueva universal, 100% OWN active)
+resource_owners         = 77   (sin cambio — fuente histórica conservada)
+resources canonical set = 98   (77 desde nuevo OWN sync + 21 desde R.0B.2 defensive)
+```
+
+**Hallazgo:** conflicto de nombres `idx_resource_rights_holder_actor_id` + `resource_rights_holder_actor_id_fkey` (R.0C.1) bloquearon primer intento. Fix: `ALTER INDEX/CONSTRAINT RENAME` a `*_subtype_*` antes de crear nuevos. Atómica rolled-back limpio en primer intento.
+
+**DoD R.0C.2a verde:**
+- ✅ Legacy `resource_right_subtype` preservada (compat view + INSTEAD OF triggers funcionando)
+- ✅ Nueva `resource_rights` universal creada con shape doctrinal R.0
+- ✅ Backfill 77 OWN con metadata.legacy_owner_id (idempotente)
+- ✅ Canonical sync trigger activo (5 ajustes founder respetados)
+- ✅ Smoke 8 casos verde
+- ✅ Cero RPCs preexistentes modificadas, cero iOS
+
+**Próximo:** R.0C.2b — RPCs ergonómicos:
+- `grant_right(p_resource_id, p_holder_actor_id, p_right_kind, p_percent, p_scope, p_starts_at, p_ends_at, p_source_decision_id, p_metadata)`
+- `revoke_right(p_right_id)` — soft delete via `revoked_at = now()`
+- `actor_has_right(p_actor_id, p_resource_id, p_right_kind) returns boolean`
+
+R.0C.2a deja sistema funcional sin RPCs (escrituras directas via SQL). R.0C.2b puede arrancar cuando founder lo autorice; no bloquea R.0D.
