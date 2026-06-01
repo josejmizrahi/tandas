@@ -427,3 +427,69 @@ group_resources_direct_insert_audit = 7   (1 baseline + 6 smoke)
 **Próximo:** R.0B.2 — `ALTER TABLE resources ALTER COLUMN group_id DROP NOT NULL` + `ADD COLUMN canonical_owner_actor_id uuid REFERENCES actors(id)` + backfill. **Compat view sigue funcional** durante R.0B.2 (los wrappers pueden seguir asumiendo `group_id NOT NULL` — los nuevos paths personales R.0E+ tendrán wrappers nuevos).
 
 **NO en R.0B.1:** migración cosmética de las 78 funciones a nombres canónicos (`resources` en vez de `group_resources` en su prosrc). Eso es R.0B.3+ — ola por ola con CREATE OR REPLACE, sin drop del compat view hasta que la última función migre.
+
+---
+
+### R.0B.2 — Nullable Group Scope + Canonical Owner Cache — SHIPPED 2026-06-01
+
+Doctrina founder lockeada:
+- `resources.group_id` queda pero deja de ser obligatorio (deprecated/scope-cache legacy)
+- `canonical_owner_actor_id` es **cache/UI hint**, NO autoridad
+- OWN en `resource_rights` será la fuente real en R.0C (no en R.0B.2)
+
+**Preflight (verificado):**
+- 0 rows con group_id NULL pre-mig
+- 0 group_id huérfanos vs actors
+- canonical_owner_actor_id no existía
+- 91 resources totales, todos con actor group válido
+
+**Migraciones aplicadas (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260601233126` | `r0b2_nullable_group_id_and_canonical_owner_actor_id` | **ATÓMICA.** (1) `ALTER COLUMN group_id DROP NOT NULL`; (2) `ADD COLUMN canonical_owner_actor_id uuid REFERENCES actors(id)` + partial index; (3) backfill `canonical_owner_actor_id = group_id` (91/91); (4) BEFORE INSERT trigger defensivo `_resources_derive_canonical_owner_actor_id` self-healing; (5) `CREATE OR REPLACE VIEW group_resources AS SELECT * FROM resources WHERE group_id IS NOT NULL` (filtra personal); (6) INSTEAD OF INSERT del view **rechaza** group_id NULL (preserva contrato legacy); (7) INSTEAD OF UPDATE forwards canonical_owner_actor_id. |
+| `20260601233223` | `r0b2_smoke_nullable_group_canonical_owner_cache` | `_smoke_r0b2_*()` 6 casos verde. |
+
+**Smoke casos verdes (6):**
+1. ✅ INSERT legacy con group_id via compat view → canonical_owner_actor_id auto-derivado = group_id
+2. ✅ INSERT directo a resources con group_id=NULL + canonical=person actor → personal path acepta
+3. ✅ Legacy resource visible vía group_resources view
+4. ✅ Personal resource (group_id NULL) INVISIBLE vía group_resources view, visible vía resources
+5. ✅ canonical_owner_actor_id apunta correctamente: legacy→group actor, personal→person actor
+6. ✅ Reject: INSERT via compat view con group_id NULL lanza excepción (preserva contrato legacy NOT NULL)
+
+**DoD R.0B.2 todos verdes:**
+
+- ✅ `resources.group_id` ahora nullable
+- ✅ `canonical_owner_actor_id` columna existe con FK a `actors(id)` y partial index
+- ✅ Backfill 91/91 resources (todos los pre-existentes son group-scoped)
+- ✅ Defensive trigger BEFORE INSERT activo (self-healing del cache)
+- ✅ Compat view filtra group_id IS NOT NULL — personal resources invisibles via legacy
+- ✅ INSTEAD OF INSERT rechaza NULL group_id (legacy strict contract)
+- ✅ Audit Option B (R.0B.1) sigue funcionando
+- ✅ Cero RPCs preexistentes modificadas
+- ✅ Cero iOS
+
+**Naming explícito (anti-patrón confirmado):**
+NO se introdujeron `owner_actor_id` ni `primary_actor_id`. Solo `canonical_owner_actor_id` — el prefijo recuerda que es cache derivado, no autoridad.
+
+**Post-state DB:**
+
+```
+resources                = 93   (91 pre + 2 smoke: 1 legacy + 1 personal, ambos archivados)
+  group_scoped (group_id NOT NULL) = 92
+  personal     (group_id NULL)     = 1
+  con canonical_owner_actor_id      = 93 (100%)
+resource_owners          = 77
+resource_rights          = 2
+resource_capabilities    = 0
+group_resources (compat) = 92 (filtra el personal)
+```
+
+**Hallazgos:**
+
+1. **Postgres acepta `CREATE OR REPLACE VIEW` con WHERE más restrictivo + columna nueva al final** sin issues — la columna `canonical_owner_actor_id` fue añadida al final por `ALTER TABLE`, y el view se refresca con `SELECT *` resolviéndose a la nueva lista.
+2. **INSTEAD OF triggers sobreviven CREATE OR REPLACE VIEW** automáticamente (atados al view por nombre + función). Solo tuve que `CREATE OR REPLACE FUNCTION` el INSERT y UPDATE para extender semantica.
+3. **R.0C entry point claro:** el sync de `canonical_owner_actor_id` desde `resource_rights.OWN` (que será la autoridad) llega como trigger AFTER INSERT/UPDATE/DELETE en resource_rights cuando R.0C esté listo.
+
+**Próximo:** R.0C — Resource Rights. Whitelist 15 right_kinds + `holder_actor_id` (en vez de holder_membership_id) + RPCs `grant_right`/`revoke_right`/`actor_has_right` + backfill ownership de `resource_owners` (OWN rights con percent) + sync trigger `canonical_owner_actor_id ← OWN-mayor-percent`.
