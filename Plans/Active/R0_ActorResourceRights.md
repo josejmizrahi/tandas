@@ -325,3 +325,49 @@ groups           = 77   (sin cambio)
 ```
 
 **Próximo:** R.0B Unified Resources. Pre-requisito: triggers de forward-sync (mig 0 de R.0B) antes de cualquier rename de `group_resources`.
+
+---
+
+### R.0A.1 — Actor Forward Sync — SHIPPED 2026-06-01
+
+Cierra el hueco de existencia identificado en R.0A hallazgo 1 antes de arrancar R.0B.
+
+**Scope estricto:** solo `AFTER INSERT` (existence). **NO** `AFTER UPDATE` — display_name drift aceptado durante todo R.0; lecturas hacen `COALESCE(profile.display_name, profile.username, actors.display_name)` cuando aplique. Sync fino de nombres diferido.
+
+**Migraciones aplicadas (4):**
+
+| Timestamp | Nombre | Qué hace |
+|---|---|---|
+| `20260601213506` | `r0a1_forward_sync_profile_to_actor` | Trigger `AFTER INSERT ON profiles` → `_sync_actor_from_profile()` SECDEF inserta actor person con `ON CONFLICT DO NOTHING`. |
+| `20260601213520` | `r0a1_forward_sync_group_to_actor` | Trigger `AFTER INSERT ON groups` → `_sync_actor_from_group()` SECDEF inserta actor group con `ON CONFLICT DO NOTHING`. |
+| `20260601213556` | `r0a1_smoke_forward_sync` | Smoke v1 (4 casos). Caso 3 con bug — `PERFORM` directo a trigger function falla por falta de contexto NEW. |
+| `20260601213642` | `r0a1_smoke_forward_sync_simplify_caso3` | Fix: reemplaza PERFORM con INSERT redundante directo en actors (verifica `ON CONFLICT DO NOTHING` empíricamente). Smoke verde. |
+
+**DoD R.0A.1 — todos verdes:**
+
+- ✅ Trigger profile → actor activo (verificado: insert auth.user → cadena dispara actor person con `source=r0a1_forward_sync_profile`)
+- ✅ Trigger group → actor activo (verificado: insert group → actor group con `source=r0a1_forward_sync_group` y `display_name` sincronizado)
+- ✅ `ON CONFLICT DO NOTHING` defense holds (insert duplicado a actors con id existente absorbe sin error, sin duplicar)
+- ✅ Zero orphans en estado global (todos profiles tienen actor person, todos groups tienen actor group)
+- ✅ Cero RPCs nuevas, cero modificaciones a actors/legal_entities, cero iOS
+
+**Hallazgo R.0A.1 — leak persistente en groups:**
+
+El cleanup interno del smoke intenta `DELETE FROM groups WHERE id = v_group_id` pero está bloqueado por `atom_no_delete_guard()` sobre `group_role_assignment_events` (append-only — el INSERT en groups dispara una fila inmutable en esta tabla). Sin `session_replication_role='replica'` (que requiere superuser), no se puede bypassear. El `EXCEPTION WHEN OTHERS` absorbe el error y deja el group residual.
+
+**Por corrida del smoke se leakea:** 1 group + cualquier auth.user/profile/actor relacionado que no se haya alcanzado a borrar antes del error. Para mantener `Caso 4 zero orphans` consistente, después del smoke hay que re-syncar el actor del group leaked (vía `INSERT … ON CONFLICT DO NOTHING` manual).
+
+Mismo patrón que `_smoke_membership_boundary`/`_smoke_inbox` cuando se corren sin superuser. Aceptable convención repo. Para CI dedicado con superuser, el cleanup completo funcionaría.
+
+**Post-state DB (verificado):**
+
+```
+actors           = 232  (154 person + 78 group)
+legal_entities   = 0
+profiles         = 154
+groups           = 78   (77 originales + 1 R0A1 Smoke Group residual + actor re-syncado)
+orphan_profiles  = 0
+orphan_groups    = 0
+```
+
+**Próximo:** R.0B Unified Resources. Pre-requisito ya cumplido (forward-sync activo); R.0B mig 0 ya no es necesaria.
