@@ -2381,6 +2381,14 @@ public struct SetDecisionRulesInput: Encodable, Sendable, Equatable {
     public let pDefaultMethod: String?
     /// V2-G2 sub-slice 8 — canonical legitimacy (`LegitimacySource`, 10 values).
     public let pDefaultLegitimacySource: String?
+    /// M1 — threshold % override (0-100).
+    public let pDefaultThresholdPct: Decimal?
+    /// M1 — quórum % override (0-100, percentage of active members).
+    public let pDefaultQuorumPct: Decimal?
+    /// M1 — duración default antes de cerrar por timeout (horas).
+    public let pDefaultDurationHours: Int?
+    /// M1 — auto-cerrar al alcanzar threshold + quórum.
+    public let pAutoCloseOnThreshold: Bool?
 
     enum CodingKeys: String, CodingKey {
         case pGroupId                 = "p_group_id"
@@ -2389,6 +2397,10 @@ public struct SetDecisionRulesInput: Encodable, Sendable, Equatable {
         case pNotes                   = "p_notes"
         case pDefaultMethod           = "p_default_method"
         case pDefaultLegitimacySource = "p_default_legitimacy_source"
+        case pDefaultThresholdPct     = "p_default_threshold_pct"
+        case pDefaultQuorumPct        = "p_default_quorum_pct"
+        case pDefaultDurationHours    = "p_default_duration_hours"
+        case pAutoCloseOnThreshold    = "p_auto_close_on_threshold"
     }
 
     public init(
@@ -2397,7 +2409,11 @@ public struct SetDecisionRulesInput: Encodable, Sendable, Equatable {
         pQuorumMin: Int? = nil,
         pNotes: String? = nil,
         pDefaultMethod: String? = nil,
-        pDefaultLegitimacySource: String? = nil
+        pDefaultLegitimacySource: String? = nil,
+        pDefaultThresholdPct: Decimal? = nil,
+        pDefaultQuorumPct: Decimal? = nil,
+        pDefaultDurationHours: Int? = nil,
+        pAutoCloseOnThreshold: Bool? = nil
     ) {
         self.pGroupId = pGroupId
         self.pDefaultStyle = pDefaultStyle
@@ -2405,6 +2421,10 @@ public struct SetDecisionRulesInput: Encodable, Sendable, Equatable {
         self.pNotes = pNotes
         self.pDefaultMethod = pDefaultMethod
         self.pDefaultLegitimacySource = pDefaultLegitimacySource
+        self.pDefaultThresholdPct = pDefaultThresholdPct
+        self.pDefaultQuorumPct = pDefaultQuorumPct
+        self.pDefaultDurationHours = pDefaultDurationHours
+        self.pAutoCloseOnThreshold = pAutoCloseOnThreshold
     }
 
     /// Same rationale as `RecordExpenseParams.encode(to:)` — emit
@@ -2418,6 +2438,10 @@ public struct SetDecisionRulesInput: Encodable, Sendable, Equatable {
         try c.encodeOrNil(pNotes, forKey: .pNotes)
         try c.encodeOrNil(pDefaultMethod, forKey: .pDefaultMethod)
         try c.encodeOrNil(pDefaultLegitimacySource, forKey: .pDefaultLegitimacySource)
+        try c.encodeOrNil(pDefaultThresholdPct, forKey: .pDefaultThresholdPct)
+        try c.encodeOrNil(pDefaultQuorumPct, forKey: .pDefaultQuorumPct)
+        try c.encodeOrNil(pDefaultDurationHours, forKey: .pDefaultDurationHours)
+        try c.encodeOrNil(pAutoCloseOnThreshold, forKey: .pAutoCloseOnThreshold)
     }
 }
 

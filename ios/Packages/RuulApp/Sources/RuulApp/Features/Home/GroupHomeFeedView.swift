@@ -57,8 +57,10 @@ struct GroupHomeFeedView: View {
             foundationSection
             engineBannerSection
             attentionSection
+            votedOpenDecisionsSection
             createSection
             upcomingSection
+            nextCalendarEventsSection
             debtsSection
             moneyRecentSection
             inUseSection
@@ -173,6 +175,30 @@ struct GroupHomeFeedView: View {
                 groupId: group.id
             )
         }
+        .navigationDestination(for: NextCalendarEventDestination.self) { dest in
+            CalendarEventDetailView(
+                store: container.calendarEventsStore,
+                groupId: group.id,
+                eventId: dest.item.id,
+                initial: dest.item,
+                permissionKeys: permissionKeys ?? [],
+                membersStore: container.membersStore
+            )
+        }
+        .navigationDestination(for: AllCalendarEventsDestination.self) { _ in
+            CalendarEventsListView(
+                store: container.calendarEventsStore,
+                groupId: group.id,
+                permissionKeys: permissionKeys ?? [],
+                membersStore: container.membersStore
+            )
+        }
+        .sheet(isPresented: calendarEventCreateSheetBinding) {
+            CreateCalendarEventView(
+                store: container.calendarEventsStore,
+                groupId: group.id
+            )
+        }
         .refreshable { await refresh() }
         .task { await refresh() }
         .sheet(isPresented: $isShowingSettlementSheet) {
@@ -245,6 +271,13 @@ struct GroupHomeFeedView: View {
         Binding(
             get: { container.decisionsStore.isProposePresented },
             set: { container.decisionsStore.isProposePresented = $0 }
+        )
+    }
+
+    private var calendarEventCreateSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.calendarEventsStore.isCreatePresented },
+            set: { container.calendarEventsStore.isCreatePresented = $0 }
         )
     }
 
@@ -455,6 +488,45 @@ struct GroupHomeFeedView: View {
         return result
     }
 
+    // MARK: - Decisiones abiertas con tu voto (Pedido 1)
+
+    /// Pedido 1 — decisiones abiertas donde el caller YA votó. Permite
+    /// seguir viendo la decisión + cómo va la votación + cambiar voto
+    /// si aplica. Distinto del hero (que filtra solo las que necesitan
+    /// tu voto). Card reusa DecisionVoteCard; el botón del voto del
+    /// caller queda highlighted vía `myVoteValue`.
+    @ViewBuilder
+    private var votedOpenDecisionsSection: some View {
+        let items = votedOpenDecisions
+        if !items.isEmpty {
+            Section("Decisiones abiertas") {
+                ForEach(items) { summary in
+                    DecisionVoteCard(
+                        decision: summary,
+                        onVote: { value in
+                            Task {
+                                await container.decisionsStore.castVoteInline(
+                                    decisionId: summary.id,
+                                    value: value,
+                                    groupId: group.id
+                                )
+                            }
+                        },
+                        onOpenDetail: { pendingDecisionDetail = summary }
+                    )
+                }
+            }
+        }
+    }
+
+    /// Open decisions where the caller HAS voted — distinct from the
+    /// hero cluster (which filters on `myVoteValue == nil`).
+    private var votedOpenDecisions: [GroupDecisionSummary] {
+        container.decisionsStore.open
+            .filter { $0.myVoteValue != nil }
+            .sorted { ($0.closesAt ?? .distantFuture) < ($1.closesAt ?? .distantFuture) }
+    }
+
     // MARK: - Puedes crear (H.3)
 
     /// H.3 — chip row con las acciones que el usuario puede iniciar.
@@ -568,6 +640,65 @@ struct GroupHomeFeedView: View {
             }
             .sorted { ($0.closesAt ?? .distantFuture) < ($1.closesAt ?? .distantFuture) }
             .map { UpcomingItem.decisionClosing($0) }
+    }
+
+    // MARK: - Próximos eventos (D.23)
+
+    private var canCreateCalendarEvent: Bool {
+        permissionKeys?.contains("events.create") ?? false
+    }
+
+    @ViewBuilder
+    private var nextCalendarEventsSection: some View {
+        let upcoming = container.calendarEventsStore.upcoming
+        if !upcoming.isEmpty {
+            populatedNextCalendarEventsSection(upcoming: upcoming)
+        } else if canCreateCalendarEvent {
+            emptyNextCalendarEventsSection
+        }
+    }
+
+    @ViewBuilder
+    private func populatedNextCalendarEventsSection(upcoming: [CalendarEventListItem]) -> some View {
+        Section {
+            ForEach(upcoming) { item in
+                NavigationLink(value: NextCalendarEventDestination(item: item)) {
+                    CalendarEventRow(item: item)
+                }
+            }
+            if canCreateCalendarEvent {
+                Button {
+                    container.calendarEventsStore.beginCreating()
+                } label: {
+                    Label("Crear evento", systemImage: "plus")
+                }
+            }
+        } header: {
+            nextCalendarEventsHeader
+        }
+    }
+
+    @ViewBuilder
+    private var nextCalendarEventsHeader: some View {
+        HStack {
+            Text("Próximos eventos")
+            Spacer()
+            NavigationLink(value: AllCalendarEventsDestination(groupId: group.id)) {
+                Text("Ver todos").font(.caption)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var emptyNextCalendarEventsSection: some View {
+        Section("Próximos eventos") {
+            Button {
+                container.calendarEventsStore.beginCreating()
+            } label: {
+                Label("Crear el primero", systemImage: "plus")
+                    .font(.subheadline.weight(.medium))
+            }
+        }
     }
 
     // MARK: - Deudas
@@ -788,6 +919,8 @@ struct GroupHomeFeedView: View {
         // A.1: Dinero reciente + En uso fuentes.
         await container.movementsStore.refresh(groupId: group.id)
         await container.resourcesStore.refresh(groupId: group.id)
+        // D.23: próximos calendar events para el cluster.
+        await container.calendarEventsStore.load(groupId: group.id)
         // H.3: perms para gatear chips de "Puedes crear".
         await loadPermissions()
     }
@@ -849,6 +982,17 @@ struct GroupHomeFeedView: View {
 
     private struct GroupHistoryDestination: Hashable {}
 }
+
+// MARK: - D.23 navigation destinations (in-progress calendar work)
+
+struct NextCalendarEventDestination: Hashable {
+    let item: CalendarEventListItem
+}
+
+struct AllCalendarEventsDestination: Hashable {
+    let groupId: UUID
+}
+
 
 // MARK: - Cluster row views
 

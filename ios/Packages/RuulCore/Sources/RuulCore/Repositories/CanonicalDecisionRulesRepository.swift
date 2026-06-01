@@ -26,7 +26,11 @@ public struct CanonicalDecisionRulesRepository: Sendable {
         defaultMethod: DecisionMethod,
         defaultLegitimacySource: LegitimacySource,
         quorumMin: Int? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        defaultThresholdPct: Decimal? = nil,
+        defaultQuorumPct: Decimal? = nil,
+        defaultDurationHours: Int? = nil,
+        autoCloseOnThreshold: Bool? = nil
     ) async throws -> GroupDecisionRules {
         let cleanedNotes: String? = {
             guard let notes else { return nil }
@@ -39,7 +43,11 @@ public struct CanonicalDecisionRulesRepository: Sendable {
             pQuorumMin: quorumMin,
             pNotes: cleanedNotes,
             pDefaultMethod: defaultMethod.rawValue,
-            pDefaultLegitimacySource: defaultLegitimacySource.rawValue
+            pDefaultLegitimacySource: defaultLegitimacySource.rawValue,
+            pDefaultThresholdPct: defaultThresholdPct,
+            pDefaultQuorumPct: defaultQuorumPct,
+            pDefaultDurationHours: defaultDurationHours,
+            pAutoCloseOnThreshold: autoCloseOnThreshold
         )
         return try await rpc.setDecisionRules(input)
     }
@@ -59,7 +67,11 @@ public struct CanonicalDecisionRulesRepository: Sendable {
         defaultMethod: DecisionMethod,
         defaultLegitimacySource: LegitimacySource,
         quorumMin: Int? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        defaultThresholdPct: Decimal? = nil,
+        defaultQuorumPct: Decimal? = nil,
+        defaultDurationHours: Int? = nil,
+        autoCloseOnThreshold: Bool? = nil
     ) async throws -> ActionOutcome {
         let cleanedNotes: String? = {
             guard let notes else { return nil }
@@ -77,6 +89,18 @@ public struct CanonicalDecisionRulesRepository: Sendable {
         if let cleanedNotes {
             payload["notes"] = .string(cleanedNotes)
         }
+        if let defaultThresholdPct {
+            payload["default_threshold_pct"] = .number(defaultThresholdPct)
+        }
+        if let defaultQuorumPct {
+            payload["default_quorum_pct"] = .number(defaultQuorumPct)
+        }
+        if let defaultDurationHours {
+            payload["default_duration_hours"] = .number(Decimal(defaultDurationHours))
+        }
+        if let autoCloseOnThreshold {
+            payload["auto_close_on_threshold"] = .bool(autoCloseOnThreshold)
+        }
         let outcome = try await rpc.requestOrExecuteAction(
             RequestOrExecuteActionParams(
                 groupId:    groupId,
@@ -92,7 +116,11 @@ public struct CanonicalDecisionRulesRepository: Sendable {
                 defaultMethod: defaultMethod,
                 defaultLegitimacySource: defaultLegitimacySource,
                 quorumMin: quorumMin,
-                notes: cleanedNotes
+                notes: cleanedNotes,
+                defaultThresholdPct: defaultThresholdPct,
+                defaultQuorumPct: defaultQuorumPct,
+                defaultDurationHours: defaultDurationHours,
+                autoCloseOnThreshold: autoCloseOnThreshold
             )
         }
         return outcome

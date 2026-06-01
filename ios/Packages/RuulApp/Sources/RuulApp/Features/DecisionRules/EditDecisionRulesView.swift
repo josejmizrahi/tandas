@@ -11,6 +11,21 @@ struct EditDecisionRulesView: View {
     @State private var isSaving: Bool = false
     @State private var quorumEnabled: Bool = false
     @State private var quorumValue: Int = 2
+    // M1 motor avanzado
+    @State private var isMotorExpanded: Bool = false
+    @State private var thresholdEnabled: Bool = false
+    @State private var thresholdValue: Double = 60
+    @State private var quorumPctEnabled: Bool = false
+    @State private var quorumPctValue: Double = 50
+    @State private var durationEnabled: Bool = false
+    @State private var durationHours: Int = 168
+
+    private var durationLabel: String {
+        if durationHours % 24 == 0 {
+            return "\(durationHours / 24) días"
+        }
+        return "\(durationHours) horas"
+    }
 
     var body: some View {
         NavigationStack {
@@ -48,6 +63,79 @@ struct EditDecisionRulesView: View {
                                 .monospacedDigit()
                         }
                     }
+                }
+
+                // M1 — Motor de decisiones potente. 3 controles avanzados
+                // + auto-close toggle. Section colapsable para no asustar
+                // en first-time edit; solo aplica a método majority/
+                // supermajority (otros usan tally rules diferentes).
+                Section {
+                    DisclosureGroup("Motor avanzado", isExpanded: $isMotorExpanded) {
+                        Toggle(isOn: $thresholdEnabled) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Umbral personalizado")
+                                    .font(.body.weight(.medium))
+                                Text("Override del 50.01% / 66.66% por defecto")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        if thresholdEnabled {
+                            HStack {
+                                Text("\(Int(thresholdValue.rounded()))%")
+                                    .font(.body.monospacedDigit())
+                                    .frame(width: 50, alignment: .leading)
+                                Slider(value: $thresholdValue, in: 1...100, step: 1)
+                            }
+                        }
+
+                        Toggle(isOn: $quorumPctEnabled) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Quórum como %")
+                                    .font(.body.weight(.medium))
+                                Text("Porcentaje de miembros activos (en vez de count)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        if quorumPctEnabled {
+                            HStack {
+                                Text("\(Int(quorumPctValue.rounded()))%")
+                                    .font(.body.monospacedDigit())
+                                    .frame(width: 50, alignment: .leading)
+                                Slider(value: $quorumPctValue, in: 1...100, step: 1)
+                            }
+                        }
+
+                        Toggle(isOn: $durationEnabled) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Duración default")
+                                    .font(.body.weight(.medium))
+                                Text("Horas antes de cerrar por timeout (default 7d)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        if durationEnabled {
+                            Stepper(value: $durationHours, in: 1...720, step: 1) {
+                                Text(durationLabel)
+                                    .monospacedDigit()
+                            }
+                        }
+
+                        Toggle(isOn: $store.draftAutoClose) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Cerrar al alcanzar umbral")
+                                    .font(.body.weight(.medium))
+                                Text("Si el quórum y el umbral se alcanzan, la decisión se cierra automáticamente sin esperar el timeout. Solo aplica a método majority/supermajority.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } footer: {
+                    Text("Los ajustes avanzados aplican como defaults a nuevas decisiones. Las decisiones existentes mantienen el umbral con el que se crearon.")
+                        .font(.caption)
                 }
 
                 Section(L10n.DecisionRules.notesSection) {
@@ -101,6 +189,25 @@ struct EditDecisionRulesView: View {
                     quorumEnabled = false
                     quorumValue = 2
                 }
+                // M1 — hydrate motor draft state from store.
+                if let t = store.draftThresholdPct {
+                    thresholdEnabled = true
+                    thresholdValue = t
+                    isMotorExpanded = true
+                }
+                if let q = store.draftQuorumPct {
+                    quorumPctEnabled = true
+                    quorumPctValue = q
+                    isMotorExpanded = true
+                }
+                if let d = store.draftDurationHours {
+                    durationEnabled = true
+                    durationHours = d
+                    isMotorExpanded = true
+                }
+                if store.draftAutoClose {
+                    isMotorExpanded = true
+                }
             }
             .task { await store.refreshHistory(groupId: groupId) }
             .onChange(of: quorumEnabled) { _, enabled in
@@ -108,6 +215,24 @@ struct EditDecisionRulesView: View {
             }
             .onChange(of: quorumValue) { _, value in
                 if quorumEnabled { store.draftQuorum = value }
+            }
+            .onChange(of: thresholdEnabled) { _, enabled in
+                store.draftThresholdPct = enabled ? thresholdValue : nil
+            }
+            .onChange(of: thresholdValue) { _, value in
+                if thresholdEnabled { store.draftThresholdPct = value }
+            }
+            .onChange(of: quorumPctEnabled) { _, enabled in
+                store.draftQuorumPct = enabled ? quorumPctValue : nil
+            }
+            .onChange(of: quorumPctValue) { _, value in
+                if quorumPctEnabled { store.draftQuorumPct = value }
+            }
+            .onChange(of: durationEnabled) { _, enabled in
+                store.draftDurationHours = enabled ? durationHours : nil
+            }
+            .onChange(of: durationHours) { _, value in
+                if durationEnabled { store.draftDurationHours = value }
             }
             .alert(
                 "Se abrió una votación",

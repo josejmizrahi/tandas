@@ -1579,6 +1579,59 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - V3-D.23 — Calendar Events
+
+    public func createCalendarEvent(_ input: CreateCalendarEventParams) async throws -> UUID {
+        try await callReturningUUID("create_event", params: input)
+    }
+
+    public func updateCalendarEvent(_ input: UpdateCalendarEventParams) async throws {
+        try await callVoid("update_event", params: input)
+    }
+
+    public func cancelCalendarEvent(_ input: CancelCalendarEventParams) async throws {
+        try await callVoid("cancel_event", params: input)
+    }
+
+    public func archiveCalendarEvent(_ input: ArchiveCalendarEventParams) async throws {
+        try await callVoid("archive_event", params: input)
+    }
+
+    public func listGroupCalendarEvents(_ input: ListGroupCalendarEventsParams) async throws -> [CalendarEventListItem] {
+        try await callReturningArray("list_group_events", params: input)
+    }
+
+    public func getCalendarEventDetail(_ input: GetCalendarEventDetailParams) async throws -> CalendarEventDetail {
+        do {
+            return try await client
+                .rpc("get_event_detail", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func addCalendarEventAttendee(_ input: AddCalendarEventAttendeeParams) async throws -> UUID {
+        try await callReturningUUID("add_event_attendee", params: input)
+    }
+
+    public func removeCalendarEventAttendee(_ input: RemoveCalendarEventAttendeeParams) async throws {
+        try await callVoid("remove_event_attendee", params: input)
+    }
+
+    public func respondCalendarEvent(_ input: RespondCalendarEventParams) async throws -> UUID {
+        try await callReturningUUID("respond_event", params: input)
+    }
+
+    public func addCalendarEventReminder(_ input: AddCalendarEventReminderParams) async throws -> UUID {
+        try await callReturningUUID("add_event_reminder", params: input)
+    }
+
+    public func removeCalendarEventReminder(_ input: RemoveCalendarEventReminderParams) async throws {
+        try await callVoid("remove_event_reminder", params: input)
+    }
+
     /// Maps the jsonb response from `request_or_execute_action` into the
     /// canonical Swift `ActionOutcome` enum. Unknown statuses fall through
     /// to `.failed` with the raw reason for forward-compat.
@@ -1658,4 +1711,5 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         if case .number(let n) = v { return n }
         return nil
     }
+
 }

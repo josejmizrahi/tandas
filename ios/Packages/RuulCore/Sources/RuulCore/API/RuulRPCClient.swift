@@ -809,4 +809,53 @@ public protocol RuulRPCClient: Sendable {
     ///   - `failed`         — start_vote or template lookup failed.
     /// iOS pattern: features call this FIRST, then branch on `ActionOutcome`.
     func requestOrExecuteAction(_ input: RequestOrExecuteActionParams) async throws -> ActionOutcome
+
+    // MARK: - V3-D.23 — Calendar Events
+
+    /// `create_event(...)`. Requires `events.create`. Auto-adds caller as
+    /// host. Emits `calendar_event.created` audit. Returns the new event_id.
+    func createCalendarEvent(_ input: CreateCalendarEventParams) async throws -> UUID
+
+    /// `update_event(...)`. Host OR `events.update`. Locked once
+    /// status is `cancelled`/`archived`. Emits `calendar_event.updated`.
+    func updateCalendarEvent(_ input: UpdateCalendarEventParams) async throws
+
+    /// `cancel_event(p_event_id, p_reason)`. Host OR `events.cancel`.
+    /// Persists `metadata.cancel_reason`. Emits `calendar_event.cancelled`.
+    func cancelCalendarEvent(_ input: CancelCalendarEventParams) async throws
+
+    /// `archive_event(p_event_id)`. Host OR `events.archive`. Sets
+    /// `archived_at = now()`. Emits `calendar_event.archived`.
+    func archiveCalendarEvent(_ input: ArchiveCalendarEventParams) async throws
+
+    /// `list_group_events(p_group_id, p_from, p_to, p_include_cancelled,
+    /// p_include_archived)`. Filters by visibility + range + status; orders
+    /// by `starts_at asc`; denormalizes attendee counts + caller RSVP.
+    func listGroupCalendarEvents(_ input: ListGroupCalendarEventsParams) async throws -> [CalendarEventListItem]
+
+    /// `get_event_detail(p_event_id)`. Returns event + attendees + reminders
+    /// + per-caller effective permissions as a typed `CalendarEventDetail`.
+    func getCalendarEventDetail(_ input: GetCalendarEventDetailParams) async throws -> CalendarEventDetail
+
+    /// `add_event_attendee(...)`. Host OR `events.manage_attendees`.
+    /// Idempotent (unique on event×membership/email/phone). Returns the
+    /// attendee_id (either created or pre-existing).
+    func addCalendarEventAttendee(_ input: AddCalendarEventAttendeeParams) async throws -> UUID
+
+    /// `remove_event_attendee(p_event_attendee_id)`. Host OR
+    /// `events.manage_attendees`. Refuses to remove the last `host`.
+    func removeCalendarEventAttendee(_ input: RemoveCalendarEventAttendeeParams) async throws
+
+    /// `respond_event(p_event_id, p_rsvp_status, p_rsvp_note)`. Caller
+    /// updates their OWN RSVP. Auto-creates the attendee row for
+    /// visibility='group' events; rejects RSVP on visibility='invited'/
+    /// 'admins' if the caller isn't already invited.
+    func respondCalendarEvent(_ input: RespondCalendarEventParams) async throws -> UUID
+
+    /// `add_event_reminder(p_event_id, p_reminder_type, p_offset_minutes,
+    /// p_target, p_target_membership_id)`. Host OR `events.manage_reminders`.
+    func addCalendarEventReminder(_ input: AddCalendarEventReminderParams) async throws -> UUID
+
+    /// `remove_event_reminder(p_reminder_id)`. Host OR `events.manage_reminders`.
+    func removeCalendarEventReminder(_ input: RemoveCalendarEventReminderParams) async throws
 }

@@ -66,6 +66,15 @@ public struct GroupDecisionRules: Codable, Equatable, Sendable, Hashable {
     public let defaultLegitimacySource: LegitimacySource
     public let quorumMin: Int?
     public let notes: String?
+    /// M1 — threshold % personalizable (override del 50.01/66.66 implícito).
+    public let defaultThresholdPct: Decimal?
+    /// M1 — quórum como % de active members en lugar de count mínimo.
+    public let defaultQuorumPct: Decimal?
+    /// M1 — duración default antes de cerrar por timeout (horas).
+    public let defaultDurationHours: Int?
+    /// M1 — cerrar automáticamente cuando threshold + quórum se alcanzan.
+    /// Solo aplica a method=majority/supermajority.
+    public let autoCloseOnThreshold: Bool?
     /// `true` when the underlying jsonb is empty (`{}`) — the group has
     /// not yet picked a decision style. The Edit sheet uses this to
     /// distinguish "first time" vs "edit".
@@ -78,6 +87,10 @@ public struct GroupDecisionRules: Codable, Equatable, Sendable, Hashable {
         case defaultLegitimacySource = "default_legitimacy_source"
         case quorumMin               = "quorum_min"
         case notes
+        case defaultThresholdPct     = "default_threshold_pct"
+        case defaultQuorumPct        = "default_quorum_pct"
+        case defaultDurationHours    = "default_duration_hours"
+        case autoCloseOnThreshold    = "auto_close_on_threshold"
         case isDefault               = "is_default"
     }
 
@@ -88,6 +101,10 @@ public struct GroupDecisionRules: Codable, Equatable, Sendable, Hashable {
         defaultLegitimacySource: LegitimacySource? = nil,
         quorumMin: Int? = nil,
         notes: String? = nil,
+        defaultThresholdPct: Decimal? = nil,
+        defaultQuorumPct: Decimal? = nil,
+        defaultDurationHours: Int? = nil,
+        autoCloseOnThreshold: Bool? = nil,
         isDefault: Bool
     ) {
         self.groupId = groupId
@@ -97,6 +114,10 @@ public struct GroupDecisionRules: Codable, Equatable, Sendable, Hashable {
         self.defaultLegitimacySource = defaultLegitimacySource ?? LegitimacySource.defaultFor(method: method)
         self.quorumMin = quorumMin
         self.notes = notes
+        self.defaultThresholdPct = defaultThresholdPct
+        self.defaultQuorumPct = defaultQuorumPct
+        self.defaultDurationHours = defaultDurationHours
+        self.autoCloseOnThreshold = autoCloseOnThreshold
         self.isDefault = isDefault
     }
 
@@ -120,6 +141,10 @@ public struct GroupDecisionRules: Codable, Equatable, Sendable, Hashable {
 
         self.quorumMin = try c.decodeIfPresent(Int.self, forKey: .quorumMin)
         self.notes = try c.decodeIfPresent(String.self, forKey: .notes)
+        self.defaultThresholdPct = try c.decodeIfPresent(Decimal.self, forKey: .defaultThresholdPct)
+        self.defaultQuorumPct = try c.decodeIfPresent(Decimal.self, forKey: .defaultQuorumPct)
+        self.defaultDurationHours = try c.decodeIfPresent(Int.self, forKey: .defaultDurationHours)
+        self.autoCloseOnThreshold = try c.decodeIfPresent(Bool.self, forKey: .autoCloseOnThreshold)
         self.isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? true
     }
 }

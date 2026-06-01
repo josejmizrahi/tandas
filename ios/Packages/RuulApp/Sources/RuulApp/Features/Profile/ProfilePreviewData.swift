@@ -363,4 +363,18 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func requestOrExecuteAction(_ input: RequestOrExecuteActionParams) async throws -> ActionOutcome {
         .unsupported(reason: "preview_mock", actionKey: input.pActionKey)
     }
+    // V3-D.23 Calendar Events stubs (previews don't exercise this surface).
+    func createCalendarEvent(_ input: CreateCalendarEventParams) async throws -> UUID { UUID() }
+    func updateCalendarEvent(_ input: UpdateCalendarEventParams) async throws {}
+    func cancelCalendarEvent(_ input: CancelCalendarEventParams) async throws {}
+    func archiveCalendarEvent(_ input: ArchiveCalendarEventParams) async throws {}
+    func listGroupCalendarEvents(_ input: ListGroupCalendarEventsParams) async throws -> [CalendarEventListItem] { [] }
+    func getCalendarEventDetail(_ input: GetCalendarEventDetailParams) async throws -> CalendarEventDetail {
+        fatalError("preview mock: getCalendarEventDetail not implemented")
+    }
+    func addCalendarEventAttendee(_ input: AddCalendarEventAttendeeParams) async throws -> UUID { UUID() }
+    func removeCalendarEventAttendee(_ input: RemoveCalendarEventAttendeeParams) async throws {}
+    func respondCalendarEvent(_ input: RespondCalendarEventParams) async throws -> UUID { UUID() }
+    func addCalendarEventReminder(_ input: AddCalendarEventReminderParams) async throws -> UUID { UUID() }
+    func removeCalendarEventReminder(_ input: RemoveCalendarEventReminderParams) async throws {}
 }

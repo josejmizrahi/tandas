@@ -57,6 +57,7 @@ public final class DependencyContainer {
     public let privacyRepository: CanonicalPrivacyRepository
     public let inboxRepository: CanonicalInboxRepository
     public let searchRepository: CanonicalSearchRepository
+    public let calendarEventsRepository: CanonicalCalendarEventsRepository
 
     // MARK: - Stores
 
@@ -90,6 +91,7 @@ public final class DependencyContainer {
     public let privacyStore: PrivacyStore
     public let inboxStore: InboxStore
     public let searchStore: SearchStore
+    public let calendarEventsStore: CalendarEventsStore
 
     // MARK: - Routing
 
@@ -144,6 +146,7 @@ public final class DependencyContainer {
         self.privacyRepository = CanonicalPrivacyRepository(rpc: rpc)
         self.inboxRepository = CanonicalInboxRepository(rpc: rpc)
         self.searchRepository = CanonicalSearchRepository(rpc: rpc)
+        self.calendarEventsRepository = CanonicalCalendarEventsRepository(rpc: rpc)
 
         self.sessionStore = SessionStore(authService: auth)
         self.groupsStore = GroupsStore(repository: groupRepository)
@@ -175,6 +178,7 @@ public final class DependencyContainer {
         self.privacyStore = PrivacyStore(repository: privacyRepository)
         self.inboxStore = InboxStore(repository: inboxRepository)
         self.searchStore = SearchStore(repository: searchRepository)
+        self.calendarEventsStore = CalendarEventsStore(repository: calendarEventsRepository)
         self.deepLinkRouter = DeepLinkRouter()
         self.realtime = SupabaseGroupRealtimeService(client: client)
     }

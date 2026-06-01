@@ -50,6 +50,17 @@ public final class DecisionRulesStore {
     private var isInternallySettingLegitimacy: Bool = false
     public var draftQuorum: Int? = nil
     public var draftNotes: String = ""
+    /// M1 — threshold % personalizable (50.01 / 66.66 son defaults
+    /// canónicos para majority/supermajority; este override solo se
+    /// envía cuando el usuario lo edita).
+    public var draftThresholdPct: Double? = nil
+    /// M1 — quórum como % de active members.
+    public var draftQuorumPct: Double? = nil
+    /// M1 — duración default antes de cerrar por timeout (horas).
+    /// Default backend: 168h = 7d.
+    public var draftDurationHours: Int? = nil
+    /// M1 — habilitar auto-close al alcanzar threshold + quórum.
+    public var draftAutoClose: Bool = false
 
     private let repository: CanonicalDecisionRulesRepository
     private var loadedGroupId: UUID?
@@ -130,11 +141,19 @@ public final class DecisionRulesStore {
             draftLegitimacySource = rules.defaultLegitimacySource
             draftQuorum = rules.quorumMin
             draftNotes = rules.trimmedNotes ?? ""
+            draftThresholdPct = rules.defaultThresholdPct.map { NSDecimalNumber(decimal: $0).doubleValue }
+            draftQuorumPct = rules.defaultQuorumPct.map { NSDecimalNumber(decimal: $0).doubleValue }
+            draftDurationHours = rules.defaultDurationHours
+            draftAutoClose = rules.autoCloseOnThreshold ?? false
         } else {
             draftMethod = .majority
             draftLegitimacySource = LegitimacySource.defaultFor(method: .majority)
             draftQuorum = nil
             draftNotes = ""
+            draftThresholdPct = nil
+            draftQuorumPct = nil
+            draftDurationHours = nil
+            draftAutoClose = false
         }
         draftLegitimacyAutoSync = true
         errorMessage = nil
@@ -153,7 +172,11 @@ public final class DecisionRulesStore {
                 defaultMethod: draftMethod,
                 defaultLegitimacySource: draftLegitimacySource,
                 quorumMin: draftQuorum,
-                notes: draftNotes
+                notes: draftNotes,
+                defaultThresholdPct: draftThresholdPct.map { Decimal($0) },
+                defaultQuorumPct: draftQuorumPct.map { Decimal($0) },
+                defaultDurationHours: draftDurationHours,
+                autoCloseOnThreshold: draftAutoClose ? true : nil
             )
             lastGovernanceOutcome = outcome
             switch outcome {
