@@ -47,7 +47,7 @@ public struct VoteSheet: View {
                     Section {
                         Text(message)
                             .font(.callout)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

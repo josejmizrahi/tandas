@@ -104,10 +104,10 @@ public struct RolesListView: View {
                         .font(.body.weight(.semibold))
                         .foregroundStyle(.primary)
                     if role.isDefault {
-                        chip(role.isDefault ? L10n.Roles.defaultLabel : L10n.Roles.systemLabel, tint: .blue)
+                        chip(role.isDefault ? L10n.Roles.defaultLabel : L10n.Roles.systemLabel)
                     }
                     if role.isSystem && !role.isDefault {
-                        chip(L10n.Roles.systemLabel, tint: .secondary)
+                        chip(L10n.Roles.systemLabel)
                     }
                     Spacer()
                     if let count = role.memberCountLabel {
@@ -131,13 +131,13 @@ public struct RolesListView: View {
     }
 
     @ViewBuilder
-    private func chip(_ label: LocalizedStringResource, tint: Color) -> some View {
+    private func chip(_ label: LocalizedStringResource) -> some View {
         Text(label)
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(tint)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Capsule().fill(tint.opacity(0.12)))
+            .background(Capsule().fill(.quaternary))
     }
 
     @ViewBuilder

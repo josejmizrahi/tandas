@@ -86,7 +86,7 @@ struct MoneyMovementDetailView: View {
                 if movement.isReversal {
                     Text(L10n.MoneyMovementDetail.reversalNotice)
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
             }

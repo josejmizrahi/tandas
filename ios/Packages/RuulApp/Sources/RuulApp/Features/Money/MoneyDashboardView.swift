@@ -209,9 +209,10 @@ struct MoneyDashboardView: View {
     }
 
     private var heroColor: Color {
-        guard let balance = container.moneyStore.balance else { return .secondary }
-        if balance == 0 { return .primary }
-        return balance > 0 ? .green : .red
+        // Doctrine: no hardcoded colors. The amount string itself carries
+        // the +/− sign; the hero stays neutral so users read it via shape.
+        guard container.moneyStore.balance != nil else { return .secondary }
+        return .primary
     }
 
     // MARK: - Entre miembros (V3 Batch B-2)
@@ -262,7 +263,7 @@ struct MoneyDashboardView: View {
                   ? "arrow.up.right.circle.fill"
                   : "arrow.down.left.circle.fill")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(item.direction == .youOwe ? .red : .green)
+                .foregroundStyle(.secondary)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(peerPairHeadline(item))
@@ -532,9 +533,10 @@ struct MoneyDashboardView: View {
     }
 
     private var poolColorForDisplay: Color {
-        guard let pool = poolBalance else { return .secondary }
-        if pool.net == 0 { return .primary }
-        return pool.net > 0 ? .green : .red
+        // Doctrine: no hardcoded colors. The signed amount string already
+        // tells the user direction; keep the value neutral.
+        guard poolBalance != nil else { return .secondary }
+        return .primary
     }
 
     /// Pluraliza la explicación según los flows reales del grupo:
@@ -572,31 +574,27 @@ struct MoneyDashboardView: View {
                 HStack(spacing: 10) {
                     actionChip(
                         label: "Aportar",
-                        icon: "arrow.down.to.line.circle.fill",
-                        tint: .green
+                        icon: "arrow.down.to.line.circle.fill"
                     ) {
                         isShowingContribute = true
                     }
                     actionChip(
                         label: "Registrar gasto",
-                        icon: "plus.circle.fill",
-                        tint: .accentColor
+                        icon: "plus.circle.fill"
                     ) {
                         isShowingExpenseSheet = true
                     }
                     if !container.moneyStore.settlementPlan.isEmpty {
                         actionChip(
                             label: "Saldar cuentas",
-                            icon: "sparkles",
-                            tint: .purple
+                            icon: "sparkles"
                         ) {
                             isShowingSettleUp = true
                         }
                     }
                     actionChip(
                         label: "Pagar a alguien",
-                        icon: "checkmark.circle.fill",
-                        tint: .blue
+                        icon: "checkmark.circle.fill"
                     ) {
                         isShowingSettlementSheet = true
                     }
@@ -605,8 +603,7 @@ struct MoneyDashboardView: View {
                     if permissionKeys?.contains("pool_charge.record") == true {
                         actionChip(
                             label: "Cobrar cuota",
-                            icon: "arrow.up.to.line.circle.fill",
-                            tint: .orange
+                            icon: "arrow.up.to.line.circle.fill"
                         ) {
                             isShowingPoolCharge = true
                         }
@@ -624,7 +621,6 @@ struct MoneyDashboardView: View {
     private func actionChip(
         label: String,
         icon: String,
-        tint: Color,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -634,10 +630,10 @@ struct MoneyDashboardView: View {
                 Text(label)
                     .font(.subheadline.weight(.medium))
             }
-            .foregroundStyle(tint)
+            .foregroundStyle(.tint)
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
-            .background(Capsule().fill(tint.opacity(0.14)))
+            .background(Capsule().fill(.quaternary))
         }
         .buttonStyle(.plain)
     }

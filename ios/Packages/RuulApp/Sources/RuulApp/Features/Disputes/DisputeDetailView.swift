@@ -132,8 +132,8 @@ public struct DisputeDetailView: View {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 } icon: {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.secondary)
                 }
             case .loaded:
                 if store.events.isEmpty {
@@ -256,23 +256,24 @@ public struct DisputeDetailView: View {
 
     @ViewBuilder
     private func statusBadge(for status: DisputeStatus) -> some View {
-        let tint: Color = {
-            switch status {
-            case .open:       return .blue
-            case .inReview:   return .indigo
-            case .mediation:  return .teal
-            case .escalated:  return .orange
-            case .resolved:   return .green
-            case .dismissed:  return .gray
-            case .closed:     return .gray
-            }
-        }()
-        Text(status.label)
+        Label(status.label, systemImage: statusSymbol(status))
             .font(.caption.weight(.medium))
-            .foregroundStyle(tint)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Capsule().fill(tint.opacity(0.12)))
+            .background(Capsule().fill(.quaternary))
+    }
+
+    private func statusSymbol(_ status: DisputeStatus) -> String {
+        switch status {
+        case .open:       return "circle"
+        case .inReview:   return "magnifyingglass.circle.fill"
+        case .mediation:  return "person.2.fill"
+        case .escalated:  return "exclamationmark.triangle.fill"
+        case .resolved:   return "checkmark.circle.fill"
+        case .dismissed:  return "minus.circle"
+        case .closed:     return "lock.fill"
+        }
     }
 }
 

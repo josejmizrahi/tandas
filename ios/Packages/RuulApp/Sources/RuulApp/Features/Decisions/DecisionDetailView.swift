@@ -311,7 +311,7 @@ public struct DecisionDetailView: View {
                         .font(.subheadline)
                 } icon: {
                     Image(systemName: "sparkles")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(.tint)
                 }
             }
         }
@@ -360,7 +360,7 @@ public struct DecisionDetailView: View {
                          ? L10n.Decisions.tallyVetoHighlight
                          : L10n.Decisions.tallyBlockHighlight)
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -380,29 +380,29 @@ public struct DecisionDetailView: View {
         case .consensus:
             tallyRow(label: VoteValue.yes.label(for: method),
                      image: VoteValue.yes.systemImageName,
-                     count: tally.yesCount, tint: .green)
+                     count: tally.yesCount)
             tallyRow(label: VoteValue.no.label(for: method),
                      image: VoteValue.no.systemImageName,
-                     count: tally.noCount, tint: .red)
+                     count: tally.noCount)
             if tally.abstainCount > 0 {
                 tallyRow(label: VoteValue.abstain.label(for: method),
                          image: VoteValue.abstain.systemImageName,
-                         count: tally.abstainCount, tint: .gray)
+                         count: tally.abstainCount)
             }
         case .consent:
             tallyRow(label: VoteValue.yes.label(for: method),
                      image: VoteValue.yes.systemImageName,
-                     count: tally.yesCount, tint: .green)
+                     count: tally.yesCount)
             tallyRow(label: VoteValue.block.label(for: method),
                      image: VoteValue.block.systemImageName,
-                     count: tally.blockCount, tint: .orange)
+                     count: tally.blockCount)
         case .veto:
             tallyRow(label: VoteValue.yes.label(for: method),
                      image: VoteValue.yes.systemImageName,
-                     count: tally.yesCount, tint: .green)
+                     count: tally.yesCount)
             tallyRow(label: VoteValue.block.label(for: method),
                      image: VoteValue.block.systemImageName,
-                     count: tally.blockCount, tint: .orange)
+                     count: tally.blockCount)
         case .admin:
             // Render nothing — caller short-circuited with the admin
             // notice above.
@@ -411,19 +411,19 @@ public struct DecisionDetailView: View {
              .rankedChoice, .weighted, .other:
             tallyRow(label: VoteValue.yes.label,
                      image: VoteValue.yes.systemImageName,
-                     count: tally.yesCount, tint: .green)
+                     count: tally.yesCount)
             tallyRow(label: VoteValue.no.label,
                      image: VoteValue.no.systemImageName,
-                     count: tally.noCount, tint: .red)
+                     count: tally.noCount)
             if tally.abstainCount > 0 {
                 tallyRow(label: VoteValue.abstain.label,
                          image: VoteValue.abstain.systemImageName,
-                         count: tally.abstainCount, tint: .gray)
+                         count: tally.abstainCount)
             }
             if tally.blockCount > 0 {
                 tallyRow(label: VoteValue.block.label,
                          image: VoteValue.block.systemImageName,
-                         count: tally.blockCount, tint: .orange)
+                         count: tally.blockCount)
             }
         }
     }
@@ -460,12 +460,11 @@ public struct DecisionDetailView: View {
     private func tallyRow(
         label: LocalizedStringResource,
         image: String,
-        count: Decimal,
-        tint: Color
+        count: Decimal
     ) -> some View {
         HStack {
             Label(label, systemImage: image)
-                .foregroundStyle(tint)
+                .foregroundStyle(.secondary)
             Spacer()
             Text("\(NSDecimalNumber(decimal: count).stringValue)")
                 .font(.callout.weight(.semibold))
@@ -523,10 +522,12 @@ public struct DecisionDetailView: View {
         Section(L10n.Decisions.resultSection) {
             if let result = detail.result {
                 if let outcome = result.outcome {
-                    HStack {
+                    HStack(spacing: 6) {
+                        Image(systemName: outcomeSymbol(for: outcome))
+                            .foregroundStyle(.secondary)
                         Text(outcomeLabel(for: outcome))
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(outcomeColor(for: outcome))
+                            .foregroundStyle(.primary)
                         Spacer()
                         if let when = detail.decidedAt {
                             Text(when.formatted(.dateTime.day().month().year()))
@@ -621,23 +622,24 @@ public struct DecisionDetailView: View {
 
     @ViewBuilder
     private func statusBadge(for status: DecisionStatus) -> some View {
-        let tint: Color = {
-            switch status {
-            case .open:      return .blue
-            case .passed:    return .green
-            case .rejected:  return .red
-            case .cancelled: return .gray
-            case .draft:     return .secondary
-            case .executed:  return .green
-            case .closed:    return .green
-            }
-        }()
-        Text(status.label)
+        Label(status.label, systemImage: statusSymbol(status))
             .font(.caption.weight(.medium))
-            .foregroundStyle(tint)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Capsule().fill(tint.opacity(0.12)))
+            .background(Capsule().fill(.quaternary))
+    }
+
+    private func statusSymbol(_ status: DecisionStatus) -> String {
+        switch status {
+        case .open:      return "circle"
+        case .passed:    return "checkmark.circle.fill"
+        case .rejected:  return "xmark.circle.fill"
+        case .cancelled: return "minus.circle"
+        case .draft:     return "pencil.circle"
+        case .executed:  return "checkmark.seal.fill"
+        case .closed:    return "lock.fill"
+        }
     }
 
     private func outcomeLabel(for outcome: String) -> LocalizedStringResource {
@@ -650,13 +652,13 @@ public struct DecisionDetailView: View {
         }
     }
 
-    private func outcomeColor(for outcome: String) -> Color {
+    private func outcomeSymbol(for outcome: String) -> String {
         switch outcome {
-        case "passed":    return .green
-        case "rejected":  return .red
-        case "no_quorum": return .orange
-        case "cancelled": return .gray
-        default:          return .primary
+        case "passed":    return "checkmark.circle.fill"
+        case "rejected":  return "xmark.circle.fill"
+        case "no_quorum": return "clock"
+        case "cancelled": return "minus.circle"
+        default:          return "circle"
         }
     }
 }

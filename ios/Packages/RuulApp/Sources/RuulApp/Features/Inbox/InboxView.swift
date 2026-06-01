@@ -76,7 +76,6 @@ public struct InboxView: View {
                                     } label: {
                                         Label("Marcar leído", systemImage: "envelope.open")
                                     }
-                                    .tint(.blue)
                                 }
                                 .onTapGesture {
                                     Task { await store.markRead(item) }

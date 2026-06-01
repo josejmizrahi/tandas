@@ -156,12 +156,11 @@ public struct ContributionsListView: View {
                                             systemImage: "checkmark.seal"
                                         )
                                     }
-                                    .tint(.green)
                                 }
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 if canVerify(contribution) {
-                                    Button {
+                                    Button(role: .destructive) {
                                         performVerify(contribution, outcome: .rejected)
                                     } label: {
                                         Label(
@@ -169,7 +168,6 @@ public struct ContributionsListView: View {
                                             systemImage: "xmark.circle"
                                         )
                                     }
-                                    .tint(.red)
                                 }
                             }
                     }
@@ -205,7 +203,7 @@ public struct ContributionsListView: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.gray.opacity(0.12)))
+                        .background(Capsule().fill(.quaternary))
                 }
                 if let who = contribution.memberDisplayName, !who.isEmpty {
                     Text("Registró \(who)")
@@ -225,22 +223,23 @@ public struct ContributionsListView: View {
 
     @ViewBuilder
     private func statusBadge(for status: ContributionStatus) -> some View {
-        let (fg, bg, icon): (Color, Color, String) = {
-            switch status {
-            case .claimed:  return (.orange, .orange.opacity(0.18), "hourglass")
-            case .verified: return (.green,  .green.opacity(0.18),  "checkmark.seal.fill")
-            case .rejected: return (.red,    .red.opacity(0.18),    "xmark.circle.fill")
-            case .rewarded: return (.purple, .purple.opacity(0.18), "rosette")
-            }
-        }()
         HStack(spacing: 4) {
-            Image(systemName: icon).font(.caption2.weight(.semibold))
+            Image(systemName: statusIcon(status)).font(.caption2.weight(.semibold))
             Text(status.label).font(.caption2.weight(.medium))
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .background(Capsule().fill(bg))
-        .foregroundStyle(fg)
+        .background(Capsule().fill(.quaternary))
+        .foregroundStyle(.secondary)
+    }
+
+    private func statusIcon(_ status: ContributionStatus) -> String {
+        switch status {
+        case .claimed:  return "hourglass"
+        case .verified: return "checkmark.seal.fill"
+        case .rejected: return "xmark.circle.fill"
+        case .rewarded: return "rosette"
+        }
     }
 
     @ViewBuilder

@@ -94,7 +94,7 @@ struct GroupEngineSettingsView: View {
                 Spacer()
                 if let active = s?.engineActive {
                     Text(active ? "Activo" : "Apagado")
-                        .foregroundStyle(active ? .green : .secondary)
+                        .foregroundStyle(active ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                         .font(.subheadline.weight(.medium))
                 } else {
                     Text("—").foregroundStyle(.secondary)
@@ -184,11 +184,11 @@ struct GroupEngineSettingsView: View {
             }
             LabeledContent("Fallidas") {
                 Text("\(summary?.failedActionsCount ?? 0)")
-                    .foregroundStyle((summary?.failedActionsCount ?? 0) > 0 ? .red : .primary)
+                    .foregroundStyle((summary?.failedActionsCount ?? 0) > 0 ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
             }
             LabeledContent("Limitadas por cuota") {
                 Text("\(summary?.rateLimitedCount ?? 0)")
-                    .foregroundStyle((summary?.rateLimitedCount ?? 0) > 0 ? .orange : .primary)
+                    .foregroundStyle((summary?.rateLimitedCount ?? 0) > 0 ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
             }
         } header: {
             Text("Salud")
@@ -196,15 +196,17 @@ struct GroupEngineSettingsView: View {
     }
 
     private var healthDot: some View {
-        Circle().fill(healthColor).frame(width: 10, height: 10)
+        Image(systemName: healthSymbol)
+            .font(.body)
+            .foregroundStyle(.secondary)
     }
 
-    private var healthColor: Color {
+    private var healthSymbol: String {
         switch summary?.health {
-        case .red:    return .red
-        case .yellow: return .orange
-        case .green:  return .green
-        case .none:   return .secondary
+        case .red:    return "exclamationmark.triangle.fill"
+        case .yellow: return "clock"
+        case .green:  return "checkmark.circle.fill"
+        case .none:   return "circle"
         }
     }
 

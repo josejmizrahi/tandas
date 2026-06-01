@@ -172,7 +172,7 @@ struct PaySanctionSheet: View {
                     .foregroundStyle(.primary)
             }
             ProgressView(value: status.progress)
-                .tint(status.isFullyPaid ? .green : .accentColor)
+                .tint(.accentColor)
         }
         .padding(.vertical, 2)
     }

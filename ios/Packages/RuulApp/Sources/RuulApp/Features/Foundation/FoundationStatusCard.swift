@@ -80,7 +80,7 @@ public struct FoundationStatusCard: View {
                       ? "checkmark.circle.fill"
                       : "circle.dashed")
                     .font(.body)
-                    .foregroundStyle(primitive.isComplete ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+                    .foregroundStyle(primitive.isComplete ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             }
             .padding(.vertical, 6)
             .contentShape(Rectangle())
@@ -96,7 +96,7 @@ public struct FoundationStatusCard: View {
         HStack {
             Text(status.isReady ? L10n.Foundation.readySummary : L10n.Foundation.notReadySummary)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(status.isReady ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+                .foregroundStyle(status.isReady ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             Spacer()
             Text("\(store.completeCount)/5")
                 .font(.subheadline.monospacedDigit())

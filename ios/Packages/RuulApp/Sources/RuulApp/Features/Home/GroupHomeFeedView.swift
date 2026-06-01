@@ -327,9 +327,9 @@ struct GroupHomeFeedView: View {
                     pushEngineEvaluations = true
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: summary.hasFailures ? "exclamationmark.octagon" : "bolt.horizontal.circle.fill")
+                        Image(systemName: summary.hasFailures ? "exclamationmark.octagon.fill" : "bolt.horizontal.circle.fill")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(summary.hasFailures ? .red : .accentColor)
+                            .foregroundStyle(.tint)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(engineBannerHeadline(summary))
@@ -541,47 +541,47 @@ struct GroupHomeFeedView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     if perms.contains("decisions.create") {
-                        createChip(label: "Decisión", icon: "checkmark.seal", tint: .indigo) {
+                        createChip(label: "Decisión", icon: "checkmark.seal") {
                             container.decisionsStore.beginProposing()
                         }
                     }
                     if perms.contains("expense.record") {
-                        createChip(label: "Gasto", icon: "plus.circle.fill", tint: .accentColor) {
+                        createChip(label: "Gasto", icon: "plus.circle.fill") {
                             isShowingExpenseSheet = true
                         }
                     }
                     if perms.contains("settlement.record") {
-                        createChip(label: "Pagar", icon: "checkmark.circle.fill", tint: .blue) {
+                        createChip(label: "Pagar", icon: "checkmark.circle.fill") {
                             isShowingSettlementSheet = true
                         }
                     }
                     if perms.contains("contribution.record") {
-                        createChip(label: "Aportar", icon: "arrow.down.to.line.circle.fill", tint: .green) {
+                        createChip(label: "Aportar", icon: "arrow.down.to.line.circle.fill") {
                             isShowingContributeSheet = true
                         }
                     }
                     if perms.contains("members.invite") {
-                        createChip(label: "Invitar", icon: "person.crop.circle.badge.plus", tint: .pink) {
+                        createChip(label: "Invitar", icon: "person.crop.circle.badge.plus") {
                             isShowingInviteSheet = true
                         }
                     }
                     if perms.contains("culture.propose") {
-                        createChip(label: "Norma", icon: "heart.text.square", tint: .purple) {
+                        createChip(label: "Norma", icon: "heart.text.square") {
                             container.culturalNormsStore.beginCreating()
                         }
                     }
                     if perms.contains("resources.create") {
-                        createChip(label: "Recurso", icon: "square.stack.3d.up", tint: .teal) {
+                        createChip(label: "Recurso", icon: "square.stack.3d.up") {
                             container.resourcesStore.beginCreating()
                         }
                     }
                     if perms.contains("rules.create") {
-                        createChip(label: "Regla", icon: "list.bullet.rectangle", tint: .brown) {
+                        createChip(label: "Regla", icon: "list.bullet.rectangle") {
                             container.rulesStore.beginCreating()
                         }
                     }
                     if perms.contains("mandates.grant") {
-                        createChip(label: "Mandato", icon: "signature", tint: .orange) {
+                        createChip(label: "Mandato", icon: "signature") {
                             container.mandatesStore.beginGranting()
                         }
                     }
@@ -598,7 +598,6 @@ struct GroupHomeFeedView: View {
     private func createChip(
         label: String,
         icon: String,
-        tint: Color,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -612,7 +611,6 @@ struct GroupHomeFeedView: View {
             .padding(.vertical, 10)
         }
         .buttonStyle(.glass)
-        .tint(tint)
     }
 
     // MARK: - Próximo
@@ -1007,7 +1005,7 @@ private struct AttentionRow: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.tint)
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(headline)
@@ -1224,15 +1222,14 @@ private struct MoneyRecentRow: View {
     }
 
     private var tint: Color {
+        // Doctrine: no hardcoded colors. The system accent + secondary
+        // carry semantic weight; the SF Symbol shape on each row tells
+        // the user what kind of movement it is.
         switch movement.type {
-        case .expense:           return .accentColor
-        case .settlementPayment: return .green
-        case .finePayment:       return .green
-        case .contribution:      return .green
-        case .poolCharge:        return .orange
-        case .bookingCharge:     return .orange
-        case .payout:            return .blue
-        case .reversal:          return .red
+        case .expense, .settlementPayment, .finePayment,
+             .contribution, .poolCharge, .bookingCharge,
+             .payout, .reversal:
+            return .accentColor
         case .income, .transfer, .refund, .adjustment, .allocation, .other:
             return .secondary
         }
@@ -1335,9 +1332,9 @@ private struct DecisionVoteCard: View {
             Button(action: onOpenDetail) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
-                        Image(systemName: "checkmark.seal")
+                        Image(systemName: "checkmark.seal.fill")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(.tint)
                         Text(decision.title)
                             .font(.body.weight(.semibold))
                             .foregroundStyle(.primary)
@@ -1363,9 +1360,9 @@ private struct DecisionVoteCard: View {
             progressBar
 
             HStack(spacing: 8) {
-                voteButton(.yes,     label: "Sí",        systemImage: "checkmark.circle.fill", tint: .green)
-                voteButton(.no,      label: "No",        systemImage: "xmark.circle.fill",     tint: .red)
-                voteButton(.abstain, label: "Abstener",  systemImage: "minus.circle",          tint: .secondary)
+                voteButton(.yes,     label: "Sí",       systemImage: "checkmark.circle.fill")
+                voteButton(.no,      label: "No",       systemImage: "xmark.circle.fill")
+                voteButton(.abstain, label: "Abstener", systemImage: "minus.circle")
             }
         }
         .padding(.vertical, 8)
@@ -1392,15 +1389,15 @@ private struct DecisionVoteCard: View {
                         let no  = NSDecimalNumber(decimal: decision.tally.noCount).doubleValue
                         let abs = NSDecimalNumber(decimal: decision.tally.abstainCount).doubleValue
                         if yes > 0 {
-                            Capsule().fill(Color.green)
+                            Capsule().fill(.tint)
                                 .frame(width: width * (yes / totalDouble))
                         }
                         if no > 0 {
-                            Capsule().fill(Color.red)
+                            Capsule().fill(.secondary)
                                 .frame(width: width * (no / totalDouble))
                         }
                         if abs > 0 {
-                            Capsule().fill(Color.secondary)
+                            Capsule().fill(.quaternary)
                                 .frame(width: width * (abs / totalDouble))
                         }
                     }
@@ -1422,7 +1419,7 @@ private struct DecisionVoteCard: View {
     }
 
     @ViewBuilder
-    private func voteButton(_ value: VoteValue, label: String, systemImage: String, tint: Color) -> some View {
+    private func voteButton(_ value: VoteValue, label: String, systemImage: String) -> some View {
         let isSelected = decision.myVoteValue == value
         Button {
             onVote(value)
@@ -1432,7 +1429,6 @@ private struct DecisionVoteCard: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
-        .tint(isSelected ? tint : .secondary)
         .opacity(decision.myVoteValue == nil || isSelected ? 1 : 0.5)
     }
 
@@ -1476,9 +1472,9 @@ private struct SanctionAttentionRow: View {
         VStack(alignment: .leading, spacing: 8) {
             Button(action: onSelect) {
                 HStack(spacing: 12) {
-                    Image(systemName: "exclamationmark.shield")
+                    Image(systemName: "exclamationmark.shield.fill")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(.secondary)
                         .frame(width: 24)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(headline)
@@ -1506,7 +1502,6 @@ private struct SanctionAttentionRow: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.green)
                 .controlSize(.regular)
             }
         }
@@ -1541,7 +1536,7 @@ private struct PendingRequestRow: View {
                 HStack(spacing: 12) {
                     Image(systemName: "person.crop.circle.badge.questionmark")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.tint)
                         .frame(width: 24)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(member.displayName) quiere unirse")
@@ -1558,14 +1553,13 @@ private struct PendingRequestRow: View {
             .buttonStyle(.plain)
 
             HStack(spacing: 8) {
-                Button {
+                Button(role: .destructive) {
                     onReject()
                 } label: {
                     Label("Rechazar", systemImage: "xmark")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .tint(.secondary)
 
                 Button {
                     onApprove()
@@ -1574,7 +1568,6 @@ private struct PendingRequestRow: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.green)
             }
         }
         .padding(.vertical, 4)

@@ -24,7 +24,7 @@ public struct ResolveDisputeView: View {
                     Section {
                         Text(message)
                             .font(.callout)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

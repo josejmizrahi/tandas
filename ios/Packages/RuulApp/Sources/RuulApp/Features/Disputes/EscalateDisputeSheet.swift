@@ -26,7 +26,7 @@ public struct EscalateDisputeSheet: View {
                     Section {
                         Text(message)
                             .font(.callout)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

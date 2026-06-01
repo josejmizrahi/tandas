@@ -127,10 +127,10 @@ struct MoneyMovementsListView: View {
                 .padding(.vertical, 6)
                 .background(
                     Capsule().fill(isActive
-                                   ? Color.accentColor.opacity(0.18)
-                                   : Color.gray.opacity(0.10))
+                                   ? AnyShapeStyle(Color.accentColor.opacity(0.18))
+                                   : AnyShapeStyle(.quaternary))
                 )
-                .foregroundStyle(isActive ? Color.accentColor : .primary)
+                .foregroundStyle(isActive ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.primary))
         }
         .buttonStyle(.plain)
     }

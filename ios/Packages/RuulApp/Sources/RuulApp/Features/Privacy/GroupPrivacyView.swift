@@ -68,7 +68,7 @@ public struct GroupPrivacyView: View {
                     Section {
                         Text(message)
                             .font(.callout)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

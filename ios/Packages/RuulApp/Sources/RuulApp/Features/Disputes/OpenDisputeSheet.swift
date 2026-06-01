@@ -27,7 +27,7 @@ public struct OpenDisputeSheet: View {
                     Section {
                         Text(message)
                             .font(.callout)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

@@ -118,7 +118,7 @@ public struct CulturalNormsListView: View {
                     ForEach(bucket) { norm in
                         row(for: norm)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button {
+                                Button(role: .destructive) {
                                     toRetire = norm
                                 } label: {
                                     Label(
@@ -126,7 +126,6 @@ public struct CulturalNormsListView: View {
                                         systemImage: "archivebox"
                                     )
                                 }
-                                .tint(.red)
 
                                 Button {
                                     toPromote = norm
@@ -136,7 +135,6 @@ public struct CulturalNormsListView: View {
                                         systemImage: "checkmark.seal"
                                     )
                                 }
-                                .tint(.indigo)
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                 Button {
@@ -147,7 +145,6 @@ public struct CulturalNormsListView: View {
                                         systemImage: "hand.thumbsup"
                                     )
                                 }
-                                .tint(.green)
                             }
                             .contextMenu {
                                 Button {
@@ -181,7 +178,7 @@ public struct CulturalNormsListView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.gray.opacity(0.12)))
+                    .background(Capsule().fill(.quaternary))
             }
             if let body = norm.body, !body.isEmpty {
                 Text(body)
@@ -194,12 +191,8 @@ public struct CulturalNormsListView: View {
                     .font(.caption2.weight(.medium))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(
-                        Capsule().fill(norm.isEndorsed
-                                        ? Color.green.opacity(0.18)
-                                        : Color.gray.opacity(0.12))
-                    )
-                    .foregroundStyle(norm.isEndorsed ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+                    .background(Capsule().fill(.quaternary))
+                    .foregroundStyle(norm.isEndorsed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 if let who = norm.proposedByDisplayName, !who.isEmpty {
                     Text(proposedBySubtitle(who))
                         .font(.caption2)

@@ -49,32 +49,25 @@ public struct DisputeRowView: View {
 
             Spacer(minLength: 8)
 
-            Text(dispute.status.label)
+            Label(dispute.status.label, systemImage: statusSymbol)
                 .font(.caption.weight(.semibold))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(
-                    Capsule().fill(statusBackground)
-                )
-                .foregroundStyle(statusForeground)
+                .background(Capsule().fill(.quaternary))
+                .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
     }
 
-    private var statusBackground: Color {
+    private var statusSymbol: String {
         switch dispute.status {
-        case .mediation, .inReview: return Color.blue.opacity(0.15)
-        case .escalated:            return Color.orange.opacity(0.18)
-        case .open:                 return Color.gray.opacity(0.12)
-        default:                    return Color.gray.opacity(0.08)
-        }
-    }
-
-    private var statusForeground: AnyShapeStyle {
-        switch dispute.status {
-        case .mediation, .inReview: return AnyShapeStyle(.blue)
-        case .escalated:            return AnyShapeStyle(.orange)
-        default:                    return AnyShapeStyle(.secondary)
+        case .open:       return "circle"
+        case .inReview:   return "magnifyingglass.circle.fill"
+        case .mediation:  return "person.2.fill"
+        case .escalated:  return "exclamationmark.triangle.fill"
+        case .resolved:   return "checkmark.circle.fill"
+        case .dismissed:  return "minus.circle"
+        case .closed:     return "lock.fill"
         }
     }
 }

@@ -96,15 +96,15 @@ struct WhyDidThisHappenSheet: View {
                 }
                 if let pred = p.matchedPredicate, let reason = pred.reason {
                     HStack(spacing: 6) {
-                        Image(systemName: pred.passed ? "checkmark.seal.fill" : "xmark.seal")
-                            .foregroundStyle(pred.passed ? .green : .secondary)
+                        Image(systemName: pred.passed ? "checkmark.seal.fill" : "xmark.seal.fill")
+                            .foregroundStyle(pred.passed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                         Text(pred.passed ? "Condición cumplida: \(reason)" : "Condición no cumplida: \(reason)")
                             .font(.subheadline)
                     }
                 }
                 if p.cycleDetected == true {
                     Label("Se detectó un ciclo en la evaluación.", systemImage: "arrow.triangle.2.circlepath")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.secondary)
                         .font(.footnote)
                 }
                 if let depth = p.depth, depth > 0 {

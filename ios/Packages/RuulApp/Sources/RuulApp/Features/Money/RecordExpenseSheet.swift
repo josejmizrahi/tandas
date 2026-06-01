@@ -156,7 +156,7 @@ struct RecordExpenseSheet: View {
         } footer: {
             if participantIds.isEmpty {
                 Text("Selecciona al menos un participante.")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(.secondary)
                     .font(.footnote)
             }
         }
@@ -171,7 +171,7 @@ struct RecordExpenseSheet: View {
                     breakdownPreview(shares: shares)
                 case .failure(let message):
                     Text(message)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(.secondary)
                         .font(.footnote)
                 }
             }

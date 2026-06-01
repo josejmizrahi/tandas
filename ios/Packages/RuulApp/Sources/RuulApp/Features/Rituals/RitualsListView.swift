@@ -105,12 +105,11 @@ public struct RitualsListView: View {
                     ForEach(bucket) { ritual in
                         row(for: ritual)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button {
+                                Button(role: .destructive) {
                                     toEnd = ritual
                                 } label: {
                                     Label(String(localized: L10n.Rituals.endButton), systemImage: "stop.circle")
                                 }
-                                .tint(.red)
                             }
                     }
                 } header: {
@@ -136,7 +135,7 @@ public struct RitualsListView: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.gray.opacity(0.12)))
+                        .background(Capsule().fill(.quaternary))
                 }
                 if let startsOn = ritual.startsOn {
                     Text("\(String(localized: L10n.Rituals.startsOnLabel)) \(startsOn.formatted(.dateTime.day().month().year()))")

@@ -105,9 +105,9 @@ public struct DissolutionStatusView: View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    Label(L10n.Dissolution.activeBannerTitle, systemImage: "exclamationmark.octagon")
+                    Label(L10n.Dissolution.activeBannerTitle, systemImage: "exclamationmark.octagon.fill")
                         .font(.headline)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.secondary)
                     Spacer()
                     statusBadge(for: active.status)
                 }
@@ -148,16 +148,16 @@ public struct DissolutionStatusView: View {
 
         Section(L10n.Dissolution.openObligationsTitle) {
             if active.openObligationsCount == 0 {
-                Label(L10n.Dissolution.openObligationsZero, systemImage: "checkmark.circle")
+                Label(L10n.Dissolution.openObligationsZero, systemImage: "checkmark.circle.fill")
                     .font(.callout)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.tint)
             } else {
                 Label {
                     Text("\(active.openObligationsCount) obligaciones aún abiertas")
                         .font(.callout)
                 } icon: {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.secondary)
                 }
                 Text(L10n.Dissolution.openObligationsCount)
                     .font(.caption)
@@ -205,20 +205,21 @@ public struct DissolutionStatusView: View {
 
     @ViewBuilder
     private func statusBadge(for status: DissolutionStatus) -> some View {
-        let tint: Color = {
-            switch status {
-            case .proposed:    return .orange
-            case .approved:    return .blue
-            case .liquidating: return .yellow
-            case .executed:    return .red
-            case .cancelled:   return .gray
-            }
-        }()
-        Text(status.label)
+        Label(status.label, systemImage: statusSymbol(status))
             .font(.caption.weight(.medium))
-            .foregroundStyle(tint)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Capsule().fill(tint.opacity(0.12)))
+            .background(Capsule().fill(.quaternary))
+    }
+
+    private func statusSymbol(_ status: DissolutionStatus) -> String {
+        switch status {
+        case .proposed:    return "clock"
+        case .approved:    return "checkmark.circle.fill"
+        case .liquidating: return "hourglass"
+        case .executed:    return "xmark.octagon.fill"
+        case .cancelled:   return "minus.circle"
+        }
     }
 }

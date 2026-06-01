@@ -35,8 +35,8 @@ struct EditRuleView: View {
 
                 if let message = store.errorMessage {
                     Section {
-                        Label(message, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                        Label(message, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -259,12 +259,12 @@ struct EditRuleView: View {
 
                 if let result = store.draftValidation {
                     if result.valid {
-                        Label("Válida — el backend la aceptaría.", systemImage: "checkmark.seal")
-                            .foregroundStyle(.green)
+                        Label("Válida — el backend la aceptaría.", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(.tint)
                     } else {
                         ForEach(result.errors, id: \.path) { err in
-                            Label(err.message, systemImage: "xmark.octagon")
-                                .foregroundStyle(.red)
+                            Label(err.message, systemImage: "xmark.octagon.fill")
+                                .foregroundStyle(.secondary)
                                 .font(.footnote)
                         }
                     }

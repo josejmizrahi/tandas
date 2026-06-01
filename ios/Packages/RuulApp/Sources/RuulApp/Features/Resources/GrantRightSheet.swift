@@ -78,8 +78,8 @@ struct GrantRightSheet: View {
 
                 if let message = store.errorMessage {
                     Section {
-                        Label(message, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                        Label(message, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

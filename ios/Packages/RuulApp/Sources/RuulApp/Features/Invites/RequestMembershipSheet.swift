@@ -61,7 +61,7 @@ public struct RequestMembershipSheet: View {
                                 .font(.callout)
                         } icon: {
                             Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(.green)
+                                .foregroundStyle(.tint)
                         }
                     }
                 } else if let errorMessage {
@@ -69,10 +69,10 @@ public struct RequestMembershipSheet: View {
                         Label {
                             Text(errorMessage)
                                 .font(.callout)
-                                .foregroundStyle(.red)
+                                .foregroundStyle(.secondary)
                         } icon: {
-                            Image(systemName: "exclamationmark.triangle")
-                                .foregroundStyle(.red)
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

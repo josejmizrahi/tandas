@@ -116,8 +116,8 @@ struct RuleEvaluationRow: View {
 
             if let predicate = evaluation.matchedPredicate, let reason = predicate.reason {
                 HStack(spacing: 6) {
-                    Image(systemName: predicate.passed ? "checkmark.seal" : "xmark.seal")
-                        .foregroundStyle(predicate.passed ? .green : .secondary)
+                    Image(systemName: predicate.passed ? "checkmark.seal.fill" : "xmark.seal.fill")
+                        .foregroundStyle(predicate.passed ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                     Text(predicate.passed ? "Predicate: \(reason)" : "No coincidió: \(reason)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -131,7 +131,7 @@ struct RuleEvaluationRow: View {
             if evaluation.cycleDetected {
                 Label("Ciclo detectado — consecuencias no disparadas", systemImage: "arrow.triangle.2.circlepath")
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 4)
@@ -146,9 +146,7 @@ struct RuleEvaluationRow: View {
     }
 
     private var iconTint: Color {
-        if evaluation.cycleDetected { return .orange }
         if !evaluation.matched { return .secondary }
-        if !evaluation.failedActions.isEmpty { return .red }
         if !evaluation.emittedActions.isEmpty { return .accentColor }
         return .secondary
     }
@@ -157,13 +155,13 @@ struct RuleEvaluationRow: View {
     private func actionRow(_ action: RuleActionResult) -> some View {
         HStack(spacing: 6) {
             Image(systemName: action.isFailed
-                  ? "xmark.octagon"
+                  ? "xmark.octagon.fill"
                   : (action.isSync ? "bolt.fill" : "tray.and.arrow.up"))
-                .foregroundStyle(action.isFailed ? Color.red : Color.accentColor)
+                .foregroundStyle(action.isFailed ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
             VStack(alignment: .leading, spacing: 2) {
                 Text(actionTitle(action))
                     .font(.caption)
-                    .foregroundStyle(action.isFailed ? .red : .primary)
+                    .foregroundStyle(action.isFailed ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
                 if let err = action.error {
                     Text(err)
                         .font(.caption2)

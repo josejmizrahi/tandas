@@ -506,8 +506,8 @@ public struct MemberDetailView: View {
                     peerMoneyRow(peer: peer, displayName: item.displayName)
                 } else {
                     HStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle")
-                            .foregroundStyle(.green)
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.tint)
                             .frame(width: 24)
                         Text("Están al día.")
                             .font(.subheadline)
@@ -525,7 +525,7 @@ public struct MemberDetailView: View {
                   ? "arrow.up.right.circle.fill"
                   : "arrow.down.left.circle.fill")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(peer.direction == .youOwe ? .red : .green)
+                .foregroundStyle(.secondary)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(peerHeadline(direction: peer.direction, name: displayName))

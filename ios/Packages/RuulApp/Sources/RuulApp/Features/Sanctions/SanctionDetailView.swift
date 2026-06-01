@@ -107,7 +107,7 @@ public struct SanctionDetailView: View {
             VStack(spacing: 12) {
                 Image(systemName: sanction.kind.systemImageName)
                     .font(.system(size: 44, weight: .semibold))
-                    .foregroundStyle(sanction.isDisputed ? AnyShapeStyle(.orange) : AnyShapeStyle(.tint))
+                    .foregroundStyle(sanction.isDisputed ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                     .frame(width: 80, height: 80)
                     .background(.thinMaterial, in: Circle())
 
@@ -119,14 +119,8 @@ public struct SanctionDetailView: View {
                         .font(.caption.weight(.medium))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(
-                            Capsule().fill(sanction.isDisputed
-                                            ? Color.orange.opacity(0.18)
-                                            : Color.gray.opacity(0.12))
-                        )
-                        .foregroundStyle(sanction.isDisputed
-                                          ? AnyShapeStyle(.orange)
-                                          : AnyShapeStyle(.secondary))
+                        .background(Capsule().fill(.quaternary))
+                        .foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -155,9 +149,9 @@ public struct SanctionDetailView: View {
                     }
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.bubble")
+                        Image(systemName: "exclamationmark.bubble.fill")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(.secondary)
                             .frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Esta sanción está siendo disputada")
@@ -268,7 +262,7 @@ public struct SanctionDetailView: View {
                             .font(.subheadline.monospacedDigit())
                     }
                     ProgressView(value: status.progress)
-                        .tint(status.isFullyPaid ? .green : .accentColor)
+                        .tint(.accentColor)
                     if status.amountOutstanding > 0 {
                         Text("Pendiente \(formatAmount(status.amountOutstanding))\(status.unit.map { " \($0)" } ?? "")")
                             .font(.caption)
@@ -276,7 +270,7 @@ public struct SanctionDetailView: View {
                     } else if status.isFullyPaid {
                         Label("Sanción saldada", systemImage: "checkmark.circle.fill")
                             .font(.caption)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(.tint)
                     }
                 }
                 .padding(.vertical, 4)
@@ -350,7 +344,7 @@ public struct SanctionDetailView: View {
                             .font(.subheadline.monospacedDigit())
                     }
                     ProgressView(value: plan.progress)
-                        .tint(plan.isOverdue ? .red : .accentColor)
+                        .tint(.accentColor)
                     HStack {
                         Text("Cada cuota")
                             .font(.caption)
@@ -362,7 +356,7 @@ public struct SanctionDetailView: View {
                     if let nextDue = plan.nextDueAt {
                         HStack {
                             Image(systemName: plan.isOverdue ? "clock.badge.exclamationmark" : "clock")
-                                .foregroundStyle(plan.isOverdue ? .red : .secondary)
+                                .foregroundStyle(.secondary)
                             Text(plan.isOverdue ? "Cuota vencida el" : "Próxima cuota")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -373,7 +367,7 @@ public struct SanctionDetailView: View {
                     } else {
                         Label("Plan completado", systemImage: "checkmark.circle.fill")
                             .font(.caption)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(.tint)
                     }
                     if let notes = plan.notes, !notes.isEmpty {
                         Text(notes)

@@ -37,14 +37,14 @@ struct PromoteNormToRuleSheet: View {
                                 .font(.caption.weight(.medium))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Capsule().fill(Color.gray.opacity(0.12)))
+                                .background(Capsule().fill(.quaternary))
                                 .foregroundStyle(.secondary)
                             Text(norm.status.label)
                                 .font(.caption2.weight(.medium))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Capsule().fill(Color.green.opacity(0.18)))
-                                .foregroundStyle(.green)
+                                .background(Capsule().fill(.quaternary))
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .padding(.vertical, 4)
@@ -87,8 +87,8 @@ struct PromoteNormToRuleSheet: View {
 
                 if let message = localError ?? store.errorMessage {
                     Section {
-                        Label(message, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                        Label(message, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

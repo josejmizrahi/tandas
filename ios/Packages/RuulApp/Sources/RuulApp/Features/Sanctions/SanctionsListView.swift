@@ -122,7 +122,6 @@ public struct SanctionsListView: View {
                                     systemImage: "scale.3d"
                                 )
                             }
-                            .tint(.orange)
                         }
                     }
                 }

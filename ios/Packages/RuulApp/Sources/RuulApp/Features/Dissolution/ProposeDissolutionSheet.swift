@@ -21,9 +21,9 @@ public struct ProposeDissolutionSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Label(L10n.Dissolution.proposeWarning, systemImage: "exclamationmark.triangle")
+                    Label(L10n.Dissolution.proposeWarning, systemImage: "exclamationmark.triangle.fill")
                         .font(.callout)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(.secondary)
                 }
                 Section(L10n.Dissolution.reasonSection) {
                     TextField(
@@ -37,7 +37,7 @@ public struct ProposeDissolutionSheet: View {
                     Section {
                         Text(message)
                             .font(.callout)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

@@ -149,8 +149,8 @@ struct EditDecisionRulesView: View {
 
                 if let message = store.errorMessage {
                     Section {
-                        Label(message, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                        Label(message, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -319,7 +319,7 @@ struct EditDecisionRulesView: View {
             Spacer(minLength: 8)
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.tint)
             }
         }
         .contentShape(Rectangle())
@@ -363,8 +363,8 @@ struct EditDecisionRulesView: View {
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule().fill(.green.opacity(0.18)))
-                        .foregroundStyle(.green)
+                        .background(Capsule().fill(.quaternary))
+                        .foregroundStyle(.tint)
                 }
                 Text(version.effectiveFrom.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)

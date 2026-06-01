@@ -236,8 +236,8 @@ public struct GroupSettingsView: View {
             // D.22 audit — Dissolution gated on `group.dissolve`.
             if permissionKeys?.contains("group.dissolve") == true {
                 NavigationLink(value: GroupSettingsDestination.dissolution) {
-                    Label(L10n.GroupSettings.dissolveRow, systemImage: "xmark.octagon")
-                        .foregroundStyle(.red)
+                    Label(L10n.GroupSettings.dissolveRow, systemImage: "xmark.octagon.fill")
+                        .foregroundStyle(.secondary)
                 }
             }
         }

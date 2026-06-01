@@ -15,7 +15,7 @@ public struct SanctionRowView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: sanction.kind.systemImageName)
                 .font(.body.weight(.medium))
-                .foregroundStyle(sanction.isDisputed ? AnyShapeStyle(.orange) : AnyShapeStyle(.tint))
+                .foregroundStyle(sanction.isDisputed ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -54,10 +54,8 @@ public struct SanctionRowView: View {
                 .font(.caption.weight(.semibold))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(
-                    Capsule().fill(sanction.isDisputed ? Color.orange.opacity(0.18) : Color.gray.opacity(0.12))
-                )
-                .foregroundStyle(sanction.isDisputed ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                .background(Capsule().fill(.quaternary))
+                .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
     }

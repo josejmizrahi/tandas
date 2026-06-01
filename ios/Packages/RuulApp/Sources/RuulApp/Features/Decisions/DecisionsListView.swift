@@ -238,22 +238,23 @@ private struct DecisionRow: View {
 
     @ViewBuilder
     private var statusBadge: some View {
-        let tint: Color = {
-            switch decision.status {
-            case .open:      return .blue
-            case .passed:    return .green
-            case .rejected:  return .red
-            case .cancelled: return .gray
-            case .draft:     return .secondary
-            case .executed:  return .green
-            case .closed:    return .green
-            }
-        }()
-        Text(decision.status.label)
+        Label(decision.status.label, systemImage: decisionStatusSymbol(decision.status))
             .font(.caption.weight(.medium))
-            .foregroundStyle(tint)
+            .foregroundStyle(.secondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Capsule().fill(tint.opacity(0.12)))
+            .background(Capsule().fill(.quaternary))
+    }
+
+    private func decisionStatusSymbol(_ status: DecisionStatus) -> String {
+        switch status {
+        case .open:      return "circle"
+        case .passed:    return "checkmark.circle.fill"
+        case .rejected:  return "xmark.circle.fill"
+        case .cancelled: return "minus.circle"
+        case .draft:     return "pencil.circle"
+        case .executed:  return "checkmark.seal.fill"
+        case .closed:    return "lock.fill"
+        }
     }
 }

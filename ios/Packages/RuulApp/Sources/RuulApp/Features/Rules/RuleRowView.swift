@@ -15,9 +15,11 @@ public struct RuleRowView: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: rule.ruleType.systemImageName)
+            Image(systemName: rule.isHighSeverity
+                  ? "exclamationmark.triangle.fill"
+                  : rule.ruleType.systemImageName)
                 .font(.body.weight(.medium))
-                .foregroundStyle(rule.isHighSeverity ? AnyShapeStyle(.red) : AnyShapeStyle(.tint))
+                .foregroundStyle(rule.isHighSeverity ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 4) {

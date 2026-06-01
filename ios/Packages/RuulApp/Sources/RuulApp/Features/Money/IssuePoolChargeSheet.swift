@@ -94,7 +94,7 @@ struct IssuePoolChargeSheet: View {
                 } footer: {
                     if selectedTargetIds.isEmpty {
                         Text("Selecciona al menos un miembro.")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(.secondary)
                             .font(.footnote)
                     } else if let summary = batchSummary {
                         Text(summary)

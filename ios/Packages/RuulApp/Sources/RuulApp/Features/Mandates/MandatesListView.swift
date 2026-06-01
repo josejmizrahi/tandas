@@ -104,7 +104,7 @@ public struct MandatesListView: View {
                     ForEach(bucket) { mandate in
                         row(for: mandate)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button {
+                                Button(role: .destructive) {
                                     toRevoke = mandate
                                 } label: {
                                     Label(
@@ -112,7 +112,6 @@ public struct MandatesListView: View {
                                         systemImage: "xmark.circle"
                                     )
                                 }
-                                .tint(.red)
                             }
                     }
                 } header: {
@@ -135,7 +134,7 @@ public struct MandatesListView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.gray.opacity(0.12)))
+                    .background(Capsule().fill(.quaternary))
             }
             if let endsAt = mandate.endsAt {
                 Text("Vence \(endsAt.formatted(.dateTime.day().month().year()))")
