@@ -158,10 +158,15 @@ public struct GroupTabsHost: View {
                             userId: nil
                         )
                     },
+                    provenanceFetcher: { mid in
+                        try await container.membersRepository.provenance(membershipId: mid)
+                    },
                     quickActionStores: MemberDetailView.QuickActionStores(
                         mandates: container.mandatesStore,
                         reputationFeed: container.reputationFeedStore
-                    )
+                    ),
+                    decisionsStore: container.decisionsStore,
+                    decisionsRepository: container.decisionsRepository
                 )
             }
             .toolbar { shellToolbar }

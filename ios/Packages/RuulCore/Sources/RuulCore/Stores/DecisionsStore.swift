@@ -311,6 +311,24 @@ public final class DecisionsStore {
         isProposePresented = true
     }
 
+    /// V3-D.20.1 — opens the propose sheet pre-filled for the only
+    /// transition that requires an explicit group decision: `banned →
+    /// active` ("Reinstalar miembro"). Backend gate lives in
+    /// `set_membership_state` (raises `42501` unless `unban_decision_id`
+    /// is set first by `execute_decision`), so the user MUST come
+    /// through this flow.
+    public func beginProposingMembershipReinstate(
+        membershipId: UUID,
+        defaults: GroupDecisionRules? = nil
+    ) {
+        beginProposing(defaults: defaults)
+        draftTemplateKey = "decision.membership_reinstate"
+        draftType = .membership
+        draftReferenceId = membershipId
+        draftMembershipTargetState = .active
+        draftTitle = String(localized: L10n.Decisions.proposeReinstateTitle)
+    }
+
     public func addDraftOption() {
         draftOptions.append(DraftOption())
     }

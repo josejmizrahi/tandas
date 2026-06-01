@@ -42,6 +42,14 @@ public struct MemberDetailView: View {
     /// MemberDetailView renderiza Quick Actions con sheets directos.
     /// Nil = la sección queda invisible (back-compat para previews).
     let quickActionStores: QuickActionStores?
+    /// V3-D.20.1 — opt-in. When both are provided AND the displayed
+    /// member is `banned` AND caller has `members.update`, the state
+    /// actions section renders a "Proponer decisión de reinstate"
+    /// button that opens an inline ProposeDecisionSheet pre-filled with
+    /// template_key=decision.membership_reinstate. Nil at either =
+    /// fall back to the legacy text-only hint.
+    let decisionsStore: DecisionsStore?
+    let decisionsRepository: CanonicalDecisionsRepository?
 
     @State private var isManagingRoles: Bool = false
     /// V3 Batch B-1 — Activity feed local. `nil` mientras carga; `[]`
@@ -82,7 +90,9 @@ public struct MemberDetailView: View {
         activityFetcher: @escaping (UUID, UUID, Int) async throws -> [GroupEvent] = { _, _, _ in [] },
         permissionsFetcher: @escaping (UUID) async throws -> [String] = { _ in [] },
         provenanceFetcher: @escaping (UUID) async throws -> MembershipProvenance? = { _ in nil },
-        quickActionStores: QuickActionStores? = nil
+        quickActionStores: QuickActionStores? = nil,
+        decisionsStore: DecisionsStore? = nil,
+        decisionsRepository: CanonicalDecisionsRepository? = nil
     ) {
         self.sanctionsStore = sanctionsStore
         self.reputationStore = reputationStore
@@ -95,6 +105,8 @@ public struct MemberDetailView: View {
         self.permissionsFetcher = permissionsFetcher
         self.provenanceFetcher = provenanceFetcher
         self.quickActionStores = quickActionStores
+        self.decisionsStore = decisionsStore
+        self.decisionsRepository = decisionsRepository
     }
 
     /// Live projection of the member — picks up the latest snapshot
@@ -178,6 +190,19 @@ public struct MemberDetailView: View {
                     store: feed,
                     membersStore: membersStore,
                     groupId: groupId
+                )
+            }
+        }
+        .sheet(isPresented: proposeReinstateSheetBinding) {
+            if let decisionsStore {
+                ProposeDecisionSheet(
+                    store: decisionsStore,
+                    groupId: groupId,
+                    sanctionsStore: nil,
+                    mandatesStore: nil,
+                    membersStore: membersStore,
+                    rulesStore: nil,
+                    decisionsRepository: decisionsRepository
                 )
             }
         }
@@ -320,6 +345,17 @@ public struct MemberDetailView: View {
         Binding(
             get: { quickActionStores?.reputationFeed.isRecordPresented ?? false },
             set: { quickActionStores?.reputationFeed.isRecordPresented = $0 }
+        )
+    }
+    /// V3-D.20.1 — sheet binding for the inline reinstate-decision
+    /// proposal. Backed by `decisionsStore.isProposePresented` so that
+    /// `beginProposingMembershipReinstate(...)` opens the sheet and
+    /// the sheet's own Cancel/Save buttons dismiss it via the same
+    /// shared flag. Nil store collapses to a permanently-false binding.
+    private var proposeReinstateSheetBinding: Binding<Bool> {
+        Binding(
+            get: { decisionsStore?.isProposePresented ?? false },
+            set: { newValue in decisionsStore?.isProposePresented = newValue }
         )
     }
 
@@ -732,11 +768,25 @@ public struct MemberDetailView: View {
                         Label("Reingreso", systemImage: "arrow.uturn.backward.circle")
                     }
                 }
-                // banned: reinstate requires decision — surface info, not button.
+                // banned: reinstate requires decision. D.20.1 — when
+                // both decisionsStore + decisionsRepository are wired AND
+                // the caller has `members.update`, render the button that
+                // opens an inline ProposeDecisionSheet pre-filled with
+                // template_key=decision.membership_reinstate. Otherwise
+                // fall back to the legacy text-only hint.
                 if item.status == .banned {
-                    Text("Reinstalar a un miembro baneado requiere una decisi\u{00f3}n del grupo (plantilla “Reinstalar miembro”).")
+                    Text(L10n.MemberDetail.reinstateHint)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    if let decisionsStore,
+                       decisionsRepository != nil,
+                       callerPermissions.contains("members.update") {
+                        Button {
+                            decisionsStore.beginProposingMembershipReinstate(membershipId: mid)
+                        } label: {
+                            Label(L10n.MemberDetail.reinstateAction, systemImage: "envelope.badge")
+                        }
+                    }
                 }
                 // Destructive actions: removed (reversible) + banned (hard).
                 if item.status != .left, item.status != .banned, item.status != .removed,

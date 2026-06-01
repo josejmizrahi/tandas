@@ -497,6 +497,9 @@ public enum L10n {
         public static let suspendAction         = LocalizedStringResource("member_detail.action.suspend",         defaultValue: "Suspender")
         public static let reactivateAction      = LocalizedStringResource("member_detail.action.reactivate",      defaultValue: "Reactivar")
         public static let removeAction          = LocalizedStringResource("member_detail.action.remove",          defaultValue: "Expulsar")
+        // D.20.1 — banned → active requires a decision (gate enforced in backend).
+        public static let reinstateAction        = LocalizedStringResource("member_detail.action.reinstate",        defaultValue: "Proponer decisión de reinstate")
+        public static let reinstateHint          = LocalizedStringResource("member_detail.hint.reinstate",          defaultValue: "Reinstalar a un miembro baneado requiere una decisión del grupo (plantilla \"Reinstalar miembro\").")
     }
 
     public enum MembershipState {
@@ -1521,6 +1524,8 @@ public enum L10n {
         public static let proposeTitleRequired = LocalizedStringResource("decisions.propose.title.required", defaultValue: "Escribe un título.")
         public static let proposeOptionTooFew = LocalizedStringResource("decisions.propose.option.too_few", defaultValue: "Necesitas al menos dos opciones, o déjalo vacío para Sí/No/Abstención.")
         public static let proposeReferenceRequired = LocalizedStringResource("decisions.propose.reference.required", defaultValue: "Elige a qué se refiere esta decisión.")
+        // D.20.1 — Reinstate-banned proposal (pre-filled draft)
+        public static let proposeReinstateTitle    = LocalizedStringResource("decisions.propose.reinstate.title",    defaultValue: "Reinstalar miembro")
 
         // Propose-side reference picker (V2-G2 sub-slice 3)
         public static let proposeReferenceSanctionSection = LocalizedStringResource("decisions.propose.reference.sanction.section", defaultValue: "¿Qué sanción?")
