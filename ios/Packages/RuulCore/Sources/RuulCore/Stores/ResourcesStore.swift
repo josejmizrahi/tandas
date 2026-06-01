@@ -38,6 +38,12 @@ public final class ResourcesStore {
     public var draftOwnershipKind: ResourceOwnershipKind = .group
     public var draftOwnerMembershipId: UUID?
 
+    /// V3 D.24 P2B-1.y — slot-specific draft state. Only rendered in
+    /// `CreateResourceView` when `draftType == .slot`. Required for
+    /// `create_slot_resource` (the backend column is NOT NULL).
+    public var draftSlotStartsAt: Date = Date().addingTimeInterval(60 * 60)
+    public var draftSlotEndsAt: Date? = nil
+
     /// Drives the `TransferOwnershipSheet` for an existing resource.
     public var isTransferPresented: Bool = false
     public var transferResourceId: UUID?
@@ -155,7 +161,17 @@ public final class ResourcesStore {
     public var topResources: [GroupResource] { Array(resources.prefix(3)) }
 
     public var canSaveDraft: Bool {
-        !draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let nameOK = !draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if !nameOK { return false }
+        // P2B-1.y: slot needs slot_starts_at (NOT NULL backend) and
+        // if endsAt is set, it must come after startsAt.
+        if draftType == .slot {
+            if let ends = draftSlotEndsAt, ends <= draftSlotStartsAt { return false }
+        }
+        // P2B-1.y: event is redirected to Calendar create flow — don't
+        // let the save button arm for type=event here.
+        if draftType == .event { return false }
+        return true
     }
 
     // MARK: - Intents
@@ -195,6 +211,8 @@ public final class ResourcesStore {
         draftVisibility = .members
         draftOwnershipKind = .group
         draftOwnerMembershipId = nil
+        draftSlotStartsAt = Date().addingTimeInterval(60 * 60)
+        draftSlotEndsAt = nil
         createStep = (type == nil) ? .type : .details
         errorMessage = nil
         isCreatePresented = true
@@ -219,12 +237,24 @@ public final class ResourcesStore {
             errorMessage = "Ponle un nombre al recurso."
             return false
         }
+        // P2B-1.y: event se crea desde el flujo de Calendar, no desde
+        // Resources. La vista debe redirigir antes de llegar acá.
+        if draftType == .event {
+            errorMessage = "Los eventos se crean desde la pestaña Calendar."
+            return false
+        }
+        // P2B-1.y: slot requiere fechas — guard.
+        if draftType == .slot {
+            if let ends = draftSlotEndsAt, ends <= draftSlotStartsAt {
+                errorMessage = "El fin del slot debe ser después del inicio."
+                return false
+            }
+        }
         do {
-            // P2B-1.x — smart router prefiere los wrappers atómicos P2A
-            // para fund/space/asset/right (intent_marker en audit table
-            // queda como create_<type>_resource). Para event/slot y los
-            // 12 tipos sin wrapper cae a `create_group_resource` legacy
-            // automáticamente. Genera client_id fresh para idempotency.
+            // P2B-1.x/y — smart router prefiere los wrappers atómicos P2A
+            // para fund/space/asset/right/slot (intent_marker en audit
+            // queda como create_<type>_resource) o `generic_resource_create`
+            // para los 12 tipos envelope-only. Genera client_id fresh.
             _ = try await repository.createResourceSmart(
                 groupId: groupId,
                 type: draftType,
@@ -232,7 +262,9 @@ public final class ResourcesStore {
                 description: draftDescription,
                 visibility: draftVisibility,
                 ownershipKind: draftOwnershipKind,
-                ownerMembershipId: draftOwnerMembershipId
+                ownerMembershipId: draftOwnerMembershipId,
+                slotStartsAt: draftType == .slot ? draftSlotStartsAt : nil,
+                slotEndsAt: draftType == .slot ? draftSlotEndsAt : nil
             )
             // Refetch so we get the canonical sort + the wire shape
             // from `group_resources_active` (rather than a one-off
@@ -292,6 +324,8 @@ public final class ResourcesStore {
         draftVisibility = .members
         draftOwnershipKind = .group
         draftOwnerMembershipId = nil
+        draftSlotStartsAt = Date().addingTimeInterval(60 * 60)
+        draftSlotEndsAt = nil
         createStep = .type
         errorMessage = nil
     }

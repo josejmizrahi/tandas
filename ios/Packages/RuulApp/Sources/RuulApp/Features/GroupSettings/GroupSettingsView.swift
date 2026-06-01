@@ -270,6 +270,7 @@ public struct GroupSettingsView: View {
             ResourcesListView(
                 store: container.resourcesStore,
                 membersStore: container.membersStore,
+                calendarEventsStore: container.calendarEventsStore,
                 groupId: group.id,
                 permissionsFetcher: { gid in
                     try await container.groupRepository.listMemberPermissions(

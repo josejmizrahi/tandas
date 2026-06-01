@@ -406,4 +406,11 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func createRightResource(_ input: CreateRightResourceParams) async throws -> UUID {
         fatalError("preview mock: createRightResource not implemented")
     }
+    // P2B-1.y
+    func createSlotResource(_ input: CreateSlotResourceParams) async throws -> UUID {
+        fatalError("preview mock: createSlotResource not implemented")
+    }
+    func createGenericResource(_ input: CreateGenericResourceParams) async throws -> UUID {
+        fatalError("preview mock: createGenericResource not implemented")
+    }
 }

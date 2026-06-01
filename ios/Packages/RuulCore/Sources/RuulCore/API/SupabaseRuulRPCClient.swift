@@ -661,6 +661,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callReturningUUID("create_right_resource", params: input)
     }
 
+    public func createSlotResource(_ input: CreateSlotResourceParams) async throws -> UUID {
+        try await callReturningUUID("create_slot_resource", params: input)
+    }
+
+    public func createGenericResource(_ input: CreateGenericResourceParams) async throws -> UUID {
+        try await callReturningUUID("create_generic_resource", params: input)
+    }
+
     public func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {
         do {
             _ = try await client.rpc("archive_resource", params: input).execute()

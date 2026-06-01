@@ -42,13 +42,19 @@ public struct CanonicalResourcesRepository: Sendable {
         return try await rpc.createGroupResource(input)
     }
 
-    /// V3 D.24 P2B-1.x — smart create that prefers the atomic P2A
-    /// subtype wrappers (fund/space/asset/right) and falls back to the
-    /// legacy envelope-only `create_group_resource` when:
-    ///   - the type has no wrapper yet (event/slot need time pickers; the
-    ///     remaining 12 canonical types like document/vehicle/etc. don't
-    ///     have wrappers in P2A).
-    ///   - the wrapper call throws (network glitch, validation, etc.).
+    /// V3 D.24 P2B-1.x + P2B-1.y — smart create that routes to the most
+    /// specific authorized RPC per type:
+    /// - **6 subtype wrappers** (P2A): fund/space/asset/right/**slot** (P2B-1.y).
+    /// - **`create_generic_resource`** (P2B-1.y) for the 12 envelope-only types.
+    /// - **`create_event`** is the canonical event path; this router does
+    ///   NOT handle `event` — callers must redirect to the Calendar
+    ///   create flow. If invoked anyway, throws `RuulError.unexpected`.
+    ///
+    /// Fallback: if a specific wrapper throws (network glitch, transient
+    /// validation), falls back to `create_group_resource` (envelope-only)
+    /// so the user's create attempt still completes. The audit table then
+    /// shows `intent_marker='create_group_resource'`, which is the
+    /// signal that the wrapper path needs investigation.
     ///
     /// Always passes a fresh `client_id` for idempotency. Returns the
     /// resource_id; callers should refresh the list / load summary.
@@ -61,6 +67,8 @@ public struct CanonicalResourcesRepository: Sendable {
         visibility: ResourceVisibility = .members,
         ownershipKind: ResourceOwnershipKind = .group,
         ownerMembershipId: UUID? = nil,
+        slotStartsAt: Date? = nil,
+        slotEndsAt: Date? = nil,
         clientId: String = UUID().uuidString
     ) async throws -> UUID {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -68,8 +76,14 @@ public struct CanonicalResourcesRepository: Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .nilIfBlank
 
-        // Try the atomic wrapper first for the 4 supported types. If it
-        // fails for any reason, fall through to the legacy envelope path.
+        // event is canonical via `create_event` — caller must redirect.
+        if type == .event {
+            throw RuulError.unexpected(
+                message: "createResourceSmart: type=event debe usar el flujo de Calendar (create_event)."
+            )
+        }
+
+        // Try the most specific authorized path first.
         do {
             switch type {
             case .fund:
@@ -116,9 +130,42 @@ public struct CanonicalResourcesRepository: Sendable {
                         clientId: clientId
                     )
                 )
-            default:
-                // No wrapper for this type yet — drop through to legacy.
+            case .slot:
+                guard let starts = slotStartsAt else {
+                    throw RuulError.unexpected(
+                        message: "createResourceSmart: type=slot requiere slotStartsAt."
+                    )
+                }
+                return try await rpc.createSlotResource(
+                    CreateSlotResourceParams(
+                        groupId: groupId,
+                        name: trimmedName,
+                        slotStartsAt: starts,
+                        slotEndsAt: slotEndsAt,
+                        description: trimmedDescription,
+                        visibility: visibility.rawValue,
+                        clientId: clientId
+                    )
+                )
+            case .event:
+                // Unreachable — guarded above.
                 break
+            default:
+                // The 12 envelope-only types route through the explicit
+                // generic wrapper so the audit table can distinguish
+                // them from unauthorized direct inserts.
+                return try await rpc.createGenericResource(
+                    CreateGenericResourceParams(
+                        groupId: groupId,
+                        resourceType: type.rawValue,
+                        name: trimmedName,
+                        description: trimmedDescription,
+                        visibility: visibility.rawValue,
+                        ownershipKind: ownershipKind.rawValue,
+                        ownerMembershipId: ownerMembershipId,
+                        clientId: clientId
+                    )
+                )
             }
         } catch {
             // Wrapper failed — degrade to legacy envelope. The audit
@@ -127,7 +174,7 @@ public struct CanonicalResourcesRepository: Sendable {
             // authorized but signals that the wrapper path needs review.
         }
 
-        // Legacy envelope-only path.
+        // Legacy envelope-only path (safety net).
         let resource = try await createResource(
             groupId: groupId,
             type: type,

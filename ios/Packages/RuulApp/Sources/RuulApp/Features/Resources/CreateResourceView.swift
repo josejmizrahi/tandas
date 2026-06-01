@@ -12,10 +12,17 @@ import RuulCore
 /// from the repository.
 struct CreateResourceView: View {
     @Bindable var store: ResourcesStore
+    @Bindable var calendarEventsStore: CalendarEventsStore
     let groupId: UUID
 
     @Environment(\.dismiss) private var dismiss
     @State private var isSaving: Bool = false
+
+    init(store: ResourcesStore, calendarEventsStore: CalendarEventsStore, groupId: UUID) {
+        self.store = store
+        self.calendarEventsStore = calendarEventsStore
+        self.groupId = groupId
+    }
 
     var body: some View {
         NavigationStack {
@@ -54,9 +61,17 @@ struct CreateResourceView: View {
             switch store.createStep {
             case .type:
                 Button {
-                    store.advanceFromTypePicker()
+                    // P2B-1.y: event redirige al flujo de Calendar.
+                    if store.draftType == .event {
+                        store.isCreatePresented = false
+                        calendarEventsStore.beginCreating()
+                    } else {
+                        store.advanceFromTypePicker()
+                    }
                 } label: {
-                    Text(L10n.Resources.typeStepContinue)
+                    Text(store.draftType == .event
+                         ? "Crear en Calendar"
+                         : String(localized: L10n.Resources.typeStepContinue))
                 }
             case .details:
                 Button {
@@ -175,6 +190,34 @@ struct CreateResourceView: View {
                 .lineLimit(2...6)
             } header: {
                 Text(L10n.Resources.descriptionLabel)
+            }
+
+            // P2B-1.y — slot necesita fechas antes de poder guardar.
+            if store.draftType == .slot {
+                Section {
+                    DatePicker(
+                        "Inicio",
+                        selection: $store.draftSlotStartsAt,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    DatePicker(
+                        "Fin (opcional)",
+                        selection: Binding(
+                            get: { store.draftSlotEndsAt ?? store.draftSlotStartsAt.addingTimeInterval(60 * 60) },
+                            set: { store.draftSlotEndsAt = $0 }
+                        ),
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    if store.draftSlotEndsAt != nil {
+                        Button(role: .destructive) {
+                            store.draftSlotEndsAt = nil
+                        } label: {
+                            Text("Quitar fin")
+                        }
+                    }
+                } header: {
+                    Text("Ventana del slot")
+                }
             }
 
             Section {

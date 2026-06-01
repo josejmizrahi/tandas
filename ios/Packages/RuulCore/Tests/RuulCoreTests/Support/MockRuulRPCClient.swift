@@ -1330,4 +1330,10 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func createRightResource(_ input: CreateRightResourceParams) async throws -> UUID {
         throw RuulError.unexpected(message: "MockRuulRPCClient.createRightResource not stubbed")
     }
+    func createSlotResource(_ input: CreateSlotResourceParams) async throws -> UUID {
+        throw RuulError.unexpected(message: "MockRuulRPCClient.createSlotResource not stubbed")
+    }
+    func createGenericResource(_ input: CreateGenericResourceParams) async throws -> UUID {
+        throw RuulError.unexpected(message: "MockRuulRPCClient.createGenericResource not stubbed")
+    }
 }

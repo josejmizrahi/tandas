@@ -177,6 +177,104 @@ public struct CreateAssetResourceParams: Encodable, Sendable {
     }
 }
 
+public struct CreateSlotResourceParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pName: String
+    public let pSlotStartsAt: Date
+    public let pSlotEndsAt: Date?
+    public let pDescription: String?
+    public let pAssignedMembershipId: UUID?
+    public let pVisibility: String?
+    public let pMetadata: [String: RPCJSONValue]?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId              = "p_group_id"
+        case pName                 = "p_name"
+        case pSlotStartsAt         = "p_slot_starts_at"
+        case pSlotEndsAt           = "p_slot_ends_at"
+        case pDescription          = "p_description"
+        case pAssignedMembershipId = "p_assigned_membership_id"
+        case pVisibility           = "p_visibility"
+        case pMetadata             = "p_metadata"
+        case pClientId             = "p_client_id"
+    }
+
+    public init(
+        groupId: UUID,
+        name: String,
+        slotStartsAt: Date,
+        slotEndsAt: Date? = nil,
+        description: String? = nil,
+        assignedMembershipId: UUID? = nil,
+        visibility: String? = nil,
+        metadata: [String: RPCJSONValue]? = nil,
+        clientId: String? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pName = name
+        self.pSlotStartsAt = slotStartsAt
+        self.pSlotEndsAt = slotEndsAt
+        self.pDescription = description
+        self.pAssignedMembershipId = assignedMembershipId
+        self.pVisibility = visibility
+        self.pMetadata = metadata
+        self.pClientId = clientId
+    }
+}
+
+/// V3 D.24 P2B-1.y — envelope-only wrapper for the 12 types without a
+/// subtype table (document/other/vehicle/tool/inventory/real_estate/
+/// intellectual_property/money/points/equity/time/seat). Sets
+/// `ruul.resource_create_intent='generic_resource_create'` so the audit
+/// table distinguishes intentional generic creates from unauthorized
+/// direct inserts. Backend rejects the 6 subtype types via 22023.
+public struct CreateGenericResourceParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pResourceType: String
+    public let pName: String
+    public let pDescription: String?
+    public let pVisibility: String?
+    public let pOwnershipKind: String?
+    public let pOwnerMembershipId: UUID?
+    public let pMetadata: [String: RPCJSONValue]?
+    public let pClientId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case pGroupId            = "p_group_id"
+        case pResourceType       = "p_resource_type"
+        case pName               = "p_name"
+        case pDescription        = "p_description"
+        case pVisibility         = "p_visibility"
+        case pOwnershipKind      = "p_ownership_kind"
+        case pOwnerMembershipId  = "p_owner_membership_id"
+        case pMetadata           = "p_metadata"
+        case pClientId           = "p_client_id"
+    }
+
+    public init(
+        groupId: UUID,
+        resourceType: String,
+        name: String,
+        description: String? = nil,
+        visibility: String? = nil,
+        ownershipKind: String? = nil,
+        ownerMembershipId: UUID? = nil,
+        metadata: [String: RPCJSONValue]? = nil,
+        clientId: String? = nil
+    ) {
+        self.pGroupId = groupId
+        self.pResourceType = resourceType
+        self.pName = name
+        self.pDescription = description
+        self.pVisibility = visibility
+        self.pOwnershipKind = ownershipKind
+        self.pOwnerMembershipId = ownerMembershipId
+        self.pMetadata = metadata
+        self.pClientId = clientId
+    }
+}
+
 public struct CreateRightResourceParams: Encodable, Sendable {
     public let pGroupId: UUID
     public let pName: String

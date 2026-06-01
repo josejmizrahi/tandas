@@ -8,6 +8,7 @@ import RuulCore
 public struct ResourcesListView: View {
     @Bindable var store: ResourcesStore
     @Bindable var membersStore: MembersStore
+    @Bindable var calendarEventsStore: CalendarEventsStore
     let groupId: UUID
     let permissionsFetcher: (UUID) async throws -> [String]
 
@@ -16,11 +17,13 @@ public struct ResourcesListView: View {
     public init(
         store: ResourcesStore,
         membersStore: MembersStore,
+        calendarEventsStore: CalendarEventsStore,
         groupId: UUID,
         permissionsFetcher: @escaping (UUID) async throws -> [String] = { _ in [] }
     ) {
         self.store = store
         self.membersStore = membersStore
+        self.calendarEventsStore = calendarEventsStore
         self.groupId = groupId
         self.permissionsFetcher = permissionsFetcher
     }
@@ -44,7 +47,11 @@ public struct ResourcesListView: View {
             }
         }
         .sheet(isPresented: $store.isCreatePresented) {
-            CreateResourceView(store: store, groupId: groupId)
+            CreateResourceView(
+                store: store,
+                calendarEventsStore: calendarEventsStore,
+                groupId: groupId
+            )
         }
         .navigationDestination(for: GroupResource.self) { resource in
             ResourceDetailView(

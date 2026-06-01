@@ -297,6 +297,16 @@ public protocol RuulRPCClient: Sendable {
     /// Sets intent_marker. Returns resource_id.
     func createRightResource(_ input: CreateRightResourceParams) async throws -> UUID
 
+    /// `create_slot_resource(...)` — envelope + group_resource_slots row.
+    /// Requires `slot_starts_at`. Sets intent_marker. Returns resource_id.
+    func createSlotResource(_ input: CreateSlotResourceParams) async throws -> UUID
+
+    /// V3 D.24 P2B-1.y — envelope-only create for the 12 generic types
+    /// (no subtype table). Sets intent_marker='generic_resource_create'.
+    /// Backend rejects subtype types (event/fund/space/asset/right/slot)
+    /// with errcode 22023.
+    func createGenericResource(_ input: CreateGenericResourceParams) async throws -> UUID
+
     /// `create_group_resource(...)` — envelope-only create.
     /// Requires `resources.create`.
     func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource

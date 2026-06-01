@@ -240,7 +240,11 @@ struct GroupHomeFeedView: View {
             EditRuleView(store: container.rulesStore, groupId: group.id)
         }
         .sheet(isPresented: resourcesCreateSheetBinding) {
-            CreateResourceView(store: container.resourcesStore, groupId: group.id)
+            CreateResourceView(
+                store: container.resourcesStore,
+                calendarEventsStore: container.calendarEventsStore,
+                groupId: group.id
+            )
         }
     }
 
