@@ -51,6 +51,42 @@ public struct CanonicalResourcesRepository: Sendable {
         )
     }
 
+    /// D.22 — governance-aware archive. Routes through
+    /// `request_or_execute_action(actionKey='resource.archive', …)`. If the
+    /// resolver permits direct execution (founder override or future
+    /// group-level downgrade) we follow up with the underlying RPC and
+    /// return `.directAllowed`. Otherwise we surface the decision_opened
+    /// (or denied/failed) outcome unmodified for the UI.
+    public func archiveResourceViaGovernance(
+        groupId: UUID,
+        resourceId: UUID,
+        reason: String? = nil
+    ) async throws -> ActionOutcome {
+        let trimmedReason = reason?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank
+        var payload: [String: RPCJSONValue] = [:]
+        if let trimmedReason { payload["reason"] = .string(trimmedReason) }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "resource.archive",
+                targetKind: "resource",
+                targetId:   resourceId,
+                payload:    payload
+            )
+        )
+
+        switch outcome {
+        case .directAllowed:
+            try await archiveResource(resourceId: resourceId, reason: trimmedReason)
+            return outcome
+        case .decisionOpened, .denied, .unsupported, .failed:
+            return outcome
+        }
+    }
+
     public func transferOwnership(
         resourceId: UUID,
         ownershipKind: ResourceOwnershipKind,

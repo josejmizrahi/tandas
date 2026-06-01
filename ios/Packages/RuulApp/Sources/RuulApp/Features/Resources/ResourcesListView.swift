@@ -70,9 +70,35 @@ public struct ResourcesListView: View {
         } message: { _ in
             Text(L10n.Resources.archiveConfirmMessage)
         }
+        .alert(
+            "Se abrió una votación",
+            isPresented: decisionOpenedBinding,
+            presenting: decisionOpenedFromOutcome
+        ) { _ in
+            Button("Entendido", role: .cancel) { store.clearGovernanceOutcome() }
+        } message: { details in
+            Text("Se abrió una decisión para archivar el recurso. Se ejecutará cuando pase la votación.")
+        }
         .task {
             await store.refreshIfNeeded(groupId: groupId)
         }
+    }
+
+    /// Binds `lastGovernanceOutcome` to a Bool for `.alert(isPresented:)`.
+    private var decisionOpenedBinding: Binding<Bool> {
+        Binding(
+            get: { decisionOpenedFromOutcome != nil },
+            set: { newValue in
+                if !newValue { store.clearGovernanceOutcome() }
+            }
+        )
+    }
+
+    private var decisionOpenedFromOutcome: DecisionOpenedDetails? {
+        if case .decisionOpened(let details) = store.lastGovernanceOutcome {
+            return details
+        }
+        return nil
     }
 
     @ViewBuilder

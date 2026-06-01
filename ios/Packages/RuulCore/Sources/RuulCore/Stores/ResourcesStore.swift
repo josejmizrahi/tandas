@@ -20,6 +20,11 @@ public final class ResourcesStore {
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
 
+    /// D.22 — last governance outcome from `archive` (and future actions).
+    /// UI observes this to show "Se abrió una decisión" when a member
+    /// solicits archive (gets routed to a vote) instead of executing direct.
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
+
     public var isCreatePresented: Bool = false
 
     /// 2-step Create flow: type picker → form. The store drives the
@@ -232,13 +237,39 @@ public final class ResourcesStore {
     @discardableResult
     public func archive(resourceId: UUID, reason: String? = nil, groupId: UUID) async -> Bool {
         do {
-            try await repository.archiveResource(resourceId: resourceId, reason: reason)
-            resources.removeAll(where: { $0.id == resourceId })
-            return true
+            let outcome = try await repository.archiveResourceViaGovernance(
+                groupId: groupId,
+                resourceId: resourceId,
+                reason: reason
+            )
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                resources.removeAll(where: { $0.id == resourceId })
+                return true
+            case .decisionOpened:
+                // Don't optimistically remove — the resource is still active
+                // until the decision passes + executes.
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false
         }
+    }
+
+    /// Clears `lastGovernanceOutcome` after the UI has consumed it.
+    public func clearGovernanceOutcome() {
+        lastGovernanceOutcome = nil
     }
 
     public func clearDraft() {
