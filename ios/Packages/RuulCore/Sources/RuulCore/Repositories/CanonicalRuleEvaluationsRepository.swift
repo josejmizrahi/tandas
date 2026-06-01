@@ -54,6 +54,29 @@ public struct CanonicalRuleEvaluationsRepository: Sendable {
         try await rpc.setGroupEngineActive(groupId: groupId, active: active)
     }
 
+    /// D.22 — governance-aware engine toggle. `engine.toggle` is
+    /// CONSTITUTIONAL (founder_can_override=false), so this always
+    /// opens a decision. Returns `.directAllowed` only in the unlikely
+    /// case the catalog is downgraded in the future.
+    public func setEngineActiveViaGovernance(
+        groupId: UUID,
+        active: Bool
+    ) async throws -> ActionOutcome {
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "engine.toggle",
+                targetKind: "group",
+                targetId:   groupId,
+                payload:    ["active": .bool(active)]
+            )
+        )
+        if case .directAllowed = outcome {
+            _ = try await rpc.setGroupEngineActive(groupId: groupId, active: active)
+        }
+        return outcome
+    }
+
     /// Read-only quota for the settings view.
     public func engineQuota(
         groupId: UUID

@@ -41,6 +41,34 @@ public struct CanonicalRulesRepository: Sendable {
         try await rpc.archiveRule(ArchiveRuleInput(pRuleId: ruleId, pReason: trimmed))
     }
 
+    /// D.22 — governance-aware archive. Routes through the executor;
+    /// follows up with the underlying RPC only on `.directAllowed`.
+    public func archiveRuleViaGovernance(
+        groupId: UUID,
+        ruleId: UUID,
+        reason: String? = nil
+    ) async throws -> ActionOutcome {
+        let trimmed = reason?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank
+        var payload: [String: RPCJSONValue] = ["action": .string("archive")]
+        if let trimmed { payload["reason"] = .string(trimmed) }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "rule.archive",
+                targetKind: "rule",
+                targetId:   ruleId,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            try await rpc.archiveRule(ArchiveRuleInput(pRuleId: ruleId, pReason: trimmed))
+        }
+        return outcome
+    }
+
     // MARK: - Rule engine (V2-G3.1)
 
     /// Pulls the institutional atom catalog (`rule_shapes_catalog`).

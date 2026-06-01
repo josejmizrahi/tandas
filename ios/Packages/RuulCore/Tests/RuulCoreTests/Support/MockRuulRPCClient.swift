@@ -148,6 +148,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case setGroupVisibility(input: SetGroupVisibilityInput)
         case globalSearch(input: GlobalSearchParams)
         case requestMembership(input: RequestMembershipParams)
+        case requestOrExecuteAction(actionKey: String, targetId: UUID?)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -1268,5 +1269,32 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func requestMembership(_ input: RequestMembershipParams) async throws -> UUID {
         recorded.append(.requestMembership(input: input))
         return try requestMembershipStub.get()
+    }
+
+    // MARK: - V3-D.22 — Action Governance executor
+
+    /// Default returns `.directAllowed` so existing repository tests
+    /// (which now route writes through `request_or_execute_action`)
+    /// keep observing the underlying RPC as before. Tests that want
+    /// to assert decision-opening can override the stub.
+    private var requestOrExecuteActionStub: Result<ActionOutcome, RuulError> = .success(
+        .directAllowed(plan: ActionPlan(
+            actionKey: "mock",
+            executableRPC: nil,
+            targetKind: nil,
+            targetId: nil,
+            reason: "mock_direct_allowed",
+            isFounder: true,
+            isAdmin: true,
+            riskLevel: "low"
+        ))
+    )
+    func stubRequestOrExecuteAction(_ result: Result<ActionOutcome, RuulError>) {
+        requestOrExecuteActionStub = result
+    }
+
+    func requestOrExecuteAction(_ input: RequestOrExecuteActionParams) async throws -> ActionOutcome {
+        recorded.append(.requestOrExecuteAction(actionKey: input.pActionKey, targetId: input.pTargetId))
+        return try requestOrExecuteActionStub.get()
     }
 }

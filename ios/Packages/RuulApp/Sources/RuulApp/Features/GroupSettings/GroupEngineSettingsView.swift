@@ -28,6 +28,8 @@ struct GroupEngineSettingsView: View {
     @State private var togglePending: Bool = false
     @State private var toggleError: UserFacingError?
     @State private var pendingTargetActive: Bool?
+    /// D.22 — set when a constitutional toggle opens a decision.
+    @State private var toggleDecisionOpened: DecisionOpenedDetails?
 
     enum LoadPhase: Equatable {
         case loading
@@ -69,6 +71,15 @@ struct GroupEngineSettingsView: View {
             ),
             actions: { Button("OK") { toggleError = nil } },
             message: { Text(toggleError?.message ?? "") }
+        )
+        .alert(
+            "Se abrió una votación",
+            isPresented: Binding(
+                get: { toggleDecisionOpened != nil },
+                set: { if !$0 { toggleDecisionOpened = nil } }
+            ),
+            actions: { Button("Entendido") { toggleDecisionOpened = nil } },
+            message: { Text("Activar o desactivar el motor de reglas es una decisión constitucional. Se ejecutará cuando pase la votación.") }
         )
     }
 
@@ -241,27 +252,26 @@ struct GroupEngineSettingsView: View {
             pendingTargetActive = nil
         }
         do {
-            let result = try await container.ruleEvaluationsRepository.setEngineActive(
+            let outcome = try await container.ruleEvaluationsRepository.setEngineActiveViaGovernance(
                 groupId: groupId, active: newValue
             )
-            // Reflect server truth into the local summary so the toggle
-            // stays consistent with what the engine will actually do on
-            // the next event.
-            if var current = summary {
-                summary = GroupRuleEngineSummary(
-                    groupId: current.groupId,
-                    since: current.since,
-                    engineActive: result.engineActive,
-                    totalEvaluations: current.totalEvaluations,
-                    matchedCount: current.matchedCount,
-                    unmatchedCount: current.unmatchedCount,
-                    emittedActionsCount: current.emittedActionsCount,
-                    failedActionsCount: current.failedActionsCount,
-                    evaluationsByTrigger: current.evaluationsByTrigger,
-                    actionsByConsequenceKind: current.actionsByConsequenceKind,
-                    engineSkippedBreakdown: current.engineSkippedBreakdown
+            switch outcome {
+            case .directAllowed:
+                // Refresh from server so the toggle reflects the real
+                // engine state (a constitutional override is unlikely,
+                // but if it ever lands we want truth, not optimism).
+                await load()
+            case .decisionOpened(let details):
+                toggleDecisionOpened = details
+            case .denied(let reason, let missingPermission):
+                toggleError = UserFacingError(
+                    title: "No puedes activar el motor",
+                    message: missingPermission.map { "Falta permiso: \($0)" } ?? reason
                 )
-                _ = current
+            case .unsupported(let reason, _):
+                toggleError = UserFacingError(title: "Acción no soportada", message: reason)
+            case .failed(let reason, let message):
+                toggleError = UserFacingError(title: "No se pudo abrir la votación", message: message ?? reason)
             }
         } catch {
             toggleError = UserFacingError.from(error)

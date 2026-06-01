@@ -19,6 +19,10 @@ public final class RulesStore {
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
 
+    /// D.22 — last governance outcome from archive. UI observes for the
+    /// "Se abrió una votación" alert.
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
+
     // Shared create-sheet draft.
     public var isCreatePresented: Bool = false
     public var draftMode: RuleDraftMode = .text
@@ -323,14 +327,39 @@ public final class RulesStore {
     @discardableResult
     public func archive(ruleId: UUID, reason: String? = nil, groupId: UUID) async -> Bool {
         do {
-            try await repository.archiveRule(ruleId: ruleId, reason: reason)
-            rules.removeAll(where: { $0.id == ruleId })
-            engineRules.removeAll(where: { $0.id == ruleId })
-            return true
+            let outcome = try await repository.archiveRuleViaGovernance(
+                groupId: groupId,
+                ruleId: ruleId,
+                reason: reason
+            )
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                rules.removeAll(where: { $0.id == ruleId })
+                engineRules.removeAll(where: { $0.id == ruleId })
+                return true
+            case .decisionOpened:
+                // Keep the rule visible until the vote passes.
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false
         }
+    }
+
+    /// Clears `lastGovernanceOutcome` after the UI has consumed it.
+    public func clearGovernanceOutcome() {
+        lastGovernanceOutcome = nil
     }
 
     public func clearDraft() {

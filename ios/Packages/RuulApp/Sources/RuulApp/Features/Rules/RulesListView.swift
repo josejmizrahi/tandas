@@ -95,9 +95,34 @@ public struct RulesListView: View {
         } message: { _ in
             Text(L10n.Rules.archiveConfirmMessage)
         }
+        .alert(
+            "Se abrió una votación",
+            isPresented: rulesDecisionOpenedBinding,
+            presenting: rulesDecisionOpenedFromOutcome
+        ) { _ in
+            Button("Entendido", role: .cancel) { store.clearGovernanceOutcome() }
+        } message: { _ in
+            Text("Esta acción requiere decisión grupal. Se ejecutará cuando pase la votación.")
+        }
         .task {
             await store.refreshIfNeeded(groupId: groupId)
         }
+    }
+
+    private var rulesDecisionOpenedBinding: Binding<Bool> {
+        Binding(
+            get: { rulesDecisionOpenedFromOutcome != nil },
+            set: { newValue in
+                if !newValue { store.clearGovernanceOutcome() }
+            }
+        )
+    }
+
+    private var rulesDecisionOpenedFromOutcome: DecisionOpenedDetails? {
+        if case .decisionOpened(let details) = store.lastGovernanceOutcome {
+            return details
+        }
+        return nil
     }
 
     @ViewBuilder
