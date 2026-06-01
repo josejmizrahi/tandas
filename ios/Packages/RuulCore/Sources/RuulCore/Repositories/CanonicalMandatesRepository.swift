@@ -41,4 +41,51 @@ public struct CanonicalMandatesRepository: Sendable {
         }
         try await rpc.revokeMandate(RevokeMandateParams(mandateId: mandateId, reason: trimmed))
     }
+
+    /// D.22 — governance-aware grant. Mandates delegate authority and
+    /// the founder CAN override, but doctrine prefers the decision
+    /// path; this opens a decision unless the resolver downgrades.
+    public func grantViaGovernance(
+        groupId: UUID,
+        representativeMembershipId: UUID,
+        type: MandateType,
+        principalType: MandatePrincipalType = .group,
+        principalId: UUID? = nil,
+        endsAt: Date? = nil
+    ) async throws -> ActionOutcome {
+        var payload: [String: RPCJSONValue] = [
+            "representative_membership_id": .string(representativeMembershipId.uuidString),
+            "mandate_type":   .string(type.rawValue),
+            "principal_type": .string(principalType.rawValue)
+        ]
+        if principalType != .group, let principalId {
+            payload["principal_id"] = .string(principalId.uuidString)
+        }
+        if let endsAt {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            payload["ends_at"] = .string(formatter.string(from: endsAt))
+        }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "mandate.grant",
+                targetKind: "mandate",
+                targetId:   nil,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            _ = try await grant(
+                groupId: groupId,
+                representativeMembershipId: representativeMembershipId,
+                type: type,
+                principalType: principalType,
+                principalId: principalId,
+                endsAt: endsAt
+            )
+        }
+        return outcome
+    }
 }
