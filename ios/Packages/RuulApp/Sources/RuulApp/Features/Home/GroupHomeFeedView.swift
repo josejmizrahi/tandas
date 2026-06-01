@@ -1433,7 +1433,7 @@ private struct DecisionVoteCard: View {
         role: ButtonRole?
     ) -> some View {
         let isSelected = decision.myVoteValue == value
-        Button(role: role) {
+        let content = Button(role: role) {
             onVote(value)
         } label: {
             Label(label, systemImage: systemImage)
@@ -1442,9 +1442,17 @@ private struct DecisionVoteCard: View {
                 .minimumScaleFactor(0.85)
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.bordered)
         .tint(tint)
         .opacity(decision.myVoteValue == nil || isSelected ? 1 : 0.5)
+
+        // Voted → prominent (sólido con color del dominio + ícono blanco).
+        // Not voted → bordered (outline con tint). Apple-native pattern para
+        // "selected state": el voto activo se vuelve la acción primaria.
+        if isSelected {
+            content.buttonStyle(.borderedProminent)
+        } else {
+            content.buttonStyle(.bordered)
+        }
     }
 
     private var tallyLabel: String {
