@@ -80,9 +80,14 @@ public struct DecisionsListView: View {
                 decisionsRepository: decisionsRepository
             )
         }
-        .sheet(isPresented: $store.isVotePresented) {
-            VoteSheet(store: store, groupId: groupId)
-        }
+        // D.22 fix: `.sheet(isPresented: $store.isVotePresented)` previously
+        // lived here too, duplicating the one in `DecisionDetailView`. With
+        // two sheets bound to the same source-of-truth (one on the List
+        // root and one on the pushed Detail), SwiftUI silently dropped the
+        // present call when the Detail was on top — so tapping "Votar"
+        // appeared to do nothing. The Detail keeps its own attachment
+        // (which also covers the deeplink push from `RuulAppShell`); this
+        // root view no longer needs to mirror it.
         .navigationDestination(for: GroupDecisionSummary.self) { summary in
             DecisionDetailView(
                 store: store,
