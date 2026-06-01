@@ -816,7 +816,10 @@ public enum L10n {
         public static let languageSection       = LocalizedStringResource("personal_settings.section.language",     defaultValue: "Idioma")
         public static let languageHint          = LocalizedStringResource("personal_settings.language.hint",        defaultValue: "Sigue el idioma del sistema.")
         public static let appearanceSection     = LocalizedStringResource("personal_settings.section.appearance",   defaultValue: "Apariencia")
-        public static let appearanceHint        = LocalizedStringResource("personal_settings.appearance.hint",      defaultValue: "Sigue el modo del sistema (claro/oscuro).")
+        public static let appearanceHint        = LocalizedStringResource("personal_settings.appearance.hint",      defaultValue: "Elige claro, oscuro o seguir el modo del sistema.")
+        public static let appearanceSystem      = LocalizedStringResource("personal_settings.appearance.system",    defaultValue: "Sistema")
+        public static let appearanceLight       = LocalizedStringResource("personal_settings.appearance.light",     defaultValue: "Claro")
+        public static let appearanceDark        = LocalizedStringResource("personal_settings.appearance.dark",      defaultValue: "Oscuro")
     }
 
     public enum AccountSecurity {

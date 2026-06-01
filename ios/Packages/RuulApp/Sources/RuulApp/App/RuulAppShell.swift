@@ -12,6 +12,7 @@ import RuulCore
 ///   surfaces Create + Accept inline. The list of groups lives only
 ///   in `GroupSwitcherSheet` from now on.
 public struct RuulAppShell: View {
+    @AppStorage(AppearancePreference.storageKey) private var appearanceRaw: String = AppearancePreference.system.rawValue
     @State private var container: DependencyContainer
     /// Locally-tracked selection so the switcher can change groups
     /// without async-store loops. Defaults to the first group when
@@ -39,8 +40,13 @@ public struct RuulAppShell: View {
         _container = State(initialValue: container)
     }
 
+    private var appearance: AppearancePreference {
+        AppearancePreference(rawValue: appearanceRaw) ?? .system
+    }
+
     public var body: some View {
         content
+            .preferredColorScheme(appearance.colorScheme)
             .task {
                 container.bootstrap()
                 // V3-A2 — hand the container to the app delegate so
@@ -372,9 +378,9 @@ private struct ErrorBanner: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
+            Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 36))
-                .foregroundStyle(.orange)
+                .foregroundStyle(.secondary)
             Text("No pudimos cargar tus grupos")
                 .font(.headline)
             Text(message)

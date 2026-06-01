@@ -11,6 +11,22 @@ import RuulCore
 /// Lives inside a NavigationStack — pushed from `PersonalProfileSheet`.
 struct PersonalSettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(AppearancePreference.storageKey) private var appearanceRaw: String = AppearancePreference.system.rawValue
+
+    private var appearanceBinding: Binding<AppearancePreference> {
+        Binding(
+            get: { AppearancePreference(rawValue: appearanceRaw) ?? .system },
+            set: { appearanceRaw = $0.rawValue }
+        )
+    }
+
+    private func appearanceLabel(_ value: AppearancePreference) -> LocalizedStringResource {
+        switch value {
+        case .system: return L10n.PersonalSettings.appearanceSystem
+        case .light:  return L10n.PersonalSettings.appearanceLight
+        case .dark:   return L10n.PersonalSettings.appearanceDark
+        }
+    }
 
     var body: some View {
         Form {
@@ -43,10 +59,15 @@ struct PersonalSettingsView: View {
                 }
             }
             Section {
-                LabeledContent {
-                    Text(L10n.PersonalSettings.appearanceHint)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.trailing)
+                Picker(selection: appearanceBinding) {
+                    ForEach(AppearancePreference.allCases) { value in
+                        Label {
+                            Text(appearanceLabel(value))
+                        } icon: {
+                            Image(systemName: value.systemImageName)
+                        }
+                        .tag(value)
+                    }
                 } label: {
                     Label {
                         Text(L10n.PersonalSettings.appearanceSection)
@@ -55,6 +76,9 @@ struct PersonalSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .pickerStyle(.inline)
+            } footer: {
+                Text(L10n.PersonalSettings.appearanceHint)
             }
         }
         .navigationTitle(L10n.PersonalSettings.title)
