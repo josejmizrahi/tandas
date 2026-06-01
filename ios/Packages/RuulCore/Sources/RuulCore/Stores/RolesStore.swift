@@ -11,6 +11,9 @@ public final class RolesStore {
     public private(set) var catalog: [PermissionCatalogEntry] = []
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
+    /// D.22 — constitutional role.create / role.update_permissions
+    /// always opens a vote.
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
 
     // MARK: - Create / edit draft
 
@@ -154,8 +157,10 @@ public final class RolesStore {
             return false
         }
         do {
+            let outcome: ActionOutcome
             if let roleId = editorRoleId {
-                try await repository.updateRolePermissions(
+                outcome = try await repository.updateRolePermissionsViaGovernance(
+                    groupId: groupId,
                     roleId: roleId,
                     permissionKeys: Array(draftPermissions)
                 )
@@ -165,7 +170,7 @@ public final class RolesStore {
                     draftErrorMessage = String(localized: L10n.Roles.keyRequired)
                     return false
                 }
-                _ = try await repository.createCustomRole(
+                outcome = try await repository.createCustomRoleViaGovernance(
                     groupId: groupId,
                     key: cleanKey,
                     name: cleanName,
@@ -173,14 +178,35 @@ public final class RolesStore {
                     permissionKeys: Array(draftPermissions)
                 )
             }
-            await refresh(groupId: groupId)
-            isEditorPresented = false
-            draftErrorMessage = nil
-            return true
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await refresh(groupId: groupId)
+                isEditorPresented = false
+                draftErrorMessage = nil
+                return true
+            case .decisionOpened:
+                isEditorPresented = false
+                draftErrorMessage = nil
+                return true
+            case .denied(let reason, let missingPermission):
+                draftErrorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                draftErrorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                draftErrorMessage = message ?? reason
+                return false
+            }
         } catch {
             draftErrorMessage = UserFacingError.from(error).message
             return false
         }
+    }
+
+    public func clearGovernanceOutcome() {
+        lastGovernanceOutcome = nil
     }
 
     public func clearError() {

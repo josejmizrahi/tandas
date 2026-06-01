@@ -11,6 +11,11 @@ public final class DecisionRulesStore {
     public private(set) var rules: GroupDecisionRules?
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
+
+    /// D.22 — last governance outcome from saveDraft. `.decisionOpened`
+    /// ⇒ constitutional change requires a vote; UI shows alert + keeps
+    /// the sheet closed (or open, depending on UX choice).
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
     /// V3 PARTE 7c — historial append-only de snapshots. Vacío hasta
     /// que `refreshHistory(groupId:)` lo hidrate. Nunca causa fail del
     /// store principal.
@@ -143,23 +148,41 @@ public final class DecisionRulesStore {
             return false
         }
         do {
-            let saved = try await repository.setDecisionRules(
+            let outcome = try await repository.setDecisionRulesViaGovernance(
                 groupId: groupId,
                 defaultMethod: draftMethod,
                 defaultLegitimacySource: draftLegitimacySource,
                 quorumMin: draftQuorum,
                 notes: draftNotes
             )
-            rules = saved
-            phase = .loaded
-            loadedGroupId = groupId
-            errorMessage = nil
-            isEditPresented = false
-            return true
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await refresh(groupId: groupId)
+                errorMessage = nil
+                isEditPresented = false
+                return true
+            case .decisionOpened:
+                isEditPresented = false
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false
         }
+    }
+
+    public func clearGovernanceOutcome() {
+        lastGovernanceOutcome = nil
     }
 
     public func clearDraft() {

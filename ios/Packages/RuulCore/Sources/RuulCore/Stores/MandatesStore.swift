@@ -10,6 +10,8 @@ public final class MandatesStore {
     public private(set) var mandates: [GroupMandate] = []
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
+    /// D.22 — mandate.grant typically opens a vote (founder can override).
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
 
     /// Drives the `GrantMandateSheet`.
     public var isGrantPresented: Bool = false
@@ -109,7 +111,7 @@ public final class MandatesStore {
             return false
         }
         do {
-            _ = try await repository.grant(
+            let outcome = try await repository.grantViaGovernance(
                 groupId: groupId,
                 representativeMembershipId: rep,
                 type: draftType,
@@ -117,14 +119,35 @@ public final class MandatesStore {
                 principalId: nil,
                 endsAt: endsAt
             )
-            await refresh(groupId: groupId)
-            isGrantPresented = false
-            clearDraft()
-            return true
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await refresh(groupId: groupId)
+                isGrantPresented = false
+                clearDraft()
+                return true
+            case .decisionOpened:
+                isGrantPresented = false
+                clearDraft()
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false
         }
+    }
+
+    public func clearGovernanceOutcome() {
+        lastGovernanceOutcome = nil
     }
 
     @discardableResult

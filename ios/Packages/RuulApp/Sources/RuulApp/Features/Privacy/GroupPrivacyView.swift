@@ -81,5 +81,30 @@ public struct GroupPrivacyView: View {
         .task {
             await store.refreshIfNeeded(groupId: groupId)
         }
+        .alert(
+            "Se abrió una votación",
+            isPresented: governanceDecisionOpenedBinding,
+            presenting: governanceDecisionOpenedFromOutcome
+        ) { _ in
+            Button("Entendido", role: .cancel) { store.clearGovernanceOutcome() }
+        } message: { _ in
+            Text("Cambiar la visibilidad del grupo es una decisión constitucional. Se aplicará cuando pase la votación.")
+        }
+    }
+
+    private var governanceDecisionOpenedBinding: Binding<Bool> {
+        Binding(
+            get: { governanceDecisionOpenedFromOutcome != nil },
+            set: { newValue in
+                if !newValue { store.clearGovernanceOutcome() }
+            }
+        )
+    }
+
+    private var governanceDecisionOpenedFromOutcome: DecisionOpenedDetails? {
+        if case .decisionOpened(let details) = store.lastGovernanceOutcome {
+            return details
+        }
+        return nil
     }
 }

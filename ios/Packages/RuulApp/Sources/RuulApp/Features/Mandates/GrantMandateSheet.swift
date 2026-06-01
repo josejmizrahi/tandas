@@ -117,8 +117,36 @@ struct GrantMandateSheet: View {
             .task {
                 await membersStore.refreshIfNeeded(groupId: groupId)
             }
+            .alert(
+                "Se abrió una votación",
+                isPresented: governanceDecisionOpenedBinding,
+                presenting: governanceDecisionOpenedFromOutcome
+            ) { _ in
+                Button("Entendido", role: .cancel) {
+                    store.clearGovernanceOutcome()
+                    dismiss()
+                }
+            } message: { _ in
+                Text("Otorgar un mandato delega autoridad y normalmente requiere votación. Se aplicará cuando pase.")
+            }
             .interactiveDismissDisabled(isSaving)
         }
+    }
+
+    private var governanceDecisionOpenedBinding: Binding<Bool> {
+        Binding(
+            get: { governanceDecisionOpenedFromOutcome != nil },
+            set: { newValue in
+                if !newValue { store.clearGovernanceOutcome() }
+            }
+        )
+    }
+
+    private var governanceDecisionOpenedFromOutcome: DecisionOpenedDetails? {
+        if case .decisionOpened(let details) = store.lastGovernanceOutcome {
+            return details
+        }
+        return nil
     }
 
     private var eligibleRepresentatives: [MembershipBoundaryItem] {

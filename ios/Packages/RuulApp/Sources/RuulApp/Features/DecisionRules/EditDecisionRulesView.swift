@@ -109,8 +109,36 @@ struct EditDecisionRulesView: View {
             .onChange(of: quorumValue) { _, value in
                 if quorumEnabled { store.draftQuorum = value }
             }
+            .alert(
+                "Se abrió una votación",
+                isPresented: governanceDecisionOpenedBinding,
+                presenting: governanceDecisionOpenedFromOutcome
+            ) { _ in
+                Button("Entendido", role: .cancel) {
+                    store.clearGovernanceOutcome()
+                    dismiss()
+                }
+            } message: { _ in
+                Text("Cambiar las reglas de decisión del grupo es una decisión constitucional. Se aplicará cuando pase la votación.")
+            }
         }
         .interactiveDismissDisabled(isSaving)
+    }
+
+    private var governanceDecisionOpenedBinding: Binding<Bool> {
+        Binding(
+            get: { governanceDecisionOpenedFromOutcome != nil },
+            set: { newValue in
+                if !newValue { store.clearGovernanceOutcome() }
+            }
+        )
+    }
+
+    private var governanceDecisionOpenedFromOutcome: DecisionOpenedDetails? {
+        if case .decisionOpened(let details) = store.lastGovernanceOutcome {
+            return details
+        }
+        return nil
     }
 
     @ViewBuilder

@@ -10,6 +10,8 @@ public final class BoundaryPolicyStore {
     public private(set) var policy: GroupBoundaryPolicy?
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
+    /// D.22 — constitutional boundary change always opens a vote.
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
 
     // MARK: - Edit draft
 
@@ -70,7 +72,7 @@ public final class BoundaryPolicyStore {
     @discardableResult
     public func saveDraft(groupId: UUID) async -> Bool {
         do {
-            let updated = try await repository.setPolicy(
+            let outcome = try await repository.setPolicyViaGovernance(
                 groupId: groupId,
                 entryMode: draftEntryMode,
                 whoCanInvite: draftWhoCanInvite,
@@ -78,10 +80,27 @@ public final class BoundaryPolicyStore {
                 exitMode: draftExitMode,
                 notes: draftNotes
             )
-            policy = updated
-            isEditPresented = false
-            draftErrorMessage = nil
-            return true
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await refresh(groupId: groupId)
+                isEditPresented = false
+                draftErrorMessage = nil
+                return true
+            case .decisionOpened:
+                isEditPresented = false
+                draftErrorMessage = nil
+                return true
+            case .denied(let reason, let missingPermission):
+                draftErrorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                draftErrorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                draftErrorMessage = message ?? reason
+                return false
+            }
         } catch {
             draftErrorMessage = UserFacingError.from(error).message
             return false
@@ -91,5 +110,9 @@ public final class BoundaryPolicyStore {
     public func clearError() {
         errorMessage = nil
         draftErrorMessage = nil
+    }
+
+    public func clearGovernanceOutcome() {
+        lastGovernanceOutcome = nil
     }
 }
