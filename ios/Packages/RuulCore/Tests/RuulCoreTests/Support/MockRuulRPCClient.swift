@@ -1304,4 +1304,8 @@ final actor MockRuulRPCClient: RuulRPCClient {
         // No tests depend on this yet; surface a clear failure if invoked.
         throw RuulError.unexpected(message: "MockRuulRPCClient.groupHomeSummary not stubbed")
     }
+
+    func resourceDetailSummary(resourceId: UUID) async throws -> ResourceDetailSummary {
+        throw RuulError.unexpected(message: "MockRuulRPCClient.resourceDetailSummary not stubbed")
+    }
 }

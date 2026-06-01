@@ -381,4 +381,8 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func groupHomeSummary(groupId: UUID) async throws -> GroupHomeSummary {
         fatalError("preview mock: groupHomeSummary not implemented")
     }
+    // P12B-2
+    func resourceDetailSummary(resourceId: UUID) async throws -> ResourceDetailSummary {
+        fatalError("preview mock: resourceDetailSummary not implemented")
+    }
 }

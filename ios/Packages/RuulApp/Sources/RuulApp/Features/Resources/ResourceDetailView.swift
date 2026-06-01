@@ -46,30 +46,44 @@ public struct ResourceDetailView: View {
 
     private var descriptor: ResourceTypeDescriptor { resource.resourceType.descriptor }
 
-    /// Subtype data is loaded by `loadDetail` when the resource type
-    /// has a dedicated subtype table. For `asset`, surfaces below read
-    /// this lazily and gracefully tolerate `nil`.
+    /// P12B-2 — prefer the read-model summary if it loaded for this
+    /// resource. Falls back to the legacy `loadDetail` payload otherwise
+    /// (which is fetched in parallel as a safety net).
+    private var summary: ResourceDetailSummary? {
+        guard let s = store.detailSummary, s.resource.id == resource.id else { return nil }
+        return s
+    }
+
+    /// Subtype data is loaded either by `loadSummary` (preferred) or by
+    /// `loadDetail` (fallback) when the resource type has a dedicated
+    /// subtype table. Surfaces below read this lazily and gracefully
+    /// tolerate `nil`.
     private var assetSubtype: AssetSubtypeData? {
+        if let s = summary { return s.assetSubtype }
         guard store.detail?.resource.id == resource.id else { return nil }
         return store.detail?.assetSubtype
     }
 
     private var fundSubtype: FundSubtypeData? {
+        if let s = summary { return s.fundSubtype }
         guard store.detail?.resource.id == resource.id else { return nil }
         return store.detail?.fundSubtype
     }
 
     private var spaceSubtype: SpaceSubtypeData? {
+        if let s = summary { return s.spaceSubtype }
         guard store.detail?.resource.id == resource.id else { return nil }
         return store.detail?.spaceSubtype
     }
 
     private var rightSubtype: RightSubtypeData? {
+        if let s = summary { return s.rightSubtype }
         guard store.detail?.resource.id == resource.id else { return nil }
         return store.detail?.rightSubtype
     }
 
     private var slotSubtype: SlotSubtypeData? {
+        if let s = summary { return s.slotSubtype }
         guard store.detail?.resource.id == resource.id else { return nil }
         return store.detail?.slotSubtype
     }
@@ -87,6 +101,10 @@ public struct ResourceDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await membersStore.refreshIfNeeded(groupId: groupId)
+            // P12B-2: single-RPC summary primero (owners + capabilities
+            // + counts + subtype + recent_activity[10]). Legacy fetches
+            // siguen como safety net si la summary RPC falla.
+            await store.loadSummary(resourceId: resource.id)
             if descriptor.subtypeTable != nil {
                 await store.loadDetail(resourceId: resource.id)
             }
@@ -104,6 +122,7 @@ public struct ResourceDetailView: View {
             }
         }
         .refreshable {
+            await store.loadSummary(resourceId: resource.id)
             if descriptor.subtypeTable != nil {
                 await store.loadDetail(resourceId: resource.id)
             }
@@ -393,17 +412,144 @@ public struct ResourceDetailView: View {
 
     // MARK: - 3. Participation
 
+    /// P12B-2 — Renders owners (`group_resource_owners` actives) +
+    /// enabled capabilities + the 3 ambient counts (comments /
+    /// attachments / open obligations) when the summary RPC is loaded.
+    /// Without summary, collapses to the legacy stub message.
     @ViewBuilder
     private var participationSection: some View {
+        if let summary {
+            participationSectionFromSummary(summary)
+        } else {
+            Section(L10n.ResourceDetail.participationSection) {
+                Label {
+                    Text(L10n.ResourceDetail.participationStub)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "person.crop.circle.badge.questionmark")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func participationSectionFromSummary(_ summary: ResourceDetailSummary) -> some View {
         Section(L10n.ResourceDetail.participationSection) {
-            Label {
-                Text(L10n.ResourceDetail.participationStub)
-                    .font(.subheadline)
+            if summary.owners.isEmpty {
+                Label {
+                    Text(L10n.ResourceDetail.participationStub)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "person.crop.circle.badge.questionmark")
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                ForEach(summary.owners) { owner in
+                    ownerRow(owner)
+                }
+            }
+
+            let enabledCaps = summary.capabilities.filter { $0.enabled }
+            if !enabledCaps.isEmpty {
+                capabilitiesRow(enabledCaps)
+            }
+
+            if summary.commentsCount + summary.attachmentsCount + summary.openObligationsCount > 0 {
+                countsRow(summary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func ownerRow(_ owner: ResourceOwnerItem) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: ownerIcon(owner.ownerKind))
+                .font(.body.weight(.medium))
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(owner.displayName ?? ownerKindLabel(owner.ownerKind))
+                    .font(.body.weight(.semibold))
+                HStack(spacing: 6) {
+                    if let role = owner.ownershipRole, !role.isEmpty {
+                        Text(role.capitalized)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let pct = owner.ownershipPct {
+                        Text("\(NSDecimalNumber(decimal: pct).stringValue)%")
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    private func ownerIcon(_ kind: String) -> String {
+        switch kind {
+        case "member":          return "person.crop.circle.badge.checkmark"
+        case "external_party":  return "person.crop.circle.dashed"
+        case "group":           return "person.3"
+        default:                return "questionmark.circle"
+        }
+    }
+
+    private func ownerKindLabel(_ kind: String) -> String {
+        switch kind {
+        case "member":          return "Miembro"
+        case "external_party":  return "Externo"
+        case "group":           return "Grupo"
+        default:                return kind.capitalized
+        }
+    }
+
+    @ViewBuilder
+    private func capabilitiesRow(_ caps: [ResourceCapabilityItem]) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "switch.2")
+                .font(.body.weight(.medium))
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Capacidades")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
-            } icon: {
-                Image(systemName: "person.crop.circle.badge.questionmark")
+                Text(caps.map { humanizeCapability($0.capabilityKey) }.joined(separator: " · "))
+                    .font(.body)
+            }
+        }
+    }
+
+    private func humanizeCapability(_ key: String) -> String {
+        key
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: ".", with: " · ")
+            .capitalized
+    }
+
+    @ViewBuilder
+    private func countsRow(_ summary: ResourceDetailSummary) -> some View {
+        HStack(spacing: 16) {
+            if summary.commentsCount > 0 {
+                Label("\(summary.commentsCount)", systemImage: "bubble.left")
+                    .font(.footnote.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
+            if summary.attachmentsCount > 0 {
+                Label("\(summary.attachmentsCount)", systemImage: "paperclip")
+                    .font(.footnote.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            if summary.openObligationsCount > 0 {
+                Label("\(summary.openObligationsCount)", systemImage: "creditcard")
+                    .font(.footnote.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
         }
     }
 
@@ -487,10 +633,21 @@ public struct ResourceDetailView: View {
 
     // MARK: - 5. Activity
 
+    /// P12B-2 — prefer `summary.recentActivity[10]` (already filtered
+    /// server-side al recurso); fallback a `store.activity` legacy
+    /// (carga vía `group_events_for_entity`).
+    private var activityEvents: [GroupEvent] {
+        if let s = summary {
+            return s.recentActivity.map { $0.toGroupEvent(groupId: resource.groupId) }
+        }
+        return Array(store.activity.prefix(15))
+    }
+
     @ViewBuilder
     private var activitySection: some View {
         Section(L10n.ResourceDetail.activitySection) {
-            if store.activity.isEmpty {
+            let events = activityEvents
+            if events.isEmpty {
                 Label {
                     Text(L10n.ResourceDetail.activityStub)
                         .font(.subheadline)
@@ -500,7 +657,7 @@ public struct ResourceDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             } else {
-                ForEach(store.activity.prefix(15)) { event in
+                ForEach(events) { event in
                     activityRow(event)
                 }
             }

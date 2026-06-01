@@ -1596,6 +1596,21 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func resourceDetailSummary(resourceId: UUID) async throws -> ResourceDetailSummary {
+        struct Params: Encodable {
+            let pResourceId: UUID
+            enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
+        }
+        do {
+            return try await client
+                .rpc("resource_detail_summary", params: Params(pResourceId: resourceId))
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - V3-D.23 — Calendar Events
 
     public func createCalendarEvent(_ input: CreateCalendarEventParams) async throws -> UUID {

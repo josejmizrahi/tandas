@@ -157,6 +157,14 @@ public struct CanonicalResourcesRepository: Sendable {
         try await rpc.groupResourceDetail(resourceId: resourceId)
     }
 
+    /// V3 D.24 P12B-2 — single round-trip detail summary. Combines what
+    /// `resourceDetail` + `recentActivity` + ownership/capability fetches
+    /// used to do separately. Caller can fallback to those legacy paths
+    /// if this throws.
+    public func resourceDetailSummary(resourceId: UUID) async throws -> ResourceDetailSummary {
+        try await rpc.resourceDetailSummary(resourceId: resourceId)
+    }
+
     /// Server-side filtered activity for a resource via
     /// `group_events_for_entity` (entity_kind='resource', entity_id=...).
     public func recentActivity(

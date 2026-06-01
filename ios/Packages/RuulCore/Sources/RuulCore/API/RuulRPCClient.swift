@@ -818,6 +818,13 @@ public protocol RuulRPCClient: Sendable {
     /// iOS adopt iniciado en P12B-1.
     func groupHomeSummary(groupId: UUID) async throws -> GroupHomeSummary
 
+    /// `resource_detail_summary(p_resource_id) returns jsonb`. Single
+    /// round-trip para hidratar ResourceDetailView: resource + subtype
+    /// polimórfico + owners (`group_resource_owners` actives) +
+    /// capabilities + 3 counts (comments/attachments/open_obligations) +
+    /// recent_activity[10] filtrado al recurso. iOS adopt en P12B-2.
+    func resourceDetailSummary(resourceId: UUID) async throws -> ResourceDetailSummary
+
     // MARK: - V3-D.23 — Calendar Events
 
     /// `create_event(...)`. Requires `events.create`. Auto-adds caller as

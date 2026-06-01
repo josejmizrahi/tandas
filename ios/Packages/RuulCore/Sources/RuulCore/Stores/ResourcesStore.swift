@@ -53,6 +53,14 @@ public final class ResourcesStore {
     public private(set) var activityPhase: StorePhase = .idle
     public private(set) var movements: [MoneyMovement] = []
     public private(set) var movementsPhase: StorePhase = .idle
+
+    /// V3 D.24 P12B-2 — single-RPC summary backing ResourceDetailView.
+    /// When loaded, the view prefers it over `detail` / `activity` for
+    /// rendering owners, capabilities, counts and recent activity. If
+    /// the summary RPC fails, `summary` stays nil and the legacy paths
+    /// kick in unchanged.
+    public private(set) var detailSummary: ResourceDetailSummary?
+    public private(set) var detailSummaryPhase: StorePhase = .idle
     /// Active resource id that the detail surface (and Asset sheets) is
     /// operating on. Used to scope sheet saves correctly.
     public private(set) var activeResourceId: UUID?
@@ -378,7 +386,29 @@ public final class ResourcesStore {
         activityPhase = .idle
         movements = []
         movementsPhase = .idle
+        detailSummary = nil
+        detailSummaryPhase = .idle
         activeResourceId = nil
+    }
+
+    /// V3 D.24 P12B-2 — best-effort hydrate del read model
+    /// `resource_detail_summary`. NO throws: si falla, `detailSummary`
+    /// queda nil y la vista cae a `loadDetail` + `loadActivity` legacy.
+    public func loadSummary(resourceId: UUID) async {
+        if detailSummary?.resource.id != resourceId {
+            detailSummary = nil
+            detailSummaryPhase = .loading
+        }
+        do {
+            let fetched = try await repository.resourceDetailSummary(resourceId: resourceId)
+            detailSummary = fetched
+            detailSummaryPhase = .loaded
+        } catch {
+            let message = UserFacingError.from(error).message
+            detailSummaryPhase = .failed(message: message)
+            // Intentionally NOT setting `errorMessage` — fallback paths
+            // will surface their own errors if they also fail.
+        }
     }
 
     /// Pull money movements linked to a resource via `resource_id` or
