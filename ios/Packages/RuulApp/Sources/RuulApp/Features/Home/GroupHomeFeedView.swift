@@ -45,12 +45,19 @@ struct GroupHomeFeedView: View {
     /// A.1 — En uso cluster tap → ResourceDetailView (resuelto desde
     /// `resourcesStore.resources` por id).
     @State private var pendingResourceDetail: GroupResource?
+    /// H.3 — caller perms, used to gate the "Puedes crear" chips.
+    /// Loaded silently in `.task`; chips appear as perms hydrate.
+    @State private var permissionKeys: [String]? = nil
+    /// H.3 — sheet bindings para los chips "Puedes crear".
+    @State private var isShowingExpenseSheet: Bool = false
+    @State private var isShowingContributeSheet: Bool = false
 
     var body: some View {
         List {
             foundationSection
             engineBannerSection
             attentionSection
+            createSection
             upcomingSection
             debtsSection
             moneyRecentSection
@@ -186,6 +193,16 @@ struct GroupHomeFeedView: View {
                 isShowingInviteSheet = false
             }
         }
+        .modifier(ChipSheetsModifier(
+            container: container,
+            group: group,
+            isShowingExpenseSheet: $isShowingExpenseSheet,
+            isShowingContributeSheet: $isShowingContributeSheet,
+            decisionProposeBinding: decisionProposeSheetBinding,
+            culturalNormCreateBinding: culturalNormCreateSheetBinding,
+            mandateGrantBinding: mandateGrantSheetBinding,
+            onRefresh: { Task { await refresh() } }
+        ))
         // Foundation tap sheets — flipped on by `handleFoundationTap`
         // via the corresponding store's `beginEditing` / `beginCreating`
         // flag. Each sheet is the same one mounted by "El grupo" so
@@ -221,6 +238,27 @@ struct GroupHomeFeedView: View {
         Binding(
             get: { container.resourcesStore.isCreatePresented },
             set: { container.resourcesStore.isCreatePresented = $0 }
+        )
+    }
+
+    private var decisionProposeSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.decisionsStore.isProposePresented },
+            set: { container.decisionsStore.isProposePresented = $0 }
+        )
+    }
+
+    private var culturalNormCreateSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.culturalNormsStore.isCreatePresented },
+            set: { container.culturalNormsStore.isCreatePresented = $0 }
+        )
+    }
+
+    private var mandateGrantSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container.mandatesStore.isGrantPresented },
+            set: { container.mandatesStore.isGrantPresented = $0 }
         )
     }
 
@@ -303,15 +341,71 @@ struct GroupHomeFeedView: View {
         return "Tocá para ver disparos"
     }
 
-    // MARK: - Necesita atención
+    // MARK: - Necesita atención (Hero — action-first)
 
+    /// H.1 — Hero del action-first home. Renderiza cada item con la
+    /// representación más rica que permita su tipo:
+    /// - decisión sin voto → DecisionVoteCard (barra de progreso + 3
+    ///   botones inline; vota sin push si method es binario).
+    /// - sanción contra ti → SanctionAttentionRow ([Pagar $X] inline si
+    ///   monetary).
+    /// - pending join request → PendingRequestRow ([Aprobar][Rechazar]
+    ///   inline).
     @ViewBuilder
     private var attentionSection: some View {
         let items = attentionItems
         if !items.isEmpty {
-            Section("Necesita atención") {
+            Section("Necesita tu acción") {
                 ForEach(items) { item in
-                    AttentionRow(item: item, onSelect: handleAttentionTap)
+                    switch item {
+                    case .decisionNeedsVote(let summary):
+                        DecisionVoteCard(
+                            decision: summary,
+                            onVote: { value in
+                                Task {
+                                    await container.decisionsStore.castVoteInline(
+                                        decisionId: summary.id,
+                                        value: value,
+                                        groupId: group.id
+                                    )
+                                }
+                            },
+                            onOpenDetail: { pendingDecisionDetail = summary }
+                        )
+                    case .sanctionOnMe(let sanction):
+                        SanctionAttentionRow(
+                            sanction: sanction,
+                            onPay: {
+                                pendingSanctionDetail = sanction
+                            },
+                            onSelect: { pendingSanctionDetail = sanction }
+                        )
+                    case .pendingRequest(let member):
+                        PendingRequestRow(
+                            member: member,
+                            onApprove: {
+                                Task {
+                                    if let mid = member.membershipId {
+                                        await container.membersStore.approveRequest(
+                                            membershipId: mid,
+                                            groupId: group.id
+                                        )
+                                    }
+                                }
+                            },
+                            onReject: {
+                                Task {
+                                    if let mid = member.membershipId {
+                                        await container.membersStore.rejectRequest(
+                                            membershipId: mid,
+                                            groupId: group.id
+                                        )
+                                    }
+                                }
+                            },
+                            onSelect: { pendingMemberSelection = member }
+                        )
+                    }
                 }
             }
         }
@@ -359,6 +453,94 @@ struct GroupHomeFeedView: View {
         }
 
         return result
+    }
+
+    // MARK: - Puedes crear (H.3)
+
+    /// H.3 — chip row con las acciones que el usuario puede iniciar.
+    /// Cada chip se esconde si el caller no tiene la perm requerida
+    /// (pattern "ocultar, no deshabilitar" per ruul UX doctrine).
+    /// Mientras `permissionKeys` está cargando muestra el set
+    /// universal (gasto/settlement/invitar son baseline para member).
+    @ViewBuilder
+    private var createSection: some View {
+        let perms = permissionKeys ?? []
+        Section("Puedes crear") {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    if perms.contains("decisions.create") {
+                        createChip(label: "Decisión", icon: "checkmark.seal", tint: .indigo) {
+                            container.decisionsStore.beginProposing()
+                        }
+                    }
+                    if perms.contains("expense.record") {
+                        createChip(label: "Gasto", icon: "plus.circle.fill", tint: .accentColor) {
+                            isShowingExpenseSheet = true
+                        }
+                    }
+                    if perms.contains("settlement.record") {
+                        createChip(label: "Pagar", icon: "checkmark.circle.fill", tint: .blue) {
+                            isShowingSettlementSheet = true
+                        }
+                    }
+                    if perms.contains("contribution.record") {
+                        createChip(label: "Aportar", icon: "arrow.down.to.line.circle.fill", tint: .green) {
+                            isShowingContributeSheet = true
+                        }
+                    }
+                    if perms.contains("members.invite") {
+                        createChip(label: "Invitar", icon: "person.crop.circle.badge.plus", tint: .pink) {
+                            isShowingInviteSheet = true
+                        }
+                    }
+                    if perms.contains("culture.propose") {
+                        createChip(label: "Norma", icon: "heart.text.square", tint: .purple) {
+                            container.culturalNormsStore.beginCreating()
+                        }
+                    }
+                    if perms.contains("resources.create") {
+                        createChip(label: "Recurso", icon: "square.stack.3d.up", tint: .teal) {
+                            container.resourcesStore.beginCreating()
+                        }
+                    }
+                    if perms.contains("rules.create") {
+                        createChip(label: "Regla", icon: "list.bullet.rectangle", tint: .brown) {
+                            container.rulesStore.beginCreating()
+                        }
+                    }
+                    if perms.contains("mandates.grant") {
+                        createChip(label: "Mandato", icon: "signature", tint: .orange) {
+                            container.mandatesStore.beginGranting()
+                        }
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
+
+    @ViewBuilder
+    private func createChip(
+        label: String,
+        icon: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.callout.weight(.semibold))
+                Text(label)
+                    .font(.callout.weight(.medium))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(.glass)
+        .tint(tint)
     }
 
     // MARK: - Próximo
@@ -606,6 +788,20 @@ struct GroupHomeFeedView: View {
         // A.1: Dinero reciente + En uso fuentes.
         await container.movementsStore.refresh(groupId: group.id)
         await container.resourcesStore.refresh(groupId: group.id)
+        // H.3: perms para gatear chips de "Puedes crear".
+        await loadPermissions()
+    }
+
+    /// H.3 — silent perm load; chips quedan vacíos si falla.
+    private func loadPermissions() async {
+        do {
+            permissionKeys = try await container.groupRepository.listMemberPermissions(
+                groupId: group.id,
+                userId: nil
+            )
+        } catch {
+            permissionKeys = []
+        }
     }
 
     // MARK: - Cluster item enums
@@ -975,5 +1171,330 @@ private struct InUseRow: View {
         case let t where t.contains("updated"):    return "Editado"
         default: return row.eventType.replacingOccurrences(of: "_", with: " ").capitalized
         }
+    }
+}
+
+// MARK: - H.1 Hero cards (action-first)
+
+/// H.1 — rich card for decisions sin voto del usuario. Muestra título,
+/// body truncado, barra de progreso (votes/quorum + threshold %) y 3
+/// botones inline (Sí/No/Abstener). Tap fuera de los botones (en
+/// header/body) abre DecisionDetailView para flujos más ricos
+/// (ranked/weighted/options-multiple/reason).
+private struct DecisionVoteCard: View {
+    let decision: GroupDecisionSummary
+    let onVote: (VoteValue) -> Void
+    let onOpenDetail: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: onOpenDetail) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.orange)
+                        Text(decision.title)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                        Spacer()
+                        if let closes = decision.closesAt {
+                            Text(closesLabel(closes))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if let body = decision.body, !body.isEmpty {
+                        Text(body)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            progressBar
+
+            HStack(spacing: 8) {
+                voteButton(.yes,     label: "Sí",        systemImage: "checkmark.circle.fill", tint: .green)
+                voteButton(.no,      label: "No",        systemImage: "xmark.circle.fill",     tint: .red)
+                voteButton(.abstain, label: "Abstener",  systemImage: "minus.circle",          tint: .secondary)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    /// Renders the tally as a horizontal bar split in 3 colors (yes/no/abstain).
+    /// Falls back to a single neutral fill if there are no votes yet.
+    @ViewBuilder
+    private var progressBar: some View {
+        let total: Decimal = {
+            let t = decision.tally
+            return t.yesCount + t.noCount + t.abstainCount + t.blockCount
+        }()
+        let totalDouble = NSDecimalNumber(decimal: total).doubleValue
+
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.15))
+                if totalDouble > 0 {
+                    HStack(spacing: 0) {
+                        let yes = NSDecimalNumber(decimal: decision.tally.yesCount).doubleValue
+                        let no  = NSDecimalNumber(decimal: decision.tally.noCount).doubleValue
+                        let abs = NSDecimalNumber(decimal: decision.tally.abstainCount).doubleValue
+                        if yes > 0 {
+                            Capsule().fill(Color.green)
+                                .frame(width: width * (yes / totalDouble))
+                        }
+                        if no > 0 {
+                            Capsule().fill(Color.red)
+                                .frame(width: width * (no / totalDouble))
+                        }
+                        if abs > 0 {
+                            Capsule().fill(Color.secondary)
+                                .frame(width: width * (abs / totalDouble))
+                        }
+                    }
+                }
+            }
+        }
+        .frame(height: 6)
+
+        HStack(spacing: 8) {
+            Text(tallyLabel)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            if let threshold = decision.thresholdPct {
+                Text("· requiere \(formatPct(threshold))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func voteButton(_ value: VoteValue, label: String, systemImage: String, tint: Color) -> some View {
+        let isSelected = decision.myVoteValue == value
+        Button {
+            onVote(value)
+        } label: {
+            Label(label, systemImage: systemImage)
+                .font(.callout.weight(.medium))
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .tint(isSelected ? tint : .secondary)
+        .opacity(decision.myVoteValue == nil || isSelected ? 1 : 0.5)
+    }
+
+    private var tallyLabel: String {
+        let t = decision.tally
+        let totalDecimal = t.yesCount + t.noCount + t.abstainCount + t.blockCount
+        let total = NSDecimalNumber(decimal: totalDecimal).intValue
+        if total == 0 { return "Sin votos aún" }
+        let yes = NSDecimalNumber(decimal: t.yesCount).intValue
+        return "\(yes)/\(total) Sí · \(t.voteCount) participantes"
+    }
+
+    private func formatPct(_ value: Decimal) -> String {
+        let n = NSDecimalNumber(decimal: value).doubleValue
+        return String(format: "%.0f%%", n)
+    }
+
+    private func closesLabel(_ closes: Date) -> String {
+        let interval = closes.timeIntervalSinceNow
+        if interval <= 0 { return "cerrada" }
+        let days = Int(interval / 86400)
+        let hours = Int(interval / 3600) % 24
+        if days > 0 { return "cierra en \(days)d" }
+        if hours > 0 { return "cierra en \(hours)h" }
+        return "cierra pronto"
+    }
+}
+
+/// H.1 — sanción activa contra el caller. Si es monetaria muestra
+/// botón [Pagar $X] inline; si no, push a SanctionDetailView.
+private struct SanctionAttentionRow: View {
+    let sanction: GroupSanction
+    let onPay: () -> Void
+    let onSelect: () -> Void
+
+    private var isMonetary: Bool {
+        sanction.amount != nil && sanction.amount ?? 0 > 0
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: onSelect) {
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.shield")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.red)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(headline)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        if !sanction.reason.isEmpty {
+                            Text(sanction.reason)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                    }
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isMonetary, let amount = sanction.amount {
+                Button {
+                    onPay()
+                } label: {
+                    Label("Pagar \(amount.formatted()) \(sanction.unit ?? "MXN")",
+                          systemImage: "creditcard.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .controlSize(.regular)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var headline: String {
+        switch sanction.kind {
+        case .monetary:       return "Tienes una multa activa"
+        case .suspension:     return "Estás suspendido"
+        case .warning:        return "Tienes un warning activo"
+        case .lossOfRole:     return "Perdiste un rol"
+        case .expulsion:      return "Fuiste expulsado"
+        case .repairTask:     return "Tienes una tarea de reparación"
+        case .reputationNote: return "Tienes una nota de reputación"
+        case .other:          return "Sanción activa contra ti"
+        }
+    }
+}
+
+/// H.1 — pending join request con CTAs inline [Aprobar][Rechazar].
+/// Tap-on-rest empuja MemberDetailView para context.
+private struct PendingRequestRow: View {
+    let member: MembershipBoundaryItem
+    let onApprove: () -> Void
+    let onReject: () -> Void
+    let onSelect: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: onSelect) {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.crop.circle.badge.questionmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.orange)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(member.displayName) quiere unirse")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text("Pendiente de revisión")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            HStack(spacing: 8) {
+                Button {
+                    onReject()
+                } label: {
+                    Label("Rechazar", systemImage: "xmark")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.secondary)
+
+                Button {
+                    onApprove()
+                } label: {
+                    Label("Aprobar", systemImage: "checkmark")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - H.3 chip sheets modifier
+
+/// Extracted from `GroupHomeFeedView.body` to keep the main expression
+/// type-checkable. Mounts the 5 sheets that the "Puedes crear" chip row
+/// can trigger; each chip flips a `@State` flag or a store-owned flag
+/// via Binding closure.
+private struct ChipSheetsModifier: ViewModifier {
+    let container: DependencyContainer
+    let group: GroupListItem
+    @Binding var isShowingExpenseSheet: Bool
+    @Binding var isShowingContributeSheet: Bool
+    let decisionProposeBinding: Binding<Bool>
+    let culturalNormCreateBinding: Binding<Bool>
+    let mandateGrantBinding: Binding<Bool>
+    let onRefresh: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $isShowingExpenseSheet) {
+                RecordExpenseSheet(
+                    container: container,
+                    groupId: group.id,
+                    myMembershipId: group.membershipId
+                ) {
+                    isShowingExpenseSheet = false
+                    onRefresh()
+                }
+            }
+            .sheet(isPresented: $isShowingContributeSheet) {
+                ContributeToPoolSheet(
+                    container: container,
+                    groupId: group.id,
+                    myMembershipId: group.membershipId
+                ) {
+                    isShowingContributeSheet = false
+                    onRefresh()
+                }
+            }
+            .sheet(isPresented: decisionProposeBinding) {
+                ProposeDecisionSheet(
+                    store: container.decisionsStore,
+                    groupId: group.id,
+                    membersStore: container.membersStore,
+                    rulesStore: container.rulesStore
+                )
+            }
+            .sheet(isPresented: culturalNormCreateBinding) {
+                EditCulturalNormView(
+                    store: container.culturalNormsStore,
+                    groupId: group.id
+                )
+            }
+            .sheet(isPresented: mandateGrantBinding) {
+                GrantMandateSheet(
+                    store: container.mandatesStore,
+                    membersStore: container.membersStore,
+                    groupId: group.id
+                )
+            }
     }
 }

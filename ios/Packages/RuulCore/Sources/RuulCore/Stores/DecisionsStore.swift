@@ -579,6 +579,37 @@ public final class DecisionsStore {
         voteDraftErrorMessage = nil
     }
 
+    /// H.1 — fire-and-forget cast vote desde la home action-first.
+    /// Bypassa el draft state (ProposeDecisionSheet) y sirve para los 3
+    /// valores binarios (yes/no/abstain) en decisiones simples. Para
+    /// método ranked/weighted/options-multiple sigue siendo necesario
+    /// abrir VoteSheet — el caller debe verificar antes
+    /// (`decision.method == .majority || .supermajority || ...`) y
+    /// caer al sheet si no aplica.
+    @discardableResult
+    public func castVoteInline(
+        decisionId: UUID,
+        value: VoteValue,
+        groupId: UUID
+    ) async -> Bool {
+        do {
+            _ = try await repository.castVote(
+                decisionId: decisionId,
+                value: value,
+                optionId: nil,
+                reason: nil
+            )
+            await refresh(groupId: groupId)
+            if detail?.id == decisionId {
+                await refreshDetail()
+            }
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
     // MARK: - Lifecycle actions
 
     @discardableResult
