@@ -141,20 +141,21 @@ public struct CalendarEventDetailView: View {
     @ViewBuilder
     private func statusBadge(status: CalendarEventStatus) -> some View {
         if status != .scheduled {
-            let tint: Color = {
-                switch status {
-                case .scheduled: return .blue
-                case .cancelled: return .red
-                case .completed: return .green
-                case .archived:  return .gray
-                }
-            }()
-            Text(status.label)
+            Label(status.label, systemImage: statusSymbol(status))
                 .font(.caption.weight(.medium))
-                .foregroundStyle(tint)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(Capsule().fill(tint.opacity(0.12)))
+                .background(Capsule().fill(.quaternary))
+        }
+    }
+
+    private func statusSymbol(_ status: CalendarEventStatus) -> String {
+        switch status {
+        case .scheduled: return "calendar"
+        case .cancelled: return "xmark.circle.fill"
+        case .completed: return "checkmark.circle.fill"
+        case .archived:  return "archivebox.fill"
         }
     }
 
@@ -200,8 +201,9 @@ public struct CalendarEventDetailView: View {
             } else {
                 ForEach(detail.attendees) { a in
                     HStack {
-                        Image(systemName: a.role == .host || a.role == .cohost ? "crown.fill" : "person.fill")
-                            .foregroundStyle(a.role == .host || a.role == .cohost ? .yellow : .secondary)
+                        let isHost = a.role == .host || a.role == .cohost
+                        Image(systemName: isHost ? "crown.fill" : "person.fill")
+                            .foregroundStyle(isHost ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(a.displayName ?? a.invitedEmail ?? "Sin nombre")
                                 .font(.body)
@@ -211,7 +213,7 @@ public struct CalendarEventDetailView: View {
                         }
                         Spacer()
                         Image(systemName: a.rsvpStatus.systemImageName)
-                            .foregroundStyle(rsvpTint(a.rsvpStatus))
+                            .foregroundStyle(.secondary)
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if detail.permissions.canManageAttendees && a.role != .host {
@@ -395,12 +397,4 @@ public struct CalendarEventDetailView: View {
         return "\(days) \(days == 1 ? "día" : "días") antes"
     }
 
-    private func rsvpTint(_ status: CalendarEventRSVPStatus) -> Color {
-        switch status {
-        case .accepted:  return .green
-        case .declined:  return .red
-        case .tentative, .maybe: return .orange
-        case .pending:   return .secondary
-        }
-    }
 }

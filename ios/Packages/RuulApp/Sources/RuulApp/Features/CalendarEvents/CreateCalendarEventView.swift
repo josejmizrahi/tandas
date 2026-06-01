@@ -61,8 +61,8 @@ struct CreateCalendarEventView: View {
 
                 if let error = store.draftErrorMessage {
                     Section {
-                        Label(error, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

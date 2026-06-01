@@ -223,20 +223,21 @@ struct CalendarEventRow: View {
     @ViewBuilder
     private var statusBadge: some View {
         if item.status != .scheduled {
-            let tint: Color = {
-                switch item.status {
-                case .scheduled: return .blue
-                case .cancelled: return .red
-                case .completed: return .green
-                case .archived:  return .gray
-                }
-            }()
-            Text(item.status.label)
+            Label(item.status.label, systemImage: statusSymbol(item.status))
                 .font(.caption.weight(.medium))
-                .foregroundStyle(tint)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(Capsule().fill(tint.opacity(0.12)))
+                .background(Capsule().fill(.quaternary))
+        }
+    }
+
+    private func statusSymbol(_ status: CalendarEventStatus) -> String {
+        switch status {
+        case .scheduled: return "calendar"
+        case .cancelled: return "xmark.circle.fill"
+        case .completed: return "checkmark.circle.fill"
+        case .archived:  return "archivebox.fill"
         }
     }
 }
