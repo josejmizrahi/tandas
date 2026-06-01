@@ -147,6 +147,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case groupVisibility(groupId: UUID)
         case setGroupVisibility(input: SetGroupVisibilityInput)
         case globalSearch(input: GlobalSearchParams)
+        case requestMembership(input: RequestMembershipParams)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -1257,5 +1258,15 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func globalSearch(_ input: GlobalSearchParams) async throws -> [SearchResult] {
         recorded.append(.globalSearch(input: input))
         return try globalSearchStub.get()
+    }
+
+    // MARK: - V3-D.24 — Request membership
+
+    private var requestMembershipStub: Result<UUID, RuulError> = .success(UUID())
+    func stubRequestMembership(_ result: Result<UUID, RuulError>) { requestMembershipStub = result }
+
+    func requestMembership(_ input: RequestMembershipParams) async throws -> UUID {
+        recorded.append(.requestMembership(input: input))
+        return try requestMembershipStub.get()
     }
 }

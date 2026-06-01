@@ -1558,4 +1558,10 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             throw RPCErrorMapper.map(error)
         }
     }
+
+    // MARK: - V3-D.24 — Request membership
+
+    public func requestMembership(_ input: RequestMembershipParams) async throws -> UUID {
+        try await callReturningUUID("request_membership", params: input)
+    }
 }

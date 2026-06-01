@@ -15,6 +15,7 @@ public struct GroupSwitcherSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isShowingCreateSheet: Bool = false
     @State private var isShowingAcceptSheet: Bool = false
+    @State private var isShowingRequestSheet: Bool = false
 
     public init(
         container: DependencyContainer,
@@ -56,6 +57,14 @@ public struct GroupSwitcherSheet: View {
             .sheet(isPresented: $isShowingAcceptSheet) {
                 AcceptInviteSheet(container: container) { _ in
                     isShowingAcceptSheet = false
+                    Task { await container.groupsStore.refresh() }
+                }
+            }
+            .sheet(isPresented: $isShowingRequestSheet) {
+                RequestMembershipSheet(container: container) { _ in
+                    // Don't auto-dismiss — request membership leaves the
+                    // user in 'requested' status. The sheet itself
+                    // surfaces the success copy; user closes manually.
                     Task { await container.groupsStore.refresh() }
                 }
             }
@@ -142,6 +151,11 @@ public struct GroupSwitcherSheet: View {
                 isShowingAcceptSheet = true
             } label: {
                 Label(L10n.GroupSwitcher.acceptButton, systemImage: "ticket")
+            }
+            Button {
+                isShowingRequestSheet = true
+            } label: {
+                Label(L10n.GroupSwitcher.requestButton, systemImage: "hand.raised")
             }
         }
     }

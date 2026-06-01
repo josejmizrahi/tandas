@@ -151,11 +151,13 @@ public struct MembersListView: View {
             .pendingInviteSwipeAction(for: item) { invite in
                 pendingRevoke = invite
             }
+            .approveRequestSwipeAction(for: item, store: store, groupId: groupId)
         } else {
             MemberRowView(item: item)
                 .pendingInviteSwipeAction(for: item) { invite in
                     pendingRevoke = invite
                 }
+                .approveRequestSwipeAction(for: item, store: store, groupId: groupId)
         }
     }
 
@@ -192,6 +194,33 @@ private extension View {
                 } label: {
                     Label("Revocar", systemImage: "trash")
                 }
+            }
+        } else {
+            self
+        }
+    }
+
+    /// D.24: surfaces a leading "Aprobar" swipe action for rows that
+    /// represent pending join requests (`status == .requested`). Fires
+    /// `MembersStore.approveRequest(...)` which RPCs
+    /// `approve_membership_request` — backend re-asserts the
+    /// `members.invite` permission, so non-admins see a 42501 from the
+    /// store error path. UI gating by caller perms is deferred until
+    /// MembersListView loads permissions itself.
+    @ViewBuilder
+    func approveRequestSwipeAction(
+        for item: MembershipBoundaryItem,
+        store: MembersStore,
+        groupId: UUID
+    ) -> some View {
+        if item.kind == .membership, item.status == .requested, let mid = item.membershipId {
+            self.swipeActions(edge: .leading) {
+                Button {
+                    Task { _ = await store.approveRequest(membershipId: mid, groupId: groupId) }
+                } label: {
+                    Label(L10n.Members.approveRequestAction, systemImage: "checkmark.circle")
+                }
+                .tint(.green)
             }
         } else {
             self

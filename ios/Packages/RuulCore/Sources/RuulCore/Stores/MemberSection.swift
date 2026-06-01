@@ -16,6 +16,7 @@ public struct MemberSection: Identifiable, Sendable, Equatable {
 
 public enum MemberSectionKind: Sendable, Hashable {
     case currentUser
+    case requested
     case active
     case provisional
     case invited
@@ -24,6 +25,7 @@ public enum MemberSectionKind: Sendable, Hashable {
     public var title: LocalizedStringResource {
         switch self {
         case .currentUser: return L10n.Members.sectionYou
+        case .requested:   return L10n.Members.sectionRequested
         case .active:      return L10n.Members.sectionActive
         case .provisional: return L10n.Members.sectionProvisional
         case .invited:     return L10n.Members.sectionInvited
@@ -32,7 +34,9 @@ public enum MemberSectionKind: Sendable, Hashable {
     }
 
     /// Fixed render order. Empty sections are skipped by the store.
+    /// D.24: `.requested` placed right after `currentUser` so admin
+    /// attention lands on the pending-approvals cluster immediately.
     public static let renderOrder: [MemberSectionKind] = [
-        .currentUser, .active, .provisional, .invited, .suspended
+        .currentUser, .requested, .active, .provisional, .invited, .suspended
     ]
 }

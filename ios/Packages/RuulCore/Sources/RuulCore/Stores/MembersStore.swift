@@ -301,7 +301,11 @@ public final class MembersStore {
             switch item.status {
             case .active:
                 return item.membershipType == .provisional ? .provisional : .active
-            case .invited, .requested:
+            case .requested:
+                // D.24: requested memberships get their own top-of-list
+                // cluster so admins see pending join requests immediately.
+                return .requested
+            case .invited:
                 return .invited
             case .paused, .suspended, .removed, .banned, .left:
                 return .suspended

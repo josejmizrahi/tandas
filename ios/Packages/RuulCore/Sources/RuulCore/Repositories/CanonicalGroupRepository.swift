@@ -56,4 +56,13 @@ public struct CanonicalGroupRepository: Sendable {
     public func listMemberPermissions(groupId: UUID, userId: UUID? = nil) async throws -> [String] {
         try await rpc.listMemberPermissions(groupId: groupId, userId: userId)
     }
+
+    /// D.24 — `request_membership(p_group_id, p_message)` returns the new
+    /// `requested` membership_id. Caller becomes `status='requested'` in
+    /// the target group; an admin with `members.invite` approves via
+    /// `approve_membership_request`. Useful for groups whose policy
+    /// permits join requests instead of invite-only entry.
+    public func requestMembership(groupId: UUID, message: String? = nil) async throws -> UUID {
+        try await rpc.requestMembership(RequestMembershipParams(groupId: groupId, message: message))
+    }
 }

@@ -2915,4 +2915,19 @@ public struct GlobalSearchParams: Encodable, Sendable {
     }
 }
 
+// MARK: - V3-D.24 — Request membership (non-invited join request)
+
+public struct RequestMembershipParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pMessage: String?
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pMessage = "p_message"
+    }
+    public init(groupId: UUID, message: String? = nil) {
+        self.pGroupId = groupId
+        self.pMessage = message
+    }
+}
+
 

@@ -789,4 +789,10 @@ public protocol RuulRPCClient: Sendable {
     /// rules) in a single round-trip. Backend enforces membership gate
     /// (42501) and min-length 2 (returns empty for shorter queries).
     func globalSearch(_ input: GlobalSearchParams) async throws -> [SearchResult]
+
+    /// `request_membership(p_group_id, p_message) returns uuid`. Caller
+    /// becomes a `requested` membership row in the target group. Admins
+    /// see it in the "Solicitudes pendientes" cluster + can approve via
+    /// `approve_membership_request`.
+    func requestMembership(_ input: RequestMembershipParams) async throws -> UUID
 }
