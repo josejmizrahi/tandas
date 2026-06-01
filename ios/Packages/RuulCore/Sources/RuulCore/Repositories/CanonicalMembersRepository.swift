@@ -79,6 +79,66 @@ public struct CanonicalMembersRepository: Sendable {
         )
     }
 
+    /// D.22 — governance-aware membership state change. For terminal
+    /// states (`.banned` / `.removed`) routes through
+    /// `request_or_execute_action` so member-level callers open a
+    /// decision and founder-level callers proceed direct via the
+    /// override. For other states this falls through to the legacy
+    /// direct call and returns `.directAllowed`.
+    public func setMembershipStateViaGovernance(
+        groupId: UUID,
+        membershipId: UUID,
+        newState: MembershipStatus,
+        reason: String? = nil,
+        until: Date? = nil
+    ) async throws -> ActionOutcome {
+        let trimmedReason = reason?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank
+
+        let actionKey: String? = switch newState {
+        case .banned:  "membership.ban"
+        case .removed: "membership.remove"
+        default:       nil  // non-terminal states stay direct
+        }
+
+        guard let actionKey else {
+            try await setMembershipState(
+                membershipId: membershipId, newState: newState, reason: trimmedReason, until: until
+            )
+            return .directAllowed(plan: .init(
+                actionKey: "membership.\(newState.rawValue)",
+                executableRPC: "set_membership_state",
+                targetKind: "membership",
+                targetId: membershipId,
+                reason: "direct_by_default",
+                isFounder: false, isAdmin: false, riskLevel: "medium"
+            ))
+        }
+
+        var payload: [String: RPCJSONValue] = [
+            "target_state": .string(newState.rawValue)
+        ]
+        if let trimmedReason { payload["reason"] = .string(trimmedReason) }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId: groupId,
+                actionKey: actionKey,
+                targetKind: "membership",
+                targetId: membershipId,
+                payload: payload
+            )
+        )
+
+        if case .directAllowed = outcome {
+            try await setMembershipState(
+                membershipId: membershipId, newState: newState, reason: trimmedReason, until: until
+            )
+        }
+        return outcome
+    }
+
     // MARK: - V3-D.20
 
     /// `approve_membership_request(p_membership_id)` — admin-side

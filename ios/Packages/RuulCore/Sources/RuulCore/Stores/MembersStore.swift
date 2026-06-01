@@ -23,6 +23,12 @@ public final class MembersStore {
     public var phase: StorePhase = .idle
     public var searchText: String = ""
 
+    /// D.22 — last governance outcome from saveStateDraft (ban/remove).
+    /// `.decisionOpened` ⇒ a vote was created; UI shows alert + keeps the
+    /// member visible. `.directAllowed` ⇒ founder override or non-terminal
+    /// state. Cleared via `clearGovernanceOutcome()` once consumed.
+    public private(set) var lastGovernanceOutcome: ActionOutcome?
+
     // MARK: - Invite form state
 
     public var isInviteSheetPresented: Bool = false
@@ -300,22 +306,48 @@ public final class MembersStore {
             ? stateDraftUntil
             : nil
         do {
-            try await repository.setMembershipState(
+            let outcome = try await repository.setMembershipStateViaGovernance(
+                groupId: groupId,
                 membershipId: membershipId,
                 newState: stateDraftTargetState,
                 reason: trimmedReason,
                 until: until
             )
-            await refresh(groupId: groupId)
-            isStateSheetPresented = false
-            stateDraftMembershipId = nil
-            stateDraftReason = ""
-            stateDraftHasUntil = false
-            return true
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await refresh(groupId: groupId)
+                isStateSheetPresented = false
+                stateDraftMembershipId = nil
+                stateDraftReason = ""
+                stateDraftHasUntil = false
+                return true
+            case .decisionOpened:
+                // Decision opened — close sheet but keep member visible.
+                isStateSheetPresented = false
+                stateDraftMembershipId = nil
+                stateDraftReason = ""
+                stateDraftHasUntil = false
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false
         }
+    }
+
+    /// Clears `lastGovernanceOutcome` after the UI has consumed it.
+    public func clearGovernanceOutcome() {
+        lastGovernanceOutcome = nil
     }
 
     // MARK: - Section routing

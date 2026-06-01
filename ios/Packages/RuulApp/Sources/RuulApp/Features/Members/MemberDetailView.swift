@@ -152,6 +152,15 @@ public struct MemberDetailView: View {
         .sheet(isPresented: $membersStore.isStateSheetPresented) {
             MembershipStateSheet(store: membersStore, groupId: groupId)
         }
+        .alert(
+            "Se abrió una votación",
+            isPresented: membershipDecisionOpenedBinding,
+            presenting: membershipDecisionOpenedFromOutcome
+        ) { _ in
+            Button("Entendido", role: .cancel) { membersStore.clearGovernanceOutcome() }
+        } message: { _ in
+            Text("Se abrió una decisión sobre la membresía. Se ejecutará cuando pase la votación.")
+        }
         .task {
             if let mid = item.membershipId {
                 await reputationStore.refreshIfNeeded(
@@ -357,6 +366,24 @@ public struct MemberDetailView: View {
             get: { decisionsStore?.isProposePresented ?? false },
             set: { newValue in decisionsStore?.isProposePresented = newValue }
         )
+    }
+
+    /// D.22 — surfaces `lastGovernanceOutcome.decisionOpened` for ban/remove
+    /// flows so the member sees an alert instead of a silent close.
+    private var membershipDecisionOpenedBinding: Binding<Bool> {
+        Binding(
+            get: { membershipDecisionOpenedFromOutcome != nil },
+            set: { newValue in
+                if !newValue { membersStore.clearGovernanceOutcome() }
+            }
+        )
+    }
+
+    private var membershipDecisionOpenedFromOutcome: DecisionOpenedDetails? {
+        if case .decisionOpened(let details) = membersStore.lastGovernanceOutcome {
+            return details
+        }
+        return nil
     }
 
     // MARK: - Identity

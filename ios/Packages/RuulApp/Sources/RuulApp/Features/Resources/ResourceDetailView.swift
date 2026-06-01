@@ -123,7 +123,11 @@ public struct ResourceDetailView: View {
             Button(role: .destructive) {
                 Task {
                     let ok = await store.archive(resourceId: resource.id, reason: nil, groupId: groupId)
-                    if ok { dismiss() }
+                    // Only dismiss when the action actually executed; on
+                    // `decisionOpened` the resource is still active.
+                    if ok, case .directAllowed = store.lastGovernanceOutcome {
+                        dismiss()
+                    }
                 }
             } label: {
                 Text(L10n.Resources.archive)
@@ -131,6 +135,15 @@ public struct ResourceDetailView: View {
             Button(role: .cancel) {} label: { Text(L10n.Resources.cancel) }
         } message: {
             Text(L10n.Resources.archiveConfirmMessage)
+        }
+        .alert(
+            "Se abrió una votación",
+            isPresented: detailDecisionOpenedBinding,
+            presenting: detailDecisionOpenedFromOutcome
+        ) { _ in
+            Button("Entendido", role: .cancel) { store.clearGovernanceOutcome() }
+        } message: { _ in
+            Text("Esta acción requiere decisión grupal. Se ejecutará cuando pase la votación.")
         }
         .confirmationDialog(
             Text(L10n.AssignCustodian.releaseConfirmTitle),
@@ -708,6 +721,25 @@ public struct ResourceDetailView: View {
                 }
             }
         }
+    }
+
+    /// D.22 — surfaces `lastGovernanceOutcome.decisionOpened` for archive
+    /// + transfer flows so the user sees an alert instead of a silent
+    /// non-action.
+    private var detailDecisionOpenedBinding: Binding<Bool> {
+        Binding(
+            get: { detailDecisionOpenedFromOutcome != nil },
+            set: { newValue in
+                if !newValue { store.clearGovernanceOutcome() }
+            }
+        )
+    }
+
+    private var detailDecisionOpenedFromOutcome: DecisionOpenedDetails? {
+        if case .decisionOpened(let details) = store.lastGovernanceOutcome {
+            return details
+        }
+        return nil
     }
 }
 

@@ -87,6 +87,50 @@ public struct CanonicalResourcesRepository: Sendable {
         }
     }
 
+    /// D.22 — governance-aware transfer. Routes through
+    /// `request_or_execute_action(actionKey='resource.transfer', …)`.
+    /// On `.directAllowed` performs the legacy `set_resource_ownership`
+    /// call; otherwise returns the outcome unmodified.
+    public func transferOwnershipViaGovernance(
+        groupId: UUID,
+        resourceId: UUID,
+        ownershipKind: ResourceOwnershipKind,
+        ownerMembershipId: UUID? = nil,
+        note: String? = nil
+    ) async throws -> ActionOutcome {
+        var payload: [String: RPCJSONValue] = [
+            "target_ownership_kind": .string(ownershipKind.rawValue)
+        ]
+        if let ownerMembershipId, ownershipKind == .member {
+            payload["target_membership_id"] = .string(ownerMembershipId.uuidString)
+        }
+        if let trimmed = note?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank {
+            payload["ownership_metadata"] = .object(["note": .string(trimmed)])
+        }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "resource.transfer",
+                targetKind: "resource",
+                targetId:   resourceId,
+                payload:    payload
+            )
+        )
+
+        if case .directAllowed = outcome {
+            try await transferOwnership(
+                resourceId: resourceId,
+                ownershipKind: ownershipKind,
+                ownerMembershipId: ownerMembershipId,
+                note: note
+            )
+        }
+        return outcome
+    }
+
     public func transferOwnership(
         resourceId: UUID,
         ownershipKind: ResourceOwnershipKind,

@@ -77,7 +77,7 @@ public struct ResourcesListView: View {
         ) { _ in
             Button("Entendido", role: .cancel) { store.clearGovernanceOutcome() }
         } message: { details in
-            Text("Se abrió una decisión para archivar el recurso. Se ejecutará cuando pase la votación.")
+            Text("Esta acción requiere decisión grupal. Se ejecutará cuando pase la votación.")
         }
         .task {
             await store.refreshIfNeeded(groupId: groupId)

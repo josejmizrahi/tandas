@@ -313,18 +313,38 @@ public final class ResourcesStore {
             return false
         }
         do {
-            try await repository.transferOwnership(
+            let outcome = try await repository.transferOwnershipViaGovernance(
+                groupId: groupId,
                 resourceId: resourceId,
                 ownershipKind: transferKind,
                 ownerMembershipId: transferOwnerMembershipId,
                 note: transferNote
             )
-            await refresh(groupId: groupId)
-            isTransferPresented = false
-            transferResourceId = nil
-            transferOwnerMembershipId = nil
-            transferNote = ""
-            return true
+            lastGovernanceOutcome = outcome
+            switch outcome {
+            case .directAllowed:
+                await refresh(groupId: groupId)
+                isTransferPresented = false
+                transferResourceId = nil
+                transferOwnerMembershipId = nil
+                transferNote = ""
+                return true
+            case .decisionOpened:
+                isTransferPresented = false
+                transferResourceId = nil
+                transferOwnerMembershipId = nil
+                transferNote = ""
+                return true
+            case .denied(let reason, let missingPermission):
+                errorMessage = missingPermission.map { "Falta permiso: \($0)" } ?? reason
+                return false
+            case .unsupported(let reason, _):
+                errorMessage = "Acción no soportada (\(reason))"
+                return false
+            case .failed(let reason, let message):
+                errorMessage = message ?? reason
+                return false
+            }
         } catch {
             errorMessage = UserFacingError.from(error).message
             return false
