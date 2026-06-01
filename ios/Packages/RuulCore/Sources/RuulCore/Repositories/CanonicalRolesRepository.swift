@@ -66,6 +66,79 @@ public struct CanonicalRolesRepository: Sendable {
             RevokeRoleFromMemberInput(membershipId: membershipId, roleId: roleId)
         )
     }
+
+    /// D.22 — governance-aware role.create. CONSTITUTIONAL → always opens
+    /// a decision. Sends key + name + description + permission_keys in
+    /// the payload so execute_decision can call create_custom_role when
+    /// the vote passes.
+    public func createCustomRoleViaGovernance(
+        groupId: UUID,
+        key: String,
+        name: String,
+        description: String?,
+        permissionKeys: [String]
+    ) async throws -> ActionOutcome {
+        let cleanedKey = key
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+        let cleanedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanedDesc = description?.trimmedOrNil
+        let sortedPerms = permissionKeys.sorted()
+
+        var payload: [String: RPCJSONValue] = [
+            "key":             .string(cleanedKey),
+            "name":            .string(cleanedName),
+            "permission_keys": .array(sortedPerms.map { .string($0) })
+        ]
+        if let cleanedDesc { payload["description"] = .string(cleanedDesc) }
+
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "role.create",
+                targetKind: "group",
+                targetId:   groupId,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            _ = try await rpc.createCustomRole(
+                CreateCustomRoleInput(
+                    groupId: groupId,
+                    key: cleanedKey,
+                    name: cleanedName,
+                    description: cleanedDesc,
+                    permissionKeys: sortedPerms
+                )
+            )
+        }
+        return outcome
+    }
+
+    /// D.22 — governance-aware role.update_permissions. CONSTITUTIONAL.
+    public func updateRolePermissionsViaGovernance(
+        groupId: UUID,
+        roleId: UUID,
+        permissionKeys: [String]
+    ) async throws -> ActionOutcome {
+        let sortedPerms = permissionKeys.sorted()
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "role.update_permissions",
+                targetKind: "role",
+                targetId:   roleId,
+                payload:    ["permission_keys": .array(sortedPerms.map { .string($0) })]
+            )
+        )
+        if case .directAllowed = outcome {
+            try await rpc.updateRolePermissions(
+                UpdateRolePermissionsInput(roleId: roleId, permissionKeys: sortedPerms)
+            )
+        }
+        return outcome
+    }
 }
 
 private extension String {

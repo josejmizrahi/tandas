@@ -49,4 +49,52 @@ public struct CanonicalDecisionRulesRepository: Sendable {
     public func history(groupId: UUID, limit: Int = 20) async throws -> [GroupGovernanceVersion] {
         try await rpc.groupGovernanceVersions(groupId: groupId, limit: limit)
     }
+
+    /// D.22 — governance-aware set. `group.decision_rules.set` is
+    /// CONSTITUTIONAL, so this always opens a decision (founder cannot
+    /// override). On the unlikely `.directAllowed` we still proceed with
+    /// the underlying RPC and return the result via the outcome.
+    public func setDecisionRulesViaGovernance(
+        groupId: UUID,
+        defaultMethod: DecisionMethod,
+        defaultLegitimacySource: LegitimacySource,
+        quorumMin: Int? = nil,
+        notes: String? = nil
+    ) async throws -> ActionOutcome {
+        let cleanedNotes: String? = {
+            guard let notes else { return nil }
+            let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }()
+        var payload: [String: RPCJSONValue] = [
+            "default_method": .string(defaultMethod.rawValue),
+            "default_legitimacy_source": .string(defaultLegitimacySource.rawValue),
+            "default_style": .string(defaultMethod.legacyStyle.rawValue)
+        ]
+        if let quorumMin {
+            payload["quorum_min"] = .number(Decimal(quorumMin))
+        }
+        if let cleanedNotes {
+            payload["notes"] = .string(cleanedNotes)
+        }
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "group.decision_rules.set",
+                targetKind: "group",
+                targetId:   groupId,
+                payload:    payload
+            )
+        )
+        if case .directAllowed = outcome {
+            _ = try await setDecisionRules(
+                groupId: groupId,
+                defaultMethod: defaultMethod,
+                defaultLegitimacySource: defaultLegitimacySource,
+                quorumMin: quorumMin,
+                notes: cleanedNotes
+            )
+        }
+        return outcome
+    }
 }

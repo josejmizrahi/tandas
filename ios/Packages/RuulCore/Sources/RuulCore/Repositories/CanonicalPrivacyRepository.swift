@@ -22,4 +22,27 @@ public struct CanonicalPrivacyRepository: Sendable {
         )
         return GroupVisibility(rawValue: raw) ?? visibility
     }
+
+    /// D.22 — governance-aware visibility set. CONSTITUTIONAL → always
+    /// opens a decision unless catalog is downgraded.
+    public func setVisibilityViaGovernance(
+        groupId: UUID,
+        visibility: GroupVisibility
+    ) async throws -> ActionOutcome {
+        let outcome = try await rpc.requestOrExecuteAction(
+            RequestOrExecuteActionParams(
+                groupId:    groupId,
+                actionKey:  "group.visibility.set",
+                targetKind: "group",
+                targetId:   groupId,
+                payload:    ["visibility": .string(visibility.rawValue)]
+            )
+        )
+        if case .directAllowed = outcome {
+            _ = try await rpc.setGroupVisibility(
+                SetGroupVisibilityInput(groupId: groupId, visibility: visibility.rawValue)
+            )
+        }
+        return outcome
+    }
 }
