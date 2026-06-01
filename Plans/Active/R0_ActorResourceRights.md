@@ -371,3 +371,59 @@ orphan_groups    = 0
 ```
 
 **Próximo:** R.0B Unified Resources. Pre-requisito ya cumplido (forward-sync activo); R.0B mig 0 ya no es necesaria.
+
+---
+
+### R.0B.0 — Legacy Resource Dependency Audit — SHIPPED 2026-06-01
+
+Discovery-only fase. Cero DDL. Ver `Plans/Active/R0B0_LegacyResourceDependencyAudit.md`.
+Commit `2326290d`. Resultado: GO para R.0B.1 con 1 condición founder (audit trigger Option A/B).
+
+---
+
+### R.0B.1 — Rename Layer + Compat Views — SHIPPED 2026-06-01
+
+Founder firmó **Opción B** ("audit replicado sobre compat view para mantener señal de legacy writes").
+
+**Migraciones aplicadas (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260601220010` | `r0b1_rename_resources_and_compat_layer` | **ATÓMICA.** ALTER TABLE RENAME ×4 (group_resources/owners/rights/capabilities → resources/owners/rights/capabilities) + CREATE 4 compat views con mismo nombre legacy + 12 INSTEAD OF triggers (3 per view). El INSERT trigger del view `group_resources` preserva `current_setting('ruul.resource_create_intent')` si está seteado por wrapper, o lo setea a `'legacy_view_write'` si viene NULL — el AFTER INSERT trigger sobre `resources` (movido por rename) captura con marker distintivo. |
+| `20260601220425` | `r0b1_smoke_compat_layer` | `_smoke_r0b1_compat_layer()` — 7 casos: INSERT directo→audit legacy_view_write, SELECT transparente, UPDATE propaga, archive propaga, wrapper intent preservado, RPC `create_group_resource` funciona vía compat sin saber del view, owners/rights/caps SELECT parity. |
+
+**Por qué atómica:** 26+ funciones writer hacen `INSERT INTO public.group_resources` en su `prosrc`. Si rename y view creation no son en la misma transacción, hay una ventana donde esas RPCs fallan con "relation does not exist".
+
+**DoD R.0B.1 — todos verdes:**
+
+- ✅ 4 tablas renombradas a nombres canónicos (`resources`, `resource_owners`, `resource_rights`, `resource_capabilities`)
+- ✅ 4 compat views con nombres legacy (`group_resources`, etc.) — INSTEAD OF I/U/D triggers redirigen
+- ✅ Audit D.24 P2B-1 **preservado** vía Option B: el INSTEAD OF INSERT del view propaga el intent_marker original o marca `'legacy_view_write'`
+- ✅ Smoke (`_smoke_r0b1_compat_layer`) verde — 7 casos
+- ✅ 78 funciones legacy que referencian las 4 tablas **siguen funcionando sin tocar su `prosrc`**
+- ✅ `create_group_resource` (la RPC original) demostradamente funciona vía compat layer
+- ✅ Data intacta: 85→91 rows post-smoke (smoke crea 6 archived); 77 owners, 2 rights, 0 capabilities unchanged
+
+**Hallazgos:**
+
+1. **`trg_resource_owner_no_delete` es FOR EACH STATEMENT** (no FOR EACH ROW). Bloquea CUALQUIER DELETE statement contra `resource_owners`, incluido cascade ON DELETE desde resources. Esto significa que **`DELETE FROM resources` solo funciona si no hay owners**. La convención es `UPDATE … SET archived_at = now()` (soft delete). Pre-existente, no es regresión R.0B.1.
+2. **Visibility whitelist:** `{'private','members','public'}`. No 'group' (usar 'members'). Pre-existente, descubierto durante smoke.
+3. **No regresión en wrappers P2A/P2B-1.y** — las 7 wrappers (`create_*_resource`) siguen funcionando porque delegan a `create_group_resource` que ahora escribe al compat view (que redirige).
+4. **Audit table grew correctly:** Pre R.0B.1: 1 row baseline. Post smoke: 7 rows. Marker distribution: 2 `legacy_view_write`, 1 `r0b1_smoke_custom_intent`, 3 wrapper intents, 1 baseline.
+
+**Post-state DB (verificado):**
+
+```
+resources               = 91   (85 pre + 6 smoke, 37 archived total)
+resource_owners         = 77   (sin cambio)
+resource_rights         = 2    (sin cambio)
+resource_capabilities   = 0    (sin cambio)
+group_resources_direct_insert_audit = 7   (1 baseline + 6 smoke)
+  legacy_view_write    : 2
+  r0b1_smoke_custom_intent : 1
+  otros (wrapper)      : 3 + 1 baseline
+```
+
+**Próximo:** R.0B.2 — `ALTER TABLE resources ALTER COLUMN group_id DROP NOT NULL` + `ADD COLUMN canonical_owner_actor_id uuid REFERENCES actors(id)` + backfill. **Compat view sigue funcional** durante R.0B.2 (los wrappers pueden seguir asumiendo `group_id NOT NULL` — los nuevos paths personales R.0E+ tendrán wrappers nuevos).
+
+**NO en R.0B.1:** migración cosmética de las 78 funciones a nombres canónicos (`resources` en vez de `group_resources` en su prosrc). Eso es R.0B.3+ — ola por ola con CREATE OR REPLACE, sin drop del compat view hasta que la última función migre.
