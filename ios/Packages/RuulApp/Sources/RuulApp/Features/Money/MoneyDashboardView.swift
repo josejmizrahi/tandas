@@ -25,6 +25,9 @@ struct MoneyDashboardView: View {
     @State private var pendingPaySanction: GroupSanction?
     /// V3 — pool balance del grupo, hidratado on appear.
     @State private var poolBalance: GroupPoolBalance?
+    /// D.22 audit — caller perms, used to gate the "Cobrar cuota" chip
+    /// (requires `pool_charge.record`, admin-only by default).
+    @State private var permissionKeys: [String]? = nil
 
     var body: some View {
         List {
@@ -60,6 +63,7 @@ struct MoneyDashboardView: View {
             await container.sanctionsStore.refreshIfNeeded(groupId: groupId)
             await container.movementsStore.refreshIfNeeded(groupId: groupId)
             await loadPoolBalance()
+            await loadPermissions()
         }
         .sheet(isPresented: $isShowingExpenseSheet) {
             RecordExpenseSheet(
@@ -596,12 +600,16 @@ struct MoneyDashboardView: View {
                     ) {
                         isShowingSettlementSheet = true
                     }
-                    actionChip(
-                        label: "Cobrar cuota",
-                        icon: "arrow.up.to.line.circle.fill",
-                        tint: .orange
-                    ) {
-                        isShowingPoolCharge = true
+                    // D.22 audit — pool_charge.record es admin-only por
+                    // default. Members no ven el chip (era tap-then-403).
+                    if permissionKeys?.contains("pool_charge.record") == true {
+                        actionChip(
+                            label: "Cobrar cuota",
+                            icon: "arrow.up.to.line.circle.fill",
+                            tint: .orange
+                        ) {
+                            isShowingPoolCharge = true
+                        }
                     }
                 }
                 .padding(.horizontal, 4)
@@ -649,6 +657,18 @@ struct MoneyDashboardView: View {
             poolBalance = try await container.moneyRepository.poolBalance(groupId: groupId)
         } catch {
             poolBalance = nil
+        }
+    }
+
+    /// D.22 audit — load caller permissions; silent on error.
+    private func loadPermissions() async {
+        do {
+            permissionKeys = try await container.groupRepository.listMemberPermissions(
+                groupId: groupId,
+                userId: nil
+            )
+        } catch {
+            permissionKeys = []
         }
     }
 

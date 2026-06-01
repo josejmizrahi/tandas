@@ -187,11 +187,19 @@ public struct GroupSettingsView: View {
     @ViewBuilder
     private var structureSection: some View {
         Section("Estructura") {
-            NavigationLink(value: GroupSettingsDestination.roles) {
-                Label("Roles y permisos", systemImage: "person.crop.circle.badge.checkmark")
+            // D.22 audit — gate "Roles y permisos" on `roles.manage`.
+            // Constitutional: solo founder.
+            if permissionKeys?.contains("roles.manage") == true {
+                NavigationLink(value: GroupSettingsDestination.roles) {
+                    Label("Roles y permisos", systemImage: "person.crop.circle.badge.checkmark")
+                }
             }
-            NavigationLink(value: GroupSettingsDestination.mandates) {
-                Label("Mandatos", systemImage: "signature")
+            // D.22 audit — Mandatos visible para quien pueda al menos
+            // solicitar (mandates.grant) o ver/leer la lista (members).
+            if permissionKeys?.contains("mandates.grant") == true {
+                NavigationLink(value: GroupSettingsDestination.mandates) {
+                    Label("Mandatos", systemImage: "signature")
+                }
             }
             // V3-D.17 — engine settings row gated on `engine.toggle`.
             // Hidden entirely (no tap-and-error) when the caller lacks
@@ -212,17 +220,25 @@ public struct GroupSettingsView: View {
             NavigationLink(value: GroupSettingsDestination.notifications) {
                 Label(L10n.GroupSettings.notificationsRow, systemImage: "bell")
             }
-            NavigationLink(value: GroupSettingsDestination.privacy) {
-                Label(L10n.GroupSettings.privacyRow, systemImage: "lock")
+            // D.22 audit — Privacy entry is constitutional. Members
+            // CAN open the decision (solicitar) but only founders/admin
+            // should see the picker. Hide for members.
+            if permissionKeys?.contains("group.update") == true {
+                NavigationLink(value: GroupSettingsDestination.privacy) {
+                    Label(L10n.GroupSettings.privacyRow, systemImage: "lock")
+                }
             }
             Button(role: .destructive) {
                 isConfirmingLeave = true
             } label: {
                 Label(L10n.GroupSettings.leaveRow, systemImage: "rectangle.portrait.and.arrow.right")
             }
-            NavigationLink(value: GroupSettingsDestination.dissolution) {
-                Label(L10n.GroupSettings.dissolveRow, systemImage: "xmark.octagon")
-                    .foregroundStyle(.red)
+            // D.22 audit — Dissolution gated on `group.dissolve`.
+            if permissionKeys?.contains("group.dissolve") == true {
+                NavigationLink(value: GroupSettingsDestination.dissolution) {
+                    Label(L10n.GroupSettings.dissolveRow, systemImage: "xmark.octagon")
+                        .foregroundStyle(.red)
+                }
             }
         }
     }
