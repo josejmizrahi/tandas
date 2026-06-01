@@ -221,8 +221,10 @@ public struct MembersListView: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
             }
+            // D.24.1: rely on `.borderedProminent`'s default app accent
+            // tint instead of a hardcoded `.green`. Reject relies on
+            // `role: .destructive` to derive its destructive semantic.
             .buttonStyle(.borderedProminent)
-            .tint(.green)
 
             Button(role: .destructive) {
                 handleReject(membershipId: membershipId)

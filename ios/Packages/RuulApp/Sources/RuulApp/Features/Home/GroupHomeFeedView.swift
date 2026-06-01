@@ -277,6 +277,15 @@ struct GroupHomeFeedView: View {
     private var attentionItems: [AttentionItem] {
         var result: [AttentionItem] = []
 
+        // D.24.1: pending join requests surface first — admins need them
+        // visible without leaving Inicio. Visible to every member; the
+        // approve/reject pills in MembersListView are gated server-side
+        // (non-admins see a 42501 if they try to act).
+        for member in container.membersStore.items
+        where member.kind == .membership && member.status == .requested {
+            result.append(.pendingRequest(member))
+        }
+
         // Open decisions where the caller hasn't cast a vote yet.
         for decision in container.decisionsStore.open where decision.myVoteValue == nil {
             result.append(.decisionNeedsVote(decision))
@@ -435,6 +444,8 @@ struct GroupHomeFeedView: View {
             pendingDecisionDetail = summary
         case .sanctionOnMe(let sanction):
             pendingSanctionDetail = sanction
+        case .pendingRequest(let member):
+            pendingMemberSelection = member
         }
     }
 
@@ -456,6 +467,9 @@ struct GroupHomeFeedView: View {
         await container.decisionsStore.refresh(groupId: group.id)
         await container.sanctionsStore.refresh(groupId: group.id)
         await container.eventsStore.refresh(groupId: group.id)
+        // D.24.1: keep `requested` memberships hydrated so the
+        // attention cluster can surface pending join requests.
+        await container.membersStore.refresh(groupId: group.id)
         // V2-G8.1: cheap aggregate, drives the engine banner.
         await container.ruleEvaluationsStore.refreshSummary(groupId: group.id)
     }
@@ -465,11 +479,17 @@ struct GroupHomeFeedView: View {
     enum AttentionItem: Identifiable, Hashable {
         case decisionNeedsVote(GroupDecisionSummary)
         case sanctionOnMe(GroupSanction)
+        /// D.24.1 — pending join request awaiting admin/group action.
+        /// Tap pushes the requester's MemberDetailView; the inline
+        /// Aprobar/Rechazar pills in MembersListView remain the
+        /// primary action surface.
+        case pendingRequest(MembershipBoundaryItem)
 
         var id: String {
             switch self {
             case .decisionNeedsVote(let d): return "decision:\(d.id.uuidString)"
             case .sanctionOnMe(let s):      return "sanction:\(s.id.uuidString)"
+            case .pendingRequest(let m):    return "request:\(m.id.uuidString)"
             }
         }
     }
@@ -526,6 +546,7 @@ private struct AttentionRow: View {
         switch item {
         case .decisionNeedsVote:  return "checkmark.seal"
         case .sanctionOnMe:       return "exclamationmark.shield"
+        case .pendingRequest:     return "person.crop.circle.badge.questionmark"
         }
     }
 
@@ -535,6 +556,8 @@ private struct AttentionRow: View {
             return "Falta tu voto: \(d.title)"
         case .sanctionOnMe(let s):
             return "Sanción para ti: \(s.reason)"
+        case .pendingRequest(let m):
+            return "\(m.displayName) quiere entrar"
         }
     }
 
@@ -550,6 +573,8 @@ private struct AttentionRow: View {
                 return "Multa de \(amount.formatted()) MXN"
             }
             return nil
+        case .pendingRequest:
+            return "Tap para revisar la solicitud"
         }
     }
 }
