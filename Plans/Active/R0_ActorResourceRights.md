@@ -492,4 +492,68 @@ group_resources (compat) = 92 (filtra el personal)
 2. **INSTEAD OF triggers sobreviven CREATE OR REPLACE VIEW** automáticamente (atados al view por nombre + función). Solo tuve que `CREATE OR REPLACE FUNCTION` el INSERT y UPDATE para extender semantica.
 3. **R.0C entry point claro:** el sync de `canonical_owner_actor_id` desde `resource_rights.OWN` (que será la autoridad) llega como trigger AFTER INSERT/UPDATE/DELETE en resource_rights cuando R.0C esté listo.
 
-**Próximo:** R.0C — Resource Rights. Whitelist 15 right_kinds + `holder_actor_id` (en vez de holder_membership_id) + RPCs `grant_right`/`revoke_right`/`actor_has_right` + backfill ownership de `resource_owners` (OWN rights con percent) + sync trigger `canonical_owner_actor_id ← OWN-mayor-percent`.
+**Próximo:** R.0C — Resource Rights. **Founder lo partió en 2 slices:**
+- R.0C.1 — Rights Actor Holder Retrofit (additive: holder_actor_id + backfill desde membership)
+- R.0C.2 — Ownership Rights + Whitelist + RPCs
+
+---
+
+### R.0C.1 — Rights Actor Holder Retrofit — SHIPPED 2026-06-01
+
+Scope estricto (founder): solo agregar `holder_actor_id` + backfill desde `holder_membership_id` + defensive trigger + índices. **NO** whitelist nuevo, **NO** backfill OWN, **NO** RPCs nuevas, **NO** sync trigger canonical.
+
+**Preflight verde:**
+- 2 resource_rights existentes
+- 2 con holder_membership_id NOT NULL
+- 2 resolubles vía group_memberships → user_id → actor person (R.0A.1 forward-sync confirmed)
+- holder_actor_id no existía
+
+**Migraciones aplicadas (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260601233745` | `r0c1_resource_rights_holder_actor_id_retrofit` | ADD COLUMN holder_actor_id FK actors + partial index + backfill 2/2 desde membership.user_id + BEFORE INSERT/UPDATE OF holder_membership_id trigger defensive (`_resource_rights_derive_holder_actor_id`) + refresh compat view + update INSTEAD OF triggers forward holder_actor_id |
+| `20260601234121` | `r0c1_smoke_holder_actor_retrofit` (final) | `_smoke_r0c1_holder_actor_retrofit()` 5 casos verde |
+
+**Smoke 5 casos verdes:**
+1. ✅ Existing rights backfilleados — holder_actor_id = membership.user_id en 2/2
+2. ✅ INSERT via compat view con solo membership_id → defensive trigger deriva holder_actor_id
+3. ✅ INSERT con holder_actor_id explícito → preservado (no sobrescribir aunque membership exista)
+4. ✅ INSERT directo en resource_rights con holder_actor_id, sin membership → permitido (path actor-aware futuro)
+5. ✅ UPDATE de holder_membership_id (con holder_actor_id=NULL en el mismo UPDATE) → re-derive correcta
+
+**Hallazgos críticos para R.0C.2 (blockers documentados):**
+
+El smoke necesitó 4 iteraciones porque la tabla `resource_rights` tiene 3 constraints pre-existentes que **chocan con el universal rights doctrine de R.0:**
+
+1. **`assert_resource_type` trigger** — fuerza que el parent resource tenga `resource_type='right'`. Es decir, `resource_rights` es el **subtype polimórfico** de resources de tipo "right" (rights-as-resources, ej. "Derecho a usar el salón"). NO es la tabla universal de derechos.
+2. **`right_kind` whitelist actual** = `{access, membership, seat, benefit, other}` — completamente diferente del whitelist doctrinal R.0 = `{OWN, USE, MANAGE, SELL, TRANSFER, GOVERN, BENEFICIARY, PLEDGE, LIEN, LEASE, COLLECT_INCOME, PAY_EXPENSES, AUDIT, APPROVE, VIEW}`.
+3. **PRIMARY KEY = `(resource_id)`** — UNA right por resource. El universal rights system necesita múltiples rights por resource (Jose OWN + Quimibond USE + Papá MANAGE = 3 rights al mismo terreno).
+
+**R.0C.2 decisión doctrinal pendiente (founder):**
+- **Opción A — Migrar:** Drop `assert_resource_type` para resource_rights + expandir whitelist + cambiar PK a `(resource_id, right_kind, holder_actor_id)`. Las 2 filas existentes (access + access) se quedan como sub-set semánticamente válido (access ∈ whitelist nuevo).
+- **Opción B — Coexistir:** Mantener resource_rights como subtype 1:1 + crear nueva tabla `actor_resource_rights` para universal. Doctrinalmente choca con "no debe existir mundo paralelo".
+- **Opción C — Renombrar:** Renombrar la tabla actual (e.g., `resource_right_subtype`) y crear nueva `resource_rights` con shape universal.
+
+R.0C.1 NO toca ninguna de estas decisiones — solo agrega `holder_actor_id` que será útil bajo cualquier camino.
+
+**DoD R.0C.1 todos verdes:**
+- ✅ holder_actor_id column exists con FK actors + partial index
+- ✅ Backfill 2/2 (100%)
+- ✅ Defensive BEFORE INSERT/UPDATE trigger activo (self-healing)
+- ✅ Compat view group_resource_rights expone nueva columna
+- ✅ INSTEAD OF triggers forward holder_actor_id
+- ✅ Smoke 5 casos verde
+- ✅ Cero RPCs preexistentes modificadas
+- ✅ Cero iOS
+
+**Post-state DB:**
+
+```
+resource_rights         = 2 (sin cambio)
+  con holder_actor_id   = 2 (100% backfilled)
+  con holder_membership = 2 (compat preservada)
+  consistent pairs      = 2 (holder_actor_id = membership.user_id)
+```
+
+**Próximo:** R.0C.2 — pendiente decisión founder sobre Opción A/B/C (universal rights table strategy). Mientras tanto, R.0C.1 NO bloquea otras fases (R.0D Relationship Graph puede arrancar en paralelo si se desea).
