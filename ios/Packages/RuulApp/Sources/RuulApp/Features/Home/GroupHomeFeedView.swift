@@ -1370,6 +1370,11 @@ private struct DecisionVoteCard: View {
                 voteButton(.no,      label: "No",       systemImage: "xmark.circle.fill",     tint: nil,        role: .destructive)
                 voteButton(.abstain, label: "Abstener", systemImage: "minus.circle",          tint: nil,        role: nil)
             }
+            if decision.myVoteValue != nil {
+                Text("Puedes cambiar tu voto hasta que cierre la decisión.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(.vertical, 8)
     }
@@ -1433,6 +1438,10 @@ private struct DecisionVoteCard: View {
         role: ButtonRole?
     ) -> some View {
         let isSelected = decision.myVoteValue == value
+        // Voted → prominent (sólido con color del dominio + ícono blanco).
+        // Not voted → bordered (outline con tint). Las tres opciones siguen
+        // tappable siempre; tocar otra cambia el voto (cast_vote es append-
+        // only y el tally usa el más reciente).
         let content = Button(role: role) {
             onVote(value)
         } label: {
@@ -1443,11 +1452,7 @@ private struct DecisionVoteCard: View {
                 .frame(maxWidth: .infinity)
         }
         .tint(tint)
-        .opacity(decision.myVoteValue == nil || isSelected ? 1 : 0.5)
 
-        // Voted → prominent (sólido con color del dominio + ícono blanco).
-        // Not voted → bordered (outline con tint). Apple-native pattern para
-        // "selected state": el voto activo se vuelve la acción primaria.
         if isSelected {
             content.buttonStyle(.borderedProminent)
         } else {
