@@ -1537,6 +1537,8 @@ public enum L10n {
         public static let proposeReferenceRequired = LocalizedStringResource("decisions.propose.reference.required", defaultValue: "Elige a qué se refiere esta decisión.")
         // D.20.1 — Reinstate-banned proposal (pre-filled draft)
         public static let proposeReinstateTitle    = LocalizedStringResource("decisions.propose.reinstate.title",    defaultValue: "Reinstalar miembro")
+        // D.24 — Accept-join-request proposal (pre-filled draft)
+        public static let proposeAcceptTitle       = LocalizedStringResource("decisions.propose.accept.title",       defaultValue: "Aceptar nuevo miembro")
 
         // Propose-side reference picker (V2-G2 sub-slice 3)
         public static let proposeReferenceSanctionSection = LocalizedStringResource("decisions.propose.reference.sanction.section", defaultValue: "¿Qué sanción?")

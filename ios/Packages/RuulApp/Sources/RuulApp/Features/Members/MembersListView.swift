@@ -63,9 +63,37 @@ public struct MembersListView: View {
             // toolbar button — the production app always passes a
             // container so the canonical sheet always presents.
         }
+        .sheet(isPresented: proposeAcceptSheetBinding) {
+            if let container {
+                ProposeDecisionSheet(
+                    store: container.decisionsStore,
+                    groupId: groupId,
+                    sanctionsStore: nil,
+                    mandatesStore: nil,
+                    membersStore: store,
+                    rulesStore: nil,
+                    decisionsRepository: container.decisionsRepository
+                )
+            }
+        }
         .task {
             await store.refreshIfNeeded(groupId: groupId)
+            // D.24: keep boundary policy fresh so the inline Aprobar
+            // button knows whether to direct-approve or open a vote.
+            if let container {
+                await container.boundaryPolicyStore.refreshIfNeeded(groupId: groupId)
+            }
         }
+    }
+
+    /// D.24 — sheet binding piggybacking on `DecisionsStore.isProposePresented`
+    /// so the same source-of-truth that drives the rest of the propose-decision
+    /// surface dismisses cleanly when the user cancels/saves.
+    private var proposeAcceptSheetBinding: Binding<Bool> {
+        Binding(
+            get: { container?.decisionsStore.isProposePresented ?? false },
+            set: { container?.decisionsStore.isProposePresented = $0 }
+        )
     }
 
     @ViewBuilder
@@ -141,7 +169,25 @@ public struct MembersListView: View {
 
     @ViewBuilder
     private func rowFor(_ item: MembershipBoundaryItem) -> some View {
-        if item.kind == .membership, onSelectMember != nil, item.membershipId != nil {
+        if item.kind == .membership, item.status == .requested, let mid = item.membershipId {
+            // D.24: Instagram-style — visible Aprobar + Rechazar pills
+            // beneath the member row. Tap of the member row still pushes
+            // detail when a selection handler is present.
+            VStack(alignment: .leading, spacing: 10) {
+                if onSelectMember != nil {
+                    Button {
+                        onSelectMember?(item)
+                    } label: {
+                        MemberRowView(item: item)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    MemberRowView(item: item)
+                }
+                requestActionButtons(for: mid)
+            }
+            .padding(.vertical, 4)
+        } else if item.kind == .membership, onSelectMember != nil, item.membershipId != nil {
             Button {
                 onSelectMember?(item)
             } label: {
@@ -151,14 +197,59 @@ public struct MembersListView: View {
             .pendingInviteSwipeAction(for: item) { invite in
                 pendingRevoke = invite
             }
-            .approveRequestSwipeAction(for: item, store: store, groupId: groupId)
         } else {
             MemberRowView(item: item)
                 .pendingInviteSwipeAction(for: item) { invite in
                     pendingRevoke = invite
                 }
-                .approveRequestSwipeAction(for: item, store: store, groupId: groupId)
         }
+    }
+
+    /// D.24 — Aprobar / Rechazar pills for a pending join request.
+    /// Aprobar routes by `boundary_policy.requires_approval`:
+    /// - false → direct `approve_membership_request` (admin auto-approves)
+    /// - true  → opens `ProposeDecisionSheet` pre-filled with
+    ///   `decision.membership_accept` so the group votes the new member in.
+    /// Rechazar moves the membership to `left` with a canned reason.
+    @ViewBuilder
+    private func requestActionButtons(for membershipId: UUID) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                handleApprove(membershipId: membershipId)
+            } label: {
+                Label(L10n.Members.approveRequestAction, systemImage: "checkmark")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+
+            Button(role: .destructive) {
+                handleReject(membershipId: membershipId)
+            } label: {
+                Label(L10n.Members.rejectRequestAction, systemImage: "xmark")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private func handleApprove(membershipId: UUID) {
+        guard let container else {
+            Task { _ = await store.approveRequest(membershipId: membershipId, groupId: groupId) }
+            return
+        }
+        let requiresApproval = container.boundaryPolicyStore.policy?.requiresApproval ?? false
+        if requiresApproval {
+            container.decisionsStore.beginProposingMembershipAccept(membershipId: membershipId)
+        } else {
+            Task { _ = await store.approveRequest(membershipId: membershipId, groupId: groupId) }
+        }
+    }
+
+    private func handleReject(membershipId: UUID) {
+        Task { _ = await store.rejectRequest(membershipId: membershipId, groupId: groupId) }
     }
 
     /// V3-INV: a queued revoke confirmation. `inviteId` lives on the
@@ -200,32 +291,10 @@ private extension View {
         }
     }
 
-    /// D.24: surfaces a leading "Aprobar" swipe action for rows that
-    /// represent pending join requests (`status == .requested`). Fires
-    /// `MembersStore.approveRequest(...)` which RPCs
-    /// `approve_membership_request` — backend re-asserts the
-    /// `members.invite` permission, so non-admins see a 42501 from the
-    /// store error path. UI gating by caller perms is deferred until
-    /// MembersListView loads permissions itself.
-    @ViewBuilder
-    func approveRequestSwipeAction(
-        for item: MembershipBoundaryItem,
-        store: MembersStore,
-        groupId: UUID
-    ) -> some View {
-        if item.kind == .membership, item.status == .requested, let mid = item.membershipId {
-            self.swipeActions(edge: .leading) {
-                Button {
-                    Task { _ = await store.approveRequest(membershipId: mid, groupId: groupId) }
-                } label: {
-                    Label(L10n.Members.approveRequestAction, systemImage: "checkmark.circle")
-                }
-                .tint(.green)
-            }
-        } else {
-            self
-        }
-    }
+    // D.24 (Instagram-style): swipe-approve removed in favor of visible
+    // inline pills rendered by `requestActionButtons(for:)` in the
+    // MembersListView body. Reject also routes through that view's
+    // `handleReject(membershipId:)` → `store.rejectRequest(...)`.
 }
 
 // MARK: - Preview placeholder

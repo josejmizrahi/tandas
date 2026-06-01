@@ -223,6 +223,34 @@ public final class MembersStore {
         }
     }
 
+    /// D.24 — direct `set_membership_state` call without going through the
+    /// state sheet draft. Used by the inline "Rechazar" pill in the
+    /// requests cluster. Backend gates per target state (left requires
+    /// `members.remove` OR self), so admins can reject and the requester
+    /// themselves can withdraw via the same path.
+    @discardableResult
+    public func rejectRequest(
+        membershipId: UUID,
+        groupId: UUID,
+        reason: String? = "Solicitud rechazada"
+    ) async -> Bool {
+        guard let repository else { return false }
+        do {
+            try await repository.setMembershipState(
+                membershipId: membershipId,
+                newState: .left,
+                reason: reason,
+                until: nil
+            )
+            await refresh(groupId: groupId)
+            errorMessage = nil
+            return true
+        } catch {
+            errorMessage = UserFacingError.from(error).message
+            return false
+        }
+    }
+
     // MARK: - Membership state (Primitiva 2)
 
     /// Drives `MembershipStateSheet`. Caller decides the target state

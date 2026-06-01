@@ -329,6 +329,25 @@ public final class DecisionsStore {
         draftTitle = String(localized: L10n.Decisions.proposeReinstateTitle)
     }
 
+    /// V3-D.24 — opens the propose sheet pre-filled for "accept join
+    /// request" when the group's boundary policy has
+    /// `requires_approval=true` (membership requires collective vote
+    /// before becoming active). Uses `decision.membership_accept`
+    /// template (execution_mode=auto), so a passed vote automatically
+    /// calls `set_membership_state(reference_id, 'active', …)` and the
+    /// new member joins without admin follow-up.
+    public func beginProposingMembershipAccept(
+        membershipId: UUID,
+        defaults: GroupDecisionRules? = nil
+    ) {
+        beginProposing(defaults: defaults)
+        draftTemplateKey = "decision.membership_accept"
+        draftType = .membership
+        draftReferenceId = membershipId
+        draftMembershipTargetState = .active
+        draftTitle = String(localized: L10n.Decisions.proposeAcceptTitle)
+    }
+
     public func addDraftOption() {
         draftOptions.append(DraftOption())
     }
