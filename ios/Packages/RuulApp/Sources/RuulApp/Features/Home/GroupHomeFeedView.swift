@@ -7,20 +7,20 @@ import RuulCore
 /// clusters per `doctrine_group_space_situational`.
 ///
 /// Cluster order is canonical and fixed; each cluster is invisible
-/// when empty:
+/// when empty. Full grammar per doctrine (A.1):
 ///
 ///     1. Necesita atención  (decisions sin tu voto, sanciones que te
-///        afectan, foundation incompleta)
+///        afectan, pending join requests)
 ///     2. Próximo            (decisions que cierran pronto)
-///     3. Acabó de pasar     (system_events recientes del grupo)
-///
-/// The `Deudas` and `En uso` clusters from the canonical doctrine are
-/// scaffolded but not yet wired here — they appear empty/invisible
-/// until follow-ups load their data sources. See doctrine §
-/// "Implementation status".
+///     3. Deudas             (obligations vivas del caller — pago directo)
+///     4. Dinero reciente    (últimos N money_movements del grupo)
+///     5. En uso             (recursos con actividad reciente)
+///     6. Acabó de pasar     (system_events recientes del grupo)
 ///
 /// Foundation status stays at the very top while the group isn't ready
 /// — admins/founders need a single tap into the missing primitive.
+/// Engine banner (V2-G8.1) flota entre foundation y atención cuando
+/// hubo evaluaciones en las últimas 24h.
 struct GroupHomeFeedView: View {
     let container: DependencyContainer
     let group: GroupListItem
@@ -40,6 +40,11 @@ struct GroupHomeFeedView: View {
     @State private var pushEngineEvaluations = false
     /// V2-G8.2 — drives the "¿Por qué pasó esto?" sheet from history rows.
     @State private var pendingWhyEvent: GroupEvent?
+    /// A.1 — Dinero reciente cluster tap → MoneyMovementDetailView.
+    @State private var pendingMovementDetail: MoneyMovement?
+    /// A.1 — En uso cluster tap → ResourceDetailView (resuelto desde
+    /// `resourcesStore.resources` por id).
+    @State private var pendingResourceDetail: GroupResource?
 
     var body: some View {
         List {
@@ -48,11 +53,21 @@ struct GroupHomeFeedView: View {
             attentionSection
             upcomingSection
             debtsSection
+            moneyRecentSection
+            inUseSection
             recentlyHappenedSection
         }
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)
         .overlay { emptyOverlay }
+        // A.2 — smooth cluster appearance/disappearance instead of
+        // hard jumps when refresh hydrates a previously-empty cluster.
+        .animation(.smooth, value: attentionItems.count)
+        .animation(.smooth, value: upcomingItems.count)
+        .animation(.smooth, value: debtItems.count)
+        .animation(.smooth, value: recentMovements.count)
+        .animation(.smooth, value: inUseRows.count)
+        .animation(.smooth, value: recentEvents.count)
         .navigationDestination(item: $pendingMemberSelection) { item in
             MemberDetailView(
                 sanctionsStore: container.sanctionsStore,
@@ -116,6 +131,34 @@ struct GroupHomeFeedView: View {
         }
         .sheet(item: $pendingWhyEvent) { event in
             WhyDidThisHappenSheet(container: container, event: event)
+        }
+        .navigationDestination(item: $pendingMovementDetail) { movement in
+            MoneyMovementDetailView(
+                movement: movement,
+                myMembershipId: group.membershipId,
+                mandatesStore: container.mandatesStore,
+                onSelectMember: { membershipId in
+                    if let item = container.membersStore.items.first(where: {
+                        $0.membershipId == membershipId
+                    }) {
+                        pendingMemberSelection = item
+                    }
+                }
+            )
+        }
+        .navigationDestination(item: $pendingResourceDetail) { resource in
+            ResourceDetailView(
+                store: container.resourcesStore,
+                membersStore: container.membersStore,
+                groupId: group.id,
+                resource: resource,
+                permissionsFetcher: { gid in
+                    try await container.groupRepository.listMemberPermissions(
+                        groupId: gid,
+                        userId: nil
+                    )
+                }
+            )
         }
         .navigationDestination(isPresented: $pushEngineEvaluations) {
             RuleEvaluationsView(
@@ -372,12 +415,80 @@ struct GroupHomeFeedView: View {
             .sorted { $0.amountOutstanding > $1.amountOutstanding }
     }
 
+    // MARK: - Dinero reciente
+
+    /// A.1 — últimos N movimientos del grupo (cualquier participante),
+    /// para que cada miembro vea el pulso económico al abrir Home.
+    /// Tap → MoneyMovementDetailView via navigation destination.
+    @ViewBuilder
+    private var moneyRecentSection: some View {
+        let items = recentMovements
+        if !items.isEmpty {
+            Section("Dinero reciente") {
+                ForEach(items) { movement in
+                    MoneyRecentRow(movement: movement) {
+                        pendingMovementDetail = movement
+                    }
+                }
+            }
+        }
+    }
+
+    private var recentMovements: [MoneyMovement] {
+        Array(container.movementsStore.movements.prefix(3))
+    }
+
     // MARK: - En uso
 
-    // Currently invisible — Foundation has no checkout/booking
-    // infrastructure (assets in custody, spaces occupied). Once those
-    // ship the cluster wires here against a polymorphic
-    // `[InUseProjection]` source per doctrine §"Implementation status".
+    /// A.1 — recursos con actividad reciente (últimas ~2 semanas)
+    /// extraído de `group_events` filtrado a `entity_kind='resource'`.
+    /// Dedup por resource id (último evento gana). Tap → ResourceDetailView
+    /// resolviendo el recurso desde resourcesStore. Cluster invisible
+    /// si no hay actividad.
+    @ViewBuilder
+    private var inUseSection: some View {
+        let items = inUseRows
+        if !items.isEmpty {
+            Section("En uso") {
+                ForEach(items) { row in
+                    InUseRow(row: row) {
+                        if let resource = container.resourcesStore.resources.first(
+                            where: { $0.id == row.resourceId }
+                        ) {
+                            pendingResourceDetail = resource
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var inUseRows: [InUseRowData] {
+        let cutoff = Date().addingTimeInterval(-14 * 24 * 3600)
+        var seen: Set<UUID> = []
+        var rows: [InUseRowData] = []
+        for event in container.eventsStore.events {
+            guard event.entityKind == "resource",
+                  let resourceId = event.entityId,
+                  let occurredAt = event.occurredAt,
+                  occurredAt > cutoff else { continue }
+            if seen.contains(resourceId) { continue }
+            seen.insert(resourceId)
+            let resourceName = container.resourcesStore.resources
+                .first(where: { $0.id == resourceId })?.name
+                ?? event.summary
+                ?? "Recurso"
+            rows.append(InUseRowData(
+                id: event.id,
+                resourceId: resourceId,
+                resourceName: resourceName,
+                eventType: event.eventType,
+                occurredAt: occurredAt
+            ))
+            if rows.count >= 5 { break }
+        }
+        return rows
+    }
 
     // MARK: - Acabó de pasar
 
@@ -413,7 +524,10 @@ struct GroupHomeFeedView: View {
         let upcomingEmpty = upcomingItems.isEmpty
         let debtsEmpty = debtItems.isEmpty
         let recentEmpty = recentEvents.isEmpty
-        if isReady, attentionEmpty, upcomingEmpty, debtsEmpty, recentEmpty {
+        let moneyRecentEmpty = recentMovements.isEmpty
+        let inUseEmpty = inUseRows.isEmpty
+        if isReady, attentionEmpty, upcomingEmpty, debtsEmpty,
+           moneyRecentEmpty, inUseEmpty, recentEmpty {
             VStack(spacing: 16) {
                 Image(systemName: "person.3.sequence")
                     .font(.system(size: 48))
@@ -489,6 +603,9 @@ struct GroupHomeFeedView: View {
         await container.membersStore.refresh(groupId: group.id)
         // V2-G8.1: cheap aggregate, drives the engine banner.
         await container.ruleEvaluationsStore.refreshSummary(groupId: group.id)
+        // A.1: Dinero reciente + En uso fuentes.
+        await container.movementsStore.refresh(groupId: group.id)
+        await container.resourcesStore.refresh(groupId: group.id)
     }
 
     // MARK: - Cluster item enums
@@ -519,6 +636,17 @@ struct GroupHomeFeedView: View {
             case .decisionClosing(let d): return "decision:\(d.id.uuidString)"
             }
         }
+    }
+
+    /// A.1 — denormalized "En uso" row: one per resource with recent
+    /// activity, pre-resolved name + last event_type + timestamp for
+    /// compact display.
+    struct InUseRowData: Identifiable, Hashable {
+        let id: UUID            // last event id
+        let resourceId: UUID
+        let resourceName: String
+        let eventType: String
+        let occurredAt: Date
     }
 
     // MARK: - Navigation tokens
@@ -699,6 +827,153 @@ private struct DebtRow: View {
             return "Págale al grupo"
         default:
             return "Págale a \(obligation.owedToLabel)"
+        }
+    }
+}
+
+// MARK: - A.1 cluster rows (Dinero reciente + En uso)
+
+private struct MoneyRecentRow: View {
+    let movement: MoneyMovement
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(headline)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(amountString)
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if let when = movement.when {
+                    Text(when.formatted(.relative(presentation: .named)))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var amountString: String {
+        "\(movement.amount.formatted()) \(movement.unit)"
+    }
+
+    private var icon: String {
+        switch movement.type {
+        case .expense:           return "arrow.up.right.circle"
+        case .settlementPayment: return "checkmark.circle"
+        case .finePayment:       return "checkmark.shield"
+        case .contribution:      return "arrow.down.to.line.circle"
+        case .poolCharge:        return "creditcard"
+        case .bookingCharge:     return "calendar.badge.clock"
+        case .payout:            return "arrow.up.forward.circle"
+        case .reversal:          return "arrow.uturn.backward.circle"
+        case .income, .transfer, .refund, .adjustment, .allocation, .other:
+            return "circle"
+        }
+    }
+
+    private var tint: Color {
+        switch movement.type {
+        case .expense:           return .accentColor
+        case .settlementPayment: return .green
+        case .finePayment:       return .green
+        case .contribution:      return .green
+        case .poolCharge:        return .orange
+        case .bookingCharge:     return .orange
+        case .payout:            return .blue
+        case .reversal:          return .red
+        case .income, .transfer, .refund, .adjustment, .allocation, .other:
+            return .secondary
+        }
+    }
+
+    /// Per doctrine_money_two_worlds: "money strings say WHO".
+    private var headline: String {
+        let who = movement.paidByDisplayName
+            ?? movement.fromDisplayName
+            ?? movement.recordedByDisplayName
+            ?? "Alguien"
+        switch movement.type {
+        case .expense:           return "\(who) registró un gasto"
+        case .settlementPayment: return "\(who) pagó"
+        case .finePayment:       return "\(who) pagó una multa"
+        case .contribution:      return "\(who) aportó"
+        case .poolCharge:        return "Cuota a \(movement.toDisplayName ?? "miembro")"
+        case .bookingCharge:     return "Cargo por reserva"
+        case .payout:            return "Payout a \(movement.toDisplayName ?? "miembro")"
+        case .reversal:          return "Reversión"
+        case .income, .transfer, .refund, .adjustment, .allocation, .other:
+            return movement.description ?? "Movimiento"
+        }
+    }
+}
+
+private struct InUseRow: View {
+    let row: GroupHomeFeedView.InUseRowData
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.resourceName)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(row.occurredAt.formatted(.relative(presentation: .named)))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var icon: String {
+        // Heuristic by event verb. Falls back to generic resource icon.
+        if row.eventType.contains("book")        { return "calendar.badge.clock" }
+        if row.eventType.contains("slot")        { return "person.crop.square.badge.video" }
+        if row.eventType.contains("lock")        { return "lock" }
+        if row.eventType.contains("custodian")   { return "person.crop.circle.badge.checkmark" }
+        if row.eventType.contains("right")       { return "key" }
+        if row.eventType.contains("condition")   { return "exclamationmark.triangle" }
+        if row.eventType.contains("valuation")   { return "scalemass" }
+        return "square.stack.3d.up"
+    }
+
+    private var detail: String {
+        // Humanize the event_type for the secondary line.
+        switch row.eventType {
+        case let t where t.contains("booked"):     return "Reservado"
+        case let t where t.contains("assigned"):   return "Asignado"
+        case let t where t.contains("locked"):     return "Bloqueado"
+        case let t where t.contains("released"):   return "Liberado"
+        case let t where t.contains("granted"):    return "Derecho otorgado"
+        case let t where t.contains("transferred"): return "Transferido"
+        case let t where t.contains("valuation"):  return "Valuación actualizada"
+        case let t where t.contains("condition"):  return "Condición actualizada"
+        case let t where t.contains("created"):    return "Creado"
+        case let t where t.contains("updated"):    return "Editado"
+        default: return row.eventType.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 }
