@@ -1316,4 +1316,18 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func decisionLiveResult(decisionId: UUID) async throws -> DecisionLiveResult {
         throw RuulError.unexpected(message: "MockRuulRPCClient.decisionLiveResult not stubbed")
     }
+
+    // V3 D.24 P2A subtype wrappers — stubs (tests can override per case).
+    func createFundResource(_ input: CreateFundResourceParams) async throws -> UUID {
+        throw RuulError.unexpected(message: "MockRuulRPCClient.createFundResource not stubbed")
+    }
+    func createSpaceResource(_ input: CreateSpaceResourceParams) async throws -> UUID {
+        throw RuulError.unexpected(message: "MockRuulRPCClient.createSpaceResource not stubbed")
+    }
+    func createAssetResource(_ input: CreateAssetResourceParams) async throws -> UUID {
+        throw RuulError.unexpected(message: "MockRuulRPCClient.createAssetResource not stubbed")
+    }
+    func createRightResource(_ input: CreateRightResourceParams) async throws -> UUID {
+        throw RuulError.unexpected(message: "MockRuulRPCClient.createRightResource not stubbed")
+    }
 }

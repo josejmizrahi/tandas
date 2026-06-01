@@ -643,6 +643,24 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - V3 D.24 P2A — Atomic subtype wrappers
+
+    public func createFundResource(_ input: CreateFundResourceParams) async throws -> UUID {
+        try await callReturningUUID("create_fund_resource", params: input)
+    }
+
+    public func createSpaceResource(_ input: CreateSpaceResourceParams) async throws -> UUID {
+        try await callReturningUUID("create_space_resource", params: input)
+    }
+
+    public func createAssetResource(_ input: CreateAssetResourceParams) async throws -> UUID {
+        try await callReturningUUID("create_asset_resource", params: input)
+    }
+
+    public func createRightResource(_ input: CreateRightResourceParams) async throws -> UUID {
+        try await callReturningUUID("create_right_resource", params: input)
+    }
+
     public func archiveGroupResource(_ input: ArchiveGroupResourceInput) async throws {
         do {
             _ = try await client.rpc("archive_resource", params: input).execute()

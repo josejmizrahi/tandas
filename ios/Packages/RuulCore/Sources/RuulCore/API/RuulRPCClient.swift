@@ -278,6 +278,25 @@ public protocol RuulRPCClient: Sendable {
     /// filtered to Foundation types (fund/space/asset/document/other).
     func groupResourcesActive(groupId: UUID) async throws -> [GroupResource]
 
+    // MARK: - V3 D.24 P2A — Atomic subtype wrappers (P2B-1.x iOS adoption)
+
+    /// `create_fund_resource(...)` — envelope + group_resource_funds row
+    /// in one transaction. Sets `ruul.resource_create_intent='create_fund_resource'`.
+    /// Returns the new resource_id (UUID).
+    func createFundResource(_ input: CreateFundResourceParams) async throws -> UUID
+
+    /// `create_space_resource(...)` — envelope + group_resource_spaces row.
+    /// Sets intent_marker. Returns resource_id.
+    func createSpaceResource(_ input: CreateSpaceResourceParams) async throws -> UUID
+
+    /// `create_asset_resource(...)` — envelope + group_resource_assets row.
+    /// Sets intent_marker. Returns resource_id.
+    func createAssetResource(_ input: CreateAssetResourceParams) async throws -> UUID
+
+    /// `create_right_resource(...)` — envelope + group_resource_rights row.
+    /// Sets intent_marker. Returns resource_id.
+    func createRightResource(_ input: CreateRightResourceParams) async throws -> UUID
+
     /// `create_group_resource(...)` — envelope-only create.
     /// Requires `resources.create`.
     func createGroupResource(_ input: CreateGroupResourceInput) async throws -> GroupResource

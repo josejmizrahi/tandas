@@ -220,7 +220,12 @@ public final class ResourcesStore {
             return false
         }
         do {
-            _ = try await repository.createResource(
+            // P2B-1.x — smart router prefiere los wrappers atómicos P2A
+            // para fund/space/asset/right (intent_marker en audit table
+            // queda como create_<type>_resource). Para event/slot y los
+            // 12 tipos sin wrapper cae a `create_group_resource` legacy
+            // automáticamente. Genera client_id fresh para idempotency.
+            _ = try await repository.createResourceSmart(
                 groupId: groupId,
                 type: draftType,
                 name: name,

@@ -42,6 +42,104 @@ public struct CanonicalResourcesRepository: Sendable {
         return try await rpc.createGroupResource(input)
     }
 
+    /// V3 D.24 P2B-1.x — smart create that prefers the atomic P2A
+    /// subtype wrappers (fund/space/asset/right) and falls back to the
+    /// legacy envelope-only `create_group_resource` when:
+    ///   - the type has no wrapper yet (event/slot need time pickers; the
+    ///     remaining 12 canonical types like document/vehicle/etc. don't
+    ///     have wrappers in P2A).
+    ///   - the wrapper call throws (network glitch, validation, etc.).
+    ///
+    /// Always passes a fresh `client_id` for idempotency. Returns the
+    /// resource_id; callers should refresh the list / load summary.
+    @discardableResult
+    public func createResourceSmart(
+        groupId: UUID,
+        type: GroupResourceType,
+        name: String,
+        description: String? = nil,
+        visibility: ResourceVisibility = .members,
+        ownershipKind: ResourceOwnershipKind = .group,
+        ownerMembershipId: UUID? = nil,
+        clientId: String = UUID().uuidString
+    ) async throws -> UUID {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDescription = description?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfBlank
+
+        // Try the atomic wrapper first for the 4 supported types. If it
+        // fails for any reason, fall through to the legacy envelope path.
+        do {
+            switch type {
+            case .fund:
+                return try await rpc.createFundResource(
+                    CreateFundResourceParams(
+                        groupId: groupId,
+                        name: trimmedName,
+                        fundKind: "pool",
+                        description: trimmedDescription,
+                        visibility: visibility.rawValue,
+                        clientId: clientId
+                    )
+                )
+            case .space:
+                return try await rpc.createSpaceResource(
+                    CreateSpaceResourceParams(
+                        groupId: groupId,
+                        name: trimmedName,
+                        description: trimmedDescription,
+                        visibility: visibility.rawValue,
+                        clientId: clientId
+                    )
+                )
+            case .asset:
+                return try await rpc.createAssetResource(
+                    CreateAssetResourceParams(
+                        groupId: groupId,
+                        name: trimmedName,
+                        description: trimmedDescription,
+                        ownerMembershipId: ownerMembershipId,
+                        ownershipKind: ownershipKind.rawValue,
+                        visibility: visibility.rawValue,
+                        clientId: clientId
+                    )
+                )
+            case .right:
+                return try await rpc.createRightResource(
+                    CreateRightResourceParams(
+                        groupId: groupId,
+                        name: trimmedName,
+                        rightKind: "access",
+                        description: trimmedDescription,
+                        visibility: visibility.rawValue,
+                        clientId: clientId
+                    )
+                )
+            default:
+                // No wrapper for this type yet — drop through to legacy.
+                break
+            }
+        } catch {
+            // Wrapper failed — degrade to legacy envelope. The audit
+            // trigger will mark the resulting row as
+            // `intent_marker='create_group_resource'`, which is still
+            // authorized but signals that the wrapper path needs review.
+        }
+
+        // Legacy envelope-only path.
+        let resource = try await createResource(
+            groupId: groupId,
+            type: type,
+            name: trimmedName,
+            description: trimmedDescription,
+            visibility: visibility,
+            ownershipKind: ownershipKind,
+            ownerMembershipId: ownerMembershipId
+        )
+        return resource.id
+    }
+
     public func archiveResource(resourceId: UUID, reason: String? = nil) async throws {
         let trimmed = reason?
             .trimmingCharacters(in: .whitespacesAndNewlines)

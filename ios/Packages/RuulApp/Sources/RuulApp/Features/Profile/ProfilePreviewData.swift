@@ -393,4 +393,17 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func decisionLiveResult(decisionId: UUID) async throws -> DecisionLiveResult {
         fatalError("preview mock: decisionLiveResult not implemented")
     }
+    // P2B-1.x — atomic subtype wrappers
+    func createFundResource(_ input: CreateFundResourceParams) async throws -> UUID {
+        fatalError("preview mock: createFundResource not implemented")
+    }
+    func createSpaceResource(_ input: CreateSpaceResourceParams) async throws -> UUID {
+        fatalError("preview mock: createSpaceResource not implemented")
+    }
+    func createAssetResource(_ input: CreateAssetResourceParams) async throws -> UUID {
+        fatalError("preview mock: createAssetResource not implemented")
+    }
+    func createRightResource(_ input: CreateRightResourceParams) async throws -> UUID {
+        fatalError("preview mock: createRightResource not implemented")
+    }
 }
