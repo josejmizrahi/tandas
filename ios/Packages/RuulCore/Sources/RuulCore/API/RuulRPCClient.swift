@@ -781,4 +781,12 @@ public protocol RuulRPCClient: Sendable {
 
     /// `my_inbox_unread_count(p_group_id)`. Cheap counter for badges.
     func myInboxUnreadCount(_ input: MyInboxUnreadCountParams) async throws -> Int
+
+    // MARK: - V3-D.22 — Search MVP
+
+    /// `global_search(p_group_id, p_query, p_limit) returns jsonb`. One
+    /// unified search across 4 entity types (members/resources/decisions/
+    /// rules) in a single round-trip. Backend enforces membership gate
+    /// (42501) and min-length 2 (returns empty for shorter queries).
+    func globalSearch(_ input: GlobalSearchParams) async throws -> [SearchResult]
 }

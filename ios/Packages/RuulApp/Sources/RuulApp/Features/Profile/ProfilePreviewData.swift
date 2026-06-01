@@ -358,4 +358,5 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func markInboxRead(_ input: MarkInboxReadParams) async throws {}
     func markAllInboxRead(_ input: MarkAllInboxReadParams) async throws -> Int { 0 }
     func myInboxUnreadCount(_ input: MyInboxUnreadCountParams) async throws -> Int { 0 }
+    func globalSearch(_ input: GlobalSearchParams) async throws -> [SearchResult] { [] }
 }

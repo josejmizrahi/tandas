@@ -146,6 +146,7 @@ final actor MockRuulRPCClient: RuulRPCClient {
         case myInboxUnreadCount(input: MyInboxUnreadCountParams)
         case groupVisibility(groupId: UUID)
         case setGroupVisibility(input: SetGroupVisibilityInput)
+        case globalSearch(input: GlobalSearchParams)
     }
 
     private(set) var recorded: [RecordedCall] = []
@@ -1246,5 +1247,15 @@ final actor MockRuulRPCClient: RuulRPCClient {
     func myInboxUnreadCount(_ input: MyInboxUnreadCountParams) async throws -> Int {
         recorded.append(.myInboxUnreadCount(input: input))
         return try myInboxUnreadCountStub.get()
+    }
+
+    // MARK: - V3-D.22 — Search MVP
+
+    private var globalSearchStub: Result<[SearchResult], RuulError> = .success([])
+    func stubGlobalSearch(_ result: Result<[SearchResult], RuulError>) { globalSearchStub = result }
+
+    func globalSearch(_ input: GlobalSearchParams) async throws -> [SearchResult] {
+        recorded.append(.globalSearch(input: input))
+        return try globalSearchStub.get()
     }
 }

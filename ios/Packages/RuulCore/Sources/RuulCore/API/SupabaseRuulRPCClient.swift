@@ -1545,4 +1545,17 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             throw RPCErrorMapper.map(error)
         }
     }
+
+    // MARK: - V3-D.22 — Search MVP
+
+    public func globalSearch(_ input: GlobalSearchParams) async throws -> [SearchResult] {
+        do {
+            return try await client
+                .rpc("global_search", params: input)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
 }

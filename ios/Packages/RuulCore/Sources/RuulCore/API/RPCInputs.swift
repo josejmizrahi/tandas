@@ -2897,3 +2897,22 @@ public struct MyInboxUnreadCountParams: Encodable, Sendable {
     public init(groupId: UUID? = nil) { self.pGroupId = groupId }
 }
 
+// MARK: - V3-D.22 — Search MVP
+
+public struct GlobalSearchParams: Encodable, Sendable {
+    public let pGroupId: UUID
+    public let pQuery: String
+    public let pLimit: Int
+    enum CodingKeys: String, CodingKey {
+        case pGroupId = "p_group_id"
+        case pQuery   = "p_query"
+        case pLimit   = "p_limit"
+    }
+    public init(groupId: UUID, query: String, limit: Int = 25) {
+        self.pGroupId = groupId
+        self.pQuery   = query
+        self.pLimit   = limit
+    }
+}
+
+

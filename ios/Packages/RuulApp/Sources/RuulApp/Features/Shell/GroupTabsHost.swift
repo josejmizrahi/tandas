@@ -28,6 +28,8 @@ public struct GroupTabsHost: View {
     @State private var isShowingSwitcher: Bool = false
     @State private var isShowingPersonalProfile: Bool = false
     @State private var isShowingInbox: Bool = false
+    /// D.22 — Search MVP sheet. Mirrors the Inbox bell wiring.
+    @State private var isShowingSearch: Bool = false
     /// Drives the `MemberDetailView` push from the Personas tab.
     @State private var pendingMemberSelection: MembershipBoundaryItem?
 
@@ -64,6 +66,17 @@ public struct GroupTabsHost: View {
             NavigationStack {
                 InboxView(store: container.inboxStore, scopeGroupId: group.id)
             }
+        }
+        .sheet(isPresented: $isShowingSearch) {
+            SearchView(store: container.searchStore) { result in
+                handleSearchSelection(result)
+            }
+        }
+        // D.22 — bind the search store to the active group on enter and
+        // reset on group switch so a stale query from group A doesn't
+        // leak into group B.
+        .task(id: group.id) {
+            container.searchStore.groupId = group.id
         }
         // D.21B — keep badge fresh when scope changes or app foregrounds
         .task(id: group.id) {
@@ -222,6 +235,17 @@ public struct GroupTabsHost: View {
                      : "Bandeja")
             )
         }
+        // D.22 — lupa between bell and avatar. Same wiring pattern as
+        // the Inbox bell (toggles @State + presents sheet).
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                isShowingSearch = true
+            } label: {
+                Label("Buscar", systemImage: "magnifyingglass")
+                    .labelStyle(.iconOnly)
+            }
+            .accessibilityLabel(Text("Buscar"))
+        }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 isShowingPersonalProfile = true
@@ -232,6 +256,27 @@ public struct GroupTabsHost: View {
         }
     }
 
+    // MARK: - D.22 — Search result routing
+
+    /// Receives the tapped `SearchResult` from `SearchView`, dismisses
+    /// the sheet, and routes by entity type. Members + decisions reuse
+    /// the existing `DeepLinkRouter` path (full nav to detail). Resources
+    /// + rules fall back to a tab-switch (lands the user on Group tab
+    /// where the relevant list lives) since V1 doesn't extend `DeepLink`
+    /// with resource/rule cases. Search clears on dismiss.
+    private func handleSearchSelection(_ result: SearchResult) {
+        let router = container.deepLinkRouter
+        switch result.entityType {
+        case .member:
+            router.apply(.member(groupId: result.groupId, membershipId: result.entityId))
+        case .decision:
+            router.apply(.decision(groupId: result.groupId, decisionId: result.entityId))
+        case .resource, .rule:
+            selectedTab = .group
+        }
+        isShowingSearch = false
+        container.searchStore.clear()
+    }
 }
 
 /// Four canonical tabs in `GroupTabsHost`. `public` so the shell can
