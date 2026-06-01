@@ -28,6 +28,14 @@ public struct CanonicalDecisionsRepository: Sendable {
         try await rpc.decisionDetail(decisionId: decisionId)
     }
 
+    /// V3 D.24 P12B-4 — live status read model. Complementa `detail(...)`
+    /// con conteos frescos (DISTINCT ON cast_at), my_vote, eligible_voters,
+    /// quorum/threshold progress, y execution_status/attempts/error.
+    /// Caller puede caer al detail legacy si esta RPC falla.
+    public func liveResult(decisionId: UUID) async throws -> DecisionLiveResult {
+        try await rpc.decisionLiveResult(decisionId: decisionId)
+    }
+
     public func propose(
         groupId: UUID,
         title: String,

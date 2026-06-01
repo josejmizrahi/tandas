@@ -389,4 +389,8 @@ private struct StaticProfileRPCClient: RuulRPCClient, @unchecked Sendable {
     func eventDetailSummary(eventId: UUID) async throws -> CalendarEventDetailSummary {
         fatalError("preview mock: eventDetailSummary not implemented")
     }
+    // P12B-4
+    func decisionLiveResult(decisionId: UUID) async throws -> DecisionLiveResult {
+        fatalError("preview mock: decisionLiveResult not implemented")
+    }
 }

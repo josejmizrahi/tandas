@@ -46,6 +46,7 @@ public struct DecisionDetailView: View {
                     resultSection(detail: detail)
                     outcomeAppliedSection(detail: detail)
                 }
+                executionStatusSection
                 provenanceSection(detail: detail)
                 actionsSection(detail: detail)
             } else {
@@ -55,15 +56,26 @@ public struct DecisionDetailView: View {
         .navigationTitle(initial.title)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: decisionId) {
+            // P12B-4: detail rico (options/reference/provenance/etc) +
+            // live read model en paralelo. Si live falla, el detail
+            // legacy cubre quorum/threshold targets sin progress fresco.
             await store.loadDetail(decisionId: decisionId)
+            await store.loadLiveResult(decisionId: decisionId)
             await store.loadProvenance(decisionId: decisionId)
         }
         .refreshable {
+            // refreshDetail() ya hace loadDetail + loadLiveResult.
             await store.refreshDetail()
         }
         .sheet(isPresented: $store.isVotePresented) {
             VoteSheet(store: store, groupId: groupId)
         }
+    }
+
+    /// P12B-4 — fresh live result iff matchea la decisión visible.
+    private var liveResult: DecisionLiveResult? {
+        guard let r = store.liveResult, r.decisionId == decisionId else { return nil }
+        return r
     }
 
     // MARK: - Sections
@@ -173,20 +185,128 @@ public struct DecisionDetailView: View {
 
             if let threshold = detail.thresholdPct {
                 LabeledContent {
-                    Text(percent(threshold))
-                        .monospacedDigit()
+                    thresholdProgressText(required: threshold)
                 } label: {
                     Text(L10n.Decisions.tallyThresholdLabel)
                 }
             }
             if let quorum = detail.quorumPct {
                 LabeledContent {
-                    Text(percent(quorum))
-                        .monospacedDigit()
+                    quorumProgressText(required: quorum)
                 } label: {
                     Text(L10n.Decisions.tallyQuorumLabel)
                 }
             }
+        }
+    }
+
+    /// P12B-4 — "78% / 50%" + ícono cuando hay live result; "50%" plano
+    /// como fallback con el detail legacy.
+    @ViewBuilder
+    private func thresholdProgressText(required: Decimal) -> some View {
+        if let live = liveResult {
+            HStack(spacing: 4) {
+                Text("\(percent(live.threshold.currentYesPct)) / \(percent(required))")
+                    .monospacedDigit()
+                    .foregroundStyle(live.threshold.reached ? .primary : .secondary)
+                Image(systemName: live.threshold.reached ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(live.threshold.reached ? .green : .secondary)
+                    .font(.footnote)
+            }
+        } else {
+            Text(percent(required)).monospacedDigit()
+        }
+    }
+
+    @ViewBuilder
+    private func quorumProgressText(required: Decimal) -> some View {
+        if let live = liveResult {
+            HStack(spacing: 4) {
+                Text("\(percent(live.quorum.currentPct)) / \(percent(required))")
+                    .monospacedDigit()
+                    .foregroundStyle(live.quorum.reached ? .primary : .secondary)
+                Image(systemName: live.quorum.reached ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(live.quorum.reached ? .green : .secondary)
+                    .font(.footnote)
+            }
+        } else {
+            Text(percent(required)).monospacedDigit()
+        }
+    }
+
+    /// P12B-4 — surface execution_status + execution_error desde el
+    /// live result. Invisible cuando no hay live o cuando no hay nada
+    /// que mostrar (status nulo o "pending" sin error).
+    @ViewBuilder
+    private var executionStatusSection: some View {
+        if let live = liveResult,
+           let status = live.executionStatus,
+           shouldSurfaceExecution(status: status, error: live.executionError) {
+            Section("Ejecución") {
+                HStack(spacing: 10) {
+                    Image(systemName: executionIcon(status: status, hasError: live.executionError != nil))
+                        .foregroundStyle(executionTint(status: status, hasError: live.executionError != nil))
+                        .frame(width: 22)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(executionLabel(status: status))
+                            .font(.body.weight(.semibold))
+                        if let attempts = live.executionAttempts, attempts > 0 {
+                            Text("Intentos: \(attempts)")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                if let error = live.executionError, !error.isEmpty {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+        }
+    }
+
+    private func shouldSurfaceExecution(status: String, error: String?) -> Bool {
+        // Show whenever there's a non-trivial state: failed, executing,
+        // executed, or anything with an error message attached.
+        if error?.isEmpty == false { return true }
+        switch status {
+        case "pending", "":
+            return false
+        default:
+            return true
+        }
+    }
+
+    private func executionIcon(status: String, hasError: Bool) -> String {
+        if hasError { return "exclamationmark.octagon.fill" }
+        switch status {
+        case "executed":  return "checkmark.seal.fill"
+        case "executing": return "hourglass"
+        case "failed":    return "exclamationmark.octagon.fill"
+        case "skipped":   return "minus.circle"
+        default:          return "circle"
+        }
+    }
+
+    private func executionTint(status: String, hasError: Bool) -> Color {
+        if hasError { return .red }
+        switch status {
+        case "executed": return .green
+        case "failed":   return .red
+        default:         return .secondary
+        }
+    }
+
+    private func executionLabel(status: String) -> String {
+        switch status {
+        case "executed":  return "Ejecutada"
+        case "executing": return "Ejecutando…"
+        case "failed":    return "Falló al ejecutar"
+        case "skipped":   return "Ejecución omitida"
+        case "pending":   return "Pendiente de ejecutar"
+        default:          return status.capitalized
         }
     }
 
@@ -347,9 +467,17 @@ public struct DecisionDetailView: View {
                 methodTallyRows(detail: detail)
 
                 LabeledContent {
-                    Text("\(detail.tally.voteCount)")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                    // P12B-4 — "5 / 12 miembros" cuando hay live result
+                    // con eligible_voters; "5" plano sin él.
+                    if let live = liveResult, live.eligibleVotersCount > 0 {
+                        Text("\(detail.tally.voteCount) / \(live.eligibleVotersCount)")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("\(detail.tally.voteCount)")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
                 } label: {
                     Text(L10n.Decisions.tallyVotesCounted)
                 }

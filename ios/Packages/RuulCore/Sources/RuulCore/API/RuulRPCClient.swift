@@ -831,6 +831,13 @@ public protocol RuulRPCClient: Sendable {
     /// iOS adopt en P12B-3.
     func eventDetailSummary(eventId: UUID) async throws -> CalendarEventDetailSummary
 
+    /// `decision_live_result(p_decision_id) returns jsonb`. Conteos
+    /// frescos (DISTINCT ON cast_at), my_vote, eligible_voters,
+    /// quorum/threshold status (current vs required), execution_status/
+    /// attempts/error. Complemento del decision_detail rich — NO lo
+    /// reemplaza. iOS adopt en P12B-4.
+    func decisionLiveResult(decisionId: UUID) async throws -> DecisionLiveResult
+
     // MARK: - V3-D.23 — Calendar Events
 
     /// `create_event(...)`. Requires `events.create`. Auto-adds caller as

@@ -19,6 +19,13 @@ public final class DecisionsStore {
     public private(set) var detailPhase: StorePhase = .idle
     public private(set) var detailErrorMessage: String?
 
+    /// V3 D.24 P12B-4 — live status read model. Complementa el detail
+    /// rich con counts/quorum/threshold/execution status frescos. La
+    /// vista prefiere estos campos cuando hay liveResult; cae al detail
+    /// legacy si la RPC summary falla.
+    public private(set) var liveResult: DecisionLiveResult?
+    public private(set) var liveResultPhase: StorePhase = .idle
+
     // MARK: - Propose draft
 
     public var isProposePresented: Bool = false
@@ -269,12 +276,34 @@ public final class DecisionsStore {
     public func refreshDetail() async {
         guard let id = detail?.id else { return }
         await loadDetail(decisionId: id)
+        await loadLiveResult(decisionId: id)
     }
 
     public func clearDetail() {
         detail = nil
         detailPhase = .idle
         detailErrorMessage = nil
+        liveResult = nil
+        liveResultPhase = .idle
+    }
+
+    /// V3 D.24 P12B-4 — best-effort hydrate del read model
+    /// `decision_live_result`. NO throws: si falla, `liveResult`
+    /// queda nil y la vista cae al detail legacy (que ya trae
+    /// tally + quorum/threshold targets).
+    public func loadLiveResult(decisionId: UUID) async {
+        if liveResult?.decisionId != decisionId {
+            liveResult = nil
+            liveResultPhase = .loading
+        }
+        do {
+            liveResult = try await repository.liveResult(decisionId: decisionId)
+            liveResultPhase = .loaded
+        } catch {
+            liveResultPhase = .failed(message: error.localizedDescription)
+            // Intentionally NOT propagating to detailErrorMessage —
+            // the legacy path will surface its own error if needed.
+        }
     }
 
     // MARK: - Propose

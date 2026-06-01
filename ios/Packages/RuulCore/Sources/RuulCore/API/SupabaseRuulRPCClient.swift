@@ -1626,6 +1626,21 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func decisionLiveResult(decisionId: UUID) async throws -> DecisionLiveResult {
+        struct Params: Encodable {
+            let pDecisionId: UUID
+            enum CodingKeys: String, CodingKey { case pDecisionId = "p_decision_id" }
+        }
+        do {
+            return try await client
+                .rpc("decision_live_result", params: Params(pDecisionId: decisionId))
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - V3-D.23 — Calendar Events
 
     public func createCalendarEvent(_ input: CreateCalendarEventParams) async throws -> UUID {
