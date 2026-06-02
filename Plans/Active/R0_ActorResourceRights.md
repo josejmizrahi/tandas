@@ -858,3 +858,76 @@ Primera mitad de R.0E. Founder split en 2: net worth primero (porque my_world_su
 | 4 — Views (My World) | ✅ | R.0E.1 + R.0E.2 |
 
 **Backend foundation R.0 cerrada.** Próximo: R.0F — Group/Entity Views (`group_world_summary` / `legal_entity_world_summary`) + iOS pivot a `PersonalHomeView`. Founder authorize cuando quiera.
+
+---
+
+### R.0F — Group/Entity Backend Views — SHIPPED 2026-06-01
+
+**Founder ajustes vs propuesta original:**
+1. ✅ `group_world_summary.net_worth = actor_net_worth(p_group_id)` — group ES actor por R.0A
+2. ✅ `legal_entity_world_summary.recent_activity = [] empty array` — no inventar relación con group_events sin actor-event model claro
+
+**Founder rules respetadas:**
+- LIMIT 20 por sección, empty arrays si vacío
+- Consume `actor_net_worth` (no recalcula)
+- No new tables, no money, no iOS
+
+**Migraciones (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260602050000` | `r0f_group_and_legal_entity_world_summaries` | 2 RPCs jsonb STABLE SECDEF |
+| `20260602050100` | `r0f_smoke_world_summaries` | `_smoke_r0f_world_summaries()` 8 casos verde |
+
+**`group_world_summary(p_group_id)` — 9 secciones + notes:**
+- `group` (id, name, slug, status, visibility, actor_kind, metadata)
+- `as_of`
+- `net_worth` (delegated to `actor_net_worth(group_id)`)
+- `members` (active group_memberships JOIN actors for display_name, LIMIT 20)
+- `resources_owned` (OWN holder=group_actor, incluye percent/currency/value)
+- `resources_managed` (MANAGE)
+- `resources_used` (USE)
+- `governance` (open decisions + recent <30d, ordered open first)
+- `rules` (active group_rules)
+- `recent_activity` (group_events scoped to group)
+
+**`legal_entity_world_summary(p_actor_id)` — 9 secciones + notes:**
+- `entity` (legal_entities JOIN actors: entity_type, tax_id, jurisdiction, metadata)
+- `as_of`
+- `net_worth` (delegated)
+- `owned_resources` / `controlled_resources`
+- `shareholders` (relationships type=shareholder_of, object=this entity)
+- `beneficiaries` (relationships type=beneficiary_of, object=this entity)
+- `controlling_actors` (controls / trustee_of, object=this entity)
+- `obligations` (debtor_to/creditor_of/guarantor_of involving entity, direction calculado)
+- `recent_activity` = `[]` **empty by design** (founder ajuste — no actor-event model)
+
+**Smoke 8 casos verdes:**
+1. ✅ NULL group_id → invalid_parameter_value
+2. ✅ Structure: 8+1 (group) secciones presentes, group.id matches
+3. ✅ net_worth delegated structure (owned_by_currency + beneficiary_by_currency)
+4. ✅ Group OWN aparece en resources_owned
+5. ✅ NULL actor_id → invalid_parameter_value
+6. ✅ legal_entity not found (pasar person actor) → P0002
+7. ✅ Legal entity structure + recent_activity = `[]` (founder lock)
+8. ✅ shareholder_of relationship aparece en shareholders
+
+**DoD R.0F verde:**
+- ✅ 2 RPCs STABLE SECDEF, GRANT EXECUTE authenticated+anon
+- ✅ Smoke 8 casos
+- ✅ Cero modificación a otras funciones, cero iOS, cero money
+
+---
+
+## R.0 Backend foundation 100% COMPLETO (5 capas + 2 views)
+
+| Capa | Status | Fases |
+|---|---|---|
+| 0 — Actors | ✅ | R.0A + R.0A.1 |
+| 1 — Resources | ✅ | R.0B.1 + R.0B.2 |
+| 2 — Rights | ✅ | R.0C.1 + R.0C.2a + R.0C.2b |
+| 3 — Relationships | ✅ | R.0D |
+| 4 — My World View | ✅ | R.0E.1 + R.0E.2 |
+| 4 — Group/Entity Views | ✅ | R.0F |
+
+**Próximo (founder lock):** R.0G — Supabase Hygiene / Schema Consolidation (audit-only, NO drops). Solo después: iOS PersonalHomeView pivot.
