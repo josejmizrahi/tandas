@@ -1,168 +1,64 @@
 name: edge-tests
 
-# Corre los tests de las edge functions de Supabase:
-#   1. unit (rule engine, ruleContext, time helpers) — siempre, sin DB.
-#   2. e2e (dinnerHappyPath, appealQuorumFailed, palcoSharedResource)
-#      + db (RLS, mutation audit, unique-open-vote) — contra una
-#      instancia local de Supabase levantada con `supabase start`.
+# MVP 2.0 (post-reset): valida que la cadena de migrations mvp2_* replaye
+# desde cero y corre todos los smokes _smoke_mvp2_* contra la DB local.
 #
-# Hasta esta migración los tests sólo corrían local. La auditoría
-# 2026-05-12 lo marcó como blocker: cambios en _shared/ruleEngine.ts
-# podían mergear rotos porque CI nunca los ejecutaba.
+# Las edge functions de la era anterior fueron archivadas en
+# supabase/functions_archive_pre_mvp2/ (el MVP no usa edge functions:
+# rule engine es SQL síncrono, sin push notifications).
 
 on:
   push:
-    branches: [main, ios-rewrite]
+    branches: [main]
   pull_request:
     paths:
-      - "supabase/functions/**"
-      - "supabase/migrations/**"
+      - "supabase/**"
       - ".github/workflows/edge-tests.yml"
 
 jobs:
-  unit:
-    name: unit (no DB)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2.x
-
-      - name: Type check shared modules
-        run: deno check supabase/functions/_shared/*.ts
-
-      - name: Run shared unit tests
-        # _shared/*.test.ts no necesitan red ni DB; el sink es in-memory.
-        # --allow-env porque time.ts lee ALLOW_CLOCK_OVERRIDE.
-        run: deno test --allow-env supabase/functions/_shared/
-
-  e2e:
+  db:
     name: e2e + db (local supabase)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    # Job-level continue-on-error removed 2026-05-12 once Tier 1 e2e
-    # was wired. Pre-existing DB test failures are quarantined at the
-    # STEP level (Run DB tests has continue-on-error). A real
-    # regression in the E2E step (recurrence, dinner happy path,
-    # auto-close, appeal quorum, palco) will now fail the whole
-    # workflow — that's the signal we want.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2.x
 
       - uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Start local Supabase
-        # `supabase start` levanta postgres + auth + storage + edge
-        # runtime + applies every migration en supabase/migrations/.
-        # Imagen total ~3GB; el primer pull dura ~2-3 min, después es
-        # cache de runner.
+      - name: Start local Supabase (replays mvp2 migration chain)
+        # `supabase start` aplica todas las migrations de supabase/migrations/.
+        # Si la cadena no replaya desde cero, este paso falla — es el gate principal.
         run: supabase start
 
-      - name: Export connection envs
-        # supabase status -o json devuelve { API_URL, SERVICE_ROLE_KEY,
-        # ANON_KEY, DB_URL, ... }. Los inyectamos al $GITHUB_ENV para que
-        # los próximos pasos los lean sin volver a parsear.
+      - name: Run MVP2 smokes
+        # Ejecuta todas las funciones _smoke_mvp2_* que la cadena haya creado.
+        # Cualquier excepción dentro de un smoke tumba el job.
         run: |
           status=$(supabase status -o json)
-          echo "SUPABASE_URL=$(echo "$status" | jq -r .API_URL)" >> "$GITHUB_ENV"
-          echo "SUPABASE_SERVICE_ROLE_KEY=$(echo "$status" | jq -r .SERVICE_ROLE_KEY)" >> "$GITHUB_ENV"
-          echo "SUPABASE_ANON_KEY=$(echo "$status" | jq -r .ANON_KEY)" >> "$GITHUB_ENV"
-          echo "DATABASE_URL=$(echo "$status" | jq -r .DB_URL)" >> "$GITHUB_ENV"
-          # Required para que X-Test-Clock funcione (ver _shared/time.ts).
-          echo "ALLOW_CLOCK_OVERRIDE=true" >> "$GITHUB_ENV"
-
-      - name: Check Swift ↔ SQL whitelist drift
-        # Closes governance-review item #5. Catches Swift enum → SQL
-        # whitelist drift before it reaches prod. Pulls deployed
-        # is_known_* function bodies from the local Supabase and diffs
-        # them against the matching Swift enums. See the script header
-        # for the full rationale.
-        run: deno run -A scripts/codegen/check-sql-whitelist-drift.ts
-
-      - name: Serve edge functions in background
-        # `supabase functions serve` levanta el runtime que escuchan los
-        # tests vía invokeCron(). El --no-verify-jwt deja que los tests
-        # llamen con service_role JWT sin el header de verificación de
-        # JWT estándar.
-        #
-        # --env-file: las funciones corren en contenedores Docker que NO
-        # heredan $GITHUB_ENV. Sin esto, time.ts ve
-        # `ALLOW_CLOCK_OVERRIDE != "true"` y silenciosamente ignora el
-        # X-Test-Clock header que los e2e tests envían para avanzar el
-        # reloj sobre grace periods y vote close. Bug observado 2026-05-12
-        # en run e40252d: `finalize-fine-reviews response: {processed:0}`
-        # aun cuando t1 estaba 1h después del expires_at del period.
-        run: |
-          cat > /tmp/edge-fn-env <<EOF
-          ALLOW_CLOCK_OVERRIDE=true
-          EOF
-          nohup supabase functions serve --no-verify-jwt --env-file /tmp/edge-fn-env > /tmp/functions-serve.log 2>&1 &
-          echo "FUNCTIONS_SERVE_PID=$!" >> "$GITHUB_ENV"
-          # Espera hasta que el runtime responda. El handler default a
-          # 404 si la función no existe, pero el server estará listo.
-          for i in $(seq 1 30); do
-            if curl -sf "$SUPABASE_URL/functions/v1/" >/dev/null 2>&1 \
-              || curl -sf -X POST "$SUPABASE_URL/functions/v1/process-system-events" \
-                   -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-                   -H "Content-Type: application/json" \
-                   -d '{}' >/dev/null 2>&1; then
-              echo "functions runtime is up"
-              break
-            fi
-            sleep 2
-          done
-
-      - name: Run shared unit tests (sanity, sin DB)
-        run: deno test --allow-env supabase/functions/_shared/
-
-      - name: Run E2E tests
-        # Tier 1 acceptance: recurrenceGenerator.test.ts + the existing
-        # dinnerHappyPath + autoCloseAndDeadline + appealQuorumFailed
-        # + palcoSharedResource. This step is the gating signal for
-        # whether recurrence (and the rest of the causal chain) is
-        # actually working end-to-end. Runs BEFORE DB tests because
-        # the DB tests have known pre-existing failures we're not
-        # fixing in Tier 1 — keeping them downstream lets a real e2e
-        # failure surface as the first red line.
-        run: |
-          deno test --allow-net --allow-env supabase/functions/_tests/e2e/
-
-      - name: Run DB tests
-        # RLS, mutation audit, vote uniqueness. Pegan directo a
-        # postgres via supabase-js admin. Tier 0.5 (2026-05-12) fixed
-        # the 6 pre-existing failures:
-        #   - rls_update_rules: `enabled` → `is_active` (column dropped in 00058).
-        #   - can_modify_rules: create_group_with_admin now seeds founder
-        #     `roles` jsonb (mig 00128).
-        #   - vote_unique_open: replaced assertRejects with inline
-        #     assert on PostgrestError shape.
-        # No more continue-on-error — this step now truly gates the workflow.
-        run: |
-          deno test --allow-net --allow-env supabase/functions/_tests/db/
-
-      - name: Dump functions serve log on failure
-        if: failure()
-        run: |
-          echo "===== functions-serve.log ====="
-          cat /tmp/functions-serve.log || true
-          echo "===== supabase status ====="
-          supabase status || true
-
-      - name: Stop functions runtime
-        if: always()
-        run: |
-          if [ -n "${FUNCTIONS_SERVE_PID:-}" ]; then
-            kill "$FUNCTIONS_SERVE_PID" 2>/dev/null || true
-          fi
+          DB_URL=$(echo "$status" | jq -r .DB_URL)
+          psql "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE
+            fn record;
+            n  integer := 0;
+          BEGIN
+            FOR fn IN
+              SELECT p.proname
+                FROM pg_proc p
+                JOIN pg_namespace ns ON ns.oid = p.pronamespace
+               WHERE ns.nspname = 'public'
+                 AND p.proname LIKE '\_smoke\_mvp2\_%' ESCAPE '\'
+               ORDER BY p.proname
+            LOOP
+              RAISE NOTICE 'running %', fn.proname;
+              EXECUTE format('SELECT public.%I()', fn.proname);
+              n := n + 1;
+            END LOOP;
+            RAISE NOTICE 'mvp2 smokes green: %', n;
+          END $$;
+          SQL
 
       - name: Stop local Supabase
         if: always()
