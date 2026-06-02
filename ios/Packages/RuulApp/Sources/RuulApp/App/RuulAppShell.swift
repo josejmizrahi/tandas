@@ -139,6 +139,7 @@ public struct RuulAppShell: View {
                 NavigationStack {
                     PersonalHomeView(
                         store: container.myWorldStore,
+                        currentContextStore: container.currentContextStore,
                         onSelectGroup: { groupId in
                             personalHomeFocusedGroupId = groupId
                         }

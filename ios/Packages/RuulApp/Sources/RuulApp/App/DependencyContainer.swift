@@ -99,6 +99,11 @@ public final class DependencyContainer {
     /// R.0H.1 — store backing the future `PersonalHomeView`. Not wired
     /// to any view until R.0H.2; `GroupListView` remains the root.
     public let myWorldStore: MyWorldStore
+    /// R.1A — context-first store. Hydrates available contexts from
+    /// `my_world_summary()` and persists the user-selected context
+    /// across launches. Rendered only inside `PersonalHomeView` during
+    /// R.1A; the shell does not root-swap on context change yet.
+    public let currentContextStore: CurrentContextStore
 
     // MARK: - Routing
 
@@ -189,6 +194,7 @@ public final class DependencyContainer {
         self.calendarEventsStore = CalendarEventsStore(repository: calendarEventsRepository)
         self.groupHomeSummaryStore = GroupHomeSummaryStore(repository: groupRepository)
         self.myWorldStore = MyWorldStore(repository: myWorldRepository)
+        self.currentContextStore = CurrentContextStore(repository: myWorldRepository)
         self.deepLinkRouter = DeepLinkRouter()
         self.realtime = SupabaseGroupRealtimeService(client: client)
     }

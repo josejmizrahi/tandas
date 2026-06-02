@@ -27,6 +27,13 @@ enum PersonalHomeFeatureFlag {
 /// Loading / failed / empty / content están explícitos en `body`.
 public struct PersonalHomeView: View {
     @Bindable var store: MyWorldStore
+    /// R.1A — optional context switcher store. When supplied,
+    /// `headerSection` renders the `ContextSwitcherView` above the
+    /// actor name and `.task` kicks off `currentContextStore.load()`
+    /// in parallel with the My World fetch. Previews + flag-OFF
+    /// mounting points can omit it (the screen behaves exactly as
+    /// before).
+    var currentContextStore: CurrentContextStore?
     /// R.0H.4 — emitted when the user taps a row inside "Grupos".
     /// Defaults to no-op so previews + flag-OFF callers (the future
     /// non-root mounting points) don't need to wire it.
@@ -34,9 +41,11 @@ public struct PersonalHomeView: View {
 
     public init(
         store: MyWorldStore,
+        currentContextStore: CurrentContextStore? = nil,
         onSelectGroup: @escaping (UUID) -> Void = { _ in }
     ) {
         self.store = store
+        self.currentContextStore = currentContextStore
         self.onSelectGroup = onSelectGroup
     }
 
@@ -74,6 +83,11 @@ public struct PersonalHomeView: View {
         .task {
             if store.summary == nil { await store.load() }
         }
+        .task {
+            if let ctx = currentContextStore, ctx.availableContexts.isEmpty {
+                await ctx.load()
+            }
+        }
     }
 
     // MARK: - Empty
@@ -105,12 +119,17 @@ public struct PersonalHomeView: View {
 
     private func headerSection(actor: MyWorldActor) -> some View {
         Section {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(actor.displayName)
-                    .font(.title2.weight(.semibold))
-                Text(actor.actorKind.capitalized)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                if let ctx = currentContextStore, !ctx.availableContexts.isEmpty {
+                    ContextSwitcherView(store: ctx)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(actor.displayName)
+                        .font(.title2.weight(.semibold))
+                    Text(actor.actorKind.capitalized)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.vertical, 4)
         }
@@ -338,6 +357,20 @@ public struct PersonalHomeView: View {
     NavigationStack {
         PersonalHomeView(
             store: MyWorldStore(previewSummary: nil, phase: .failed(message: "Sin conexión."))
+        )
+    }
+}
+
+#Preview("With context switcher") {
+    let summary = PersonalHomePreviewData.populated
+    let contexts = CurrentContextStore.buildContexts(from: summary)
+    return NavigationStack {
+        PersonalHomeView(
+            store: MyWorldStore(previewSummary: summary),
+            currentContextStore: CurrentContextStore(
+                previewContexts: contexts,
+                current: contexts.first
+            )
         )
     }
 }
