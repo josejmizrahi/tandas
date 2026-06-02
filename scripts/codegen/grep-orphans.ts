@@ -101,6 +101,10 @@ if (import.meta.main) {
     for await (const entry of walk(dir)) {
       if (!entry.isFile) continue;
       if (entry.path.includes("/_shared/types/")) continue;
+      // Skip non-live SQL kept for reference (supabase/migrations/_archive,
+      // _archive_pre_d21, _rollbacks). They are never deployed forward and
+      // only accumulate historical literals.
+      if (entry.path.includes("/migrations/_")) continue;
       if (entry.path.endsWith(".sql") || entry.path.endsWith(".ts")) {
         targetFiles.push(entry.path);
       }

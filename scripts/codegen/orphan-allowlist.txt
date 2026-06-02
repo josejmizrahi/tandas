@@ -22,6 +22,15 @@ myAtom     # Doc-comment placeholder in mig 00293 register_event_type() example
 notes      # Doc-comment placeholder in mig 00293; also JSONB key elsewhere
 reason     # JSONB payload key (payload->>'reason') in mig 00284 asset_booking_lock_state view
 
+# False positives detected when codegen CI was repaired (gen-types source-dir
+# crash had been masking the orphan check since the SPM restructure).
+scope      # JSONB key in rule_shapes_catalog trigger payloads (mig 20260531071133 v3_d14)
+group      # JSONB value of the 'scope' key in rule_shapes_catalog (mig 20260531071133 v3_d14)
+member     # JSONB value of the 'scope' key in rule_shapes_catalog (mig 20260531071133 v3_d14)
+derivation # JSONB key in computed-atom metadata (mig 20260531084405 v3_d16_c)
+summary    # group_events.summary column name inside jsonb_build_object (mig 20260526193914 canonical_rpcs_06)
+social     # default calendar p_event_type param value, not a system event type (mig 20260601212435 d24_p2b1)
+
 # Backend atom event types not yet mirrored to ios SystemEventType.swift.
 # Each entry should be promoted to a Swift enum case + 'make gen' once iOS
 # consumes the event. Listed here to unblock codegen CI; tracked as followup.

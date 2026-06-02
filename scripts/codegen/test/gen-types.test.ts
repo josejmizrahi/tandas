@@ -64,3 +64,24 @@ Deno.test("gen-types: --check returns non-zero exit code when output is stale", 
 
   assertEquals(result.stale.length, 2); // missing Swift + TS
 });
+
+Deno.test("gen-types: missing source dir is a no-op, not a crash", async () => {
+  const tmp = await Deno.makeTempDir();
+  const swiftDir = `${tmp}/ios/Tandas/Platform/Models`; // never created
+  const swiftGen = `${swiftDir}/Generated`;
+  const tsDir = `${tmp}/supabase/functions/_shared/types`;
+
+  for (const mode of ["write", "check"] as const) {
+    const result = await generate({
+      repoRoot: tmp,
+      sourceDir: swiftDir,
+      swiftOutDir: swiftGen,
+      tsOutDir: tsDir,
+      mode,
+    });
+
+    assertEquals(result.processed, []);
+    assertEquals(result.skipped, []);
+    assertEquals(result.stale, []);
+  }
+});

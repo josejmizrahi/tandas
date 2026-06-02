@@ -44,6 +44,18 @@ const MARKER = "// @codegen:enum";
 export async function generate(opts: GenerateOpts): Promise<GenerateResult> {
   const result: GenerateResult = { processed: [], skipped: [], stale: [] };
 
+  // The source dir may not exist (e.g. the SPM restructure removed
+  // PlatformModels/ and no @codegen:enum sources remain). Treat it as
+  // "nothing to generate" instead of crashing so CI stays green while
+  // the codegen surface is empty.
+  try {
+    const stat = await Deno.stat(opts.sourceDir);
+    if (!stat.isDirectory) return result;
+  } catch (e) {
+    if (e instanceof Deno.errors.NotFound) return result;
+    throw e;
+  }
+
   for await (const entry of Deno.readDir(opts.sourceDir)) {
     if (!entry.isFile || !entry.name.endsWith(".swift")) continue;
     if (entry.name === "Generated" || entry.name.endsWith("+Extensions.swift")) continue;
