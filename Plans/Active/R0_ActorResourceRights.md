@@ -1011,4 +1011,21 @@ Primera mitad de R.0E. Founder split en 2: net worth primero (porque my_world_su
 
 **Cumple regla:** PersonalHomeView no es root por default. Si falla en runtime, basta apagar el toggle en Ajustes para restaurar v1 (la v1 sigue viva detrás del flag).
 
-**Próximo:** R.0H.4 — Groups como sección dentro de Mi mundo (tap → GroupHomeView). GroupListView se conserva como fallback.
+---
+
+### R.0H.4 — Grupos como sección navegable (2026-06-01)
+
+**Commit:** `34b5ee69` `r0: R.0H.4 Grupos como sección navegable en PersonalHomeView`.
+
+**Scope:** cierra el flag-ON branch. Tap a una fila de "Grupos" dentro de `PersonalHomeView` root-swap a `GroupTabsHost` para ese grupo (mismo patrón que `RuulAppShell.shellFor` v1 — sin NavigationStack/TabView outer, así los toolbar items de cada tab interno quedan visibles). Push + install en iPhone JJ confirmado.
+
+- `GroupTabsHost` gana parámetro opcional `onBackToPersonalHome: (() -> Void)?` (default `nil`). Cuando se inyecta, `shellToolbar` antepone un leading `chevron.left "Mi mundo"` que coexiste con el switcher chevron de nombre de grupo — el usuario puede saltar entre grupos sin volver a "Mi mundo". Flag-OFF (default) deja el toolbar idéntico a v1.
+- `PersonalHomeView` gana parámetro `onSelectGroup: (UUID) -> Void` (default no-op para previews). Cada fila de la sección "Grupos" envuelve el row en `Button { onSelectGroup(group.groupId) }` con chevron trailing.
+- `RuulAppShell` añade `@State personalHomeFocusedGroupId: UUID?`. `personalHomeRoot` es ahora una state machine: `nil` → `NavigationStack { PersonalHomeView }`; set → `GroupTabsHost(focused)` montado como root (mismo patrón que `shellFor`, sin outer NavStack). Sync con `currentGroupStore` y `profileStore` al enfocar/cambiar de grupo.
+- Cero TabView nuevo. Cero anidamiento de NavStacks. Cero aplanamiento de las 4 tabs del grupo.
+
+**Cumple regla:** GroupTabsHost se reutiliza tal cual; el v1 (flag-OFF) sigue intacto; las 4 tabs scoped al grupo no se mueven; deep links siguen ruteando por el path v1 (sin tocar el rutero todavía).
+
+**Estado R.0H:** 4/4 sub-slices cerradas (H.1 plumbing, H.2 UI, H.3 root flag, H.4 grupos navegables). Founder + cohort validan PersonalHomeView como root opcional antes de pasar a R.1.
+
+**Próximo:** validación en device + decisión founder sobre R.1 (rediseño app-level navigation, server-side flag rollout, deprecation eventual del flag-OFF path).
