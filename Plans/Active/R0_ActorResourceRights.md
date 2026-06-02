@@ -661,3 +661,63 @@ AND (ends_at IS NULL OR ends_at > now())
 - R.0C.2b: RPCs ergonómicos sobre universal
 
 **Próximo:** R.0D — Relationship Graph (`actor_relationships` table). No bloqueado por nada.
+
+---
+
+### R.0D — Relationship Graph — SHIPPED 2026-06-01
+
+Cuarta y última capa fundacional antes de Views (R.0E+).
+
+**Doctrina locked:** `actor_relationships` es **grafo semántico**, NO reemplaza `resource_rights`. Rights = derechos formales (OWN/USE/MANAGE/etc); relationships = relaciones semánticas (shareholder_of, trustee_of, beneficiary_of, creditor_of, etc.).
+
+**Schema (per doctrine):**
+- `subject_actor_id NOT NULL` — actor siempre subject
+- Object polimórfico: **exactly one** of (`object_actor_id`, `object_resource_id`) NOT NULL (enforced por CHECK constraint)
+- Temporal bounds `starts_at`/`ends_at` (active = starts NULL/≤now AND ends NULL/>now)
+- 14 `relationship_type` whitelist: owns, controls, member_of, admin_of, beneficiary_of, leased_to, managed_by, employed_by, guarantor_of, trustee_of, shareholder_of, custodian_of, debtor_to, creditor_of
+
+**Migraciones (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260602020000` | `r0d_actor_relationships_table_and_rpcs` | CREATE table + 5 indexes (subject, object_actor partial, object_resource partial, type, active subject+type) + RLS read + touch trigger + 3 RPCs: `create_actor_relationship(7 args)` / `end_actor_relationship(uuid)` / `list_actor_relationships(actor, direction, include_inactive)` returns TABLE |
+| `20260602020100` | `r0d_smoke_relationship_graph` | `_smoke_r0d_relationship_graph()` 10 casos verde |
+
+**Smoke 10 casos verdes:**
+1. ✅ actor→actor (Jose shareholder_of Quimibond con metadata.percent=70)
+2. ✅ actor→resource (Jose guarantor_of Loan)
+3. ✅ CHECK: both object NULL → `invalid_parameter_value`
+4. ✅ CHECK: both object NOT NULL → `invalid_parameter_value`
+5. ✅ Whitelist CHECK rechaza `'INVALID_KIND'`
+6. ✅ `list_actor_relationships(jose, 'out')` ≥ 2
+7. ✅ `list_actor_relationships(jose, 'in')` ≥ 1 (Linda creditor_of Jose)
+8. ✅ `list_actor_relationships(jose, 'both')` ≥ out+in
+9. ✅ `end_actor_relationship` setea ends_at, no aparece en activa, sí en `include_inactive=true`
+10. ✅ `end` idempotente + id inexistente no-op
+
+**Hallazgo:** mi RPC usaba `RAISE EXCEPTION ... USING errcode = '22023'` (SQLSTATE invalid_parameter_value). Smoke inicial catchaba `WHEN raise_exception` (P0001), no matchea. Fix: `WHEN invalid_parameter_value THEN`. SQLSTATE codes importan.
+
+**DoD R.0D verde:**
+- ✅ `actor_relationships` table creada con shape doctrinal
+- ✅ 5 indexes para graph traversal
+- ✅ RLS read authenticated
+- ✅ 3 RPCs: create / end / list
+- ✅ Smoke 10 casos
+- ✅ Cero modificación a otras tablas, cero iOS
+
+**Post-state DB:**
+```
+actor_relationships  = 0  (smoke cleaned up; smoke runs add some residue per run pattern)
+```
+
+**Capas fundacionales R.0 — COMPLETAS:**
+
+| Capa | Status |
+|---|---|
+| 0 — Actors (`actors` + person/group/legal_entity) | ✅ R.0A + R.0A.1 |
+| 1 — Resources (`resources` universal, nullable group_id, canonical_owner_actor_id) | ✅ R.0B.1 + R.0B.2 |
+| 2 — Rights (`resource_rights` universal con 15-kind whitelist + RPCs) | ✅ R.0C.1 + R.0C.2a + R.0C.2b |
+| 3 — Relationships (`actor_relationships` con 14-type whitelist + RPCs) | ✅ R.0D |
+| 4 — Views (My World, Group World, Legal Entity World) | ⏳ R.0E+ |
+
+**Próximo lógico:** R.0E — My World View (`my_world_summary()` + `actor_net_worth()`). Founder authorize cuando quiera.
