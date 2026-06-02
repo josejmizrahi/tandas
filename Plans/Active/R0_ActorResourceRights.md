@@ -964,3 +964,51 @@ Primera mitad de R.0E. Founder split en 2: net worth primero (porque my_world_su
 **Conclusión:** GO R.0H. Hygiene cleanup difírido sin urgencia técnica. Backend foundation completo y funcional.
 
 **Próximo:** R.0H — iOS PersonalHomeView pivot.
+
+---
+
+### R.0H.1 — MyWorld iOS plumbing (2026-06-01)
+
+**Commit:** `17411625` `r0: R.0H.1 MyWorld plumbing iOS (no UI, no navegación)`.
+
+**Scope:** wires el RPC `my_world_summary()` al stack iOS sin tocar UI ni navegación. Foundation slice exclusivamente.
+
+- `MyWorldSummary.swift` — 11 structs Codable tolerantes (arrays default `[]`, metadata como `[String: RPCJSONValue]?`, dates opcionales, unknown fields ignorados).
+- `CanonicalMyWorldRepository` — wrapper Sendable de `rpc.myWorldSummary()`.
+- `MyWorldStore` — `@MainActor @Observable` con dual init (repository real + previewSummary determinista). `load()` mapea errores vía `UserFacingError.from`.
+- `RuulRPCClient` + `SupabaseRuulRPCClient` — extiende protocolo y client con `myWorldSummary() async throws`.
+- `DependencyContainer` — expone `myWorldRepository` + `myWorldStore`.
+- Tests: 3 casos Swift Testing (full / empty / arbitrary metadata + unknown fields) verde en CI.
+
+**Cumple regla:** GroupListView intacto. No root pivot. No navegación nueva.
+
+---
+
+### R.0H.2 — PersonalHomeView UI (2026-06-01)
+
+**Commit:** `c4ac9cb4` `r0: R.0H.2 PersonalHomeView UI (sin tocar root, fallback intacto)`.
+
+**Scope:** primer skeleton de "Mi mundo" que consume `MyWorldStore`. Sin navegación root, sin feature flag — todavía sólo reachable desde previews. Empuje a `main` + install en iPhone JJ confirmado.
+
+- `PersonalHomeView.swift` — 6 secciones (Header, Net Worth, My Resources, Grupos, Decisiones pendientes, Actividad reciente) + states explícitos (loading / failed / empty / content). `.refreshable` + `.task` para hidratar/refrescar.
+- `PersonalHomePreviewData.swift` — fixtures JSON literal decodificados a `MyWorldSummary` real (populado + empty) para 4 #Preview (Content / Empty / Loading / Failed).
+
+**Cumple regla:** GroupListView/GroupTabsHost siguen siendo root. PersonalHomeView NO está montado en RuulAppShell.
+
+---
+
+### R.0H.3 — Feature flag + root pivot opt-in (2026-06-01)
+
+**Commit:** `961f9350` `r0: R.0H.3 UserDefaults feature flag + opt-in root pivot`.
+
+**Scope:** habilita el pivote root opcional vía `UserDefaults`. Default false ⇒ shell v1 intacto. Toggle solo en builds DEBUG; rollback instantáneo en device.
+
+- `PersonalHomeFeatureFlag.storageKey = "personal_home_root_enabled"` en `PersonalHomeView.swift`.
+- `RuulAppShell` — `@AppStorage(PersonalHomeFeatureFlag.storageKey) personalHomeRootEnabled: Bool = false`. Branch en `content` para `.signedIn`: si ON → `personalHomeRoot` (`NavigationStack { PersonalHomeView(store: container.myWorldStore) }`), si OFF → `signedInContent` (v1 `GroupTabsHost`).
+- Background refresh (`groupsStore.refresh()` + `profileStore.refreshIfNeeded()`) corre en ambos branches → cache caliente para fallback instantáneo.
+- `PersonalSettingsView` — `#if DEBUG` Toggle dentro de section "Laboratorio Ruul" con copy "Mi mundo como inicio" + footer "Solo visible en builds de desarrollo. Apagar restaura la vista por grupo."
+- Cero backend. Cero migration.
+
+**Cumple regla:** PersonalHomeView no es root por default. Si falla en runtime, basta apagar el toggle en Ajustes para restaurar v1 (la v1 sigue viva detrás del flag).
+
+**Próximo:** R.0H.4 — Groups como sección dentro de Mi mundo (tap → GroupHomeView). GroupListView se conserva como fallback.
