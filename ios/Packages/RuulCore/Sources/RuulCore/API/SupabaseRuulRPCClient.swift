@@ -1637,6 +1637,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // R.0E.2 — my_world_summary() jsonb (no params, auth-scoped)
+    public func myWorldSummary() async throws -> MyWorldSummary {
+        do {
+            return try await client
+                .rpc("my_world_summary")
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func eventDetailSummary(eventId: UUID) async throws -> CalendarEventDetailSummary {
         struct Params: Encodable {
             let pEventId: UUID

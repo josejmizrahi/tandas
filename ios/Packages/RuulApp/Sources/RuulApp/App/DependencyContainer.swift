@@ -58,6 +58,9 @@ public final class DependencyContainer {
     public let inboxRepository: CanonicalInboxRepository
     public let searchRepository: CanonicalSearchRepository
     public let calendarEventsRepository: CanonicalCalendarEventsRepository
+    /// R.0H.1 — repository for the My World view (`my_world_summary` RPC).
+    /// Plumbing-only en R.0H.1; R.0H.2 lo consume desde `PersonalHomeView`.
+    public let myWorldRepository: CanonicalMyWorldRepository
 
     // MARK: - Stores
 
@@ -93,6 +96,9 @@ public final class DependencyContainer {
     public let searchStore: SearchStore
     public let calendarEventsStore: CalendarEventsStore
     public let groupHomeSummaryStore: GroupHomeSummaryStore
+    /// R.0H.1 — store backing the future `PersonalHomeView`. Not wired
+    /// to any view until R.0H.2; `GroupListView` remains the root.
+    public let myWorldStore: MyWorldStore
 
     // MARK: - Routing
 
@@ -148,6 +154,7 @@ public final class DependencyContainer {
         self.inboxRepository = CanonicalInboxRepository(rpc: rpc)
         self.searchRepository = CanonicalSearchRepository(rpc: rpc)
         self.calendarEventsRepository = CanonicalCalendarEventsRepository(rpc: rpc)
+        self.myWorldRepository = CanonicalMyWorldRepository(rpc: rpc)
 
         self.sessionStore = SessionStore(authService: auth)
         self.groupsStore = GroupsStore(repository: groupRepository)
@@ -181,6 +188,7 @@ public final class DependencyContainer {
         self.searchStore = SearchStore(repository: searchRepository)
         self.calendarEventsStore = CalendarEventsStore(repository: calendarEventsRepository)
         self.groupHomeSummaryStore = GroupHomeSummaryStore(repository: groupRepository)
+        self.myWorldStore = MyWorldStore(repository: myWorldRepository)
         self.deepLinkRouter = DeepLinkRouter()
         self.realtime = SupabaseGroupRealtimeService(client: client)
     }

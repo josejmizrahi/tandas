@@ -343,12 +343,14 @@ final actor MockRuulRPCClient: RuulRPCClient {
     private var registerMyNotificationTokenStub: Result<UUID, RuulError> = .success(UUID())
     private var groupVisibilityStub: Result<String, RuulError> = .success("private")
     private var setGroupVisibilityStub: Result<String, RuulError> = .success("private")
+    private var myWorldSummaryStub: Result<MyWorldSummary, RuulError>?
 
     init() {}
 
     // MARK: - Stub setters
 
     func setCreateGroupStub(_ stub: Result<UUID, RuulError>) { createGroupStub = stub }
+    func setMyWorldSummaryStub(_ stub: Result<MyWorldSummary, RuulError>?) { myWorldSummaryStub = stub }
     func setInviteMemberStub(_ stub: Result<InviteCreated, RuulError>) { inviteMemberStub = stub }
     func setRevokeInviteStub(_ stub: Result<Void, RuulError>) { revokeInviteStub = stub }
     func setAcceptInviteStub(_ stub: Result<AcceptInviteResult, RuulError>) { acceptInviteStub = stub }
@@ -1315,6 +1317,14 @@ final actor MockRuulRPCClient: RuulRPCClient {
 
     func decisionLiveResult(decisionId: UUID) async throws -> DecisionLiveResult {
         throw RuulError.unexpected(message: "MockRuulRPCClient.decisionLiveResult not stubbed")
+    }
+
+    // R.0E.2 — my_world_summary (R.0H.1 iOS adopt)
+    func myWorldSummary() async throws -> MyWorldSummary {
+        if let stubbed = myWorldSummaryStub {
+            return try stubbed.get()
+        }
+        throw RuulError.unexpected(message: "MockRuulRPCClient.myWorldSummary not stubbed")
     }
 
     // V3 D.24 P2A subtype wrappers — stubs (tests can override per case).

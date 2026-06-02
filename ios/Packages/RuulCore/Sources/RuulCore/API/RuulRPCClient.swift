@@ -867,6 +867,17 @@ public protocol RuulRPCClient: Sendable {
     /// reemplaza. iOS adopt en P12B-4.
     func decisionLiveResult(decisionId: UUID) async throws -> DecisionLiveResult
 
+    // MARK: - R.0E.2 — My World (Actor/Resource/Rights pivot)
+
+    /// `my_world_summary() returns jsonb`. Auth-scoped: resuelve auth.uid() →
+    /// actor (D2 R.0A: actors.id = auth.users.id para person). Consume
+    /// `actor_net_worth(actor_id)` sin recalcular. 10 secciones
+    /// (actor + net_worth + owned/managed/used/beneficiary resources +
+    /// groups + controlled_entities + obligations + recent_activity +
+    /// pending_decisions). LIMIT 20 por sección. iOS adopt en R.0H.1
+    /// (repository + store, sin UI todavía).
+    func myWorldSummary() async throws -> MyWorldSummary
+
     // MARK: - V3-D.23 — Calendar Events
 
     /// `create_event(...)`. Requires `events.create`. Auto-adds caller as
