@@ -16,16 +16,27 @@ public final class MyWorldStore {
     public private(set) var phase: StorePhase = .idle
     public private(set) var errorMessage: String?
 
-    private let repository: CanonicalMyWorldRepository
+    private let repository: CanonicalMyWorldRepository?
 
     public init(repository: CanonicalMyWorldRepository) {
         self.repository = repository
     }
 
+    /// Preview / unit-test init that bypasses the repository and seeds the
+    /// store with a pre-populated summary + phase. `load()` becomes a
+    /// no-op in this mode so SwiftUI previews can stay deterministic.
+    public init(previewSummary: MyWorldSummary?, phase: StorePhase = .loaded) {
+        self.repository = nil
+        self.summary = previewSummary
+        self.phase = phase
+    }
+
     /// Hydrate (or refresh) the summary. Errors are mapped via
     /// `UserFacingError.from` so views can render `errorMessage`
-    /// directly without re-mapping.
+    /// directly without re-mapping. No-op when constructed via the
+    /// preview init.
     public func load() async {
+        guard let repository else { return }
         phase = .loading
         errorMessage = nil
         do {
