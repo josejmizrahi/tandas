@@ -721,3 +721,69 @@ actor_relationships  = 0  (smoke cleaned up; smoke runs add some residue per run
 | 4 — Views (My World, Group World, Legal Entity World) | ⏳ R.0E+ |
 
 **Próximo lógico:** R.0E — My World View (`my_world_summary()` + `actor_net_worth()`). Founder authorize cuando quiera.
+
+---
+
+### R.0E.1 — actor_net_worth — SHIPPED 2026-06-01
+
+Primera mitad de R.0E. Founder split en 2: net worth primero (porque my_world_summary lo consume), summary después.
+
+**Founder scope locked:**
+- Por moneda
+- Solo OWN activo (revoked NULL + expired NULL + starts ≤now + ends NULL/>now)
+- Aplicar percent (default 100 si NULL)
+- Excluir USE, MANAGE, VIEW (y resto de kinds non-ownership)
+- BENEFICIARY reportado separado, NO sumado
+- NO FX, NO iOS
+
+**Migraciones (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260602030000` | `r0e1_actor_net_worth` | `actor_net_worth(p_actor_id) RETURNS jsonb`. STABLE SECDEF. Returns `{actor_id, as_of, owned_by_currency:[], beneficiary_by_currency:[], notes:{...}}`. Value source: `resources.metadata->>'estimated_value'`, currency: `metadata->>'currency'` (default 'unknown'). |
+| `20260602030100` | `r0e1_smoke_actor_net_worth` | `_smoke_r0e1_actor_net_worth()` 8 casos verde |
+
+**Output shape:**
+```json
+{
+  "actor_id": "<uuid>",
+  "as_of": "2026-06-01T...",
+  "owned_by_currency": [
+    {"currency": "MXN", "owned_value": 1000, "owned_count": 1, "resource_ids": [...]},
+    {"currency": "USD", "owned_value": 250,  "owned_count": 1, "resource_ids": [...]}
+  ],
+  "beneficiary_by_currency": [
+    {"currency": "MXN", "value": 200, "count": 1, "resource_ids": [...]}
+  ],
+  "notes": {
+    "value_source": "resources.metadata->>estimated_value",
+    "currency_source": "resources.metadata->>currency (default unknown)",
+    "excluded_kinds": ["USE","MANAGE","VIEW","SELL","TRANSFER","GOVERN","PLEDGE","LIEN","LEASE","COLLECT_INCOME","PAY_EXPENSES","AUDIT","APPROVE"],
+    "fx": "none — values grouped by currency without conversion"
+  }
+}
+```
+
+**Smoke 8 casos verdes:**
+1. ✅ actor sin OWN → estructura jsonb válida
+2. ✅ Single OWN 100% en MXN → owned_value = 1000 exacto
+3. ✅ Single OWN 50% USD → owned_value = 250 (50% de 500)
+4. ✅ Two currencies → 2 entries en owned_by_currency
+5. ✅ BENEFICIARY separado (no en owned, sí en beneficiary_by_currency)
+6. ✅ USE/MANAGE/VIEW excluidos (MXN owned = 1000 exacto, no 1000+9999)
+7. ✅ Revoked OWN excluido (no suma 7777)
+8. ✅ Archived resource excluido (no suma 6666); NULL actor_id → invalid_parameter_value
+
+**Hallazgo / limitation:**
+- Resources NO tienen columnas `estimated_value`/`currency` dedicadas. 0/99 resources tienen `metadata->>'estimated_value'` populado.
+- **Función estructuralmente correcta** — retorna `owned_value=0` mientras metadata esté vacío. iOS/data ingestion poblará a futuro.
+- **Future R.0E.x puede extender:** subtype-aware values (group_resource_funds.currency + balance via group_resource_transactions, etc.).
+
+**DoD R.0E.1 verde:**
+- ✅ `actor_net_worth(uuid) RETURNS jsonb` STABLE SECDEF
+- ✅ Granted EXECUTE a authenticated + anon
+- ✅ Smoke 8 casos verde
+- ✅ Cero modificación a otras funciones, cero iOS
+- ✅ Limitation `metadata->>'estimated_value'` documentada en COMMENT + notes payload
+
+**Próximo:** R.0E.2 — `my_world_summary()` consumirá `actor_net_worth` + agregará owned/managed/used/beneficiary resources + controlled_entities + groups + obligations + recent_activity + pending_decisions.
