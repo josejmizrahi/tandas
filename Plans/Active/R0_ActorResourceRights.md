@@ -787,3 +787,74 @@ Primera mitad de R.0E. Founder split en 2: net worth primero (porque my_world_su
 - ✅ Limitation `metadata->>'estimated_value'` documentada en COMMENT + notes payload
 
 **Próximo:** R.0E.2 — `my_world_summary()` consumirá `actor_net_worth` + agregará owned/managed/used/beneficiary resources + controlled_entities + groups + obligations + recent_activity + pending_decisions.
+
+---
+
+### R.0E.2 — my_world_summary — SHIPPED 2026-06-01
+
+**Founder scope locked:** auth.uid()→actor, consume `actor_net_worth` (no recalc), 10 secciones, LIMIT 20 cada una, empty arrays si vacío, no money, no nuevas tablas, no iOS.
+
+**Migraciones (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260602040000` | `r0e2_my_world_summary` | `my_world_summary() RETURNS jsonb` STABLE SECDEF. Resuelve auth.uid()→actor por D2 (actors.id = auth.users.id). 10 secciones con LIMIT 20. |
+| `20260602040100` | `r0e2_smoke_my_world_summary` | `_smoke_r0e2_my_world_summary()` 8 casos verde |
+
+**Output shape (10 secciones + actor + as_of + notes):**
+```json
+{
+  "actor": {"id":"...", "actor_kind":"person", "display_name":"...", "metadata":{}},
+  "as_of": "...",
+  "net_worth": {/* delegado a actor_net_worth */},
+  "owned_resources":      [{resource_id, name, resource_type, group_id, percent, currency, estimated_value}, ...],
+  "managed_resources":    [{resource_id, name, resource_type, group_id}, ...],
+  "used_resources":       [{resource_id, name, resource_type, group_id}, ...],
+  "beneficiary_resources":[{resource_id, name, resource_type, group_id, percent, currency, estimated_value}, ...],
+  "groups":               [{group_id, name, membership_type, joined_via}, ...],
+  "controlled_entities":  [{actor_id, display_name, actor_kind, relationship_type, metadata}, ...],
+  "obligations":          [{relationship_id, relationship_type, direction:in|out, ...}, ...],
+  "recent_activity":      [{event_id, event_type, group_id, entity_kind, entity_id, payload, created_at}, ...],
+  "pending_decisions":    [{decision_id, title, group_id, status, created_at}, ...],
+  "notes": {limit_per_section:20, value_source, money_section}
+}
+```
+
+**Reglas por sección:**
+- `owned/managed/used/beneficiary_resources`: `resource_rights` con `right_kind` correspondiente, active filter, JOIN resources active.
+- `groups`: `group_memberships` con status='active' + groups not archived.
+- `controlled_entities`: `actor_relationships` types `{controls, shareholder_of, trustee_of, admin_of}` direction='out' (subject=actor).
+- `obligations`: `actor_relationships` types `{debtor_to, creditor_of, guarantor_of}`, dirección calculada (`in`/`out`). NO `group_obligations` table (founder: no money).
+- `recent_activity`: `group_events` WHERE `actor_user_id = auth.uid()`, ORDER BY created_at DESC.
+- `pending_decisions`: `group_decisions` con `status='open'` JOIN active membership.
+
+**Smoke 8 casos verdes:**
+1. ✅ Unauthenticated → exception 28000
+2. ✅ Authenticated → returns todas las 10 secciones + actor.id matches auth.uid()
+3. ✅ OWN right en owned_resources
+4. ✅ MANAGE right en managed_resources
+5. ✅ USE right en used_resources
+6. ✅ BENEFICIARY right en beneficiary_resources
+7. ✅ shareholder_of relationship en controlled_entities
+8. ✅ debtor_to relationship en obligations con direction='out'
+
+**DoD R.0E.2 verde:**
+- ✅ `my_world_summary() RETURNS jsonb` STABLE SECDEF
+- ✅ GRANT EXECUTE authenticated
+- ✅ Consume `actor_net_worth` sin recalcular
+- ✅ Smoke 8 casos verde
+- ✅ Cero modificación a otras funciones, cero iOS, cero money table
+
+---
+
+## R.0 — COMPLETO
+
+| Capa | Status | Fases |
+|---|---|---|
+| 0 — Actors | ✅ | R.0A + R.0A.1 |
+| 1 — Resources | ✅ | R.0B.1 + R.0B.2 |
+| 2 — Rights | ✅ | R.0C.1 + R.0C.2a + R.0C.2b |
+| 3 — Relationships | ✅ | R.0D |
+| 4 — Views (My World) | ✅ | R.0E.1 + R.0E.2 |
+
+**Backend foundation R.0 cerrada.** Próximo: R.0F — Group/Entity Views (`group_world_summary` / `legal_entity_world_summary`) + iOS pivot a `PersonalHomeView`. Founder authorize cuando quiera.
