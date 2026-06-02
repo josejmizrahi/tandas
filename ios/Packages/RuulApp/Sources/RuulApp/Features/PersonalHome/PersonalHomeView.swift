@@ -27,9 +27,17 @@ enum PersonalHomeFeatureFlag {
 /// Loading / failed / empty / content están explícitos en `body`.
 public struct PersonalHomeView: View {
     @Bindable var store: MyWorldStore
+    /// R.0H.4 — emitted when the user taps a row inside "Grupos".
+    /// Defaults to no-op so previews + flag-OFF callers (the future
+    /// non-root mounting points) don't need to wire it.
+    let onSelectGroup: (UUID) -> Void
 
-    public init(store: MyWorldStore) {
+    public init(
+        store: MyWorldStore,
+        onSelectGroup: @escaping (UUID) -> Void = { _ in }
+    ) {
         self.store = store
+        self.onSelectGroup = onSelectGroup
     }
 
     public var body: some View {
@@ -185,19 +193,30 @@ public struct PersonalHomeView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(groups) { group in
-                    HStack {
-                        Image(systemName: "person.3.fill")
-                            .foregroundStyle(.tint)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(group.name)
-                                .font(.body.weight(.medium))
-                            if let kind = group.membershipType {
-                                Text(kind.capitalized)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                    Button {
+                        onSelectGroup(group.groupId)
+                    } label: {
+                        HStack {
+                            Image(systemName: "person.3.fill")
+                                .foregroundStyle(.tint)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(group.name)
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                if let kind = group.membershipType {
+                                    Text(kind.capitalized)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(Text("Abrir el grupo"))
                 }
             }
         }

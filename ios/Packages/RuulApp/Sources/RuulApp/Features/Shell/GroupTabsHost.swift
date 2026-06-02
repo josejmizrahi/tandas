@@ -19,6 +19,10 @@ public struct GroupTabsHost: View {
     let container: DependencyContainer
     let group: GroupListItem
     let onSelectGroup: (GroupListItem) -> Void
+    /// R.0H.4 — when the host was entered from `PersonalHomeView`
+    /// (flag-ON branch), the shell injects a back-to-My-World callback.
+    /// `nil` in the v1 flag-OFF path leaves the toolbar unchanged.
+    let onBackToPersonalHome: (() -> Void)?
 
     /// Hoisted to the shell so deep-link arrivals (V3-A4) can request
     /// focus on a specific tab (`.money`, `.members`, `.group`) before
@@ -37,12 +41,14 @@ public struct GroupTabsHost: View {
         container: DependencyContainer,
         group: GroupListItem,
         selectedTab: Binding<GroupTab>,
-        onSelectGroup: @escaping (GroupListItem) -> Void
+        onSelectGroup: @escaping (GroupListItem) -> Void,
+        onBackToPersonalHome: (() -> Void)? = nil
     ) {
         self.container = container
         self.group = group
         self._selectedTab = selectedTab
         self.onSelectGroup = onSelectGroup
+        self.onBackToPersonalHome = onBackToPersonalHome
     }
 
     public var body: some View {
@@ -206,6 +212,21 @@ public struct GroupTabsHost: View {
 
     @ToolbarContentBuilder
     private var shellToolbar: some ToolbarContent {
+        // R.0H.4 — extra leading affordance to return to "Mi mundo"
+        // when the host was entered via `PersonalHomeView`. Coexists
+        // with the existing group-switcher chevron so the user can
+        // still hop between groups without going up a level.
+        if let onBack = onBackToPersonalHome {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    onBack()
+                } label: {
+                    Label("Mi mundo", systemImage: "chevron.left")
+                        .labelStyle(.titleAndIcon)
+                }
+                .accessibilityLabel(Text("Volver a Mi mundo"))
+            }
+        }
         ToolbarItem(placement: .topBarLeading) {
             Button {
                 isShowingSwitcher = true

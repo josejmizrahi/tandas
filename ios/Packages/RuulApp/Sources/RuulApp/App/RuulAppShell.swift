@@ -42,6 +42,14 @@ public struct RuulAppShell: View {
     /// catches up.
     @State private var selectedTab: GroupTab = .home
 
+    /// R.0H.4 — when the personal-home flag is ON and the user taps a
+    /// group inside `PersonalHomeView.groupsSection`, the shell stores
+    /// the focused group id here and root-swaps to `GroupTabsHost` for
+    /// that group. `nil` keeps `PersonalHomeView` as root. The back
+    /// affordance in `GroupTabsHost.shellToolbar` (injected via
+    /// `onBackToPersonalHome`) clears it.
+    @State private var personalHomeFocusedGroupId: UUID?
+
     public init(container: DependencyContainer = DependencyContainer()) {
         _container = State(initialValue: container)
     }
@@ -97,15 +105,46 @@ public struct RuulAppShell: View {
         }
     }
 
-    /// R.0H.3 — opt-in `PersonalHomeView` root. Wrapped in its own
-    /// `NavigationStack` because the v1 shell relied on
-    /// `GroupTabsHost` to own per-tab stacks. Profile + groups still
-    /// refresh in the background so the legacy fallback is always
-    /// warm when the user flips the flag back OFF.
+    /// R.0H.3 — opt-in `PersonalHomeView` root. R.0H.4 turns the root
+    /// into a state machine: when `personalHomeFocusedGroupId == nil`
+    /// the user sees `PersonalHomeView`; tapping a group in the
+    /// "Grupos" section root-swaps to `GroupTabsHost` for that group
+    /// (same nesting rules as the v1 `shellFor` — no outer
+    /// `NavigationStack`/`TabView` so the inner per-tab toolbars stay
+    /// visible). Returning to "Mi mundo" goes through the back
+    /// affordance injected via `onBackToPersonalHome`.
     @ViewBuilder
     private var personalHomeRoot: some View {
-        NavigationStack {
-            PersonalHomeView(store: container.myWorldStore)
+        Group {
+            if let focusedId = personalHomeFocusedGroupId,
+               let focused = container.groupsStore.groups.first(where: { $0.id == focusedId }) {
+                GroupTabsHost(
+                    container: container,
+                    group: focused,
+                    selectedTab: $selectedTab,
+                    onSelectGroup: { picked in
+                        personalHomeFocusedGroupId = picked.id
+                        Task { await container.currentGroupStore.setGroup(picked) }
+                    },
+                    onBackToPersonalHome: {
+                        personalHomeFocusedGroupId = nil
+                    }
+                )
+                .id(focused.id)
+                .task(id: focused.id) {
+                    await container.currentGroupStore.setGroup(focused)
+                    await container.profileStore.refreshIfNeeded()
+                }
+            } else {
+                NavigationStack {
+                    PersonalHomeView(
+                        store: container.myWorldStore,
+                        onSelectGroup: { groupId in
+                            personalHomeFocusedGroupId = groupId
+                        }
+                    )
+                }
+            }
         }
         .task {
             await container.groupsStore.refresh()
