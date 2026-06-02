@@ -607,3 +607,57 @@ resources canonical set = 98   (77 desde nuevo OWN sync + 21 desde R.0B.2 defens
 - `actor_has_right(p_actor_id, p_resource_id, p_right_kind) returns boolean`
 
 R.0C.2a deja sistema funcional sin RPCs (escrituras directas via SQL). R.0C.2b puede arrancar cuando founder lo autorice; no bloquea R.0D.
+
+---
+
+### R.0C.2b — Universal Rights RPCs — SHIPPED 2026-06-01
+
+3 RPCs sobre la nueva universal `resource_rights`. Coexisten con legacy `grant_right`/`revoke_right` (subtype semantics) vía **PostgreSQL function overloading por signature** — iOS sigue funcionando sin cambios.
+
+**Active right definition (founder spec, locked):**
+```
+revoked_at IS NULL
+AND expired_at IS NULL
+AND (starts_at IS NULL OR starts_at <= now())
+AND (ends_at IS NULL OR ends_at > now())
+```
+
+**Migraciones (2):**
+
+| Timestamp | Mig | Qué hace |
+|---|---|---|
+| `20260602010000` | `r0c2b_universal_rights_rpcs` | CREATE 3 funciones: `grant_right(p_resource_id, p_holder_actor_id, p_right_kind, p_percent, p_scope, p_starts_at, p_ends_at, p_source_decision_id, p_metadata)` upsert/undelete + `revoke_right(p_right_id)` soft revoke + `actor_has_right(p_actor_id, p_resource_id, p_right_kind)` STABLE boolean. GRANT EXECUTE a authenticated/anon. COMMENT con args explícitos para desambiguar overloads. |
+| `20260602010100` | `r0c2b_smoke_universal_rights_rpcs` | `_smoke_r0c2b_rights_rpcs()` 8 casos verde |
+
+**Smoke 8 casos verdes:**
+1. ✅ `grant_right` NEW → uuid + `actor_has_right` true
+2. ✅ UPSERT — same (resource, holder, kind) → same id, fields updated, no duplicate
+3. ✅ `revoke_right` → revoked_at set, `actor_has_right` false
+4. ✅ UNDELETE — grant_right post-revoke → same id, revoked_at NULL, granted_at refresh
+5. ✅ starts_at futuro → `actor_has_right` false
+6. ✅ ends_at pasado → `actor_has_right` false
+7. ✅ `revoke_right` idempotente (re-call no-op)
+8. ✅ `revoke_right` id inexistente → no-op
+
+**Hallazgo crítico durante implementación:**
+
+1. **Conflicto de nombres con legacy:** `grant_right` y `revoke_right` ya existían como RPCs legacy con signatures `(p_resource_id, p_holder_membership_id, p_right_kind, p_expires_at, p_conditions, p_transferable, p_reason, p_client_id)` y `(p_resource_id, p_reason, p_client_id)`. **iOS llama legacy.** Solución: overloading por signature — PostgreSQL distingue.
+
+2. **Legacy `grant_right`/`revoke_right` con `prosrc` apuntando a `group_resource_rights` (compat view):** post-R.0C.2a el compat view redirige a `resource_right_subtype` vía INSTEAD OF triggers — legacy sigue funcionando contra subtype semantics. iOS no se rompe.
+
+3. **Ambigüedad de overload:** `revoke_right(p_right_id uuid)` vs `revoke_right(p_resource_id uuid, p_reason text DEFAULT, p_client_id text DEFAULT)` — ambos matchean cuando se llama con un solo uuid. Solución: callers internos del smoke deben usar **named params explícitos** (`p_right_id := …`). iOS ya usa named params en su JSON body (`p_resource_id`, `p_reason`, etc.) — no hay ambigüedad.
+
+**DoD R.0C.2b verde:**
+- ✅ 3 RPCs universales creadas y testeadas
+- ✅ Overloading por signature preserva legacy semantics
+- ✅ iOS no se rompe (legacy sigue funcionando contra subtype)
+- ✅ Smoke 8 casos verde
+- ✅ Cero modificación a legacy RPCs (solo se agregaron nuevos overloads)
+- ✅ Cero iOS
+
+**R.0C cerrado doctrinalmente.** Stack completo:
+- R.0C.1: holder_actor_id en `resource_right_subtype` (legacy compat preservada)
+- R.0C.2a: NUEVA universal `resource_rights` con shape doctrinal + backfill + canonical sync
+- R.0C.2b: RPCs ergonómicos sobre universal
+
+**Próximo:** R.0D — Relationship Graph (`actor_relationships` table). No bloqueado por nada.
