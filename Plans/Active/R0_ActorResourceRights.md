@@ -931,3 +931,36 @@ Primera mitad de R.0E. Founder split en 2: net worth primero (porque my_world_su
 | 4 — Group/Entity Views | ✅ | R.0F |
 
 **Próximo (founder lock):** R.0G — Supabase Hygiene / Schema Consolidation (audit-only, NO drops). Solo después: iOS PersonalHomeView pivot.
+
+---
+
+### R.0G — Supabase Hygiene / Schema Consolidation — SHIPPED 2026-06-01
+
+**Audit-only.** NO drops, NO renames, NO behavior changes, NO iOS.
+
+**Doc canónico:** `Plans/Active/R0G_SupabaseHygiene_Audit.md` (11 secciones).
+
+**Métricas:**
+
+| Métrica | Valor |
+|---|---|
+| Tablas | 66 |
+| Compat views R.0 | 4 (con 12 INSTEAD OF triggers) |
+| Function overloads peligrosos | 4 (set_decision_rules×3, create_group_resource×2, grant_right×2, revoke_right×2) |
+| Triggers críticos R.0 | 8 |
+| Append-only guards `atom_*` | 25+ |
+| RLS policies | 116 / 63 tablas |
+| Smokes totales | 41 |
+| **Blockers iOS pivot** | **0** |
+
+**Drop candidates por fase:**
+
+| Fase | Candidates | Risk |
+|---|---|---|
+| R.1 | overloads obsoletos `set_decision_rules` 4/6-arg + `create_group_resource` 8-arg; `resource_right_subtype.holder_membership_id`; refactor smokes para zero-leak | Bajo |
+| R.2 | `resources.group_id`/`ownership_kind`/`owner_membership_id`; `resource_owners` table; 4 compat views (tras migrar 96 funciones legacy) | Medio |
+| R.3 | `group_resources_direct_insert_audit`; revisión atom guards; 50+ pre-R.0 `group_*` tables | Alto |
+
+**Conclusión:** GO R.0H. Hygiene cleanup difírido sin urgencia técnica. Backend foundation completo y funcional.
+
+**Próximo:** R.0H — iOS PersonalHomeView pivot.
