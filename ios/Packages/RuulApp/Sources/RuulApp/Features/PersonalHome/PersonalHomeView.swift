@@ -1,6 +1,15 @@
 import SwiftUI
 import RuulCore
 
+/// R.0H.3 — feature-flag namespace para el pivote opcional del root
+/// hacia `PersonalHomeView`. Convive con `GroupListView` /
+/// `GroupTabsHost` durante toda R.0H: si el flag está OFF (default)
+/// el shell renderiza la v1 sin cambios. Toggle en
+/// `PersonalSettingsView` (solo en builds DEBUG).
+enum PersonalHomeFeatureFlag {
+    static let storageKey = "personal_home_root_enabled"
+}
+
 /// R.0H.2 — primer skeleton del "My World" personal. Consume
 /// `MyWorldStore` (R.0H.1) sin tocar todavía la navegación root: esta
 /// vista NO es root hasta R.0H.3 (feature flag) y NO reemplaza

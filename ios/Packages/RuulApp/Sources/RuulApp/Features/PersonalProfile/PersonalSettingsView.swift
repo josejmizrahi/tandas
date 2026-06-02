@@ -12,6 +12,13 @@ import RuulCore
 struct PersonalSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(AppearancePreference.storageKey) private var appearanceRaw: String = AppearancePreference.system.rawValue
+    #if DEBUG
+    /// R.0H.3 — debug-only opt-in para el root pivot.
+    /// Default false. Si se enciende, el shell intercambia
+    /// `GroupTabsHost` por `PersonalHomeView`. Apagarlo restaura
+    /// la v1 de inmediato (rollback instantáneo en device).
+    @AppStorage(PersonalHomeFeatureFlag.storageKey) private var personalHomeRootEnabled: Bool = false
+    #endif
 
     private var appearanceBinding: Binding<AppearancePreference> {
         Binding(
@@ -80,6 +87,28 @@ struct PersonalSettingsView: View {
             } footer: {
                 Text(L10n.PersonalSettings.appearanceHint)
             }
+            #if DEBUG
+            Section {
+                Toggle(isOn: $personalHomeRootEnabled) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Mi mundo como inicio")
+                                .font(.body)
+                            Text("Reemplaza la pantalla de grupo por «Mi mundo».")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(.tint)
+                    }
+                }
+            } header: {
+                Text("Laboratorio Ruul")
+            } footer: {
+                Text("Solo visible en builds de desarrollo. Apagar restaura la vista por grupo.")
+            }
+            #endif
         }
         .navigationTitle(L10n.PersonalSettings.title)
         .navigationBarTitleDisplayMode(.inline)

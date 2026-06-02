@@ -13,6 +13,12 @@ import RuulCore
 ///   in `GroupSwitcherSheet` from now on.
 public struct RuulAppShell: View {
     @AppStorage(AppearancePreference.storageKey) private var appearanceRaw: String = AppearancePreference.system.rawValue
+    /// R.0H.3 — opt-in pivot flag. OFF (default) keeps the v1 root
+    /// (`GroupTabsHost` per focused group); ON swaps the signed-in
+    /// surface for `PersonalHomeView`. Toggled from
+    /// `PersonalSettingsView` (debug builds only) so we have
+    /// instant rollback on device without a backend round trip.
+    @AppStorage(PersonalHomeFeatureFlag.storageKey) private var personalHomeRootEnabled: Bool = false
     @State private var container: DependencyContainer
     /// Locally-tracked selection so the switcher can change groups
     /// without async-store loops. Defaults to the first group when
@@ -83,7 +89,27 @@ public struct RuulAppShell: View {
         case .signedOut:
             SignInWithOTPView(container: container)
         case .signedIn:
-            signedInContent
+            if personalHomeRootEnabled {
+                personalHomeRoot
+            } else {
+                signedInContent
+            }
+        }
+    }
+
+    /// R.0H.3 — opt-in `PersonalHomeView` root. Wrapped in its own
+    /// `NavigationStack` because the v1 shell relied on
+    /// `GroupTabsHost` to own per-tab stacks. Profile + groups still
+    /// refresh in the background so the legacy fallback is always
+    /// warm when the user flips the flag back OFF.
+    @ViewBuilder
+    private var personalHomeRoot: some View {
+        NavigationStack {
+            PersonalHomeView(store: container.myWorldStore)
+        }
+        .task {
+            await container.groupsStore.refresh()
+            await container.profileStore.refreshIfNeeded()
         }
     }
 
