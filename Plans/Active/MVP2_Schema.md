@@ -250,4 +250,39 @@ tokenización · push notifications (D2) · edge functions/cron (D6, D10).
 
 ## 10. Journal de implementación
 
-*(vacío — se llena slice por slice después de la firma)*
+### Journal — Implementación SHIPPED 2026-06-02
+
+**Las 12 slices ejecutadas, todas con smoke verde en la live DB `wyvkqveienzixinonhum`:**
+
+| Slice | Migration | Smoke |
+|---|---|---|
+| M.0 Reset + Foundation | `mvp2_000_reset_and_foundation` | (preflight inline) |
+| M.1 Identity | `mvp2_001_identity` | 6 casos ✅ |
+| M.2 Participación | `mvp2_002_participation` | 8 casos ✅ |
+| M.3 Contexts & Invites (+activity_events) | `mvp2_003_contexts_and_invites` | 9 casos ✅ |
+| M.4 Resources & Rights | `mvp2_004_resources_and_rights` | 8 casos ✅ |
+| M.5 Calendar | `mvp2_005_calendar` | 7 casos ✅ |
+| M.6 Reservations | `mvp2_006_reservations` | 6 casos ✅ |
+| M.7 Decisions (reordenada antes de Rules) | `mvp2_007_decisions` | 6 casos ✅ |
+| M.8 Rules + Obligations | `mvp2_008_rules_and_obligations` | 5 casos ✅ |
+| M.9 Money | `mvp2_009_money` | 5 casos ✅ |
+| M.10 Documents + Summary v2 + M.11 Contract | `mvp2_010_documents_summary_and_contract` | contrato e2e ✅ |
+| M.11 Fix settlement temp table | `mvp2_011_fix_settlement_temp_table` | (re-run all ✅) |
+
+**Estado final DB:** 26 tablas · ~35 RPCs · RLS deny-by-default en todo · anon sin acceso a nada.
+
+**Desviaciones del plan (documentadas):**
+1. `activity_events` se adelantó a M.3 (todos los RPCs emiten actividad desde el inicio). Sin FKs (append-only audit).
+2. Decisions (M.7) se ejecutó antes que Rules (M.8) — obligations referencia decisions.
+3. `obligations` se creó en M.8 junto con rules (es el target de las consecuencias).
+4. M.10 y M.11 se combinaron en una migración.
+
+**Bugs encontrados por smokes (y corregidos):**
+1. `ALTER DEFAULT PRIVILEGES IN SCHEMA` no remueve el default global de EXECUTE a PUBLIC → fix global en M.2.
+2. `generate_settlement_batch` temp table collision en llamadas múltiples por transacción → fix en M.11.
+
+**Escenarios MVP verificados end-to-end (contract smoke):**
+contexto → invite → join → regla multa → cena recurrente → check-in tarde → multa automática $100 → gasto $600 split 50/50 → cierre con host rotation → settlement neteado ($400) → pago → obligations cerradas → context_summary completo.
+
+**Pendiente post-MVP backend:** iOS rewrite contra este contrato (`Plans/Active/MVP2_iOS_Contract.md` por escribir) · push notifications · cron para recurrencia sin cierre manual.
+
