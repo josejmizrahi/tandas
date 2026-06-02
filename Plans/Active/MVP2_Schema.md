@@ -1,6 +1,6 @@
 # MVP 2.0 — Ruul Schema Final: Plan de Implementación
 
-**Status:** PLAN — pendiente de firma del founder. **Cero DDL ejecutado.**
+**Status:** ✅ **SHIPPED 2026-06-02** — firmado por founder e implementado completo (ver §10 Journal).
 **Fecha:** 2026-06-02.
 **Schema fuente:** "Ruul MVP Schema Final" (founder, 2026-06-02) — 22 tablas + RPCs core.
 **Decisiones ya firmadas:**
