@@ -775,6 +775,35 @@ public actor MockRuulRPCClient: RuulRPCClient {
         rights[resourceId] = nil
     }
 
+    public func updateResource(_ input: UpdateResourceInput) async throws -> Resource {
+        try throwIfNeeded()
+        guard let existing = resources[input.resourceId] else {
+            throw RuulError.unexpected(message: "Recurso no encontrado")
+        }
+        // Gate: solo OWN/MANAGE puede editar (espeja al backend).
+        let myEffective = effectiveRights(on: input.resourceId, rights: rights[input.resourceId] ?? [])
+        guard myEffective.contains("OWN") || myEffective.contains("MANAGE") else {
+            throw RuulError.unexpected(message: "Necesitas OWN o MANAGE para editar el recurso")
+        }
+        let updated = Resource(
+            id: existing.id,
+            resourceType: existing.resourceType,
+            displayName: input.displayName ?? existing.displayName,
+            description: input.description ?? existing.description,
+            estimatedValue: input.estimatedValue ?? existing.estimatedValue,
+            currency: input.currency ?? existing.currency,
+            canonicalOwnerActorId: existing.canonicalOwnerActorId,
+            createdAt: existing.createdAt
+        )
+        resources[input.resourceId] = updated
+        if let ctxId = resourceContext[input.resourceId] {
+            emit(ctxId, "resource.updated", payload: .object([
+                "resource_id": .string(input.resourceId.uuidString)
+            ]))
+        }
+        return updated
+    }
+
     private func lookupMemberName(_ actorId: UUID) -> String? {
         for members in memberships.values {
             if let member = members.first(where: { $0.actorId == actorId }) {

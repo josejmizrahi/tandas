@@ -71,6 +71,9 @@ public protocol RuulRPCClient: Sendable {
     func revokeRight(rightId: UUID) async throws
     /// `archive_resource(p_resource_id)`
     func archiveResource(resourceId: UUID) async throws
+    /// `update_resource(p_resource_id, p_display_name?, p_description?, p_estimated_value?, p_currency?, p_metadata?)`
+    /// — F.1A polish: editor general + metadata (policies). Devuelve el recurso actualizado.
+    func updateResource(_ input: UpdateResourceInput) async throws -> Resource
 
     // MARK: - Events
 
@@ -239,6 +242,33 @@ public struct CreateResourceInput: Sendable, Equatable {
         self.estimatedValue = estimatedValue
         self.currency = currency
         self.clientId = clientId
+    }
+}
+
+/// Input de `update_resource`. Todos los campos son opcionales — solo se aplica
+/// lo que llegue distinto de nil. `metadata` es jsonb (incluye policies por capability).
+public struct UpdateResourceInput: Sendable, Equatable {
+    public var resourceId: UUID
+    public var displayName: String?
+    public var description: String?
+    public var estimatedValue: Double?
+    public var currency: String?
+    public var metadata: JSONValue?
+
+    public init(
+        resourceId: UUID,
+        displayName: String? = nil,
+        description: String? = nil,
+        estimatedValue: Double? = nil,
+        currency: String? = nil,
+        metadata: JSONValue? = nil
+    ) {
+        self.resourceId = resourceId
+        self.displayName = displayName
+        self.description = description
+        self.estimatedValue = estimatedValue
+        self.currency = currency
+        self.metadata = metadata
     }
 }
 

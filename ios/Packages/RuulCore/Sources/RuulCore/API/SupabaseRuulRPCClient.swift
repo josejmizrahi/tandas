@@ -307,6 +307,37 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callVoid("revoke_right", params: Params(pRightId: rightId))
     }
 
+    public func updateResource(_ input: UpdateResourceInput) async throws -> Resource {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            let pDisplayName: String?
+            let pDescription: String?
+            let pEstimatedValue: Double?
+            let pCurrency: String?
+            let pMetadata: JSONValue?
+            enum CodingKeys: String, CodingKey {
+                case pResourceId = "p_resource_id"
+                case pDisplayName = "p_display_name"
+                case pDescription = "p_description"
+                case pEstimatedValue = "p_estimated_value"
+                case pCurrency = "p_currency"
+                case pMetadata = "p_metadata"
+            }
+        }
+        struct Updated: Decodable {
+            let resource: Resource
+        }
+        let result: Updated = try await call("update_resource", params: Params(
+            pResourceId: input.resourceId,
+            pDisplayName: input.displayName,
+            pDescription: input.description,
+            pEstimatedValue: input.estimatedValue,
+            pCurrency: input.currency,
+            pMetadata: input.metadata
+        ))
+        return result.resource
+    }
+
     public func archiveResource(resourceId: UUID) async throws {
         struct Params: Encodable, Sendable {
             let pResourceId: UUID

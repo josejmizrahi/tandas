@@ -632,6 +632,44 @@ struct MockClientTests {
         #expect(summary.contexts.defaultContextActorId == target)
     }
 
+    // MARK: - F.1A polish Resource editor
+
+    @Test("update_resource cambia display_name y description preservando otros campos")
+    func updateResourceMock() async throws {
+        let mock = await makeDemoClient()
+        let casa = MockRuulRPCClient.DemoIds.casaValle
+        let updated = try await mock.updateResource(UpdateResourceInput(
+            resourceId: casa,
+            displayName: "Casa Valle (rebautizada)",
+            description: "Nueva descripción"
+        ))
+        #expect(updated.displayName == "Casa Valle (rebautizada)")
+        #expect(updated.description == "Nueva descripción")
+        // El tipo no cambia
+        #expect(updated.resourceType == "house")
+    }
+
+    @Test("update_resource rechaza sin OWN/MANAGE")
+    func updateResourceRejectsWithoutRight() async throws {
+        // Crear un cliente como David (USE pero no OWN/MANAGE sobre Casa Valle)
+        let david = CurrentActor(
+            actor: ActorRecord(
+                id: MockRuulRPCClient.DemoIds.david,
+                actorKind: .person,
+                actorSubtype: "person",
+                displayName: "David"
+            )
+        )
+        let mock = MockRuulRPCClient(me: david)
+        await mock.seedDemoWorld()
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.updateResource(UpdateResourceInput(
+                resourceId: MockRuulRPCClient.DemoIds.casaValle,
+                displayName: "Intento sin permiso"
+            ))
+        }
+    }
+
     @Test("nextError se lanza una sola vez")
     func nextError() async throws {
         let mock = await makeDemoClient()

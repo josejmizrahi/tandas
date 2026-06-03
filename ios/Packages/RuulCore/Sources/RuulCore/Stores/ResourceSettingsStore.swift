@@ -32,4 +32,22 @@ public final class ResourceSettingsStore {
 
     public func can(_ action: String) -> Bool { settings?.can(action) ?? false }
     public func has(_ capability: String) -> Bool { settings?.has(capability) ?? false }
+
+    /// F.1A polish — edit general (display_name/description/value/currency).
+    public func setGeneral(
+        resourceId: UUID,
+        displayName: String? = nil,
+        description: String? = nil,
+        estimatedValue: Double? = nil,
+        currency: String? = nil
+    ) async throws {
+        _ = try await rpc.updateResource(UpdateResourceInput(
+            resourceId: resourceId,
+            displayName: displayName,
+            description: description,
+            estimatedValue: estimatedValue,
+            currency: currency
+        ))
+        await load(resourceId: resourceId)
+    }
 }
