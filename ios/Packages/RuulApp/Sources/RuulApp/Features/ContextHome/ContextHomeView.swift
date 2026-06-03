@@ -52,18 +52,23 @@ public struct ContextHomeView: View {
         List {
             headerSection(summary)
 
-            if context.isPersonal, let world = store.world {
-                myWorldSections(world)
+            if context.isPersonal {
+                // Mundo personal: solo lo que my_world() agrega. Las secciones de
+                // contexto (miembros, eventos, dinero del contexto, decisiones,
+                // reglas) no aplican a un actor persona — siempre darían (0) y
+                // contradirían los datos reales de arriba.
+                if let world = store.world {
+                    myWorldSections(world)
+                }
             } else {
                 membersSection(summary)
+                resourcesSection(summary)
+                eventsSection(summary)
+                obligationsSection(summary)
+                decisionsSection(summary)
+                rulesSection(summary)
+                activitySection(summary)
             }
-
-            resourcesSection(summary)
-            eventsSection(summary)
-            obligationsSection(summary)
-            decisionsSection(summary)
-            rulesSection(summary)
-            activitySection(summary)
         }
         .listStyle(.insetGrouped)
     }
@@ -118,8 +123,12 @@ public struct ContextHomeView: View {
 
     @ViewBuilder
     private func myWorldSections(_ world: MyWorld) -> some View {
-        if !world.resources.isEmpty {
-            Section("Recursos que puedes ver") {
+        Section {
+            if world.resources.isEmpty {
+                Text("Nadie te ha compartido recursos todavía")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
                 ForEach(world.resources) { resource in
                     NavigationLink {
                         ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
@@ -132,10 +141,22 @@ public struct ContextHomeView: View {
                     }
                 }
             }
+            NavigationLink {
+                ResourcesListView(context: context, container: container)
+            } label: {
+                Label("Todos los recursos", systemImage: "shippingbox")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Recursos que puedes ver (\(world.resources.count))")
         }
 
-        if !world.openObligations.isEmpty {
-            Section("Tus cuentas abiertas") {
+        Section {
+            if world.openObligations.isEmpty {
+                Text("No debes nada y nadie te debe 🎉")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
                 ForEach(world.openObligations) { obligation in
                     InfoRow(
                         symbolName: obligation.iOwe ? "arrow.up.circle.fill" : "arrow.down.circle.fill",
@@ -145,6 +166,12 @@ public struct ContextHomeView: View {
                         tint: obligation.iOwe ? .red : .green
                     )
                 }
+            }
+        } header: {
+            Text("Tus cuentas abiertas (\(world.openObligations.count))")
+        } footer: {
+            if !world.openObligations.isEmpty {
+                Text("Se liquidan desde el contexto donde nacieron (Dinero → Liquidar).")
             }
         }
     }
@@ -387,6 +414,20 @@ public struct ContextHomeView: View {
                 membershipType: "founder",
                 memberCount: 5,
                 roles: ["admin"]
+            ),
+            container: .demo()
+        )
+    }
+}
+
+#Preview("Contexto personal (mi mundo)") {
+    NavigationStack {
+        ContextHomeView(
+            context: AppContext(
+                id: MockRuulRPCClient.DemoIds.jose,
+                kind: .person,
+                subtype: "person",
+                displayName: "José"
             ),
             container: .demo()
         )
