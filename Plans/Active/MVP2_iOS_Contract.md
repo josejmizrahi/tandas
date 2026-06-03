@@ -149,6 +149,32 @@ draft automáticamente cuando entran deudas nuevas; los items reemplazados queda
 Listas: lectura PostgREST de `obligations`, `settlement_batches`, `settlement_items`.
 `obligation_type` ∈ iou, fine, sanction, expense_share, loan, contribution, dues, trip_share, game_debt, reservation_fee, other
 
+## 9b. Obligations universales (R.2R)
+
+`obligations` es una primitiva universal: representa compromisos **monetarios y de acción**
+sin tabla `task`. El eje lo define `obligation_kind`:
+
+`obligation_kind` ∈ money (default), action, approval, delivery, attendance, document, reservation, custom
+
+- **money** → `amount`/`currency`, se liquida vía settlement (`status: open → settled`).
+- **resto (acción)** → `title`/`description`/`due_at`, sin `amount`; se cumple con
+  `complete_obligation` (`status: open → completed`). Quedan fuera del neteo por diseño
+  (`amount`/`currency` null).
+
+`status` ∈ open, accepted, in_progress, completed, expired, settled, cancelled, forgiven, disputed.
+Campos de cumplimiento: `completed_at`, `completed_by_actor_id`, `completion_notes`, `completion_metadata`.
+
+| RPC | Firma | Devuelve |
+|---|---|---|
+| `create_action_obligation(p_context_actor_id, p_debtor_actor_id, p_title, p_kind='action', p_description?, p_due_at?, p_creditor_actor_id?, p_source_event_id?, p_source_reservation_id?, p_source_decision_id?, p_metadata?, p_client_id?)` | miembro del contexto; asignar a otro requiere `members.manage` | `{obligation_id, kind, status}` |
+| `complete_obligation(p_obligation_id, p_completion_notes?, p_completion_metadata?)` | responsable (debtor), acreedor/verificador (creditor) o `members.manage`. Las de dinero NO se completan | `{obligation_id, status, completed_by, completed_at, already_completed?}` |
+| `obligation_detail(p_obligation_id)` | debtor, creditor o miembro del contexto | `{id, kind, obligation_type, status, title, description, amount, currency, due_at, debtor_actor_id, creditor_actor_id, completed_at, completed_by_actor_id, completion_notes, source_*, metadata, created_at}` |
+| `why_obligation_exists(p_obligation_id)` | debtor, creditor o miembro del contexto | `{obligation_id, kind, source: rule\|decision\|event\|reservation\|manual, reason, source_rule_id, source_decision_id, source_event_id, source_reservation_id, rule_title, metadata}` |
+
+Las **consecuencias de reglas** pueden crear obligations de acción además de multas:
+`consequences: [{"type":"create_obligation", "kind":"action", "title":"Traer botella de vino", "description"?, "due_at"?}]`.
+Sin `kind` (o `type:"fine"`) → multa monetaria (compat).
+
 ## 10. Activity
 
 | RPC | Firma | Devuelve |
