@@ -7,6 +7,7 @@ import RuulCore
 public struct ContextShell: View {
     let container: DependencyContainer
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingCreateContext = false
     @State private var isShowingJoinByCode = false
     @State private var isShowingEditProfile = false
@@ -43,6 +44,12 @@ public struct ContextShell: View {
         }
         .task {
             await contextStore.load()
+        }
+        // Refrescar la lista de contextos al volver del background — p.ej. si te
+        // agregaron a un grupo (o se sembraron datos) mientras la app estaba abierta.
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task { await contextStore.load() }
         }
         // Invitación entrante por universal link / ruul:// — el código quedó
         // pendiente en el router (aunque haya llegado antes de pasar los gates).

@@ -42,6 +42,8 @@ public struct ContextHomeView: View {
         }
         .refreshable {
             await store.load(context: context)
+            // El pull-to-refresh también actualiza la lista de contextos del switcher.
+            await container.contextStore.load()
         }
     }
 
