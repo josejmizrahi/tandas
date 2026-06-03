@@ -148,52 +148,131 @@ public struct PersonalSettingsView: View {
 
     // MARK: - Privacidad
 
+    private static let privacyOptions: [(value: String, label: String)] = [
+        ("members_in_common", "Miembros en común"),
+        ("anyone", "Cualquiera"),
+        ("no_one", "Nadie"),
+    ]
+
     @ViewBuilder
     private func privacySection(_ privacy: PrivacySettings) -> some View {
+        let canEdit = store.can("edit_privacy")
         Section("Privacidad") {
-            InfoRow(symbolName: "person.crop.circle.badge.questionmark",
-                    title: "Quién puede encontrarme",
-                    value: privacyLabel(privacy.discoverableBy))
-            InfoRow(symbolName: "envelope.badge",
-                    title: "Quién puede invitarme",
-                    value: privacyLabel(privacy.whoCanInviteMe))
-            InfoRow(symbolName: "eye",
-                    title: "Visibilidad del perfil",
-                    value: privacyLabel(privacy.profileVisibility))
-            Text("Estos ajustes serán configurables en una próxima versión.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            privacyPicker(
+                title: "Quién puede encontrarme",
+                systemImage: "person.crop.circle.badge.questionmark",
+                key: .discoverableBy,
+                current: privacy.discoverableBy,
+                enabled: canEdit
+            )
+            privacyPicker(
+                title: "Quién puede invitarme",
+                systemImage: "envelope.badge",
+                key: .whoCanInviteMe,
+                current: privacy.whoCanInviteMe,
+                enabled: canEdit
+            )
+            privacyPicker(
+                title: "Visibilidad del perfil",
+                systemImage: "eye",
+                key: .profileVisibility,
+                current: privacy.profileVisibility,
+                enabled: canEdit
+            )
         }
     }
 
-    private func privacyLabel(_ raw: String) -> String {
-        switch raw {
-        case "members_in_common": return "Miembros en común"
-        case "anyone":             return "Cualquiera"
-        case "no_one":             return "Nadie"
-        default:                   return raw
+    @ViewBuilder
+    private func privacyPicker(title: String, systemImage: String, key: PrivacyKey, current: String, enabled: Bool) -> some View {
+        HStack {
+            Label(title, systemImage: systemImage)
+            Spacer()
+            Picker("", selection: Binding(
+                get: { current },
+                set: { newValue in
+                    guard newValue != current, enabled else { return }
+                    Task {
+                        await runner.run {
+                            try await store.setPrivacy(key, value: newValue)
+                        }
+                    }
+                }
+            )) {
+                ForEach(Self.privacyOptions, id: \.value) { option in
+                    Text(option.label).tag(option.value)
+                }
+            }
+            .labelsHidden()
+            .disabled(!enabled || runner.isRunning)
         }
     }
 
     // MARK: - Calendario
 
+    /// Curado: zonas comunes para usuarios LATAM/US/EU del founder + actual del dispositivo.
+    private static let timeZoneOptions: [String] = {
+        var ids = [
+            "America/Mexico_City", "America/Cancun", "America/Tijuana",
+            "America/New_York", "America/Los_Angeles", "America/Chicago",
+            "America/Bogota", "America/Lima", "America/Buenos_Aires",
+            "America/Santiago", "America/Sao_Paulo",
+            "Europe/Madrid", "Europe/London", "Europe/Paris",
+            "UTC",
+        ]
+        let device = TimeZone.current.identifier
+        if !ids.contains(device) { ids.insert(device, at: 0) }
+        return ids
+    }()
+
     @ViewBuilder
     private func calendarSection(_ calendar: CalendarSettings) -> some View {
+        let canEdit = store.can("edit_calendar")
         Section("Calendario") {
-            InfoRow(symbolName: "globe", title: "Zona horaria", value: calendar.timeZone)
-            InfoRow(symbolName: "calendar", title: "Primer día de semana", value: weekStartLabel(calendar.firstDayOfWeek))
+            HStack {
+                Label("Zona horaria", systemImage: "globe")
+                Spacer()
+                Picker("", selection: Binding(
+                    get: { calendar.timeZone },
+                    set: { newValue in
+                        guard newValue != calendar.timeZone, canEdit else { return }
+                        Task {
+                            await runner.run {
+                                try await store.setCalendar(.timeZone, value: newValue)
+                            }
+                        }
+                    }
+                )) {
+                    ForEach(Self.timeZoneOptions, id: \.self) { tz in
+                        Text(tz).tag(tz)
+                    }
+                }
+                .labelsHidden()
+                .disabled(!canEdit || runner.isRunning)
+            }
+            HStack {
+                Label("Primer día de semana", systemImage: "calendar")
+                Spacer()
+                Picker("", selection: Binding(
+                    get: { calendar.firstDayOfWeek },
+                    set: { newValue in
+                        guard newValue != calendar.firstDayOfWeek, canEdit else { return }
+                        Task {
+                            await runner.run {
+                                try await store.setCalendar(.firstDayOfWeek, value: newValue)
+                            }
+                        }
+                    }
+                )) {
+                    Text("Lunes").tag("monday")
+                    Text("Domingo").tag("sunday")
+                    Text("Sábado").tag("saturday")
+                }
+                .labelsHidden()
+                .disabled(!canEdit || runner.isRunning)
+            }
             Text("La sincronización con Google/Apple Calendar llega después.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        }
-    }
-
-    private func weekStartLabel(_ raw: String) -> String {
-        switch raw {
-        case "monday": return "Lunes"
-        case "sunday": return "Domingo"
-        case "saturday": return "Sábado"
-        default: return raw.capitalized
         }
     }
 
@@ -201,16 +280,39 @@ public struct PersonalSettingsView: View {
 
     @ViewBuilder
     private func contextsSection(_ contexts: ContextPreferences) -> some View {
+        let canEdit = store.can("edit_contexts")
+        let options = container.contextStore.collectiveContexts
         Section("Contexto") {
-            InfoRow(symbolName: "star",
-                    title: "Contexto inicial",
-                    value: contexts.defaultContextActorId == nil ? "No definido" : "Configurado")
+            HStack {
+                Label("Contexto inicial", systemImage: "star")
+                Spacer()
+                Picker("", selection: Binding<UUID?>(
+                    get: { contexts.defaultContextActorId },
+                    set: { newValue in
+                        guard newValue != contexts.defaultContextActorId, canEdit else { return }
+                        Task {
+                            await runner.run {
+                                try await store.setDefaultContext(newValue)
+                            }
+                        }
+                    }
+                )) {
+                    Text("No definido").tag(UUID?.none)
+                    ForEach(options) { ctx in
+                        Text(ctx.displayName).tag(Optional(ctx.id))
+                    }
+                }
+                .labelsHidden()
+                .disabled(!canEdit || runner.isRunning || options.isEmpty)
+            }
             InfoRow(symbolName: "clock.arrow.circlepath",
                     title: "Último usado",
                     value: contexts.lastContextActorId == nil ? "—" : "Persistido")
-            Text("Pronto vas a poder elegir un contexto inicial por defecto.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if options.isEmpty {
+                Text("Cuando tengas contextos vas a poder elegir uno como inicial.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

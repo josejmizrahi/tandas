@@ -578,6 +578,60 @@ struct MockClientTests {
         }
     }
 
+    // MARK: - F.1A-1 Personal settings editors (R.2 polish)
+
+    @Test("setPrivacy persiste el slot en personal_settings_summary")
+    func setPrivacyPersists() async throws {
+        let mock = await makeDemoClient()
+        let store = await MainActor.run {
+            PersonalSettingsStore(rpc: mock)
+        }
+        await MainActor.run { Task { await store.load() } }
+        // Esperar el load inicial
+        try await Task.sleep(for: .milliseconds(10))
+
+        try await MainActor.run {
+            Task {
+                try await store.setPrivacy(.discoverableBy, value: "anyone")
+            }
+        }
+        try await Task.sleep(for: .milliseconds(20))
+
+        let summary = try await mock.personalSettingsSummary()
+        #expect(summary.privacy.discoverableBy == "anyone")
+    }
+
+    @Test("setCalendar persiste time_zone")
+    func setCalendarPersists() async throws {
+        let mock = await makeDemoClient()
+        let store = await MainActor.run {
+            PersonalSettingsStore(rpc: mock)
+        }
+        try await MainActor.run {
+            Task { try await store.setCalendar(.timeZone, value: "America/Cancun") }
+        }
+        try await Task.sleep(for: .milliseconds(20))
+
+        let summary = try await mock.personalSettingsSummary()
+        #expect(summary.calendar.timeZone == "America/Cancun")
+    }
+
+    @Test("setDefaultContext persiste UUID")
+    func setDefaultContextPersists() async throws {
+        let mock = await makeDemoClient()
+        let store = await MainActor.run {
+            PersonalSettingsStore(rpc: mock)
+        }
+        let target = MockRuulRPCClient.DemoIds.cenaSemanal
+        try await MainActor.run {
+            Task { try await store.setDefaultContext(target) }
+        }
+        try await Task.sleep(for: .milliseconds(20))
+
+        let summary = try await mock.personalSettingsSummary()
+        #expect(summary.contexts.defaultContextActorId == target)
+    }
+
     @Test("nextError se lanza una sola vez")
     func nextError() async throws {
         let mock = await makeDemoClient()

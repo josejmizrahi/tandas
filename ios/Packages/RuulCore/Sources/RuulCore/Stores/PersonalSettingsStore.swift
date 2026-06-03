@@ -48,6 +48,51 @@ public final class PersonalSettingsStore {
         _ = try await rpc.updateMyProfileMetadata(metadata)
         await load()
     }
+
+    /// F.1A-1 — actualiza un slot de privacidad (discoverable_by / who_can_invite_me / profile_visibility).
+    public func setPrivacy(_ key: PrivacyKey, value: String) async throws {
+        let metadata: JSONValue = .object([
+            "privacy": .object([key.rawValue: .string(value)])
+        ])
+        _ = try await rpc.updateMyProfileMetadata(metadata)
+        await load()
+    }
+
+    /// F.1A-1 — actualiza un slot del calendario (time_zone / first_day_of_week).
+    public func setCalendar(_ key: CalendarKey, value: String) async throws {
+        let metadata: JSONValue = .object([
+            "calendar": .object([key.rawValue: .string(value)])
+        ])
+        _ = try await rpc.updateMyProfileMetadata(metadata)
+        await load()
+    }
+
+    /// F.1A-1 — setea el contexto inicial por defecto. `nil` lo limpia.
+    public func setDefaultContext(_ contextActorId: UUID?) async throws {
+        let value: JSONValue = contextActorId.map { .string($0.uuidString) } ?? .null
+        let metadata: JSONValue = .object([
+            "contexts": .object(["default_context_actor_id": value])
+        ])
+        _ = try await rpc.updateMyProfileMetadata(metadata)
+        await load()
+    }
+}
+
+/// 3 slots de privacy en `personal_settings_summary().privacy`.
+public enum PrivacyKey: String, Sendable, CaseIterable, Identifiable {
+    case discoverableBy = "discoverable_by"
+    case whoCanInviteMe = "who_can_invite_me"
+    case profileVisibility = "profile_visibility"
+
+    public var id: String { rawValue }
+}
+
+/// 2 slots de calendar en `personal_settings_summary().calendar`.
+public enum CalendarKey: String, Sendable, CaseIterable, Identifiable {
+    case timeZone = "time_zone"
+    case firstDayOfWeek = "first_day_of_week"
+
+    public var id: String { rawValue }
 }
 
 /// 7 categorías canónicas de notificaciones (mirror del backend).
