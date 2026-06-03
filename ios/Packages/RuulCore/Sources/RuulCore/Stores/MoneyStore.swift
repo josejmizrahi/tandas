@@ -13,9 +13,13 @@ public final class MoneyStore {
     public private(set) var phase: StorePhase = .idle
 
     private let rpc: any RuulRPCClient
+    /// Para resolver "Tú" cuando el actor no está en members
+    /// (contexto personal o un actor que ya salió del contexto).
+    private var myActorId: UUID?
 
-    public init(rpc: any RuulRPCClient) {
+    public init(rpc: any RuulRPCClient, myActorId: UUID? = nil) {
         self.rpc = rpc
+        self.myActorId = myActorId
     }
 
     public init(
@@ -63,7 +67,9 @@ public final class MoneyStore {
     public func displayName(for actorId: UUID?, contextId: UUID? = nil) -> String {
         guard let actorId else { return "—" }
         if actorId == contextId { return contextDisplayName }
-        return members.first { $0.actorId == actorId }?.displayName ?? contextDisplayName
+        if let member = members.first(where: { $0.actorId == actorId }) { return member.displayName }
+        if actorId == myActorId { return "Tú" }
+        return contextDisplayName
     }
 
     public func canRecord(in context: AppContext) -> Bool {

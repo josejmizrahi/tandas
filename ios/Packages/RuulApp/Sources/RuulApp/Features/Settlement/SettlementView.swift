@@ -15,7 +15,7 @@ public struct SettlementView: View {
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
         self.container = container
-        _store = State(initialValue: SettlementStore(rpc: container.rpc))
+        _store = State(initialValue: SettlementStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
     }
 
     private var myActorId: UUID? { container.currentActorStore.actorId }

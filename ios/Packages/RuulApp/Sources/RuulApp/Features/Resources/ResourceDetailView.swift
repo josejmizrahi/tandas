@@ -145,7 +145,12 @@ public struct ResourceDetailView: View {
             // Reservaciones
             Section {
                 NavigationLink {
-                    ReservationsListView(resource: detail.resource, context: context, container: container)
+                    ReservationsListView(
+                        resource: detail.resource,
+                        context: context,
+                        reservationContextId: governingContextId(detail),
+                        container: container
+                    )
                 } label: {
                     Label("Reservaciones", systemImage: "calendar.badge.clock")
                 }
@@ -153,6 +158,12 @@ public struct ResourceDetailView: View {
                 Text("Quien tenga derecho de uso (USE/MANAGE/OWN) puede solicitar reservar este recurso.")
             }
         }
+    }
+
+    /// El contexto que gobierna las reservaciones del recurso: el holder del
+    /// right GOVERN. Si no hay GOVERN, el contexto desde el que se navega.
+    private func governingContextId(_ detail: ResourceDetail) -> UUID {
+        detail.rights.first { $0.rightKind == "GOVERN" }?.holderActorId ?? context.id
     }
 
     private func rightSymbol(_ kind: String) -> String {

@@ -153,6 +153,31 @@ struct StoreTests {
         #expect(!store.members.contains { $0.actorId == MockRuulRPCClient.DemoIds.daniel })
     }
 
+    // MARK: - Resolución de nombres
+
+    @Test("displayName resuelve 'Tú' cuando el actor no está en members")
+    func displayNameFallbackToMe() async {
+        let mock = await makeDemoClient()
+
+        // Sin members cargados (p.ej. contexto personal): yo → "Tú", otro → "Alguien".
+        let store = DecisionsStore(rpc: mock, myActorId: MockRuulRPCClient.DemoIds.jose)
+        #expect(store.displayName(for: MockRuulRPCClient.DemoIds.jose) == "Tú")
+        #expect(store.displayName(for: MockRuulRPCClient.DemoIds.david) == "Alguien")
+        #expect(store.displayName(for: nil) == "—")
+
+        // Con members cargados, el nombre real gana sobre "Tú".
+        let cena = AppContext(
+            id: MockRuulRPCClient.DemoIds.cenaSemanal,
+            kind: .collective,
+            subtype: "friend_group",
+            displayName: "Cena Semanal",
+            roles: ["admin"]
+        )
+        await store.load(context: cena)
+        #expect(store.displayName(for: MockRuulRPCClient.DemoIds.jose) != "Tú")
+        #expect(store.displayName(for: MockRuulRPCClient.DemoIds.jose) != "Alguien")
+    }
+
     // MARK: - ReservationsStore
 
     @Test("ReservationsStore.reservations(covering:) cubre el rango y excluye canceladas")

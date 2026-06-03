@@ -6,6 +6,9 @@ public struct ReservationsListView: View {
     let resource: Resource
     let context: AppContext
     let container: DependencyContainer
+    /// Contexto que gobierna el recurso — las solicitudes de reservación se
+    /// crean ahí, aunque se navegue desde otro contexto (p.ej. el personal).
+    let reservationContextId: UUID
 
     private enum ViewMode: String, CaseIterable {
         case list = "Lista"
@@ -16,11 +19,12 @@ public struct ReservationsListView: View {
     @State private var isShowingRequest = false
     @State private var viewMode: ViewMode = .list
 
-    public init(resource: Resource, context: AppContext, container: DependencyContainer) {
+    public init(resource: Resource, context: AppContext, reservationContextId: UUID? = nil, container: DependencyContainer) {
         self.resource = resource
         self.context = context
+        self.reservationContextId = reservationContextId ?? context.id
         self.container = container
-        _store = State(initialValue: ReservationsStore(rpc: container.rpc))
+        _store = State(initialValue: ReservationsStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
     }
 
     public var body: some View {
@@ -58,7 +62,13 @@ public struct ReservationsListView: View {
             }
         }
         .sheet(isPresented: $isShowingRequest) {
-            RequestReservationView(resource: resource, context: context, store: store, container: container)
+            RequestReservationView(
+                resource: resource,
+                context: context,
+                reservationContextId: reservationContextId,
+                store: store,
+                container: container
+            )
         }
     }
 

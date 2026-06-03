@@ -15,7 +15,7 @@ public struct MoneyHomeView: View {
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
         self.container = container
-        _store = State(initialValue: MoneyStore(rpc: container.rpc))
+        _store = State(initialValue: MoneyStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
     }
 
     private var myActorId: UUID? { container.currentActorStore.actorId }

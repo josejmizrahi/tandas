@@ -7,6 +7,8 @@ public struct RequestReservationView: View {
     let context: AppContext
     let store: ReservationsStore
     let container: DependencyContainer
+    /// Contexto donde se crea la reservación (el que gobierna el recurso).
+    let reservationContextId: UUID
 
     @Environment(\.dismiss) private var dismiss
     @State private var startsAt = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
@@ -15,9 +17,10 @@ public struct RequestReservationView: View {
     @State private var runner = ActionRunner()
     @State private var conflictNotice: String?
 
-    public init(resource: Resource, context: AppContext, store: ReservationsStore, container: DependencyContainer) {
+    public init(resource: Resource, context: AppContext, reservationContextId: UUID? = nil, store: ReservationsStore, container: DependencyContainer) {
         self.resource = resource
         self.context = context
+        self.reservationContextId = reservationContextId ?? context.id
         self.store = store
         self.container = container
     }
@@ -79,7 +82,7 @@ public struct RequestReservationView: View {
             let result = try await store.request(
                 RequestReservationInput(
                     resourceId: resource.id,
-                    contextId: context.id,
+                    contextId: reservationContextId,
                     startsAt: startsAt,
                     endsAt: endsAt,
                     reservedForActorId: reservedForActorId,

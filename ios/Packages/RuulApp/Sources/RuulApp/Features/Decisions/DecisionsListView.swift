@@ -12,7 +12,7 @@ public struct DecisionsListView: View {
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
         self.container = container
-        _store = State(initialValue: DecisionsStore(rpc: container.rpc))
+        _store = State(initialValue: DecisionsStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
     }
 
     public var body: some View {

@@ -21,7 +21,7 @@ public struct EventDetailView: View {
         self.eventId = eventId
         self.context = context
         self.container = container
-        _store = State(initialValue: EventDetailStore(rpc: container.rpc))
+        _store = State(initialValue: EventDetailStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
     }
 
     private var myActorId: UUID? { container.currentActorStore.actorId }

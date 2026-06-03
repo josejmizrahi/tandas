@@ -13,10 +13,14 @@ public final class ActivityStore {
 
     private let rpc: any RuulRPCClient
     private let pageSize: Int
+    /// Para resolver "Tú" cuando el actor no está en members
+    /// (contexto personal o un actor que ya salió del contexto).
+    private var myActorId: UUID?
 
-    public init(rpc: any RuulRPCClient, pageSize: Int = 50) {
+    public init(rpc: any RuulRPCClient, pageSize: Int = 50, myActorId: UUID? = nil) {
         self.rpc = rpc
         self.pageSize = pageSize
+        self.myActorId = myActorId
     }
 
     public init(rpc: any RuulRPCClient, previewEvents: [ActivityEvent], members: [ContextMember] = []) {
@@ -60,6 +64,8 @@ public final class ActivityStore {
     public func displayName(for actorId: UUID?, contextId: UUID, contextName: String) -> String {
         guard let actorId else { return "Sistema" }
         if actorId == contextId { return contextName }
-        return members.first { $0.actorId == actorId }?.displayName ?? "Alguien"
+        if let member = members.first(where: { $0.actorId == actorId }) { return member.displayName }
+        if actorId == myActorId { return "Tú" }
+        return "Alguien"
     }
 }

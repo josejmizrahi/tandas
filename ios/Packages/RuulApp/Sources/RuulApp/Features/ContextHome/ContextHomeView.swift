@@ -253,7 +253,7 @@ public struct ContextHomeView: View {
                             symbolName: (EventType(rawValue: event.eventType) ?? .other).symbolName,
                             title: event.title,
                             subtitle: event.startsAt?.formatted(date: .abbreviated, time: .shortened),
-                            value: event.hostActorId.map { "Host: \(summary.displayName(for: $0))" }
+                            value: event.hostActorId.map { "Host: \(summary.displayName(for: $0, me: myActorId))" }
                         )
                     }
                 }
@@ -282,7 +282,7 @@ public struct ContextHomeView: View {
                 ForEach(summary.money.openObligations.prefix(5)) { obligation in
                     InfoRow(
                         symbolName: "dollarsign.circle",
-                        title: "\(summary.displayName(for: obligation.debtorActorId)) → \(summary.displayName(for: obligation.creditorActorId))",
+                        title: "\(summary.displayName(for: obligation.debtorActorId, me: myActorId)) → \(summary.displayName(for: obligation.creditorActorId, me: myActorId))",
                         subtitle: obligationTypeLabel(obligation.obligationType),
                         value: (obligation.amount ?? 0).currencyLabel(obligation.currency)
                     )

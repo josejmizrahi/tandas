@@ -16,7 +16,7 @@ public struct DecisionDetailView: View {
         self.decisionId = decisionId
         self.context = context
         self.container = container
-        _store = State(initialValue: DecisionDetailStore(rpc: container.rpc))
+        _store = State(initialValue: DecisionDetailStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
     }
 
     private var myActorId: UUID? { container.currentActorStore.actorId }

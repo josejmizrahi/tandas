@@ -51,10 +51,14 @@ public struct ContextSummary: Sendable, Equatable {
     }
 
     /// Resuelve el display name de un actor usando los miembros del contexto.
-    public func displayName(for actorId: UUID?) -> String {
+    /// `me` permite resolver "Tú" cuando el actor no está en members
+    /// (contexto personal o alguien que ya salió del contexto).
+    public func displayName(for actorId: UUID?, me: UUID? = nil) -> String {
         guard let actorId else { return "—" }
         if actorId == context.id { return context.displayName }
-        return members.first { $0.actorId == actorId }?.displayName ?? "Alguien"
+        if let member = members.first(where: { $0.actorId == actorId }) { return member.displayName }
+        if actorId == me { return "Tú" }
+        return "Alguien"
     }
 
     public func can(_ permission: String) -> Bool {

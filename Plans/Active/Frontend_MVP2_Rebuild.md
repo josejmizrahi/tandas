@@ -86,9 +86,19 @@ pantallas legacy.
 - ~~Invitaciones solo por código de texto~~ → **hecho**: ShareLink comparte
   `https://ruul.mx/invite/CODE`; `DeepLinkRouter` abre `JoinByCodeView` con el
   código prellenado al tocar el link (universal links + scheme `ruul://`).
+- ~~"Alguien" en vez del nombre real~~ → **hecho**: la resolución de nombres en
+  todos los stores ahora cae a "Tú" cuando el actor es el usuario (contexto
+  personal o actores fuera de members).
+- ~~Reservar desde el contexto personal creaba la reservación en el contexto
+  equivocado~~ → **hecho**: las solicitudes usan el contexto con right GOVERN
+  sobre el recurso, no el contexto desde el que se navega.
 - `execute_decision` no aplica efectos automáticos sobre reservaciones (el backend
   tampoco — `effects` es informativo); el admin resuelve el conflicto desde el recurso.
 - Sin push notifications (el backend MVP2 no las tiene; pull vía Activity).
+- `revoke_invite` y `list_context_reservations` existen en el contrato pero aún
+  no tienen UI.
+- El backend acepta reservaciones con contextos sin relación al recurso
+  (hueco de validación — el frontend ya manda el contexto correcto).
 
 ## Infraestructura web (`web/`)
 

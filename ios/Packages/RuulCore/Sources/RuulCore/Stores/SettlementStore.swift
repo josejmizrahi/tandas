@@ -14,9 +14,13 @@ public final class SettlementStore {
     public private(set) var lastGenerateResult: SettlementBatchResult?
 
     private let rpc: any RuulRPCClient
+    /// Para resolver "Tú" cuando el actor no está en members
+    /// (contexto personal o un actor que ya salió del contexto).
+    private var myActorId: UUID?
 
-    public init(rpc: any RuulRPCClient) {
+    public init(rpc: any RuulRPCClient, myActorId: UUID? = nil) {
         self.rpc = rpc
+        self.myActorId = myActorId
     }
 
     public init(
@@ -58,7 +62,9 @@ public final class SettlementStore {
 
     public func displayName(for actorId: UUID?) -> String {
         guard let actorId else { return "—" }
-        return members.first { $0.actorId == actorId }?.displayName ?? "Alguien"
+        if let member = members.first(where: { $0.actorId == actorId }) { return member.displayName }
+        if actorId == myActorId { return "Tú" }
+        return "Alguien"
     }
 
     public func items(for batchId: UUID) -> [SettlementItem] {

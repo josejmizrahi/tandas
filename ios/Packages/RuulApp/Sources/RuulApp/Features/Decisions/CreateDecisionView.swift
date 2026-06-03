@@ -25,7 +25,7 @@ public struct CreateDecisionView: View {
         self.context = context
         self.container = container
         self.conflictReference = conflictReference
-        _store = State(initialValue: DecisionsStore(rpc: container.rpc))
+        _store = State(initialValue: DecisionsStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
         _title = State(initialValue: prefilledTitle)
         _decisionType = State(initialValue: prefilledType)
     }

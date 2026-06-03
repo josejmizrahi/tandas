@@ -10,9 +10,13 @@ public final class EventsStore {
     public private(set) var phase: StorePhase = .idle
 
     private let rpc: any RuulRPCClient
+    /// Para resolver "Tú" cuando el actor no está en members
+    /// (contexto personal o un actor que ya salió del contexto).
+    private var myActorId: UUID?
 
-    public init(rpc: any RuulRPCClient) {
+    public init(rpc: any RuulRPCClient, myActorId: UUID? = nil) {
         self.rpc = rpc
+        self.myActorId = myActorId
     }
 
     public init(rpc: any RuulRPCClient, previewEvents: [CalendarEvent], permissions: [String] = []) {
@@ -76,9 +80,13 @@ public final class EventDetailStore {
     public private(set) var lastClose: CloseEventResult?
 
     private let rpc: any RuulRPCClient
+    /// Para resolver "Tú" cuando el actor no está en members
+    /// (contexto personal o un actor que ya salió del contexto).
+    private var myActorId: UUID?
 
-    public init(rpc: any RuulRPCClient) {
+    public init(rpc: any RuulRPCClient, myActorId: UUID? = nil) {
         self.rpc = rpc
+        self.myActorId = myActorId
     }
 
     public func load(eventId: UUID, context: AppContext) async {
@@ -100,7 +108,9 @@ public final class EventDetailStore {
 
     public func displayName(for actorId: UUID?) -> String {
         guard let actorId else { return "—" }
-        return members.first { $0.actorId == actorId }?.displayName ?? "Alguien"
+        if let member = members.first(where: { $0.actorId == actorId }) { return member.displayName }
+        if actorId == myActorId { return "Tú" }
+        return "Alguien"
     }
 
     public func myParticipation(myActorId: UUID?) -> EventParticipant? {
