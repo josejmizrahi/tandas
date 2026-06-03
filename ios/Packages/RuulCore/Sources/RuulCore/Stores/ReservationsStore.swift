@@ -63,6 +63,17 @@ public final class ReservationsStore {
         }
     }
 
+    /// Reservaciones que cubren un día dado (para el calendario).
+    /// Excluye canceladas/rechazadas; ordena por inicio.
+    public func reservations(covering day: Date, calendar: Calendar = .current) -> [Reservation] {
+        let dayStart = calendar.startOfDay(for: day)
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return [] }
+        return reservations
+            .filter { $0.status != "cancelled" && $0.status != "rejected" }
+            .filter { $0.startsAt < dayEnd && $0.endsAt > dayStart }
+            .sorted { $0.startsAt < $1.startsAt }
+    }
+
     public func displayName(for actorId: UUID?) -> String {
         guard let actorId else { return "—" }
         return members.first { $0.actorId == actorId }?.displayName ?? "Alguien"

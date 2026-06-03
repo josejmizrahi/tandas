@@ -7,8 +7,14 @@ public struct ReservationsListView: View {
     let context: AppContext
     let container: DependencyContainer
 
+    private enum ViewMode: String, CaseIterable {
+        case list = "Lista"
+        case calendar = "Calendario"
+    }
+
     @State private var store: ReservationsStore
     @State private var isShowingRequest = false
+    @State private var viewMode: ViewMode = .list
 
     public init(resource: Resource, context: AppContext, container: DependencyContainer) {
         self.resource = resource
@@ -29,7 +35,7 @@ public struct ReservationsListView: View {
                 }
 
             case .loaded:
-                reservationsList
+                loadedContent
             }
         }
         .navigationTitle("Reservaciones")
@@ -53,6 +59,27 @@ public struct ReservationsListView: View {
         }
         .sheet(isPresented: $isShowingRequest) {
             RequestReservationView(resource: resource, context: context, store: store, container: container)
+        }
+    }
+
+    @ViewBuilder
+    private var loadedContent: some View {
+        VStack(spacing: 0) {
+            Picker("Vista", selection: $viewMode) {
+                ForEach(ViewMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+
+            switch viewMode {
+            case .list:
+                reservationsList
+            case .calendar:
+                ReservationsCalendarView(resource: resource, context: context, store: store)
+            }
         }
     }
 

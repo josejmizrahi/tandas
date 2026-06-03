@@ -153,6 +153,49 @@ struct StoreTests {
         #expect(!store.members.contains { $0.actorId == MockRuulRPCClient.DemoIds.daniel })
     }
 
+    // MARK: - ReservationsStore
+
+    @Test("ReservationsStore.reservations(covering:) cubre el rango y excluye canceladas")
+    func reservationsCalendarCoverage() async {
+        let mock = await makeDemoClient()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+
+        let active = Reservation(
+            id: UUID(),
+            resourceId: MockRuulRPCClient.DemoIds.casaValle,
+            contextActorId: MockRuulRPCClient.DemoIds.familia,
+            requestedByActorId: MockRuulRPCClient.DemoIds.david,
+            startsAt: today.addingTimeInterval(1 * 86_400),
+            endsAt: today.addingTimeInterval(3 * 86_400),
+            status: "confirmed"
+        )
+        let cancelled = Reservation(
+            id: UUID(),
+            resourceId: MockRuulRPCClient.DemoIds.casaValle,
+            contextActorId: MockRuulRPCClient.DemoIds.familia,
+            requestedByActorId: MockRuulRPCClient.DemoIds.jose,
+            startsAt: today.addingTimeInterval(1 * 86_400),
+            endsAt: today.addingTimeInterval(3 * 86_400),
+            status: "cancelled"
+        )
+        let store = ReservationsStore(rpc: mock, previewReservations: [active, cancelled])
+
+        // Día dentro del rango → solo la activa (la cancelada no pinta).
+        let midStay = store.reservations(covering: today.addingTimeInterval(86_400 + 3_600), calendar: calendar)
+        #expect(midStay.count == 1)
+        #expect(midStay.first?.id == active.id)
+
+        // Hoy (antes del check-in) → libre.
+        #expect(store.reservations(covering: today, calendar: calendar).isEmpty)
+
+        // Último día completo de la estancia → cubierto.
+        #expect(!store.reservations(covering: today.addingTimeInterval(2 * 86_400), calendar: calendar).isEmpty)
+
+        // Día del checkout a las 00:00 → ya libre.
+        #expect(store.reservations(covering: today.addingTimeInterval(3 * 86_400), calendar: calendar).isEmpty)
+    }
+
     // MARK: - MoneyStore
 
     @Test("MoneyStore calcula balances desde obligations")
