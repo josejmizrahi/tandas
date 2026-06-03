@@ -51,14 +51,31 @@ Reglas generales:
 |---|---|---|
 | `create_resource(p_context_actor_id, p_resource_type, p_display_name, p_description?, p_estimated_value?, p_currency?, p_metadata?, p_client_id?)` | requiere `resources.create`; trigger auto-OWN 100% al contexto | `{resource_id, resource: {row}}` |
 | `list_context_resources(p_context_actor_id)` | filtra por visibilidad rights-based del caller | `[{resource_id, resource_type, display_name, status, estimated_value, currency, canonical_owner_actor_id, rights: [{right_id, holder_actor_id, right_kind, percent}]}]` |
-| `resource_detail(p_resource_id)` | requiere right activo o membership del owner | `{resource: {row}, rights: [{right_id, holder_actor_id, holder_display_name, right_kind, percent, scope, starts_at, ends_at}]}` |
+| `resource_detail(p_resource_id)` | requiere right activo o membership del owner | `{resource: {row}, resource_type, capabilities: [text], metadata, rights: [{right_id, holder_actor_id, holder_display_name, right_kind, percent, scope, starts_at, ends_at}]}` |
 | `grant_right(p_resource_id, p_holder_actor_id, p_right_kind, p_percent?, p_scope?, p_starts_at?, p_ends_at?, p_metadata?)` | OWN/SELL/TRANSFER/LIEN exigen OWN o `resources.manage` del owner | `{right_id}` |
 | `revoke_right(p_right_id)` | | `void` |
 | `update_resource(p_resource_id, …)` | | `{resource}` |
 | `archive_resource(p_resource_id)` | | `{archived, already_archived?}` |
+| `resource_type_catalog()` | catálogo global (R.2M) | `[{type_key, display_name, description, icon, expected_metadata, capabilities: [text]}]` |
+| `resource_capabilities(p_resource_id)` | visibilidad rights-based | `{resource_id, resource_type, capabilities: [text]}` |
+| `resource_can(p_resource_id, p_capability)` | | `boolean` |
 
 `right_kind` ∈ OWN, USE, MANAGE, VIEW, SELL, TRANSFER, GOVERN, BENEFICIARY, LIEN, LEASE, APPROVE, AUDIT
-`resource_type` ∈ property, house, vehicle, bank_account, cash_pool, contract, document, reservation, trip_booking, game, equipment, other
+
+### Tipos y capabilities (R.2M)
+
+`resource_type` ya no es un CHECK hardcodeado: vive en `resource_type_catalog` (FK). Tipos seed:
+property, house, vehicle, bank_account, cash_pool, contract, document, reservation, trip_booking,
+game, equipment, membership_asset, security, other. Nuevos tipos se agregan por configuración
+(INSERT al catálogo), sin migración de schema.
+
+`capability` ∈ reservable, monetary, transferable, shareable, governable, beneficiary_supported,
+approval_required, expirable, depreciable, documentable, sellable, rentable, auditable,
+ownership_trackable.
+
+**La UI renderiza por capabilities, no por tipo**: `reservable` → sección Reservaciones,
+`monetary` → Money, `documentable` → Documentos, `beneficiary_supported` → Beneficiarios.
+El metadata esperado por tipo (`expected_metadata`) es documental — no se valida rígidamente.
 
 ## 5. Calendar & Events
 
@@ -90,7 +107,7 @@ Lista: lectura PostgREST de `rules`.
 
 | RPC | Firma | Devuelve |
 |---|---|---|
-| `request_resource_reservation(p_resource_id, p_context_actor_id, p_starts_at, p_ends_at, p_reserved_for_actor_id?, p_metadata?, p_client_id?)` | requiere `reservations.request` | `{reservation_id, conflicts_detected, reservation: {row}}` |
+| `request_resource_reservation(p_resource_id, p_context_actor_id, p_starts_at, p_ends_at, p_reserved_for_actor_id?, p_metadata?, p_client_id?)` | requiere right USE/MANAGE/OWN + capability `reservable` del tipo (R.2M) | `{reservation_id, conflicts_detected, reservation: {row}}` |
 | `approve_reservation(p_reservation_id)` | requiere `reservations.manage`; EXCLUDE constraint si traslapa | `{reservation_id, status, no_op?}` |
 | `confirm_reservation(p_reservation_id)` | | `{reservation_id, status, already_confirmed?}` |
 | `cancel_reservation(p_reservation_id)` | requester o manage | `{reservation_id, status, no_op?}` |
@@ -151,7 +168,8 @@ La UI gatea con `context_summary(...).my_permissions` — el backend re-valida s
 ## 12. Tablas con lectura PostgREST directa (RLS)
 
 `actors`, `actor_memberships`, `roles`, `role_assignments`, `role_permissions`,
-`permission_catalog`, `resources`, `resource_rights`, `calendar_events`, `event_participants`,
+`permission_catalog`, `resources`, `resource_rights`, `resource_type_catalog`,
+`resource_capabilities_catalog`, `resource_type_capabilities`, `calendar_events`, `event_participants`,
 `resource_reservations`, `reservation_conflicts`, `decisions`, `decision_votes`, `rules`,
 `rule_evaluations`, `obligations`, `money_transactions`, `money_splits`, `settlement_batches`,
 `settlement_items`, `documents`, `activity_events`, `context_invites`.

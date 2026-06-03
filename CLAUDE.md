@@ -95,7 +95,7 @@ Contrato completo en `Plans/Active/MVP2_iOS_Contract.md`. Resumen:
 | Identity | `ensure_person_actor` · `current_actor_id` · `update_my_profile` |
 | Contexts | `create_context` · `context_candidates` · `context_summary` · `my_world` |
 | Membership | `create_invite` · `revoke_invite` · `join_by_invite_code` · `invite_member` · `accept_invitation` · `remove_member` · `leave_context` · `assign_role` |
-| Resources | `create_resource` · `list_context_resources` · `resource_detail` · `grant_right` · `revoke_right` · `update_resource` · `archive_resource` |
+| Resources | `create_resource` · `list_context_resources` · `resource_detail` · `grant_right` · `revoke_right` · `update_resource` · `archive_resource` · `resource_type_catalog` · `resource_capabilities` · `resource_can` |
 | Events | `create_calendar_event` · `rsvp_event` · `check_in_participant` · `cancel_participation` · `close_event` |
 | Rules | `create_rule` · `evaluate_rules_for_event` (lo invocan check-in/cancel) |
 | Reservations | `request_resource_reservation` · `approve/confirm/cancel_reservation` · `detect_reservation_conflicts` · `resolve_reservation_conflict` |

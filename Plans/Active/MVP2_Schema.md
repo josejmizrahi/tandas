@@ -43,7 +43,7 @@ legal_entity, o la propia persona).
 |---|---|
 | Identidad | `actors`, `person_profiles` |
 | Participación | `actor_memberships`, `roles`, `role_assignments`, `permission_catalog`, `role_permissions` |
-| Recursos | `resources`, `resource_rights`, `actor_relationships` |
+| Recursos | `resources`, `resource_rights`, `actor_relationships`, `resource_type_catalog`*, `resource_capabilities_catalog`*, `resource_type_capabilities`* (*R.2M*) |
 | Tiempo | `calendar_events`, `event_participants`, `resource_reservations`, `reservation_conflicts` |
 | Reglas | `rules`, `rule_evaluations` |
 | Governance | `decisions`, `decision_votes` |
