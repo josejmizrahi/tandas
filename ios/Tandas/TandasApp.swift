@@ -5,12 +5,6 @@ import RuulApp
 
 @main
 struct TandasApp: App {
-    /// V3-A2 — owns the APNs lifecycle (token register + tap →
-    /// DeepLinkRouter forwarding). SwiftUI guarantees a single
-    /// instance per process; `RuulAppShell` binds the container into
-    /// it after construction.
-    @UIApplicationDelegateAdaptor(RuulAppDelegate.self) private var appDelegate
-
     init() {
         Self.startSentry()
     }
@@ -22,9 +16,8 @@ struct TandasApp: App {
         }
     }
 
-    /// Sentry MVP — crash capture only. No performance monitoring, no
-    /// breadcrumbs beyond the SDK defaults. PII (email, username, IP) is
-    /// scrubbed in beforeSend so events stay anonymized.
+    /// Sentry MVP — solo crash capture. PII (email, username, IP) se limpia
+    /// en beforeSend para que los eventos queden anonimizados.
     private static func startSentry() {
         let log = Logger(subsystem: "com.josejmizrahi.ruul", category: "sentry")
         let dsn = (Bundle.main.object(forInfoDictionaryKey: "SentryDSN") as? String) ?? ""
@@ -52,7 +45,6 @@ struct TandasApp: App {
                 return event
             }
         }
-        let dsnTail = dsn.suffix(8)
-        log.info("Sentry active — release=ruul-ios@\(shortVersion)+\(buildNumber) dsn=…\(dsnTail)")
+        log.info("Sentry active — release=ruul-ios@\(shortVersion)+\(buildNumber)")
     }
 }

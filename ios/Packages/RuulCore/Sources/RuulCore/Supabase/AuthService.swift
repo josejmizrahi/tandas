@@ -85,8 +85,12 @@ public extension AuthService {
 
 public actor MockAuthService: AuthService {
     private var _session: AppSession?
-    public init() {}
     private var continuations: [UUID: AsyncStream<AppSession?>.Continuation] = [:]
+
+    /// `initialSession` permite arrancar previews/tests ya autenticados.
+    public init(initialSession: AppSession? = nil) {
+        self._session = initialSession
+    }
 
     public var session: AppSession? { _session }
 
