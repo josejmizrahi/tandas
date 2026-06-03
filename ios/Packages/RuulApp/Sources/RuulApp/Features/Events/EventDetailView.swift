@@ -80,6 +80,28 @@ public struct EventDetailView: View {
                 hostSection(event)
             }
         }
+        .confirmationDialog(
+            "¿Cancelar tu asistencia?",
+            isPresented: $isConfirmingCancel,
+            titleVisibility: .visible
+        ) {
+            Button("Cancelar asistencia", role: .destructive) {
+                Task { await cancelParticipation() }
+            }
+            Button("Seguir asistiendo", role: .cancel) {}
+        } message: {
+            Text("Si cancelas el mismo día del evento, las reglas del contexto pueden generar una multa.")
+        }
+        .confirmationDialog(
+            "¿Cerrar este evento?",
+            isPresented: $isConfirmingClose,
+            titleVisibility: .visible
+        ) {
+            Button("Cerrar evento") {
+                Task { await closeEvent() }
+            }
+            Button("Todavía no", role: .cancel) {}
+        }
     }
 
     @ViewBuilder
@@ -176,18 +198,6 @@ public struct EventDetailView: View {
                 .disabled(runner.isRunning)
             }
         }
-        .confirmationDialog(
-            "¿Cancelar tu asistencia?",
-            isPresented: $isConfirmingCancel,
-            titleVisibility: .visible
-        ) {
-            Button("Cancelar asistencia", role: .destructive) {
-                Task { await cancelParticipation() }
-            }
-            Button("Seguir asistiendo", role: .cancel) {}
-        } message: {
-            Text("Si cancelas el mismo día del evento, las reglas del contexto pueden generar una multa.")
-        }
     }
 
     @ViewBuilder
@@ -204,7 +214,7 @@ public struct EventDetailView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .background(
-                    isCurrent ? Color.accentColor.opacity(0.2) : Color(.tertiarySystemFill),
+                    isCurrent ? Color.accentColor.opacity(0.2) : Color(uiColor: .tertiarySystemFill),
                     in: Capsule()
                 )
         }
@@ -254,29 +264,21 @@ public struct EventDetailView: View {
     @ViewBuilder
     private func hostSection(_ event: CalendarEvent) -> some View {
         if isHost || store.canManage(in: context) {
-            Section("Administrar evento") {
+            Section {
                 Button {
                     isConfirmingClose = true
                 } label: {
                     Label("Cerrar evento", systemImage: "checkmark.seal")
                 }
                 .disabled(runner.isRunning)
+            } header: {
+                Text("Administrar evento")
             } footer: {
                 if event.isRecurring {
                     Text("Al cerrar: los que no llegaron quedan como no-show, se crea el evento de la próxima semana y el host rota al siguiente miembro.")
                 } else {
                     Text("Al cerrar: los que no llegaron quedan como no-show.")
                 }
-            }
-            .confirmationDialog(
-                "¿Cerrar este evento?",
-                isPresented: $isConfirmingClose,
-                titleVisibility: .visible
-            ) {
-                Button("Cerrar evento") {
-                    Task { await closeEvent() }
-                }
-                Button("Todavía no", role: .cancel) {}
             }
         }
     }

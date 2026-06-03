@@ -36,8 +36,10 @@ public struct CreateEventView: View {
                     TextField("Dónde (opcional)", text: $locationText)
                 }
 
-                Section("Recurrencia") {
+                Section {
                     Toggle("Se repite cada semana", isOn: $isWeekly)
+                } header: {
+                    Text("Recurrencia")
                 } footer: {
                     if isWeekly {
                         Text("Al cerrar cada evento se crea automáticamente el de la siguiente semana y el host rota entre los miembros.")

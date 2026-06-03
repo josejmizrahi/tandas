@@ -94,6 +94,26 @@ public struct DecisionDetailView: View {
             // Cerrar / Ejecutar
             adminSection(decision)
         }
+        .confirmationDialog("¿Cerrar la votación?", isPresented: $isConfirmingClose, titleVisibility: .visible) {
+            Button("Cerrar votación") {
+                Task {
+                    await runner.run {
+                        _ = try await store.close(decisionId: decisionId, context: context)
+                    }
+                }
+            }
+            Button("Seguir votando", role: .cancel) {}
+        }
+        .confirmationDialog("¿Ejecutar la decisión?", isPresented: $isConfirmingExecute, titleVisibility: .visible) {
+            Button("Ejecutar") {
+                Task {
+                    await runner.run {
+                        try await store.execute(decisionId: decisionId, context: context)
+                    }
+                }
+            }
+            Button("Todavía no", role: .cancel) {}
+        }
     }
 
     // MARK: Votos
@@ -145,13 +165,15 @@ public struct DecisionDetailView: View {
     private func voteButtonsSection(_ decision: Decision) -> some View {
         let mine = store.myVote(myActorId: myActorId)
 
-        Section(mine == nil ? "Tu voto" : "Cambiar tu voto") {
+        Section {
             HStack(spacing: 12) {
                 voteButton("A favor", choice: .approve, isCurrent: mine?.vote == "approve", color: .green)
                 voteButton("En contra", choice: .reject, isCurrent: mine?.vote == "reject", color: .red)
                 voteButton("Abstención", choice: .abstain, isCurrent: mine?.vote == "abstain", color: .gray)
             }
             .buttonStyle(.borderless)
+        } header: {
+            Text(mine == nil ? "Tu voto" : "Cambiar tu voto")
         } footer: {
             Text("Se aprueba automáticamente cuando más de la mitad de los miembros vota a favor.")
         }
@@ -171,7 +193,7 @@ public struct DecisionDetailView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(
-                    isCurrent ? color.opacity(0.25) : Color(.tertiarySystemFill),
+                    isCurrent ? color.opacity(0.25) : Color(uiColor: .tertiarySystemFill),
                     in: Capsule()
                 )
                 .foregroundStyle(isCurrent ? color : .primary)
@@ -194,16 +216,6 @@ public struct DecisionDetailView: View {
             } footer: {
                 Text("Cierra la votación con los votos actuales: gana la mayoría.")
             }
-            .confirmationDialog("¿Cerrar la votación?", isPresented: $isConfirmingClose, titleVisibility: .visible) {
-                Button("Cerrar votación") {
-                    Task {
-                        await runner.run {
-                            _ = try await store.close(decisionId: decisionId, context: context)
-                        }
-                    }
-                }
-                Button("Seguir votando", role: .cancel) {}
-            }
         }
 
         if decision.isApproved && store.canExecute(in: context) {
@@ -216,16 +228,6 @@ public struct DecisionDetailView: View {
                 .disabled(runner.isRunning)
             } footer: {
                 Text("Marca la decisión como ejecutada. Si era un conflicto de reservación, resuélvelo desde el recurso a favor del ganador.")
-            }
-            .confirmationDialog("¿Ejecutar la decisión?", isPresented: $isConfirmingExecute, titleVisibility: .visible) {
-                Button("Ejecutar") {
-                    Task {
-                        await runner.run {
-                            try await store.execute(decisionId: decisionId, context: context)
-                        }
-                    }
-                }
-                Button("Todavía no", role: .cancel) {}
             }
         }
 
