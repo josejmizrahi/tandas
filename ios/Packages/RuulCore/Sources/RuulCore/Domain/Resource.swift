@@ -3,11 +3,13 @@ import Foundation
 // MARK: - Tipos
 
 public enum ResourceType: String, Codable, Sendable, CaseIterable, Identifiable {
-    case property, house, vehicle
+    case property, house, vehicle, security
     case bankAccount = "bank_account"
     case cashPool = "cash_pool"
     case contract, document, reservation
     case tripBooking = "trip_booking"
+    case trustAsset = "trust_asset"
+    case digitalAsset = "digital_asset"
     case game, equipment, other
 
     public var id: String { rawValue }
@@ -17,12 +19,15 @@ public enum ResourceType: String, Codable, Sendable, CaseIterable, Identifiable 
         case .property: return "Propiedad"
         case .house: return "Casa"
         case .vehicle: return "Vehículo"
+        case .security: return "Título financiero"
         case .bankAccount: return "Cuenta bancaria"
         case .cashPool: return "Fondo común"
         case .contract: return "Contrato"
         case .document: return "Documento"
         case .reservation: return "Reservación"
         case .tripBooking: return "Reserva de viaje"
+        case .trustAsset: return "Activo de trust"
+        case .digitalAsset: return "Activo digital"
         case .game: return "Juego"
         case .equipment: return "Equipo"
         case .other: return "Otro"
@@ -33,11 +38,14 @@ public enum ResourceType: String, Codable, Sendable, CaseIterable, Identifiable 
         switch self {
         case .property, .house: return "house.fill"
         case .vehicle: return "car.fill"
+        case .security: return "chart.line.uptrend.xyaxis"
         case .bankAccount: return "banknote"
         case .cashPool: return "dollarsign.circle.fill"
         case .contract, .document: return "doc.text.fill"
         case .reservation: return "calendar.badge.clock"
         case .tripBooking: return "airplane"
+        case .trustAsset: return "building.columns.fill"
+        case .digitalAsset: return "externaldrive.fill.badge.icloud"
         case .game: return "dice.fill"
         case .equipment: return "wrench.and.screwdriver.fill"
         case .other: return "shippingbox.fill"
@@ -203,26 +211,107 @@ public struct ResourceRight: Codable, Sendable, Equatable, Identifiable {
 public struct ResourceDetail: Decodable, Sendable, Equatable {
     public let resource: Resource
     public let rights: [ResourceRight]
+    /// R.2M-3: comportamientos que el TIPO soporta (reservable, monetary, …).
+    public let capabilities: [String]
+    /// R.2M-3: acciones que ESTE actor puede ejecutar ahora (capability ∩ rights).
+    /// El frontend renderiza la UX desde aquí, nunca desde `resource_type`.
+    public let availableActions: [ResourceAvailableAction]
+    /// R.2M-3: por qué este actor ve el recurso (p. ej. ["USE", "GOVERN via Familia"]).
+    public let whyVisible: [String]
 
     enum CodingKeys: String, CodingKey {
         case resource
         case rights
+        case capabilities
+        case availableActions = "available_actions"
+        case whyVisible = "why_visible"
     }
 
-    public init(resource: Resource, rights: [ResourceRight] = []) {
+    public init(
+        resource: Resource,
+        rights: [ResourceRight] = [],
+        capabilities: [String] = [],
+        availableActions: [ResourceAvailableAction] = [],
+        whyVisible: [String] = []
+    ) {
         self.resource = resource
         self.rights = rights
+        self.capabilities = capabilities
+        self.availableActions = availableActions
+        self.whyVisible = whyVisible
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.resource = try c.decode(Resource.self, forKey: .resource)
         self.rights = try c.decodeIfPresent([ResourceRight].self, forKey: .rights) ?? []
+        self.capabilities = try c.decodeIfPresent([String].self, forKey: .capabilities) ?? []
+        self.availableActions = try c.decodeIfPresent([ResourceAvailableAction].self, forKey: .availableActions) ?? []
+        self.whyVisible = try c.decodeIfPresent([String].self, forKey: .whyVisible) ?? []
     }
 
     /// Razones por las que un actor ve este recurso ("Por qué aparece aquí").
     public func reasons(for actorId: UUID) -> [ResourceRight] {
         rights.filter { $0.holderActorId == actorId }
+    }
+
+    /// ¿El backend ofrece esta acción a este actor?
+    public func can(_ action: String) -> Bool {
+        availableActions.contains { $0.action == action }
+    }
+
+    /// Acciones de una sección de UI (reservations, money, beneficiaries, …).
+    public func actions(in section: ResourceActionSection) -> [ResourceAvailableAction] {
+        availableActions.filter { $0.section == section.rawValue }
+    }
+}
+
+/// R.2M-3 — una acción disponible calculada por backend
+/// (`resource_detail().available_actions` / `resource_available_actions()`).
+public struct ResourceAvailableAction: Codable, Sendable, Equatable, Identifiable {
+    public let action: String
+    public let label: String
+    public let section: String
+
+    public init(action: String, label: String, section: String) {
+        self.action = action
+        self.label = label
+        self.section = section
+    }
+
+    public var id: String { action }
+}
+
+/// Secciones de UI que agrupan las available_actions. El orden define el render.
+public enum ResourceActionSection: String, CaseIterable, Sendable {
+    case reservations, money, beneficiaries, ownership, documents, approvals, maintenance, audit, rights
+
+    public var title: String {
+        switch self {
+        case .reservations: return "Reservaciones"
+        case .money: return "Dinero"
+        case .beneficiaries: return "Beneficiarios"
+        case .ownership: return "Participaciones"
+        case .documents: return "Documentos"
+        case .approvals: return "Aprobaciones"
+        case .maintenance: return "Mantenimiento"
+        case .audit: return "Auditoría"
+        case .rights: return "Derechos"
+        }
+    }
+
+    public var symbolName: String {
+        switch self {
+        case .reservations: return "calendar.badge.clock"
+        case .money: return "banknote"
+        case .beneficiaries: return "gift.fill"
+        case .ownership: return "chart.pie.fill"
+        case .documents: return "doc.text.fill"
+        case .approvals: return "checkmark.seal.fill"
+        case .maintenance: return "wrench.and.screwdriver.fill"
+        case .audit: return "doc.text.magnifyingglass"
+        case .rights: return "key.fill"
+        }
     }
 }
 

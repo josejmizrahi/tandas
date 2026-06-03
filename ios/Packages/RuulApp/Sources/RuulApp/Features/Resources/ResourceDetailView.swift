@@ -63,71 +63,186 @@ public struct ResourceDetailView: View {
     @ViewBuilder
     private func detailList(_ detail: ResourceDetail) -> some View {
         List {
-            // Header
-            Section {
-                HStack(spacing: 16) {
-                    Image(systemName: detail.resource.type.symbolName)
-                        .font(.system(size: 32))
+            headerSection(detail)
+            whySection(detail)
+
+            // R.2M-3: la UX se deriva de available_actions, NUNCA de resource_type.
+            // Cada sección aparece solo si el backend ofrece una acción de esa sección.
+            if !detail.actions(in: .reservations).isEmpty {
+                reservationsSection(detail)
+            }
+            if !detail.actions(in: .money).isEmpty {
+                actionSection(.money, detail: detail)
+            }
+            if !detail.actions(in: .beneficiaries).isEmpty {
+                beneficiariesSection(detail)
+            }
+            if !detail.actions(in: .ownership).isEmpty {
+                ownershipSection(detail)
+            }
+            ForEach([ResourceActionSection.documents, .approvals, .maintenance, .audit], id: \.self) { section in
+                if !detail.actions(in: section).isEmpty {
+                    actionSection(section, detail: detail)
+                }
+            }
+
+            rightsSection(detail)
+        }
+    }
+
+    // MARK: Secciones
+
+    @ViewBuilder
+    private func headerSection(_ detail: ResourceDetail) -> some View {
+        Section {
+            HStack(spacing: 16) {
+                Image(systemName: detail.resource.type.symbolName)
+                    .font(.system(size: 32))
+                    .foregroundStyle(.tint)
+                    .frame(width: 56, height: 56)
+                    .background(Color.accentColor.opacity(0.12), in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(detail.resource.displayName)
+                        .font(.headline)
+                    Text(detail.resource.type.label)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+
+            if let description = detail.resource.description, !description.isEmpty {
+                Text(description)
+                    .font(.body)
+            }
+            if let value = detail.resource.estimatedValue {
+                InfoRow(
+                    symbolName: "banknote",
+                    title: "Valor estimado",
+                    value: value.currencyLabel(detail.resource.currency)
+                )
+            }
+        }
+    }
+
+    /// "Por qué lo ves" — desde why_visible (backend); fallback a los rights del actor.
+    @ViewBuilder
+    private func whySection(_ detail: ResourceDetail) -> some View {
+        Section("Por qué lo ves") {
+            if !detail.whyVisible.isEmpty {
+                ForEach(detail.whyVisible, id: \.self) { reason in
+                    Label(reason, systemImage: "checkmark.shield")
+                        .font(.callout)
+                }
+            } else if let myActorId, !detail.reasons(for: myActorId).isEmpty {
+                ForEach(detail.reasons(for: myActorId)) { right in
+                    Label(right.kindLabel, systemImage: rightSymbol(right.rightKind))
+                        .font(.callout)
+                }
+            } else {
+                Label("Lo ves a través de \(context.displayName)", systemImage: "person.3")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Reservaciones — única sección con pantalla operativa propia (resource-scoped).
+    @ViewBuilder
+    private func reservationsSection(_ detail: ResourceDetail) -> some View {
+        Section {
+            NavigationLink {
+                ReservationsListView(
+                    resource: detail.resource,
+                    context: context,
+                    reservationContextId: governingContextId(detail),
+                    container: container
+                )
+            } label: {
+                Label("Reservaciones", systemImage: ResourceActionSection.reservations.symbolName)
+            }
+        } footer: {
+            Text("Quien tenga derecho de uso (USE/MANAGE/OWN) puede solicitar reservar este recurso.")
+        }
+    }
+
+    /// Beneficiarios — lista los rights BENEFICIARY reales + acciones disponibles.
+    @ViewBuilder
+    private func beneficiariesSection(_ detail: ResourceDetail) -> some View {
+        Section(ResourceActionSection.beneficiaries.title) {
+            let beneficiaries = detail.rights.filter { $0.rightKind == RightKind.beneficiary.rawValue }
+            if beneficiaries.isEmpty {
+                Text("Sin beneficiarios designados todavía")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(beneficiaries) { right in
+                    Label(right.holderDisplayName ?? "Actor", systemImage: "gift.fill")
+                        .font(.callout)
+                }
+            }
+            ForEach(detail.actions(in: .beneficiaries)) { action in
+                actionRow(action)
+            }
+        }
+    }
+
+    /// Participaciones — lista los OWN con porcentaje + acciones de propiedad.
+    @ViewBuilder
+    private func ownershipSection(_ detail: ResourceDetail) -> some View {
+        Section(ResourceActionSection.ownership.title) {
+            let owners = detail.rights.filter { $0.rightKind == RightKind.own.rawValue }
+            ForEach(owners) { right in
+                InfoRow(
+                    symbolName: "person.crop.circle",
+                    title: right.holderDisplayName ?? "Actor",
+                    value: right.percent.map { "\($0.formatted(.number))%" }
+                )
+            }
+            ForEach(detail.actions(in: .ownership)) { action in
+                actionRow(action)
+            }
+        }
+    }
+
+    /// Sección genérica que renderiza las available_actions de una sección.
+    @ViewBuilder
+    private func actionSection(_ section: ResourceActionSection, detail: ResourceDetail) -> some View {
+        Section(section.title) {
+            ForEach(detail.actions(in: section)) { action in
+                actionRow(action)
+            }
+        }
+    }
+
+    /// Fila de acción disponible. Las acciones sin pantalla operativa propia se
+    /// muestran como affordance (lo que el actor PUEDE hacer), sin inventar UI falsa.
+    @ViewBuilder
+    private func actionRow(_ action: ResourceAvailableAction) -> some View {
+        Label(action.label, systemImage: ResourceActionSection(rawValue: action.section)?.symbolName ?? "circle")
+            .font(.callout)
+    }
+
+    /// Derechos activos sobre el recurso + otorgar (gated por available_actions).
+    @ViewBuilder
+    private func rightsSection(_ detail: ResourceDetail) -> some View {
+        Section(ResourceActionSection.rights.title) {
+            ForEach(detail.rights) { right in
+                HStack {
+                    Image(systemName: rightSymbol(right.rightKind))
                         .foregroundStyle(.tint)
-                        .frame(width: 56, height: 56)
-                        .background(Color.accentColor.opacity(0.12), in: Circle())
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(detail.resource.displayName)
-                            .font(.headline)
-                        Text(detail.resource.type.label)
-                            .font(.subheadline)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(right.holderDisplayName ?? "Actor")
+                        Text(right.kindLabel + (right.percent.map { " · \($0.formatted(.number))%" } ?? ""))
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    Spacer()
+                    StatusBadge(right.rightKind, color: rightColor(right.rightKind))
                 }
-                .padding(.vertical, 4)
-
-                if let description = detail.resource.description, !description.isEmpty {
-                    Text(description)
-                        .font(.body)
-                }
-                if let value = detail.resource.estimatedValue {
-                    InfoRow(
-                        symbolName: "banknote",
-                        title: "Valor estimado",
-                        value: value.currencyLabel(detail.resource.currency)
-                    )
-                }
-            }
-
-            // Por qué aparece aquí
-            if let myActorId {
-                let myRights = detail.reasons(for: myActorId)
-                Section("Por qué lo ves") {
-                    if myRights.isEmpty {
-                        Label("Lo ves a través de \(context.displayName)", systemImage: "person.3")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(myRights) { right in
-                            Label(right.kindLabel, systemImage: rightSymbol(right.rightKind))
-                                .font(.callout)
-                        }
-                    }
-                }
-            }
-
-            // Derechos activos
-            Section("Derechos sobre este recurso") {
-                ForEach(detail.rights) { right in
-                    HStack {
-                        Image(systemName: rightSymbol(right.rightKind))
-                            .foregroundStyle(.tint)
-                            .frame(width: 28)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(right.holderDisplayName ?? "Actor")
-                            Text(right.kindLabel + (right.percent.map { " · \($0.formatted(.number))%" } ?? ""))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        StatusBadge(right.rightKind, color: rightColor(right.rightKind))
-                    }
-                    .swipeActions(edge: .trailing) {
+                .swipeActions(edge: .trailing) {
+                    if detail.can("grant_right") {
                         Button("Revocar", role: .destructive) {
                             Task {
                                 await runner.run {
@@ -137,28 +252,14 @@ public struct ResourceDetailView: View {
                         }
                     }
                 }
+            }
 
+            if detail.can("grant_right") {
                 Button {
                     isShowingGrantRight = true
                 } label: {
                     Label("Otorgar derecho", systemImage: "plus")
                 }
-            }
-
-            // Reservaciones
-            Section {
-                NavigationLink {
-                    ReservationsListView(
-                        resource: detail.resource,
-                        context: context,
-                        reservationContextId: governingContextId(detail),
-                        container: container
-                    )
-                } label: {
-                    Label("Reservaciones", systemImage: "calendar.badge.clock")
-                }
-            } footer: {
-                Text("Quien tenga derecho de uso (USE/MANAGE/OWN) puede solicitar reservar este recurso.")
             }
         }
     }

@@ -74,6 +74,22 @@ struct MockClientTests {
         #expect(casa?.reasons.contains("USE") == true)
     }
 
+    @Test("R.2M-3: resourceDetail deriva capabilities + available_actions (casa reservable, no monetaria)")
+    func resourceDetailCapabilitiesAndActions() async throws {
+        let mock = await makeDemoClient()
+        let detail = try await mock.resourceDetail(resourceId: MockRuulRPCClient.DemoIds.casaValle)
+        // capabilities desde el tipo (house)
+        #expect(detail.capabilities.contains("reservable"))
+        #expect(!detail.capabilities.contains("monetary"))
+        // available_actions desde capability ∩ rights (José tiene USE)
+        #expect(detail.can("reserve_resource"))
+        #expect(detail.can("view_reservations"))
+        // affordance incorrecto eliminado: una casa NO ofrece movimientos
+        #expect(!detail.can("record_expense"))
+        #expect(!detail.actions(in: .reservations).isEmpty)
+        #expect(detail.actions(in: .money).isEmpty)
+    }
+
     @Test("gasto con split equal excluye a Daniel y genera 3 obligations de $325")
     func expenseEqualSplit() async throws {
         let mock = await makeDemoClient()

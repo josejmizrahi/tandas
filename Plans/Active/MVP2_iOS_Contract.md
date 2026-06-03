@@ -51,7 +51,7 @@ Reglas generales:
 |---|---|---|
 | `create_resource(p_context_actor_id, p_resource_type, p_display_name, p_description?, p_estimated_value?, p_currency?, p_metadata?, p_client_id?)` | requiere `resources.create`; trigger auto-OWN 100% al contexto | `{resource_id, resource: {row}}` |
 | `list_context_resources(p_context_actor_id)` | filtra por visibilidad rights-based del caller | `[{resource_id, resource_type, display_name, status, estimated_value, currency, canonical_owner_actor_id, rights: [{right_id, holder_actor_id, right_kind, percent}]}]` |
-| `resource_detail(p_resource_id)` | requiere right activo o membership del owner | `{resource: {row}, resource_type, capabilities: [text], metadata, rights: [{right_id, holder_actor_id, holder_display_name, right_kind, percent, scope, starts_at, ends_at}]}` |
+| `resource_detail(p_resource_id)` | requiere right activo o membership del owner | `{resource: {row}, resource_type, capabilities: [text], available_actions: [{action, label, section}], why_visible: [text], metadata, rights: [{right_id, holder_actor_id, holder_display_name, right_kind, percent, scope, starts_at, ends_at}]}` |
 | `grant_right(p_resource_id, p_holder_actor_id, p_right_kind, p_percent?, p_scope?, p_starts_at?, p_ends_at?, p_metadata?)` | OWN/SELL/TRANSFER/LIEN exigen OWN o `resources.manage` del owner | `{right_id}` |
 | `revoke_right(p_right_id)` | | `void` |
 | `update_resource(p_resource_id, …)` | | `{resource}` |
@@ -59,6 +59,7 @@ Reglas generales:
 | `resource_type_catalog()` | catálogo global (R.2M) | `[{type_key, display_name, description, icon, expected_metadata, capabilities: [text]}]` |
 | `resource_capabilities(p_resource_id)` | visibilidad rights-based | `{resource_id, resource_type, capabilities: [text]}` |
 | `resource_can(p_resource_id, p_capability)` | | `boolean` |
+| `resource_available_actions(p_resource_id)` | R.2M-3: capability ∩ rights del actor | `[{action, label, section}]` |
 
 `right_kind` ∈ OWN, USE, MANAGE, VIEW, SELL, TRANSFER, GOVERN, BENEFICIARY, LIEN, LEASE, APPROVE, AUDIT
 
@@ -66,8 +67,25 @@ Reglas generales:
 
 `resource_type` ya no es un CHECK hardcodeado: vive en `resource_type_catalog` (FK). Tipos seed:
 property, house, vehicle, bank_account, cash_pool, contract, document, reservation, trip_booking,
-game, equipment, membership_asset, security, other. Nuevos tipos se agregan por configuración
-(INSERT al catálogo), sin migración de schema.
+game, equipment, membership_asset, security, digital_asset, trust_asset, other. Nuevos tipos se
+agregan por configuración (INSERT al catálogo), sin migración de schema.
+
+### R.2M-3 — Universal Capability System (doctrina final)
+
+El comportamiento NUNCA se deriva de `resource_type`. Se deriva de:
+`resource_type` **clasifica** · `capability` **habilita** comportamiento · `right` **autoriza**
+actores · `available_action` **gobierna** la UX (el frontend renderiza desde `available_actions`).
+
+Capabilities (15): reservable, monetary, documentable, beneficiary_supported, ownership_trackable,
+transferable, approval_required, auditable, **maintainable** + las legacy (shareable, governable,
+expirable, depreciable, sellable, rentable). La matriz tipo→capability define qué soporta cada tipo
+(p. ej. bank_account/security/property **NO** reservable; security **sí** transferable).
+
+`resource_action_catalog` mapea cada acción a `{required_capability, required_rights[], ui_section}`.
+`resource_available_actions(resource_id)` devuelve, para el actor actual, las acciones donde
+`resource_can(capability)` **Y** el actor posee uno de los rights requeridos (directos, vía contexto
+que administra, o VIEW por membresía). Secciones de UI: reservations, money, beneficiaries, ownership,
+documents, approvals, maintenance, audit, rights.
 
 `capability` ∈ reservable, monetary, transferable, shareable, governable, beneficiary_supported,
 approval_required, expirable, depreciable, documentable, sellable, rentable, auditable,

@@ -380,7 +380,96 @@ public actor MockRuulRPCClient: RuulRPCClient {
         guard let resource = resources[resourceId] else {
             throw RuulError.unexpected(message: "Recurso no encontrado")
         }
-        return ResourceDetail(resource: resource, rights: rights[resourceId] ?? [])
+        let resourceRights = rights[resourceId] ?? []
+        let caps = Self.capabilities(for: resource.resourceType)
+        let effective = effectiveRights(on: resourceId, rights: resourceRights)
+        let actions = Self.actionCatalog
+            .filter { action in
+                (action.capability == nil || caps.contains(action.capability!))
+                    && (action.rights.isEmpty || !action.rights.isDisjoint(with: effective))
+            }
+            .map { ResourceAvailableAction(action: $0.key, label: $0.label, section: $0.section) }
+        return ResourceDetail(
+            resource: resource,
+            rights: resourceRights,
+            capabilities: caps,
+            availableActions: actions,
+            whyVisible: whyVisible(on: resourceId, rights: resourceRights)
+        )
+    }
+
+    // MARK: R.2M-3 capability/action mirror (para previews y tests)
+
+    /// Matriz tipo→capability alineada a la doctrina R.2M-3.
+    static func capabilities(for resourceType: String) -> [String] {
+        switch resourceType {
+        case "house": return ["auditable", "maintainable", "ownership_trackable", "reservable"]
+        case "property": return ["auditable", "ownership_trackable"]
+        case "vehicle": return ["maintainable", "ownership_trackable", "reservable"]
+        case "bank_account": return ["auditable", "monetary", "ownership_trackable"]
+        case "cash_pool": return ["auditable", "monetary"]
+        case "security": return ["auditable", "beneficiary_supported", "ownership_trackable", "transferable"]
+        case "contract": return ["approval_required", "auditable", "documentable"]
+        case "document": return ["documentable"]
+        case "equipment": return ["maintainable", "ownership_trackable", "reservable"]
+        case "trust_asset": return ["auditable", "beneficiary_supported", "ownership_trackable"]
+        case "digital_asset": return ["auditable", "ownership_trackable", "transferable"]
+        case "trip_booking": return ["documentable", "reservable", "transferable"]
+        case "game": return ["auditable"]
+        default: return ["auditable", "ownership_trackable"]
+        }
+    }
+
+    struct ActionDef: Sendable { let key: String; let label: String; let section: String; let capability: String?; let rights: Set<String> }
+
+    static let actionCatalog: [ActionDef] = [
+        ActionDef(key: "view_reservations", label: "Ver reservaciones", section: "reservations", capability: "reservable", rights: ["VIEW", "USE", "MANAGE", "OWN", "GOVERN"]),
+        ActionDef(key: "reserve_resource", label: "Reservar", section: "reservations", capability: "reservable", rights: ["USE", "MANAGE", "OWN"]),
+        ActionDef(key: "manage_reservations", label: "Administrar reservas", section: "reservations", capability: "reservable", rights: ["MANAGE", "OWN", "GOVERN"]),
+        ActionDef(key: "view_transactions", label: "Ver movimientos", section: "money", capability: "monetary", rights: ["VIEW", "MANAGE", "OWN", "GOVERN"]),
+        ActionDef(key: "record_expense", label: "Registrar gasto", section: "money", capability: "monetary", rights: ["MANAGE", "OWN"]),
+        ActionDef(key: "record_contribution", label: "Registrar aportación", section: "money", capability: "monetary", rights: ["MANAGE", "OWN"]),
+        ActionDef(key: "generate_settlement", label: "Generar liquidación", section: "money", capability: "monetary", rights: ["MANAGE", "OWN", "GOVERN"]),
+        ActionDef(key: "view_beneficiaries", label: "Ver beneficiarios", section: "beneficiaries", capability: "beneficiary_supported", rights: ["VIEW", "MANAGE", "OWN", "GOVERN", "BENEFICIARY"]),
+        ActionDef(key: "grant_beneficiary", label: "Designar beneficiario", section: "beneficiaries", capability: "beneficiary_supported", rights: ["MANAGE", "OWN"]),
+        ActionDef(key: "view_ownership", label: "Ver participaciones", section: "ownership", capability: "ownership_trackable", rights: ["VIEW", "USE", "MANAGE", "OWN", "GOVERN", "BENEFICIARY"]),
+        ActionDef(key: "transfer_interest", label: "Transferir participación", section: "ownership", capability: "transferable", rights: ["OWN"]),
+        ActionDef(key: "view_document", label: "Ver documento", section: "documents", capability: "documentable", rights: ["VIEW", "USE", "MANAGE", "OWN", "GOVERN"]),
+        ActionDef(key: "review_document", label: "Revisar documento", section: "documents", capability: "documentable", rights: ["MANAGE", "OWN"]),
+        ActionDef(key: "approve_document", label: "Aprobar", section: "approvals", capability: "approval_required", rights: ["MANAGE", "OWN", "GOVERN"]),
+        ActionDef(key: "view_maintenance", label: "Ver mantenimiento", section: "maintenance", capability: "maintainable", rights: ["VIEW", "USE", "MANAGE", "OWN", "GOVERN"]),
+        ActionDef(key: "log_maintenance", label: "Registrar mantenimiento", section: "maintenance", capability: "maintainable", rights: ["MANAGE", "OWN"]),
+        ActionDef(key: "view_audit", label: "Ver auditoría", section: "audit", capability: "auditable", rights: ["VIEW", "MANAGE", "OWN", "GOVERN"]),
+        ActionDef(key: "grant_right", label: "Otorgar derecho", section: "rights", capability: nil, rights: ["MANAGE", "OWN", "GOVERN"])
+    ]
+
+    /// Right kinds efectivos de `me` sobre el recurso: directos + vía contexto admin + VIEW por membresía.
+    private func effectiveRights(on resourceId: UUID, rights resourceRights: [ResourceRight]) -> Set<String> {
+        var result = Set<String>()
+        for right in resourceRights where right.holderActorId == me.id {
+            result.insert(right.rightKind)
+        }
+        for right in resourceRights where right.holderActorId != me.id {
+            let members = memberships[right.holderActorId]
+            if members?.contains(where: { $0.actorId == me.id && $0.isAdmin }) == true {
+                result.insert(right.rightKind)
+            }
+            if members?.contains(where: { $0.actorId == me.id }) == true {
+                result.insert("VIEW")
+            }
+        }
+        return result
+    }
+
+    private func whyVisible(on resourceId: UUID, rights resourceRights: [ResourceRight]) -> [String] {
+        var reasons: [String] = resourceRights.filter { $0.holderActorId == me.id }.map(\.rightKind)
+        for right in resourceRights where right.holderActorId != me.id {
+            if let holder = actors[right.holderActorId],
+               memberships[right.holderActorId]?.contains(where: { $0.actorId == me.id }) == true {
+                reasons.append("\(right.rightKind) via \(holder.displayName)")
+            }
+        }
+        return Array(Set(reasons)).sorted()
     }
 
     public func grantRight(_ input: GrantRightInput) async throws -> UUID {
