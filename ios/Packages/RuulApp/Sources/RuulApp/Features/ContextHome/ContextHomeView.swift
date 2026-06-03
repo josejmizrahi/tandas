@@ -1,0 +1,394 @@
+import SwiftUI
+import RuulCore
+
+/// F.4 — pantalla principal de un contexto. Todas las secciones salen de
+/// `context_summary()`; cada una navega a su feature completo.
+public struct ContextHomeView: View {
+    let context: AppContext
+    let container: DependencyContainer
+
+    @State private var store: ContextHomeStore
+
+    public init(context: AppContext, container: DependencyContainer) {
+        self.context = context
+        self.container = container
+        _store = State(initialValue: ContextHomeStore(rpc: container.rpc))
+    }
+
+    private var rpc: any RuulRPCClient { container.rpc }
+    private var myActorId: UUID? { container.currentActorStore.actorId }
+
+    public var body: some View {
+        Group {
+            switch store.phase {
+            case .idle, .loading:
+                LoadingStateView()
+
+            case .failed(let message):
+                ErrorStateView(message: message) {
+                    Task { await store.load(context: context) }
+                }
+
+            case .loaded:
+                if let summary = store.summary {
+                    homeList(summary)
+                }
+            }
+        }
+        .navigationTitle(context.displayName)
+        .navigationBarTitleDisplayMode(.large)
+        .task(id: context.id) {
+            await store.load(context: context)
+        }
+        .refreshable {
+            await store.load(context: context)
+        }
+    }
+
+    // MARK: - Contenido
+
+    @ViewBuilder
+    private func homeList(_ summary: ContextSummary) -> some View {
+        List {
+            headerSection(summary)
+
+            if context.isPersonal, let world = store.world {
+                myWorldSections(world)
+            } else {
+                membersSection(summary)
+            }
+
+            resourcesSection(summary)
+            eventsSection(summary)
+            obligationsSection(summary)
+            decisionsSection(summary)
+            rulesSection(summary)
+            activitySection(summary)
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    // MARK: Header
+
+    @ViewBuilder
+    private func headerSection(_ summary: ContextSummary) -> some View {
+        Section {
+            HStack(spacing: 16) {
+                Image(systemName: context.symbolName)
+                    .font(.system(size: 32))
+                    .foregroundStyle(.tint)
+                    .frame(width: 56, height: 56)
+                    .background(Color.accentColor.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(summary.context.displayName)
+                        .font(.headline)
+                    HStack(spacing: 8) {
+                        if context.isPersonal {
+                            Text("Tu contexto personal")
+                        } else {
+                            Text("\(summary.membersCount) miembros")
+                            if let type = context.membershipType {
+                                Text("·")
+                                Text(type == "founder" ? "Fundador" : "Miembro")
+                            }
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 4)
+
+            // Balance personal en el contexto
+            if !context.isPersonal {
+                HStack {
+                    Text("Tu balance")
+                    Spacer()
+                    Text(summary.money.myBalance.currencyLabel(nil))
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(summary.money.myBalance < 0 ? .red : (summary.money.myBalance > 0 ? .green : .secondary))
+                }
+            }
+        }
+    }
+
+    // MARK: Mundo personal
+
+    @ViewBuilder
+    private func myWorldSections(_ world: MyWorld) -> some View {
+        if !world.resources.isEmpty {
+            Section("Recursos que puedes ver") {
+                ForEach(world.resources) { resource in
+                    NavigationLink {
+                        ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
+                    } label: {
+                        InfoRow(
+                            symbolName: (ResourceType(rawValue: resource.resourceType) ?? .other).symbolName,
+                            title: resource.displayName,
+                            subtitle: resource.reasons.joined(separator: " · ")
+                        )
+                    }
+                }
+            }
+        }
+
+        if !world.openObligations.isEmpty {
+            Section("Tus cuentas abiertas") {
+                ForEach(world.openObligations) { obligation in
+                    InfoRow(
+                        symbolName: obligation.iOwe ? "arrow.up.circle.fill" : "arrow.down.circle.fill",
+                        title: obligation.contextName ?? "—",
+                        subtitle: obligation.iOwe ? "Debes" : "Te deben",
+                        value: (obligation.amount ?? 0).currencyLabel(obligation.currency),
+                        tint: obligation.iOwe ? .red : .green
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: Members
+
+    @ViewBuilder
+    private func membersSection(_ summary: ContextSummary) -> some View {
+        Section {
+            ForEach(summary.members.prefix(5)) { member in
+                HStack(spacing: 12) {
+                    ActorInitialsView(name: member.displayName, size: 32)
+                    Text(member.displayName)
+                    Spacer()
+                    if member.isAdmin {
+                        StatusBadge("Admin", color: .blue)
+                    }
+                }
+            }
+            NavigationLink {
+                MembersListView(context: context, container: container)
+            } label: {
+                Label("Todos los miembros", systemImage: "person.2")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Miembros (\(summary.membersCount))")
+        }
+    }
+
+    // MARK: Resources
+
+    @ViewBuilder
+    private func resourcesSection(_ summary: ContextSummary) -> some View {
+        Section {
+            if summary.resources.isEmpty {
+                Text("Sin recursos todavía")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
+                ForEach(summary.resources.prefix(5)) { resource in
+                    NavigationLink {
+                        ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
+                    } label: {
+                        InfoRow(
+                            symbolName: (ResourceType(rawValue: resource.resourceType) ?? .other).symbolName,
+                            title: resource.displayName,
+                            value: resource.estimatedValue.map { $0.currencyLabel(resource.currency) }
+                        )
+                    }
+                }
+            }
+            NavigationLink {
+                ResourcesListView(context: context, container: container)
+            } label: {
+                Label("Recursos", systemImage: "shippingbox")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Recursos (\(summary.resourcesCount))")
+        }
+    }
+
+    // MARK: Events
+
+    @ViewBuilder
+    private func eventsSection(_ summary: ContextSummary) -> some View {
+        Section {
+            if summary.upcomingEvents.isEmpty {
+                Text("Sin eventos próximos")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
+                ForEach(summary.upcomingEvents.prefix(5)) { event in
+                    NavigationLink {
+                        EventDetailView(eventId: event.eventId, context: context, container: container)
+                    } label: {
+                        InfoRow(
+                            symbolName: (EventType(rawValue: event.eventType) ?? .other).symbolName,
+                            title: event.title,
+                            subtitle: event.startsAt?.formatted(date: .abbreviated, time: .shortened),
+                            value: event.hostActorId.map { "Host: \(summary.displayName(for: $0))" }
+                        )
+                    }
+                }
+            }
+            NavigationLink {
+                EventsListView(context: context, container: container)
+            } label: {
+                Label("Eventos", systemImage: "calendar")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Próximos eventos")
+        }
+    }
+
+    // MARK: Obligations
+
+    @ViewBuilder
+    private func obligationsSection(_ summary: ContextSummary) -> some View {
+        Section {
+            if summary.money.openObligations.isEmpty {
+                Text("Nadie debe nada 🎉")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
+                ForEach(summary.money.openObligations.prefix(5)) { obligation in
+                    InfoRow(
+                        symbolName: "dollarsign.circle",
+                        title: "\(summary.displayName(for: obligation.debtorActorId)) → \(summary.displayName(for: obligation.creditorActorId))",
+                        subtitle: obligationTypeLabel(obligation.obligationType),
+                        value: (obligation.amount ?? 0).currencyLabel(obligation.currency)
+                    )
+                }
+            }
+            NavigationLink {
+                MoneyHomeView(context: context, container: container)
+            } label: {
+                Label("Dinero", systemImage: "banknote")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Cuentas abiertas (\(summary.openObligationsCount))")
+        }
+    }
+
+    // MARK: Decisions
+
+    @ViewBuilder
+    private func decisionsSection(_ summary: ContextSummary) -> some View {
+        Section {
+            if summary.openDecisions.isEmpty {
+                Text("Sin decisiones pendientes")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
+                ForEach(summary.openDecisions.prefix(5)) { decision in
+                    NavigationLink {
+                        DecisionDetailView(decisionId: decision.decisionId, context: context, container: container)
+                    } label: {
+                        InfoRow(
+                            symbolName: "checkmark.seal",
+                            title: decision.title,
+                            subtitle: (DecisionType(rawValue: decision.decisionType) ?? .generic).label
+                        )
+                    }
+                }
+            }
+            NavigationLink {
+                DecisionsListView(context: context, container: container)
+            } label: {
+                Label("Decisiones", systemImage: "checkmark.seal")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Decisiones pendientes (\(summary.pendingDecisions))")
+        }
+    }
+
+    // MARK: Rules
+
+    @ViewBuilder
+    private func rulesSection(_ summary: ContextSummary) -> some View {
+        Section {
+            if summary.activeRules.isEmpty {
+                Text("Sin reglas activas")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
+                ForEach(summary.activeRules.prefix(5)) { rule in
+                    InfoRow(symbolName: "ruler", title: rule.title)
+                }
+            }
+            NavigationLink {
+                RulesListView(context: context, container: container)
+            } label: {
+                Label("Reglas", systemImage: "ruler")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Reglas")
+        }
+    }
+
+    // MARK: Activity
+
+    @ViewBuilder
+    private func activitySection(_ summary: ContextSummary) -> some View {
+        Section {
+            if summary.recentActivity.isEmpty {
+                Text("Sin actividad todavía")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
+                ForEach(Array(summary.recentActivity.prefix(5).enumerated()), id: \.offset) { _, activity in
+                    InfoRow(
+                        symbolName: "clock",
+                        title: activityLabel(activity.eventType),
+                        subtitle: activity.occurredAt?.formatted(.relative(presentation: .named))
+                    )
+                }
+            }
+            NavigationLink {
+                ActivityFeedView(context: context, container: container)
+            } label: {
+                Label("Toda la actividad", systemImage: "clock.arrow.circlepath")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Actividad reciente")
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func obligationTypeLabel(_ type: String) -> String {
+        switch type {
+        case "fine": return "Multa"
+        case "expense_share": return "Parte de gasto"
+        case "game_debt": return "Deuda de juego"
+        default: return type
+        }
+    }
+
+    private func activityLabel(_ eventType: String) -> String {
+        // Reusa la taxonomía de ActivityEvent.
+        ActivityEvent(id: UUID(), eventType: eventType).typeLabel
+    }
+}
+
+#Preview("Context Home (demo)") {
+    NavigationStack {
+        ContextHomeView(
+            context: AppContext(
+                id: MockRuulRPCClient.DemoIds.cenaSemanal,
+                kind: .collective,
+                subtype: "friend_group",
+                displayName: "Cena Semanal",
+                membershipType: "founder",
+                memberCount: 5,
+                roles: ["admin"]
+            ),
+            container: .demo()
+        )
+    }
+}
