@@ -220,9 +220,112 @@ La UI gatea con `context_summary(...).my_permissions` — el backend re-valida s
 
 `actors`, `actor_memberships`, `roles`, `role_assignments`, `role_permissions`,
 `permission_catalog`, `resources`, `resource_rights`, `resource_type_catalog`,
-`resource_capabilities_catalog`, `resource_type_capabilities`, `calendar_events`, `event_participants`,
-`resource_reservations`, `reservation_conflicts`, `decisions`, `decision_votes`, `rules`,
+`resource_capabilities_catalog`, `resource_type_capabilities`,
+`actor_capabilities_catalog`, `actor_type_capabilities`, `calendar_events`, `event_participants`,
+`resource_reservations`, `reservation_conflicts`, `decisions`, `decision_votes`, `decision_options`, `rules`,
 `rule_evaluations`, `obligations`, `money_transactions`, `money_splits`, `settlement_batches`,
-`settlement_items`, `documents`, `activity_events`, `context_invites`.
+`settlement_items`, `documents`, `activity_events`, `activity_event_catalog`, `context_invites`.
 
 Visibilidad: miembro activo del contexto o actor referenciado directamente. Escritura: ninguna.
+Los catálogos (`*_catalog`, `*_type_capabilities`) son globales, lectura para `authenticated`.
+
+## 13. Universal Behavior Models (R.2S)
+
+El frontend NO decide comportamiento por `resource_type` / `actor_subtype` / `decision_type` /
+`obligation_kind` / `reservation_status`. Consume **capabilities**, **available_actions** y el
+**explanation engine**. El backend calcula; el frontend renderiza.
+
+### 13.1 Actor capabilities (R.2S.2)
+
+Espejo de resource capabilities, keyed por `actor_subtype`. Catálogo (12): `can_have_members`,
+`can_hold_assets`, `can_hold_money`, `can_issue_decisions`, `can_receive_contributions`,
+`can_have_beneficiaries`, `can_have_shareholders`, `can_have_trustees`, `can_receive_obligations`,
+`can_issue_obligations`, `can_govern_resources`, `can_own_resources`.
+
+| RPC | Firma | Devuelve |
+|---|---|---|
+| `actor_can(p_actor_id, p_capability)` | authenticated | `boolean` (catálogo por subtype + overrides) |
+| `actor_capabilities(p_actor_id)` | authenticated | `{actor_id, actor_kind, actor_subtype, capabilities: [text]}` |
+| `actor_capabilities_catalog()` | authenticated | `{capabilities: [{capability_key, display_name, description}], subtypes: [{actor_subtype, capabilities: [text]}]}` |
+
+Override explícito por actor: `actors.metadata.capability_overrides = {"can_have_shareholders": true}`
+(habilita) o `false` (deshabilita) sin tocar el catálogo. Ej.: una person no tiene `can_have_shareholders`
+salvo override; un trust sí tiene `can_have_beneficiaries`/`can_have_trustees`.
+
+### 13.2 Available actions (R.2S.3 + R.2S.9)
+
+Cada detail RPC devuelve `available_actions: [action]` donde:
+
+```json
+{"action_key": "reserve_resource", "label": "Reservar", "enabled": true,
+ "reason": "El recurso es reservable y tienes derecho de uso",
+ "required_rights": ["USE"], "required_capabilities": ["reservable"]}
+```
+
+Una acción **aparece** solo si es aplicable por capability + estado; `enabled` refleja el permiso del
+caller (con `reason`). Cubierto en: `resource_detail`, `obligation_detail`, `decision_detail` (nuevo),
+`reservation_detail` (nuevo).
+
+- **resource**: `reserve_resource` (reservable), `record_expense`/`view_transactions` (monetary),
+  `view_beneficiaries` (beneficiary_supported), `view_ownership` (ownership_trackable),
+  `transfer_ownership` (transferable), `grant_right`/`revoke_right`.
+- **obligation**: `pay` (money + activa + deudor), `mark_completed` (acción), `dispute`, `forgive`, `cancel`.
+  No muestra `pay` en `settled`.
+- **decision**: `vote`/`change_vote`, `close_decision`, `cancel_decision` (abiertas), `execute_decision`
+  (cerrada). No muestra `vote` en ejecutada.
+- **reservation**: `approve`/`reject` (requested), `confirm` (approved), `cancel`, `resolve_conflict`.
+
+| RPC nuevo | Firma | Devuelve |
+|---|---|---|
+| `decision_detail(p_decision_id)` | miembro del contexto | `{id, decision_type, voting_model, title, status, payload, result, options: [{id, option_key, title, votes}], votes_count, available_actions, …}` |
+| `reservation_detail(p_reservation_id)` | miembro del contexto o quien ve el recurso | `{id, resource_id, status, starts_at, ends_at, requested_by_actor_id, reserved_for_actor_id, available_actions, …}` |
+
+### 13.3 Split models (R.2S.6)
+
+`record_expense(..., p_split_method, p_splits, p_excluded_actor_ids)` —
+`split_method` ∈ `equal`, `custom`, `custom_amount`, `percentage`, `shares`, `consumption`, (+ `excluded`).
+`percentage` (`[{actor_id, percent}]`, suma 100) y `shares` (`[{actor_id, shares}]`) se normalizan a montos
+exactos (el último participante absorbe el remanente de redondeo). Validaciones: suma = monto, sin actores
+duplicados, currency consistente, el pagador no genera obligación contra sí mismo.
+
+### 13.4 Rule targeting (R.2S.5)
+
+`rules.target_scope` ∈ `context, event_type, event, resource_type, resource, decision, reservation,
+membership, money_transaction, obligation, custom`; `rules.target_filter` jsonb `{key: value}` que debe
+coincidir con el payload del trigger. La **misma infraestructura** soporta reglas de cualquier dominio.
+
+| RPC | Firma | Notas |
+|---|---|---|
+| `create_rule(p_context_actor_id, p_title, p_trigger_event_type, p_condition_tree, p_consequences, p_target_scope, p_target_filter={}, p_body?, p_rule_type='automation', p_severity=1)` | `rules.manage` | overload con scope/filter |
+
+Triggers cableados además de `event.*`: `record_expense` → `money.expense_recorded`
+(`payload.amount/currency`); `cancel_reservation` → `reservation.cancelled`
+(`payload.resource_id/hours_before`).
+
+### 13.5 Reservation outcomes (R.2S.7)
+
+`resolve_reservation_conflict(p_conflict_id, p_resolution_model, p_winner_reservation_id?, p_metadata?)` —
+`resolution_model` ∈ `priority_based`, `admin_override`, `winner`, `lottery`, `waitlisted`, `split_dates`,
+`partial_approval`, `requires_decision`. El overload de 2 args `(conflict, winner)` sigue vigente.
+`requires_decision` abre una decisión `reservation_dispute`; la decision option ganadora resuelve el
+conflicto al ejecutar (`execute_decision`). `status` de reservación añade `waitlisted`.
+
+### 13.6 Activity catalog (R.2S.8)
+
+`activity_event_catalog(event_type, domain, description, expected_subject_type, is_system_generated)`
+cataloga la taxonomía canónica. `_emit_activity` marca `payload.uncatalogued=true` cualquier tipo fuera del
+catálogo (salvo `custom.*`).
+
+| RPC | Devuelve |
+|---|---|
+| `activity_event_catalog()` | `[{event_type, domain, description, expected_subject_type, is_system_generated}]` |
+
+### 13.7 Explanation engine (R.2S.10)
+
+| RPC | Devuelve |
+|---|---|
+| `why_can_view_resource(p_actor_id, p_resource_id)` | `{can_view, reasons: [text]}` |
+| `why_can_reserve(p_actor_id, p_resource_id)` | `{can_reserve, required_capability, reasons: [text]}` |
+| `why_reservation_won(p_conflict_id)` | `{winner_reservation_id, winner_actor_id, reasons: [text]}` |
+| `why_decision_result(p_decision_id)` | `{status, voting_model, tally: {approve, reject, abstain}, option_tally, result, reasons: [text]}` |
+| `why_obligation_exists(p_obligation_id)` | ver §9b |
