@@ -12,6 +12,10 @@ public protocol RuulRPCClient: Sendable {
     func ensurePersonActor() async throws -> CurrentActor
     /// `update_my_profile(...)`
     func updateMyProfile(fullName: String?, preferredName: String?, avatarUrl: String?) async throws -> CurrentActor
+    /// `update_my_profile(p_metadata := ...)` — F.1A-1: setea slot del metadata jsonb.
+    func updateMyProfileMetadata(_ metadata: JSONValue) async throws -> CurrentActor
+    /// `personal_settings_summary()` — F.1A-1.
+    func personalSettingsSummary() async throws -> PersonalSettings
 
     // MARK: - Contexts
 

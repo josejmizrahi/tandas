@@ -60,6 +60,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
     }
 
+    public func updateMyProfileMetadata(_ metadata: JSONValue) async throws -> CurrentActor {
+        struct Params: Encodable, Sendable {
+            let pMetadata: JSONValue
+            enum CodingKeys: String, CodingKey { case pMetadata = "p_metadata" }
+        }
+        return try await call("update_my_profile", params: Params(pMetadata: metadata))
+    }
+
+    public func personalSettingsSummary() async throws -> PersonalSettings {
+        try await call("personal_settings_summary")
+    }
+
     // MARK: - Contexts
 
     public func contextCandidates() async throws -> ContextCandidates {

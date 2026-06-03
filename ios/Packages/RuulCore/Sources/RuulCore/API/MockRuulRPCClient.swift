@@ -14,6 +14,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     public var me: CurrentActor
     var actors: [UUID: ActorRecord] = [:]
+    var profileMetadata: JSONValue = .object([:])     // F.1A-1 persiste prefs personales
     var memberships: [UUID: [ContextMember]] = [:]          // contextId → members
     var permissions: [UUID: [String]] = [:]                  // contextId → my permissions
     var invites: [String: (id: UUID, contextId: UUID)] = [:] // code → invite
@@ -89,6 +90,82 @@ public actor MockRuulRPCClient: RuulRPCClient {
         me = CurrentActor(actor: actor, profile: profile)
         actors[me.id] = actor
         return me
+    }
+
+    public func updateMyProfileMetadata(_ metadata: JSONValue) async throws -> CurrentActor {
+        try throwIfNeeded()
+        // Merge profundo: cada slot top-level se reemplaza con lo que mande el caller.
+        if case .object(let incoming) = metadata, case .object(var current) = profileMetadata {
+            for (key, value) in incoming { current[key] = value }
+            profileMetadata = .object(current)
+        } else {
+            profileMetadata = metadata
+        }
+        return me
+    }
+
+    public func personalSettingsSummary() async throws -> PersonalSettings {
+        try throwIfNeeded()
+        let meta = profileMetadata.objectValue ?? [:]
+        let notifMeta = meta["notifications"]?.objectValue ?? [:]
+        func slot(_ key: String, emailDefault: Bool = true) -> NotificationSlot {
+            if let obj = notifMeta[key]?.objectValue {
+                let push = obj["push"]?.boolValue ?? true
+                let email = obj["email"]?.boolValue ?? emailDefault
+                return NotificationSlot(push: push, email: email)
+            }
+            return NotificationSlot(push: true, email: emailDefault)
+        }
+        let privMeta = meta["privacy"]?.objectValue ?? [:]
+        let calMeta = meta["calendar"]?.objectValue ?? [:]
+        let ctxMeta = meta["contexts"]?.objectValue ?? [:]
+        let intMeta = meta["integrations"]?.objectValue ?? [:]
+        func integration(_ key: String) -> IntegrationStatus {
+            IntegrationStatus(connected: intMeta[key]?["connected"]?.boolValue ?? false)
+        }
+
+        return PersonalSettings(
+            actorId: me.id,
+            profile: PersonalProfileSummary(
+                fullName: me.profile?.fullName,
+                preferredName: me.profile?.preferredName,
+                phone: me.profile?.phone,
+                email: me.profile?.email,
+                avatarUrl: me.profile?.avatarUrl
+            ),
+            notifications: NotificationSettings(
+                invitations:  slot("invitations"),
+                decisions:    slot("decisions"),
+                reservations: slot("reservations"),
+                events:       slot("events"),
+                obligations:  slot("obligations"),
+                money:        slot("money"),
+                rules:        slot("rules", emailDefault: false)
+            ),
+            privacy: PrivacySettings(
+                discoverableBy:    privMeta["discoverable_by"]?.stringValue    ?? "members_in_common",
+                whoCanInviteMe:    privMeta["who_can_invite_me"]?.stringValue   ?? "members_in_common",
+                profileVisibility: privMeta["profile_visibility"]?.stringValue  ?? "members_in_common"
+            ),
+            calendar: CalendarSettings(
+                timeZone:       calMeta["time_zone"]?.stringValue       ?? "America/Mexico_City",
+                firstDayOfWeek: calMeta["first_day_of_week"]?.stringValue ?? "monday"
+            ),
+            contexts: ContextPreferences(
+                defaultContextActorId: ctxMeta["default_context_actor_id"]?.stringValue.flatMap(UUID.init(uuidString:)),
+                lastContextActorId:    ctxMeta["last_context_actor_id"]?.stringValue.flatMap(UUID.init(uuidString:))
+            ),
+            integrations: IntegrationsState(
+                googleCalendar: integration("google_calendar"),
+                appleCalendar:  integration("apple_calendar"),
+                wise:           integration("wise"),
+                whatsapp:       integration("whatsapp")
+            ),
+            availableActions: [
+                "edit_profile", "edit_notifications", "edit_privacy",
+                "edit_calendar", "edit_contexts", "edit_integrations"
+            ]
+        )
     }
 
     // MARK: - Contexts

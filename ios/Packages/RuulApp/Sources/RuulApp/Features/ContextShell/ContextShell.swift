@@ -10,7 +10,7 @@ public struct ContextShell: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingCreateContext = false
     @State private var isShowingJoinByCode = false
-    @State private var isShowingEditProfile = false
+    @State private var isShowingPersonalSettings = false
     @State private var prefilledInviteCode: String?
 
     public init(container: DependencyContainer) {
@@ -64,8 +64,8 @@ public struct ContextShell: View {
         .sheet(isPresented: $isShowingJoinByCode, onDismiss: { prefilledInviteCode = nil }) {
             JoinByCodeView(container: container, prefilledCode: prefilledInviteCode)
         }
-        .sheet(isPresented: $isShowingEditProfile) {
-            EditProfileView(container: container)
+        .sheet(isPresented: $isShowingPersonalSettings) {
+            PersonalSettingsView(container: container)
         }
     }
 
@@ -84,7 +84,7 @@ public struct ContextShell: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         ProfileAvatarMenu(
                             currentActorStore: container.currentActorStore,
-                            onEditProfile: { isShowingEditProfile = true },
+                            onOpenSettings: { isShowingPersonalSettings = true },
                             onSignOut: { Task { await container.signOut() } }
                         )
                     }

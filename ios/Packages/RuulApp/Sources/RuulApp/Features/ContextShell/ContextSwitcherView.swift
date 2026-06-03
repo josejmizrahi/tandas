@@ -56,19 +56,19 @@ public struct ContextSwitcherMenu: View {
     }
 }
 
-/// R.2Q-6 — avatar del usuario en el top-right. Menu con perfil y logout.
+/// F.1A-1 — avatar del usuario en el top-right. Menu con configuración y logout.
 public struct ProfileAvatarMenu: View {
     let currentActorStore: CurrentActorStore
-    let onEditProfile: () -> Void
+    let onOpenSettings: () -> Void
     let onSignOut: () -> Void
 
     public init(
         currentActorStore: CurrentActorStore,
-        onEditProfile: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void,
         onSignOut: @escaping () -> Void
     ) {
         self.currentActorStore = currentActorStore
-        self.onEditProfile = onEditProfile
+        self.onOpenSettings = onOpenSettings
         self.onSignOut = onSignOut
     }
 
@@ -78,8 +78,8 @@ public struct ProfileAvatarMenu: View {
                 Text(name)
             }
             Section {
-                Button(action: onEditProfile) {
-                    Label("Tu perfil", systemImage: "person.crop.circle")
+                Button(action: onOpenSettings) {
+                    Label("Configuración", systemImage: "gearshape")
                 }
                 Button(role: .destructive, action: onSignOut) {
                     Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
@@ -90,7 +90,7 @@ public struct ProfileAvatarMenu: View {
                 name: currentActorStore.actor?.displayName ?? "?",
                 size: 32
             )
-            .accessibilityLabel("Mi perfil")
+            .accessibilityLabel("Mi configuración")
         }
     }
 }
@@ -125,7 +125,7 @@ public struct ProfileAvatarMenu: View {
                                 )
                             )
                         ),
-                        onEditProfile: {},
+                        onOpenSettings: {},
                         onSignOut: {}
                     )
                 }
