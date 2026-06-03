@@ -80,6 +80,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("context_settings_summary", params: Params(pContextActorId: contextId))
     }
 
+    public func resourceSettingsSummary(resourceId: UUID) async throws -> ResourceSettings {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
+        }
+        return try await call("resource_settings_summary", params: Params(pResourceId: resourceId))
+    }
+
     // MARK: - Contexts
 
     public func contextCandidates() async throws -> ContextCandidates {

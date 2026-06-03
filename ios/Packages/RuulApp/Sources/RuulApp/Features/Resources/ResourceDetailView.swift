@@ -11,6 +11,7 @@ public struct ResourceDetailView: View {
 
     @State private var store: ResourceDetailStore
     @State private var isShowingGrantRight = false
+    @State private var isShowingSettings = false
     @State private var runner = ActionRunner()
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
@@ -41,6 +42,24 @@ public struct ResourceDetailView: View {
         }
         .navigationTitle(store.detail?.resource.displayName ?? "Recurso")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // F.1A-3 — gear de Settings solo si el caller tiene OWN/MANAGE
+            if let actorId = myActorId,
+               let reasons = store.detail?.reasons(for: actorId),
+               reasons.contains(where: { $0.rightKind == "OWN" || $0.rightKind == "MANAGE" }) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Configuración del recurso")
+                }
+            }
+        }
+        .sheet(isPresented: $isShowingSettings) {
+            ResourceSettingsView(resourceId: resourceId, container: container)
+        }
         .task {
             await store.load(resourceId: resourceId)
         }

@@ -104,6 +104,77 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return me
     }
 
+    public func resourceSettingsSummary(resourceId: UUID) async throws -> ResourceSettings {
+        try throwIfNeeded()
+        guard let resource = resources[resourceId] else {
+            throw RuulError.unexpected(message: "Recurso no encontrado")
+        }
+        let resourceRights = rights[resourceId] ?? []
+        let hasOwn = resourceRights.contains { ($0.holderActorId == me.id) && ($0.rightKind == "OWN") }
+        let hasManage = resourceRights.contains { ($0.holderActorId == me.id) && ($0.rightKind == "MANAGE") }
+        guard hasOwn || hasManage else {
+            throw RuulError.unexpected(message: "Solo OWN o MANAGE pueden ver settings del recurso")
+        }
+
+        // Capability matrix mínima (sólo lo que iOS exige). Espeja
+        // public.resource_type_capabilities del backend.
+        let capabilities: [String]
+        switch resource.resourceType {
+        case "house":             capabilities = ["auditable", "maintainable", "ownership_trackable", "reservable"]
+        case "vehicle":           capabilities = ["maintainable", "ownership_trackable", "reservable"]
+        case "equipment":         capabilities = ["maintainable", "ownership_trackable", "reservable"]
+        case "bank_account":      capabilities = ["auditable", "monetary", "ownership_trackable"]
+        case "cash_pool":         capabilities = ["auditable", "monetary"]
+        case "security":          capabilities = ["auditable", "beneficiary_supported", "ownership_trackable", "transferable"]
+        case "trust_asset":       capabilities = ["auditable", "beneficiary_supported", "ownership_trackable"]
+        case "contract":          capabilities = ["approval_required", "auditable", "documentable"]
+        case "document":          capabilities = ["documentable"]
+        case "trip_booking":      capabilities = ["documentable", "reservable", "transferable"]
+        case "membership_asset":  capabilities = ["ownership_trackable", "transferable"]
+        case "digital_asset":     capabilities = ["auditable", "ownership_trackable", "transferable"]
+        default:                  capabilities = ["auditable", "ownership_trackable"]
+        }
+
+        var rightsSummary: [String: Int] = [:]
+        for r in resourceRights {
+            rightsSummary[r.rightKind, default: 0] += 1
+        }
+
+        var actions: [String] = []
+        if hasOwn {
+            actions = ["edit_general", "manage_rights", "edit_policies", "archive", "transfer_ownership", "view"]
+        } else if hasManage {
+            actions = ["edit_general", "manage_rights", "edit_policies", "view"]
+        }
+
+        return ResourceSettings(
+            resourceId: resourceId,
+            general: ResourceGeneralSummary(
+                resourceType: resource.resourceType,
+                displayName: resource.displayName,
+                description: resource.description,
+                status: "active",
+                estimatedValue: resource.estimatedValue,
+                currency: resource.currency,
+                archivedAt: nil
+            ),
+            capabilities: capabilities,
+            rightsSummary: rightsSummary,
+            policies: ResourcePolicies(
+                reservable: ReservablePolicy(
+                    maxWindowDays: 14, cancellationPolicy: "open",
+                    priorityPolicy: "least_recent_use_wins", capacity: 1
+                ),
+                monetary: MonetaryPolicy(
+                    currency: resource.currency ?? "MXN", settlementPolicy: "monthly"
+                ),
+                beneficiary: BeneficiaryPolicy(beneficiaries: [], distribution: "equal"),
+                documentable: DocumentablePolicy(versioningEnabled: false, approvalsRequired: 0)
+            ),
+            availableActions: actions
+        )
+    }
+
     public func contextSettingsSummary(contextId: UUID) async throws -> ContextSettings {
         try throwIfNeeded()
         guard let ctxActor = actors[contextId] else {

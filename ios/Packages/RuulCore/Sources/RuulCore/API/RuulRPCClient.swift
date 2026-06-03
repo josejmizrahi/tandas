@@ -18,6 +18,8 @@ public protocol RuulRPCClient: Sendable {
     func personalSettingsSummary() async throws -> PersonalSettings
     /// `context_settings_summary(p_context_actor_id)` — F.1A-2.
     func contextSettingsSummary(contextId: UUID) async throws -> ContextSettings
+    /// `resource_settings_summary(p_resource_id)` — F.1A-3.
+    func resourceSettingsSummary(resourceId: UUID) async throws -> ResourceSettings
 
     // MARK: - Contexts
 
