@@ -13,11 +13,11 @@
 | F.2 Auth + Session | SessionStore + CurrentActorStore (`ensure_person_actor`) + SignedOutView OTP | ✅ | ⬜ |
 | F.3 ContextShell | ContextStore (`context_candidates` + persistencia) + ContextShell + Switcher + NoContextsView | ✅ | ⬜ |
 | F.4 ContextHome | ContextHomeStore (`context_summary` + `my_world`) + ContextHomeView | ✅ | ⬜ |
-| F.5 Membership | Create/Join/Invite/MembersList/MemberDetail | ✅ | ⬜ |
+| F.5 Membership | Create/Join/Invite/MembersList/MemberDetail + universal links (ruul.mx/invite) | ✅ | ⬜ |
 | F.6 Resources | ResourcesList/Create/Detail (con "por qué lo ves") + GrantRightSheet | ✅ | ⬜ |
 | F.7 Events | EventsList/Create/Detail (RSVP + check-in + cancel + close + host rotation) | ✅ | ⬜ |
 | F.8 Rules | RulesList + CreateRuleWizard (late fee / same-day / norma) + RuleDetail | ✅ | ⬜ |
-| F.9 Reservations | ReservationsList + Request + ConflictView (resolver / escalar a votación) | ✅ | ⬜ |
+| F.9 Reservations | ReservationsList + Calendario mensual + Request + ConflictView (resolver / escalar a votación) | ✅ | ⬜ |
 | F.10 Decisions | DecisionsList/Create/Detail (votos, cerrar, ejecutar) | ✅ | ⬜ |
 | F.11 Money | MoneyHome (balances + obligations) + RecordExpense (SplitEditor) + GameResult + Fine | ✅ | ⬜ |
 | F.12 Settlement | SettlementView (generar + items + marcar pagado) | ✅ | ⬜ |
@@ -40,7 +40,7 @@ ios/
     └── RuulApp/                      # UI. SwiftUI puro, iOS 26.
         ├── App/                      # DependencyContainer (slim) + RuulAppShell (3 gates)
         ├── Components/               # StateViews, ActionRunner, InfoRow, badges
-        └── Features/                 # Auth, ContextShell, ContextHome, Membership,
+        └── Features/                 # Auth, Profile, ContextShell, ContextHome, Membership,
                                       # Resources, Events, Rules, Reservations,
                                       # Decisions, Money, Settlement, Activity
 ```
@@ -79,10 +79,20 @@ pantallas legacy.
 
 ## Pendientes conocidos (post-rebuild)
 
-- `update_my_profile` no tiene pantalla (el nombre viene de `ensure_person_actor`);
-  agregar EditProfile cuando el founder lo pida.
-- Reservations usa lista, no calendario visual (`ReservationsCalendarView` del plan
-  quedó como lista por fechas — más simple y igual de operable).
+- ~~`update_my_profile` no tiene pantalla~~ → **hecho**: `EditProfileView`
+  (entrada en el ContextSwitcherMenu → "Tu perfil").
+- ~~Reservations usa lista, no calendario visual~~ → **hecho**:
+  `ReservationsCalendarView` (picker Lista/Calendario en ReservationsListView).
+- ~~Invitaciones solo por código de texto~~ → **hecho**: ShareLink comparte
+  `https://ruul.mx/invite/CODE`; `DeepLinkRouter` abre `JoinByCodeView` con el
+  código prellenado al tocar el link (universal links + scheme `ruul://`).
 - `execute_decision` no aplica efectos automáticos sobre reservaciones (el backend
   tampoco — `effects` es informativo); el admin resuelve el conflicto desde el recurso.
 - Sin push notifications (el backend MVP2 no las tiene; pull vía Activity).
+
+## Infraestructura web (`web/`)
+
+`web/public` es un sitio estático en Cloudflare Pages (`ruul-web` → ruul.mx):
+landing + AASA para universal links + página de invitación. **No habla con el
+backend** — solo hace que `ruul.mx/invite/CODE` abra la app (o muestre el código
+a quien no la tiene). Se conserva como parte del flujo de invitaciones.

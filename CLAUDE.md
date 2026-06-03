@@ -54,10 +54,12 @@ ios/
         └── Sources/RuulApp/
             ├── App/                 # DependencyContainer (slim) + RuulAppShell (3 gates)
             ├── Components/          # StateViews, ActionRunner, InfoRow, StatusBadge
-            └── Features/            # Auth, ContextShell, ContextHome, Membership, Resources,
-                                     #   Events, Rules, Reservations, Decisions, Money,
-                                     #   Settlement, Activity
+            └── Features/            # Auth, Profile, ContextShell, ContextHome, Membership,
+                                     #   Resources, Events, Rules, Reservations, Decisions,
+                                     #   Money, Settlement, Activity
 
+web/public/                          # Estático en Cloudflare Pages (ruul.mx): landing + AASA
+                                     #   (universal links) + página de invitación. No toca el backend.
 supabase/migrations/                 # Cadena MVP2 (mvp2_000 … r2k) — fuente única del backend
 Plans/Active/MVP2_iOS_Contract.md    # Contrato completo backend ↔ iOS (RPCs + shapes)
 Plans/Active/Frontend_MVP2_Rebuild.md# Estado del rebuild F.0–F.14
