@@ -33,7 +33,8 @@ Frontend = operación clara por contexto
 | `RuulApp/Features` (111 vistas) | 111 | **DELETE** — UI group-céntrica (GroupTabsHost, PersonalHomeView, R.0/R.1 views) |
 | `RuulApp/App` (Shell, DI, AppDelegate, DeepLink) | 6 | **REWRITE** — shell nuevo context-first; sin APNs (MVP2 no tiene push) |
 | `ios/Tandas` (app target) | 1 + recursos | **KEEP** — `TandasApp.swift` se simplifica (sin AppDelegate APNs) |
-| `ios/project.yml` / Makefile / CI | 3 | **KEEP** — ajuste menor al scheme para correr tests del package |
+| `ios/project.yml` / `ios/Makefile` / `ios-ci.yml` | 3 | **KEEP** — CI corre además los tests del package RuulCore |
+| Codegen Swift↔TS (`scripts/codegen`, `codegen.yml`, `lefthook.yml`, `Makefile` raíz, `ios/Tandas/Platform`) | — | **DELETE** — sistema muerto: su fuente (`RuulCore/PlatformModels`) desapareció en un pivote anterior y su destino (`supabase/functions/_shared/types`) desapareció con el reset MVP2. El workflow `gen-types-clean` llevaba fallando en TODOS los commits de main desde el reset. |
 
 **El archive es git.** No se crean carpetas `_archive` en el árbol de iOS: la historia
 completa queda accesible en los commits previos a este rebuild (tag de referencia:
