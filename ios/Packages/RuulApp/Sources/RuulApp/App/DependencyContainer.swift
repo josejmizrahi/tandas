@@ -20,6 +20,9 @@ public final class DependencyContainer {
     public let currentActorStore: CurrentActorStore
     public let contextStore: ContextStore
 
+    /// Rutea universal links / ruul:// (hoy: invitaciones).
+    public let deepLinks: DeepLinkRouter
+
     // MARK: - Init live
 
     public init() {
@@ -32,6 +35,7 @@ public final class DependencyContainer {
         self.sessionStore = SessionStore(authService: auth)
         self.currentActorStore = CurrentActorStore(rpc: rpcClient)
         self.contextStore = ContextStore(rpc: rpcClient)
+        self.deepLinks = DeepLinkRouter()
     }
 
     // MARK: - Init inyectable (previews / tests / UI tests)
@@ -42,6 +46,7 @@ public final class DependencyContainer {
         self.sessionStore = SessionStore(authService: authService)
         self.currentActorStore = CurrentActorStore(rpc: rpc)
         self.contextStore = ContextStore(rpc: rpc)
+        self.deepLinks = DeepLinkRouter()
     }
 
     /// Container demo: mock client seedeado con el mundo del founder +

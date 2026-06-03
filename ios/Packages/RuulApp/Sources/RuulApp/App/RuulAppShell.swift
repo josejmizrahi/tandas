@@ -27,6 +27,11 @@ public struct RuulAppShell: View {
             .task {
                 container.bootstrap()
             }
+            // Universal links (ruul.mx/invite/CODE) y scheme ruul://.
+            // El código queda pendiente en el router hasta pasar los gates.
+            .onOpenURL { url in
+                container.deepLinks.handle(url)
+            }
     }
 
     @ViewBuilder

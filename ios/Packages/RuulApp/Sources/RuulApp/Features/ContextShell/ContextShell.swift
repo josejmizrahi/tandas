@@ -10,6 +10,7 @@ public struct ContextShell: View {
     @State private var isShowingCreateContext = false
     @State private var isShowingJoinByCode = false
     @State private var isShowingEditProfile = false
+    @State private var prefilledInviteCode: String?
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -43,11 +44,18 @@ public struct ContextShell: View {
         .task {
             await contextStore.load()
         }
+        // Invitación entrante por universal link / ruul:// — el código quedó
+        // pendiente en el router (aunque haya llegado antes de pasar los gates).
+        .onChange(of: container.deepLinks.pendingInviteCode, initial: true) { _, code in
+            guard code != nil else { return }
+            prefilledInviteCode = container.deepLinks.consumePendingInviteCode()
+            isShowingJoinByCode = true
+        }
         .sheet(isPresented: $isShowingCreateContext) {
             CreateContextView(container: container)
         }
-        .sheet(isPresented: $isShowingJoinByCode) {
-            JoinByCodeView(container: container)
+        .sheet(isPresented: $isShowingJoinByCode, onDismiss: { prefilledInviteCode = nil }) {
+            JoinByCodeView(container: container, prefilledCode: prefilledInviteCode)
         }
         .sheet(isPresented: $isShowingEditProfile) {
             EditProfileView(container: container)

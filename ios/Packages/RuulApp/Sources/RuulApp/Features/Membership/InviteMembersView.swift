@@ -30,7 +30,11 @@ public struct InviteMembersView: View {
                         }
                         .padding(.vertical, 8)
 
-                        ShareLink(item: shareMessage(invite)) {
+                        ShareLink(
+                            item: inviteURL(invite),
+                            subject: Text("Invitación a \(context.displayName)"),
+                            message: Text(shareMessage(invite))
+                        ) {
                             Label("Compartir invitación", systemImage: "square.and.arrow.up")
                                 .frame(maxWidth: .infinity)
                         }
@@ -86,8 +90,13 @@ public struct InviteMembersView: View {
         }
     }
 
+    /// Universal link que abre la app (o la landing de web/ si no la tienen).
+    private func inviteURL(_ invite: InviteCreated) -> URL {
+        URL(string: "https://ruul.mx/invite/\(invite.code)") ?? URL(string: "https://ruul.mx")!
+    }
+
     private func shareMessage(_ invite: InviteCreated) -> String {
-        "Únete a \(context.displayName) en Ruul con el código: \(invite.code)"
+        "Únete a \(context.displayName) en Ruul. Abre el link o usa el código \(invite.code)."
     }
 }
 

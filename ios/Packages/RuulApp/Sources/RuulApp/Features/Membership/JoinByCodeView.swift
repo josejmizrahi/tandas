@@ -10,8 +10,9 @@ public struct JoinByCodeView: View {
     @State private var runner = ActionRunner()
     @State private var joinedContextName: String?
 
-    public init(container: DependencyContainer) {
+    public init(container: DependencyContainer, prefilledCode: String? = nil) {
         self.container = container
+        _code = State(initialValue: prefilledCode ?? "")
     }
 
     public var body: some View {
