@@ -72,6 +72,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await call("personal_settings_summary")
     }
 
+    public func contextSettingsSummary(contextId: UUID) async throws -> ContextSettings {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            enum CodingKeys: String, CodingKey { case pContextActorId = "p_context_actor_id" }
+        }
+        return try await call("context_settings_summary", params: Params(pContextActorId: contextId))
+    }
+
     // MARK: - Contexts
 
     public func contextCandidates() async throws -> ContextCandidates {

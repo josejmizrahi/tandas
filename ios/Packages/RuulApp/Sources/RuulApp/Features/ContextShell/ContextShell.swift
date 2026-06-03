@@ -11,6 +11,7 @@ public struct ContextShell: View {
     @State private var isShowingCreateContext = false
     @State private var isShowingJoinByCode = false
     @State private var isShowingPersonalSettings = false
+    @State private var isShowingContextSettings = false
     @State private var prefilledInviteCode: String?
 
     public init(container: DependencyContainer) {
@@ -67,6 +68,11 @@ public struct ContextShell: View {
         .sheet(isPresented: $isShowingPersonalSettings) {
             PersonalSettingsView(container: container)
         }
+        .sheet(isPresented: $isShowingContextSettings) {
+            if let current = contextStore.currentContext, !current.isPersonal {
+                ContextSettingsView(context: current, container: container)
+            }
+        }
     }
 
     @ViewBuilder
@@ -78,7 +84,8 @@ public struct ContextShell: View {
                         ContextSwitcherMenu(
                             contextStore: contextStore,
                             onCreate: { isShowingCreateContext = true },
-                            onJoin: { isShowingJoinByCode = true }
+                            onJoin: { isShowingJoinByCode = true },
+                            onOpenContextSettings: { isShowingContextSettings = true }
                         )
                     }
                     ToolbarItem(placement: .topBarTrailing) {

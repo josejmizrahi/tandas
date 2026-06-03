@@ -8,15 +8,18 @@ public struct ContextSwitcherMenu: View {
     let contextStore: ContextStore
     let onCreate: () -> Void
     let onJoin: () -> Void
+    let onOpenContextSettings: () -> Void
 
     public init(
         contextStore: ContextStore,
         onCreate: @escaping () -> Void,
-        onJoin: @escaping () -> Void
+        onJoin: @escaping () -> Void,
+        onOpenContextSettings: @escaping () -> Void = {}
     ) {
         self.contextStore = contextStore
         self.onCreate = onCreate
         self.onJoin = onJoin
+        self.onOpenContextSettings = onOpenContextSettings
     }
 
     public var body: some View {
@@ -31,6 +34,15 @@ public struct ContextSwitcherMenu: View {
                         } else {
                             Label(context.displayName, systemImage: context.symbolName)
                         }
+                    }
+                }
+            }
+
+            // F.1A-2 — Configuración del contexto activo (solo colectivos)
+            if let current = contextStore.currentContext, !current.isPersonal {
+                Section {
+                    Button(action: onOpenContextSettings) {
+                        Label("Configuración del contexto", systemImage: "gearshape")
                     }
                 }
             }

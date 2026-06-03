@@ -16,6 +16,8 @@ public protocol RuulRPCClient: Sendable {
     func updateMyProfileMetadata(_ metadata: JSONValue) async throws -> CurrentActor
     /// `personal_settings_summary()` — F.1A-1.
     func personalSettingsSummary() async throws -> PersonalSettings
+    /// `context_settings_summary(p_context_actor_id)` — F.1A-2.
+    func contextSettingsSummary(contextId: UUID) async throws -> ContextSettings
 
     // MARK: - Contexts
 

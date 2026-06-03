@@ -104,6 +104,66 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return me
     }
 
+    public func contextSettingsSummary(contextId: UUID) async throws -> ContextSettings {
+        try throwIfNeeded()
+        guard let ctxActor = actors[contextId] else {
+            throw RuulError.unexpected(message: "Contexto no encontrado")
+        }
+        guard ctxActor.actorKind != .person else {
+            throw RuulError.backend(.validation(message: "personal contexts have no settings"))
+        }
+        guard memberships[contextId]?.contains(where: { $0.actorId == me.id }) == true else {
+            throw RuulError.unexpected(message: "No eres miembro del contexto")
+        }
+        let myPerms = permissions[contextId] ?? []
+        var actions: [String] = ["view"]
+        if myPerms.contains("context.manage") {
+            actions.append(contentsOf: ["edit_general", "edit_decisions", "edit_money", "edit_reservations", "edit_invitations", "view_audit"])
+        }
+        if myPerms.contains("members.manage") {
+            actions.append(contentsOf: ["manage_members", "manage_roles"])
+        }
+        if myPerms.contains("rules.manage") {
+            actions.append("manage_rules")
+        }
+        if myPerms.contains("context.invite") {
+            actions.append("create_invite")
+        }
+
+        let memberCount = memberships[contextId]?.count ?? 0
+        return ContextSettings(
+            contextActorId: contextId,
+            general: ContextGeneralSummary(
+                displayName: ctxActor.displayName,
+                description: nil,
+                subtype: ctxActor.actorSubtype,
+                visibility: "private",
+                memberCount: memberCount,
+                imageUrl: nil
+            ),
+            decisionsConfig: ContextDecisionsConfig(
+                defaultVotingModel: "yes_no_abstain",
+                quorum: "simple_majority",
+                majorityRule: "simple"
+            ),
+            moneyConfig: ContextMoneyConfig(
+                currency: "MXN",
+                defaultSplit: "equal",
+                settlementPolicy: "monthly"
+            ),
+            reservationsConfig: ContextReservationsConfig(
+                priorityPolicy: "least_recent_use_wins",
+                conflictResolution: "community_vote",
+                cancellationPolicy: "open"
+            ),
+            invitationsConfig: ContextInvitationsConfig(
+                whoCanInvite: "admins",
+                openInvites: false
+            ),
+            availableActions: actions
+        )
+    }
+
     public func personalSettingsSummary() async throws -> PersonalSettings {
         try throwIfNeeded()
         let meta = profileMetadata.objectValue ?? [:]
