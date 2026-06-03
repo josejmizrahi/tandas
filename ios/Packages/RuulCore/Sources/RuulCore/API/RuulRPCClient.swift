@@ -74,6 +74,9 @@ public protocol RuulRPCClient: Sendable {
     func revokeRight(rightId: UUID) async throws
     /// `archive_resource(p_resource_id)`
     func archiveResource(resourceId: UUID) async throws
+    /// `transfer_resource_ownership(p_resource_id, p_to_actor_id, p_reason?)` — F.1A polish.
+    /// Atómico: revoca todos los OWN del caller y otorga uno equivalente al recipient.
+    func transferResourceOwnership(resourceId: UUID, toActorId: UUID, reason: String?) async throws -> TransferOwnershipResult
     /// `update_resource(p_resource_id, p_display_name?, p_description?, p_estimated_value?, p_currency?, p_metadata?)`
     /// — F.1A polish: editor general + metadata (policies). Devuelve el recurso actualizado.
     func updateResource(_ input: UpdateResourceInput) async throws -> Resource
@@ -283,6 +286,56 @@ public struct UpdateContextInput: Sendable, Equatable {
         self.moneyConfig = moneyConfig
         self.reservationsConfig = reservationsConfig
         self.invitationsConfig = invitationsConfig
+    }
+}
+
+/// Resultado de `transfer_resource_ownership`.
+public struct TransferOwnershipResult: Decodable, Sendable, Equatable {
+    public let resourceId: UUID
+    public let fromActorId: UUID
+    public let toActorId: UUID
+    public let newRightId: UUID?
+    public let rightsRevoked: Int
+    public let percentTotal: Double?
+    public let canonicalOwnerChanged: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case resourceId = "resource_id"
+        case fromActorId = "from_actor_id"
+        case toActorId = "to_actor_id"
+        case newRightId = "new_right_id"
+        case rightsRevoked = "rights_revoked"
+        case percentTotal = "percent_total"
+        case canonicalOwnerChanged = "canonical_owner_changed"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.resourceId = try c.decode(UUID.self, forKey: .resourceId)
+        self.fromActorId = try c.decode(UUID.self, forKey: .fromActorId)
+        self.toActorId = try c.decode(UUID.self, forKey: .toActorId)
+        self.newRightId = try c.decodeIfPresent(UUID.self, forKey: .newRightId)
+        self.rightsRevoked = try c.decodeIfPresent(Int.self, forKey: .rightsRevoked) ?? 0
+        self.percentTotal = try c.decodeIfPresent(Double.self, forKey: .percentTotal)
+        self.canonicalOwnerChanged = try c.decodeIfPresent(Bool.self, forKey: .canonicalOwnerChanged) ?? false
+    }
+
+    public init(
+        resourceId: UUID,
+        fromActorId: UUID,
+        toActorId: UUID,
+        newRightId: UUID? = nil,
+        rightsRevoked: Int = 0,
+        percentTotal: Double? = nil,
+        canonicalOwnerChanged: Bool = false
+    ) {
+        self.resourceId = resourceId
+        self.fromActorId = fromActorId
+        self.toActorId = toActorId
+        self.newRightId = newRightId
+        self.rightsRevoked = rightsRevoked
+        self.percentTotal = percentTotal
+        self.canonicalOwnerChanged = canonicalOwnerChanged
     }
 }
 

@@ -845,6 +845,81 @@ public actor MockRuulRPCClient: RuulRPCClient {
         rights[resourceId] = nil
     }
 
+    public func transferResourceOwnership(resourceId: UUID, toActorId: UUID, reason: String?) async throws -> TransferOwnershipResult {
+        try throwIfNeeded()
+        guard let resource = resources[resourceId] else {
+            throw RuulError.unexpected(message: "Recurso no encontrado")
+        }
+        if me.id == toActorId {
+            throw RuulError.unexpected(message: "cannot transfer ownership to yourself")
+        }
+        // Recipient debe tener can_own_resources.
+        guard let recipient = actors[toActorId] else {
+            throw RuulError.unexpected(message: "recipient actor not found")
+        }
+        let recipientCaps = Self.mockActorCapabilities(forSubtype: recipient.actorSubtype)
+        guard recipientCaps.contains("can_own_resources") else {
+            throw RuulError.unexpected(message: "recipient cannot own resources")
+        }
+        // Caller debe tener OWN activo.
+        let callerOwn = (rights[resourceId] ?? []).filter { $0.holderActorId == me.id && $0.rightKind == "OWN" }
+        guard !callerOwn.isEmpty else {
+            throw RuulError.unexpected(message: "caller has no active OWN right on this resource")
+        }
+
+        let allNull = callerOwn.allSatisfy { $0.percent == nil }
+        let totalPercent: Double? = allNull ? nil : callerOwn.compactMap { $0.percent }.reduce(0, +)
+
+        // Revocar OWN del caller (en el mock, los removemos del array).
+        rights[resourceId] = (rights[resourceId] ?? []).filter {
+            !($0.holderActorId == me.id && $0.rightKind == "OWN")
+        }
+
+        // Otorgar OWN al recipient.
+        let newRightId = UUID()
+        rights[resourceId, default: []].append(ResourceRight(
+            rightId: newRightId,
+            holderActorId: toActorId,
+            holderDisplayName: recipient.displayName,
+            rightKind: "OWN",
+            percent: totalPercent
+        ))
+
+        // canonical_owner si caller era el canonical.
+        let wasCanonical = (resource.canonicalOwnerActorId == me.id)
+        if wasCanonical {
+            resources[resourceId] = Resource(
+                id: resource.id,
+                resourceType: resource.resourceType,
+                displayName: resource.displayName,
+                description: resource.description,
+                estimatedValue: resource.estimatedValue,
+                currency: resource.currency,
+                canonicalOwnerActorId: toActorId,
+                createdAt: resource.createdAt
+            )
+        }
+
+        if let ctxId = resourceContext[resourceId] ?? resource.canonicalOwnerActorId {
+            emit(ctxId, "right.transferred", payload: .object([
+                "from": .string(me.id.uuidString),
+                "to": .string(toActorId.uuidString),
+                "right_kind": .string("OWN"),
+                "reason": reason.map { .string($0) } ?? .null
+            ]))
+        }
+
+        return TransferOwnershipResult(
+            resourceId: resourceId,
+            fromActorId: me.id,
+            toActorId: toActorId,
+            newRightId: newRightId,
+            rightsRevoked: callerOwn.count,
+            percentTotal: totalPercent,
+            canonicalOwnerChanged: wasCanonical
+        )
+    }
+
     public func updateResource(_ input: UpdateResourceInput) async throws -> Resource {
         try throwIfNeeded()
         guard let existing = resources[input.resourceId] else {
@@ -2370,6 +2445,17 @@ extension MockRuulRPCClient {
             (DemoIds.moises, "Moisés"),
             (DemoIds.daniel, "Daniel")
         ]
+        // Registrar a cada friend en `actors` para que las RPCs que requieren
+        // actor_kind/subtype (p. ej. transfer_resource_ownership con check de
+        // actor_can('can_own_resources')) funcionen contra el mock.
+        for friend in friends where actors[friend.0] == nil {
+            actors[friend.0] = ActorRecord(
+                id: friend.0,
+                actorKind: .person,
+                actorSubtype: "person",
+                displayName: friend.1
+            )
+        }
 
         // Contexto: Cena Semanal
         let cena = ActorRecord(id: DemoIds.cenaSemanal, actorKind: .collective, actorSubtype: "friend_group", displayName: "Cena Semanal")

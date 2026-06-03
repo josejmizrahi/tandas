@@ -716,6 +716,72 @@ struct MockClientTests {
         }
     }
 
+    // MARK: - F.1A polish transfer_resource_ownership
+
+    @Test("transfer_resource_ownership revoca OWN del caller + grant al recipient")
+    func transferResourceOwnershipMock() async throws {
+        let mock = await makeDemoClient()
+        let casa = MockRuulRPCClient.DemoIds.casaValle
+        let jose = MockRuulRPCClient.DemoIds.jose
+        let david = MockRuulRPCClient.DemoIds.david
+        // En el seed, José tiene USE (no OWN). Le otorgamos OWN para poder probar
+        // el transfer (mock no chequea permission al grant).
+        _ = try await mock.grantRight(GrantRightInput(
+            resourceId: casa, holderActorId: jose, rightKind: .own, percent: 100
+        ))
+
+        let result = try await mock.transferResourceOwnership(
+            resourceId: casa, toActorId: david, reason: "Smoke test"
+        )
+        #expect(result.fromActorId == jose)
+        #expect(result.toActorId == david)
+        #expect(result.rightsRevoked == 1)
+
+        // Verificar: David ahora tiene OWN; José ya no.
+        let detail = try await mock.resourceDetail(resourceId: casa)
+        let davidOwns = detail.rights.contains {
+            $0.holderActorId == david && $0.rightKind == "OWN"
+        }
+        let joseOwns = detail.rights.contains {
+            $0.holderActorId == jose && $0.rightKind == "OWN"
+        }
+        #expect(davidOwns)
+        #expect(!joseOwns)
+    }
+
+    @Test("transfer_resource_ownership rechaza self-transfer")
+    func transferRejectsSelf() async throws {
+        let mock = await makeDemoClient()
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.transferResourceOwnership(
+                resourceId: MockRuulRPCClient.DemoIds.casaValle,
+                toActorId: MockRuulRPCClient.DemoIds.jose,
+                reason: nil
+            )
+        }
+    }
+
+    @Test("transfer_resource_ownership rechaza si el caller no tiene OWN")
+    func transferRejectsWithoutOwn() async throws {
+        // David no tiene OWN en Casa Valle (solo USE) — desde su perspectiva, falla.
+        let david = CurrentActor(
+            actor: ActorRecord(
+                id: MockRuulRPCClient.DemoIds.david,
+                actorKind: .person, actorSubtype: "person",
+                displayName: "David"
+            )
+        )
+        let mock = MockRuulRPCClient(me: david)
+        await mock.seedDemoWorld()
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.transferResourceOwnership(
+                resourceId: MockRuulRPCClient.DemoIds.casaValle,
+                toActorId: MockRuulRPCClient.DemoIds.isaac,
+                reason: nil
+            )
+        }
+    }
+
     @Test("nextError se lanza una sola vez")
     func nextError() async throws {
         let mock = await makeDemoClient()

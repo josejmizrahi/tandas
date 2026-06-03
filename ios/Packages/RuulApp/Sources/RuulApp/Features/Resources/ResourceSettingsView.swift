@@ -12,6 +12,8 @@ public struct ResourceSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var store: ResourceSettingsStore
     @State private var isShowingEditGeneral = false
+    @State private var isShowingTransfer = false
+    @State private var runner = ActionRunner()
 
     public init(resourceId: UUID, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -58,6 +60,12 @@ public struct ResourceSettingsView: View {
                 )
             }
         }
+        .sheet(isPresented: $isShowingTransfer, onDismiss: {
+            Task { await store.load(resourceId: resourceId) }
+        }) {
+            TransferOwnershipSheet(resourceId: resourceId, container: container)
+        }
+        .actionErrorAlert(runner)
     }
 
     @ViewBuilder
@@ -316,18 +324,24 @@ public struct ResourceSettingsView: View {
     @ViewBuilder
     private func ownerActionsSection(_ settings: ResourceSettings) -> some View {
         if store.can("transfer_ownership") || store.can("archive") {
-            Section("Acciones de owner") {
+            Section {
                 if store.can("transfer_ownership") {
-                    Label("Transferir propiedad", systemImage: "arrow.left.arrow.right")
-                        .foregroundStyle(.secondary)
+                    Button {
+                        isShowingTransfer = true
+                    } label: {
+                        Label("Transferir propiedad", systemImage: "arrow.left.arrow.right")
+                    }
+                    .disabled(runner.isRunning)
                 }
                 if store.can("archive") {
                     Label("Archivar recurso", systemImage: "archivebox")
                         .foregroundStyle(.secondary)
+                    Text("Archivar se habilita en una próxima versión.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Text("Estas acciones se habilitan en una próxima versión.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Acciones de owner")
             }
         }
     }
@@ -427,6 +441,119 @@ private struct EditResourceGeneralSheet: View {
                 description: trimmedDesc != (initial.description ?? "") ? trimmedDesc : nil,
                 estimatedValue: parsedValue != initial.estimatedValue ? parsedValue : nil,
                 currency: currency != (initial.currency ?? "MXN") ? currency : nil
+            )
+        }
+        if success { dismiss() }
+    }
+}
+
+// MARK: - Transfer ownership sheet (F.1A polish)
+
+private struct TransferOwnershipSheet: View {
+    let resourceId: UUID
+    let container: DependencyContainer
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var candidates: [ContextMember] = []
+    @State private var contexts: [AppContext] = []
+    @State private var recipientId: UUID?
+    @State private var reason: String = ""
+    @State private var runner = ActionRunner()
+    @State private var isConfirming = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Nuevo dueño", selection: $recipientId) {
+                        Text("Selecciona…").tag(UUID?.none)
+                        ForEach(candidates) { c in
+                            Text(c.displayName).tag(Optional(c.actorId))
+                        }
+                        ForEach(contexts) { ctx in
+                            Text("\(ctx.displayName) (contexto)").tag(Optional(ctx.id))
+                        }
+                    }
+                } header: {
+                    Text("Destinatario")
+                } footer: {
+                    Text("La transferencia revoca tu OWN y se lo otorga al destinatario. El cambio de canonical_owner es atómico.")
+                }
+
+                Section {
+                    TextField("Razón (opcional)", text: $reason, axis: .vertical)
+                        .lineLimit(2...5)
+                } header: {
+                    Text("Motivo")
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        isConfirming = true
+                    } label: {
+                        if runner.isRunning {
+                            ProgressView().frame(maxWidth: .infinity)
+                        } else {
+                            Text("Transferir propiedad").frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(recipientId == nil || runner.isRunning)
+                }
+            }
+            .navigationTitle("Transferir propiedad")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                }
+            }
+            .task {
+                await loadCandidates()
+            }
+            .confirmationDialog(
+                "¿Confirmas transferir tu propiedad?",
+                isPresented: $isConfirming,
+                titleVisibility: .visible
+            ) {
+                Button("Transferir", role: .destructive) {
+                    Task { await submit() }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Vas a perder tu OWN sobre este recurso. La acción es irreversible salvo que el nuevo dueño te transfiera de vuelta.")
+            }
+            .actionErrorAlert(runner)
+        }
+    }
+
+    private func loadCandidates() async {
+        // Carga miembros de cada contexto al que el caller tiene acceso.
+        let allContexts = container.contextStore.collectiveContexts
+        contexts = allContexts
+        var seenActors = Set<UUID>()
+        var members: [ContextMember] = []
+        for ctx in allContexts {
+            if let summary = try? await container.rpc.contextSummary(contextId: ctx.id) {
+                for member in summary.members where !seenActors.contains(member.actorId) {
+                    // Excluir al caller (no podemos transferirnos a nosotros mismos).
+                    if member.actorId != container.currentActorStore.actorId {
+                        members.append(member)
+                        seenActors.insert(member.actorId)
+                    }
+                }
+            }
+        }
+        candidates = members.sorted { $0.displayName < $1.displayName }
+    }
+
+    private func submit() async {
+        guard let recipientId else { return }
+        let trimmedReason = reason.trimmingCharacters(in: .whitespaces)
+        let success = await runner.run {
+            _ = try await container.rpc.transferResourceOwnership(
+                resourceId: resourceId,
+                toActorId: recipientId,
+                reason: trimmedReason.isEmpty ? nil : trimmedReason
             )
         }
         if success { dismiss() }

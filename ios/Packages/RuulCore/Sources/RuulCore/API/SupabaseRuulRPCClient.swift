@@ -374,6 +374,22 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return result.resource
     }
 
+    public func transferResourceOwnership(resourceId: UUID, toActorId: UUID, reason: String?) async throws -> TransferOwnershipResult {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            let pToActorId: UUID
+            let pReason: String?
+            enum CodingKeys: String, CodingKey {
+                case pResourceId = "p_resource_id"
+                case pToActorId = "p_to_actor_id"
+                case pReason = "p_reason"
+            }
+        }
+        return try await call("transfer_resource_ownership", params: Params(
+            pResourceId: resourceId, pToActorId: toActorId, pReason: reason
+        ))
+    }
+
     public func archiveResource(resourceId: UUID) async throws {
         struct Params: Encodable, Sendable {
             let pResourceId: UUID
