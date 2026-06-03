@@ -131,6 +131,17 @@ public extension View {
             Text(runner.error?.message ?? "")
         }
     }
+
+    /// Recarga datos cuando la vista REAPARECE (al volver de una pantalla hija
+    /// que pudo modificar datos — p.ej. marcar pagos en Settlement y regresar a
+    /// Dinero). Solo corre si ya había datos (`isLoaded`); la carga inicial la
+    /// hace `.task` como siempre.
+    func refreshOnReappear(if isLoaded: Bool, _ action: @escaping () async -> Void) -> some View {
+        onAppear {
+            guard isLoaded else { return }
+            Task { await action() }
+        }
+    }
 }
 
 // MARK: - Filas reutilizables

@@ -39,8 +39,15 @@ public struct SettlementView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await store.load(context: context)
+            // El settlement se calcula solo al entrar: el backend es idempotente
+            // (reusa el batch draft) y falla controlado si no hay nada que netear.
+            await autoGenerate()
         }
         .refreshable {
+            await store.load(context: context)
+            await autoGenerate()
+        }
+        .refreshOnReappear(if: store.phase.isLoaded) {
             await store.load(context: context)
         }
         .actionErrorAlert(runner)
@@ -59,7 +66,8 @@ public struct SettlementView: View {
     @ViewBuilder
     private var settlementList: some View {
         List {
-            // Generar
+            // Recalcular (la generación es automática al entrar; esto re-netea
+            // manualmente, p.ej. tras registrar gastos nuevos)
             if store.canSettle(in: context) {
                 Section {
                     HStack {
@@ -76,13 +84,13 @@ public struct SettlementView: View {
                         if runner.isRunning {
                             ProgressView().frame(maxWidth: .infinity)
                         } else {
-                            Label("Generar settlement", systemImage: "arrow.triangle.2.circlepath")
+                            Label("Recalcular", systemImage: "arrow.triangle.2.circlepath")
                                 .frame(maxWidth: .infinity)
                         }
                     }
                     .disabled(runner.isRunning)
                 } footer: {
-                    Text("Netea todas las deudas abiertas en \(currency) y calcula el mínimo número de transferencias para quedar a mano.")
+                    Text("Las deudas abiertas en \(currency) se netean automáticamente al mínimo número de transferencias para quedar a mano.")
                 }
             }
 
@@ -91,8 +99,8 @@ public struct SettlementView: View {
                 Section {
                     EmptyStateView(
                         symbolName: "checkmark.circle",
-                        title: "Sin settlements",
-                        message: "Cuando haya deudas abiertas, genera un settlement para liquidarlas con el mínimo de transferencias."
+                        title: "Nada que liquidar",
+                        message: "Cuando haya deudas abiertas, aquí aparece quién le paga a quién (con el mínimo de transferencias)."
                     )
                     .listRowBackground(Color.clear)
                 }
@@ -170,6 +178,13 @@ public struct SettlementView: View {
     }
 
     // MARK: - Acciones
+
+    /// Genera el settlement sin interacción del usuario. Silencioso: si no hay
+    /// deudas abiertas el backend falla controlado y no pasa nada.
+    private func autoGenerate() async {
+        guard store.canSettle(in: context) else { return }
+        _ = try? await store.generate(context: context, currency: currency)
+    }
 
     private func generate() async {
         await runner.run {

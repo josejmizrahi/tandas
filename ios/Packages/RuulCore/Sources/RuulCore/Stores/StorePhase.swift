@@ -13,6 +13,11 @@ public enum StorePhase: Sendable, Equatable {
         return false
     }
 
+    public var isLoaded: Bool {
+        if case .loaded = self { return true }
+        return false
+    }
+
     public var failureMessage: String? {
         if case .failed(let message) = self { return message }
         return nil

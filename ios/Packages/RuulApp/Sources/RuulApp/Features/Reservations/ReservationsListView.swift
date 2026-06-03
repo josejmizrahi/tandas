@@ -50,6 +50,9 @@ public struct ReservationsListView: View {
         .refreshable {
             await store.load(resourceId: resource.id, context: context)
         }
+        .refreshOnReappear(if: store.phase.isLoaded) {
+            await store.load(resourceId: resource.id, context: context)
+        }
         .toolbar {
             if store.canRequest(in: context) {
                 ToolbarItem(placement: .primaryAction) {

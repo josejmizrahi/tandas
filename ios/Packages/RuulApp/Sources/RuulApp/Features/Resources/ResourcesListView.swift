@@ -37,6 +37,9 @@ public struct ResourcesListView: View {
         .refreshable {
             await store.load(context: context)
         }
+        .refreshOnReappear(if: store.phase.isLoaded) {
+            await store.load(context: context)
+        }
         .toolbar {
             if store.canCreate(in: context) {
                 ToolbarItem(placement: .primaryAction) {

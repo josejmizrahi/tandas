@@ -47,6 +47,9 @@ public struct ResourceDetailView: View {
         .refreshable {
             await store.load(resourceId: resourceId)
         }
+        .refreshOnReappear(if: store.phase.isLoaded) {
+            await store.load(resourceId: resourceId)
+        }
         .sheet(isPresented: $isShowingGrantRight) {
             if let detail = store.detail {
                 GrantRightSheet(resource: detail.resource, context: context, container: container) {
