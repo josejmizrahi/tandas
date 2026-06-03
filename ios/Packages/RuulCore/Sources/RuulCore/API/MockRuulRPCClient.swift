@@ -1714,6 +1714,202 @@ public actor MockRuulRPCClient: RuulRPCClient {
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
     }
 
+    // MARK: - R.2R Obligations universales
+
+    public func createActionObligation(_ input: CreateActionObligationInput) async throws -> ActionObligationCreated {
+        try throwIfNeeded()
+        let validKinds = ["action","approval","delivery","attendance","document","reservation","custom"]
+        guard validKinds.contains(input.kind) else {
+            throw RuulError.unexpected(message: "invalid obligation_kind: \(input.kind)")
+        }
+        guard !input.title.trimmingCharacters(in: .whitespaces).isEmpty else {
+            throw RuulError.unexpected(message: "title is required for an action obligation")
+        }
+        guard memberships[input.contextId]?.contains(where: { $0.actorId == me.id }) == true else {
+            throw RuulError.unexpected(message: "no eres miembro del contexto")
+        }
+        let myPerms = permissions[input.contextId] ?? []
+        if input.debtorActorId != me.id, !myPerms.contains("members.manage") {
+            throw RuulError.unexpected(message: "assigning obligations to others requires members.manage")
+        }
+
+        let id = UUID()
+        let obligation = Obligation(
+            id: id,
+            contextActorId: input.contextId,
+            debtorActorId: input.debtorActorId,
+            creditorActorId: input.creditorActorId ?? input.contextId,
+            obligationType: "other",
+            obligationKind: input.kind,
+            amount: nil,
+            currency: nil,
+            status: "open",
+            dueAt: input.dueAt,
+            sourceEventId: input.sourceEventId,
+            sourceRuleId: nil,
+            sourceDecisionId: input.sourceDecisionId,
+            sourceReservationId: input.sourceReservationId,
+            title: input.title.trimmingCharacters(in: .whitespaces),
+            description: input.description,
+            completedAt: nil,
+            completedByActorId: nil,
+            completionNotes: nil,
+            createdAt: Date()
+        )
+        obligations[id] = obligation
+        emit(input.contextId, "obligation.created", actorId: me.id, payload: .object([
+            "kind": .string(input.kind),
+            "title": .string(input.title),
+            "debtor": .string(input.debtorActorId.uuidString)
+        ]))
+        return ActionObligationCreated(obligationId: id, kind: input.kind, status: "open")
+    }
+
+    public func completeObligation(obligationId: UUID, completionNotes: String?, completionMetadata: JSONValue?) async throws -> ObligationCompletedResult {
+        try throwIfNeeded()
+        guard let existing = obligations[obligationId] else {
+            throw RuulError.unexpected(message: "obligación no encontrada")
+        }
+        if existing.obligationKind == "money" {
+            throw RuulError.unexpected(message: "money obligations are settled, not completed")
+        }
+        let myPerms = existing.contextActorId.flatMap { permissions[$0] } ?? []
+        let isParty = existing.debtorActorId == me.id || existing.creditorActorId == me.id
+        guard isParty || myPerms.contains("members.manage") else {
+            throw RuulError.unexpected(message: "no autorizado para completar esta obligación")
+        }
+        if existing.status == "completed" {
+            return try JSONDecoder.ruul.decode(
+                ObligationCompletedResult.self,
+                from: Data("""
+                {"obligation_id": "\(existing.id.uuidString)", "status": "completed", "already_completed": true}
+                """.utf8)
+            )
+        }
+        let terminal: Set<String> = ["cancelled","expired","forgiven","settled","disputed"]
+        guard !terminal.contains(existing.status) else {
+            throw RuulError.unexpected(message: "no se puede completar una obligación en estado \(existing.status)")
+        }
+
+        let now = Date()
+        obligations[obligationId] = Obligation(
+            id: existing.id,
+            contextActorId: existing.contextActorId,
+            debtorActorId: existing.debtorActorId,
+            creditorActorId: existing.creditorActorId,
+            obligationType: existing.obligationType,
+            obligationKind: existing.obligationKind,
+            amount: existing.amount,
+            currency: existing.currency,
+            status: "completed",
+            dueAt: existing.dueAt,
+            sourceEventId: existing.sourceEventId,
+            sourceRuleId: existing.sourceRuleId,
+            sourceDecisionId: existing.sourceDecisionId,
+            sourceReservationId: existing.sourceReservationId,
+            title: existing.title,
+            description: existing.description,
+            completedAt: now,
+            completedByActorId: me.id,
+            completionNotes: completionNotes,
+            createdAt: existing.createdAt
+        )
+        if let ctxId = existing.contextActorId {
+            emit(ctxId, "obligation.completed", actorId: me.id, payload: .object([
+                "kind": .string(existing.obligationKind),
+                "title": .string(existing.title ?? existing.obligationType),
+                "completed_by": .string(me.id.uuidString),
+                "debtor": .string(existing.debtorActorId.uuidString)
+            ]))
+        }
+        return ObligationCompletedResult(
+            obligationId: existing.id,
+            status: "completed",
+            completedBy: me.id,
+            completedAt: now,
+            alreadyCompleted: false
+        )
+    }
+
+    public func obligationDetail(obligationId: UUID) async throws -> ObligationDetail {
+        try throwIfNeeded()
+        guard let obligation = obligations[obligationId] else {
+            throw RuulError.unexpected(message: "obligación no encontrada")
+        }
+        let ctxId = obligation.contextActorId
+        let isParty = obligation.debtorActorId == me.id || obligation.creditorActorId == me.id
+        let isMember = ctxId.flatMap { memberships[$0] }?.contains(where: { $0.actorId == me.id }) == true
+        guard isParty || isMember else {
+            throw RuulError.unexpected(message: "no autorizado para ver esta obligación")
+        }
+
+        let active: Set<String> = ["open","accepted","in_progress"]
+        let myPerms = ctxId.flatMap { permissions[$0] } ?? []
+        let isDebtor = obligation.debtorActorId == me.id
+        let isCreditor = obligation.creditorActorId == me.id
+        let isManager = myPerms.contains("money.settle") || myPerms.contains("members.manage")
+        var actions: [AvailableAction] = []
+        if obligation.obligationKind == "money", active.contains(obligation.status) {
+            actions.append(AvailableAction(
+                actionKey: "pay", label: "Pagar", section: "obligations",
+                enabled: isDebtor,
+                reason: isDebtor ? "Eres el deudor de esta obligación" : "Solo el deudor puede pagar"
+            ))
+        }
+        if obligation.obligationKind != "money", active.contains(obligation.status) {
+            let canComplete = isParty || isManager
+            actions.append(AvailableAction(
+                actionKey: "mark_completed", label: "Marcar como cumplida", section: "obligations",
+                enabled: canComplete,
+                reason: canComplete ? "Participas en esta obligación" : "Solo deudor, acreedor o un administrador pueden marcarla"
+            ))
+        }
+        if ["open","accepted","in_progress","completed"].contains(obligation.status) {
+            actions.append(AvailableAction(
+                actionKey: "dispute", label: "Disputar", section: "obligations",
+                enabled: isParty,
+                reason: isParty ? "Eres parte de la obligación" : "Solo deudor o acreedor pueden disputar"
+            ))
+        }
+        if active.contains(obligation.status) {
+            actions.append(AvailableAction(
+                actionKey: "forgive", label: "Condonar", section: "obligations",
+                enabled: isCreditor,
+                reason: isCreditor ? "Eres el acreedor y puedes condonar" : "Solo el acreedor puede condonar"
+            ))
+            actions.append(AvailableAction(
+                actionKey: "cancel", label: "Cancelar", section: "obligations",
+                enabled: isCreditor || isManager,
+                reason: (isCreditor || isManager) ? "Eres acreedor o administrador" : "Solo el acreedor o un administrador pueden cancelar"
+            ))
+        }
+
+        return ObligationDetail(
+            id: obligation.id,
+            contextActorId: obligation.contextActorId,
+            kind: obligation.obligationKind,
+            obligationType: obligation.obligationType,
+            status: obligation.status,
+            title: obligation.title,
+            description: obligation.description,
+            amount: obligation.amount,
+            currency: obligation.currency,
+            dueAt: obligation.dueAt,
+            debtorActorId: obligation.debtorActorId,
+            creditorActorId: obligation.creditorActorId,
+            completedAt: obligation.completedAt,
+            completedByActorId: obligation.completedByActorId,
+            completionNotes: obligation.completionNotes,
+            sourceEventId: obligation.sourceEventId,
+            sourceRuleId: obligation.sourceRuleId,
+            sourceReservationId: obligation.sourceReservationId,
+            sourceDecisionId: obligation.sourceDecisionId,
+            metadata: nil,
+            availableActions: actions,
+            createdAt: obligation.createdAt
+        )
+    }
+
     @discardableResult
     private func makeObligation(contextId: UUID, debtor: UUID, creditor: UUID, amount: Double, currency: String, eventId: UUID?, type: String = "expense_share") -> ExpenseObligation {
         let obligation = Obligation(

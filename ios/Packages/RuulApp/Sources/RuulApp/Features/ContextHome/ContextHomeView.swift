@@ -1,6 +1,11 @@
 import SwiftUI
 import RuulCore
 
+/// Wrapper Identifiable para `.sheet(item:)` con UUID.
+private struct ObligationIdWrapper: Identifiable {
+    let id: UUID
+}
+
 /// F.4 — pantalla principal de un contexto. Todas las secciones salen de
 /// `context_summary()`; cada una navega a su feature completo.
 public struct ContextHomeView: View {
@@ -8,6 +13,10 @@ public struct ContextHomeView: View {
     let container: DependencyContainer
 
     @State private var store: ContextHomeStore
+    /// R.2R — obligaciones de acción (kind ≠ money) del contexto. Se cargan
+    /// aparte porque `context_summary().money.open_obligations` solo trae money.
+    @State private var actionObligations: [Obligation] = []
+    @State private var selectedObligationId: UUID?
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -39,14 +48,35 @@ public struct ContextHomeView: View {
         .navigationBarTitleDisplayMode(.large)
         .task(id: context.id) {
             await store.load(context: context)
+            await loadActionObligations()
         }
         .refreshable {
             await store.load(context: context)
+            await loadActionObligations()
             // El pull-to-refresh también actualiza la lista de contextos del switcher.
             await container.contextStore.load()
         }
         .refreshOnReappear(if: store.phase.isLoaded) {
             await store.load(context: context)
+            await loadActionObligations()
+        }
+        .sheet(item: Binding(get: { selectedObligationId.map { ObligationIdWrapper(id: $0) } },
+                              set: { selectedObligationId = $0?.id })) { wrapper in
+            ObligationDetailView(obligationId: wrapper.id, context: context, container: container)
+        }
+    }
+
+    private func loadActionObligations() async {
+        guard !context.isPersonal else {
+            actionObligations = []
+            return
+        }
+        do {
+            let all = try await rpc.listObligations(contextId: context.id)
+            actionObligations = all.filter { $0.isActionKind && $0.isOpen }
+        } catch {
+            // Sin acceso o sin obligaciones — sección no aparece.
+            actionObligations = []
         }
     }
 
@@ -70,6 +100,9 @@ public struct ContextHomeView: View {
                 resourcesSection(summary)
                 eventsSection(summary)
                 obligationsSection(summary)
+                if !actionObligations.isEmpty {
+                    actionObligationsSection(summary)
+                }
                 decisionsSection(summary)
                 rulesSection(summary)
                 activitySection(summary)
@@ -301,6 +334,43 @@ public struct ContextHomeView: View {
             }
         } header: {
             Text("Cuentas abiertas (\(summary.openObligationsCount))")
+        }
+    }
+
+    // MARK: Compromisos (R.2R action obligations)
+
+    @ViewBuilder
+    private func actionObligationsSection(_ summary: ContextSummary) -> some View {
+        Section {
+            ForEach(actionObligations.prefix(5)) { obligation in
+                Button {
+                    selectedObligationId = obligation.id
+                } label: {
+                    InfoRow(
+                        symbolName: actionKindSymbol(obligation.obligationKind),
+                        title: obligation.title ?? obligation.kindLabel,
+                        subtitle: summary.displayName(for: obligation.debtorActorId, me: myActorId),
+                        value: obligation.dueAt?.formatted(date: .abbreviated, time: .omitted)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Text("Compromisos pendientes (\(actionObligations.count))")
+        } footer: {
+            Text("Acciones que alguien del contexto se comprometió a hacer.")
+        }
+    }
+
+    private func actionKindSymbol(_ kind: String) -> String {
+        switch kind {
+        case "action": return "checkmark.circle"
+        case "approval": return "checkmark.seal"
+        case "delivery": return "shippingbox"
+        case "attendance": return "person.crop.circle.badge.checkmark"
+        case "document": return "doc.text"
+        case "reservation": return "calendar.badge.clock"
+        default: return "circle.dashed"
         }
     }
 

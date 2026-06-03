@@ -152,6 +152,12 @@ public protocol RuulRPCClient: Sendable {
     func recordGameResult(_ input: RecordGameResultInput) async throws -> GameResultRecorded
     /// Lectura PostgREST: `obligations` del contexto.
     func listObligations(contextId: UUID) async throws -> [Obligation]
+    /// `create_action_obligation(...)` — R.2R obligaciones de acción (no money).
+    func createActionObligation(_ input: CreateActionObligationInput) async throws -> ActionObligationCreated
+    /// `complete_obligation(p_obligation_id, p_completion_notes?, p_completion_metadata?)` — R.2R.
+    func completeObligation(obligationId: UUID, completionNotes: String?, completionMetadata: JSONValue?) async throws -> ObligationCompletedResult
+    /// `obligation_detail(p_obligation_id)` — R.2R: detalle + `available_actions`.
+    func obligationDetail(obligationId: UUID) async throws -> ObligationDetail
 
     // MARK: - Settlement
 
@@ -478,6 +484,51 @@ public struct RecordExpenseInput: Sendable, Equatable {
         self.splits = splits
         self.eventId = eventId
         self.paidByActorId = paidByActorId
+        self.clientId = clientId
+    }
+}
+
+/// Input de `create_action_obligation` (R.2R). `kind` ∈ action/approval/delivery/
+/// attendance/document/reservation/custom. NO acepta `money` (eso va por record_*).
+public struct CreateActionObligationInput: Sendable, Equatable {
+    public var contextId: UUID
+    public var debtorActorId: UUID
+    public var title: String
+    public var kind: String
+    public var description: String?
+    public var dueAt: Date?
+    public var creditorActorId: UUID?
+    public var sourceEventId: UUID?
+    public var sourceReservationId: UUID?
+    public var sourceDecisionId: UUID?
+    public var metadata: JSONValue?
+    public var clientId: String?
+
+    public init(
+        contextId: UUID,
+        debtorActorId: UUID,
+        title: String,
+        kind: String = "action",
+        description: String? = nil,
+        dueAt: Date? = nil,
+        creditorActorId: UUID? = nil,
+        sourceEventId: UUID? = nil,
+        sourceReservationId: UUID? = nil,
+        sourceDecisionId: UUID? = nil,
+        metadata: JSONValue? = nil,
+        clientId: String? = nil
+    ) {
+        self.contextId = contextId
+        self.debtorActorId = debtorActorId
+        self.title = title
+        self.kind = kind
+        self.description = description
+        self.dueAt = dueAt
+        self.creditorActorId = creditorActorId
+        self.sourceEventId = sourceEventId
+        self.sourceReservationId = sourceReservationId
+        self.sourceDecisionId = sourceDecisionId
+        self.metadata = metadata
         self.clientId = clientId
     }
 }

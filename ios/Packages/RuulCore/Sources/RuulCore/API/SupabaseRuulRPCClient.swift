@@ -891,6 +891,79 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - R.2R Obligations universales
+
+    public func createActionObligation(_ input: CreateActionObligationInput) async throws -> ActionObligationCreated {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pDebtorActorId: UUID
+            let pTitle: String
+            let pKind: String
+            let pDescription: String?
+            let pDueAt: Date?
+            let pCreditorActorId: UUID?
+            let pSourceEventId: UUID?
+            let pSourceReservationId: UUID?
+            let pSourceDecisionId: UUID?
+            let pMetadata: JSONValue?
+            let pClientId: String?
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pDebtorActorId = "p_debtor_actor_id"
+                case pTitle = "p_title"
+                case pKind = "p_kind"
+                case pDescription = "p_description"
+                case pDueAt = "p_due_at"
+                case pCreditorActorId = "p_creditor_actor_id"
+                case pSourceEventId = "p_source_event_id"
+                case pSourceReservationId = "p_source_reservation_id"
+                case pSourceDecisionId = "p_source_decision_id"
+                case pMetadata = "p_metadata"
+                case pClientId = "p_client_id"
+            }
+        }
+        return try await call("create_action_obligation", params: Params(
+            pContextActorId: input.contextId,
+            pDebtorActorId: input.debtorActorId,
+            pTitle: input.title,
+            pKind: input.kind,
+            pDescription: input.description,
+            pDueAt: input.dueAt,
+            pCreditorActorId: input.creditorActorId,
+            pSourceEventId: input.sourceEventId,
+            pSourceReservationId: input.sourceReservationId,
+            pSourceDecisionId: input.sourceDecisionId,
+            pMetadata: input.metadata,
+            pClientId: input.clientId
+        ))
+    }
+
+    public func completeObligation(obligationId: UUID, completionNotes: String?, completionMetadata: JSONValue?) async throws -> ObligationCompletedResult {
+        struct Params: Encodable, Sendable {
+            let pObligationId: UUID
+            let pCompletionNotes: String?
+            let pCompletionMetadata: JSONValue?
+            enum CodingKeys: String, CodingKey {
+                case pObligationId = "p_obligation_id"
+                case pCompletionNotes = "p_completion_notes"
+                case pCompletionMetadata = "p_completion_metadata"
+            }
+        }
+        return try await call("complete_obligation", params: Params(
+            pObligationId: obligationId,
+            pCompletionNotes: completionNotes,
+            pCompletionMetadata: completionMetadata
+        ))
+    }
+
+    public func obligationDetail(obligationId: UUID) async throws -> ObligationDetail {
+        struct Params: Encodable, Sendable {
+            let pObligationId: UUID
+            enum CodingKeys: String, CodingKey { case pObligationId = "p_obligation_id" }
+        }
+        return try await call("obligation_detail", params: Params(pObligationId: obligationId))
+    }
+
     // MARK: - Settlement
 
     public func generateSettlementBatch(contextId: UUID, currency: String) async throws -> SettlementBatchResult {

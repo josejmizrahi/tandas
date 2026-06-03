@@ -468,6 +468,116 @@ struct MockClientTests {
         #expect(why.reasons.contains { $0.contains("Modelo de votación") })
     }
 
+    // MARK: - R.2R Obligations universales
+
+    @Test("create_action_obligation crea obligación kind=action sin amount")
+    func createActionObligationMock() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let david = MockRuulRPCClient.DemoIds.david
+        let result = try await mock.createActionObligation(CreateActionObligationInput(
+            contextId: cena,
+            debtorActorId: david,
+            title: "Traer botella de vino",
+            kind: "action",
+            description: "Para la cena del viernes"
+        ))
+        #expect(result.kind == "action")
+        #expect(result.status == "open")
+
+        // El listado de obligations incluye la nueva
+        let all = try await mock.listObligations(contextId: cena)
+        let created = all.first { $0.id == result.obligationId }
+        #expect(created?.title == "Traer botella de vino")
+        #expect(created?.isActionKind == true)
+        #expect(created?.amount == nil)
+    }
+
+    @Test("create_action_obligation rechaza kind=money")
+    func createActionObligationRejectsMoney() async throws {
+        let mock = await makeDemoClient()
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.createActionObligation(CreateActionObligationInput(
+                contextId: MockRuulRPCClient.DemoIds.cenaSemanal,
+                debtorActorId: MockRuulRPCClient.DemoIds.jose,
+                title: "Esto no debería pasar",
+                kind: "money"
+            ))
+        }
+    }
+
+    @Test("obligation_detail trae available_actions canónicos")
+    func obligationDetailMock() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let created = try await mock.createActionObligation(CreateActionObligationInput(
+            contextId: cena,
+            debtorActorId: MockRuulRPCClient.DemoIds.jose,
+            title: "Mandar minuta",
+            kind: "document"
+        ))
+        let detail = try await mock.obligationDetail(obligationId: created.obligationId)
+        #expect(detail.kind == "document")
+        #expect(detail.title == "Mandar minuta")
+        // José es debtor + miembro → puede mark_completed
+        #expect(detail.can("mark_completed"))
+        // No money kind → no `pay` action
+        #expect(!detail.can("pay"))
+    }
+
+    @Test("complete_obligation cierra acción + idempotente")
+    func completeObligationMock() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let created = try await mock.createActionObligation(CreateActionObligationInput(
+            contextId: cena,
+            debtorActorId: MockRuulRPCClient.DemoIds.jose,
+            title: "Confirmar reserva",
+            kind: "approval"
+        ))
+        let result = try await mock.completeObligation(
+            obligationId: created.obligationId,
+            completionNotes: "Confirmado por WhatsApp",
+            completionMetadata: nil
+        )
+        #expect(result.status == "completed")
+        #expect(!result.alreadyCompleted)
+
+        let detail = try await mock.obligationDetail(obligationId: created.obligationId)
+        #expect(detail.status == "completed")
+        #expect(detail.completedAt != nil)
+        #expect(detail.completionNotes == "Confirmado por WhatsApp")
+
+        // Segunda llamada es idempotente
+        let second = try await mock.completeObligation(
+            obligationId: created.obligationId,
+            completionNotes: nil,
+            completionMetadata: nil
+        )
+        #expect(second.alreadyCompleted)
+    }
+
+    @Test("complete_obligation rechaza obligaciones de dinero")
+    func completeObligationRejectsMoney() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        // record_fine crea una money obligation que NO se completa
+        let obligationId = try await mock.recordFine(
+            contextId: cena,
+            debtorActorId: MockRuulRPCClient.DemoIds.jose,
+            amount: 100,
+            currency: "MXN",
+            reason: nil
+        )
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.completeObligation(
+                obligationId: obligationId,
+                completionNotes: nil,
+                completionMetadata: nil
+            )
+        }
+    }
+
     @Test("nextError se lanza una sola vez")
     func nextError() async throws {
         let mock = await makeDemoClient()

@@ -1008,6 +1008,95 @@ struct DecodingTests {
         #expect(why.sourceDecisionId == nil)
     }
 
+    // MARK: - R.2R Obligations universales
+
+    @Test("obligation_detail (kind action) con available_actions + completion")
+    func obligationDetailActionShape() throws {
+        let json = """
+        {
+          "id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "context_actor_id": "55555555-c51c-4bf4-9960-e1c80e27aba1",
+          "kind": "action",
+          "obligation_type": "other",
+          "status": "open",
+          "title": "Traer botella de vino",
+          "description": "Para la cena del viernes",
+          "amount": null,
+          "currency": null,
+          "due_at": "2026-06-07T18:00:00.000000+00:00",
+          "debtor_actor_id": "22222222-c51c-4bf4-9960-e1c80e27aba1",
+          "creditor_actor_id": "55555555-c51c-4bf4-9960-e1c80e27aba1",
+          "completed_at": null,
+          "completed_by_actor_id": null,
+          "completion_notes": null,
+          "source_event_id": "44444444-c51c-4bf4-9960-e1c80e27aba1",
+          "source_rule_id": null,
+          "source_reservation_id": null,
+          "source_decision_id": null,
+          "metadata": {"created_by": "55555555-c51c-4bf4-9960-e1c80e27aba1"},
+          "available_actions": [
+            {"action_key": "mark_completed", "label": "Marcar como cumplida", "section": "obligations",
+             "enabled": true, "reason": "Participas en esta obligación", "required_rights": [], "required_capabilities": []}
+          ],
+          "created_at": "2026-06-03T18:00:00.000000+00:00"
+        }
+        """
+        let detail = try decode(ObligationDetail.self, json)
+        #expect(detail.kind == "action")
+        #expect(detail.title == "Traer botella de vino")
+        #expect(detail.amount == nil)
+        #expect(detail.can("mark_completed"))
+    }
+
+    @Test("Obligation con obligation_kind explícito + title")
+    func obligationKindField() throws {
+        let json = """
+        {
+          "id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "context_actor_id": "55555555-c51c-4bf4-9960-e1c80e27aba1",
+          "debtor_actor_id": "22222222-c51c-4bf4-9960-e1c80e27aba1",
+          "creditor_actor_id": "33333333-c51c-4bf4-9960-e1c80e27aba1",
+          "obligation_type": "other",
+          "obligation_kind": "delivery",
+          "title": "Entregar contrato firmado",
+          "status": "open",
+          "due_at": "2026-06-10T18:00:00.000000+00:00"
+        }
+        """
+        let obligation = try decode(Obligation.self, json)
+        #expect(obligation.obligationKind == "delivery")
+        #expect(obligation.isActionKind)
+        #expect(!obligation.isMoneyKind)
+        #expect(obligation.title == "Entregar contrato firmado")
+    }
+
+    @Test("Obligation legacy sin obligation_kind defaultea a money")
+    func obligationLegacyKindDefault() throws {
+        let json = """
+        {
+          "id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "debtor_actor_id": "22222222-c51c-4bf4-9960-e1c80e27aba1",
+          "creditor_actor_id": "33333333-c51c-4bf4-9960-e1c80e27aba1",
+          "obligation_type": "iou",
+          "amount": 325,
+          "currency": "MXN"
+        }
+        """
+        let obligation = try decode(Obligation.self, json)
+        #expect(obligation.obligationKind == "money")
+        #expect(obligation.isMoneyKind)
+    }
+
+    @Test("complete_obligation result con already_completed=true")
+    func completeObligationAlreadyCompleted() throws {
+        let json = """
+        {"obligation_id": "0e984725-c51c-4bf4-9960-e1c80e27aba1", "status": "completed", "already_completed": true}
+        """
+        let result = try decode(ObligationCompletedResult.self, json)
+        #expect(result.alreadyCompleted)
+        #expect(result.status == "completed")
+    }
+
     // MARK: - Reglas legibles
 
     @Test("descripción legible de reglas")
