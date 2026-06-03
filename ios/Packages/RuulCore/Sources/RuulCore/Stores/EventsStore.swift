@@ -1,0 +1,143 @@
+import Foundation
+import Observation
+
+/// F.7 — store de eventos del contexto.
+@MainActor
+@Observable
+public final class EventsStore {
+    public private(set) var events: [CalendarEvent] = []
+    public private(set) var myPermissions: [String] = []
+    public private(set) var phase: StorePhase = .idle
+
+    private let rpc: any RuulRPCClient
+
+    public init(rpc: any RuulRPCClient) {
+        self.rpc = rpc
+    }
+
+    public init(rpc: any RuulRPCClient, previewEvents: [CalendarEvent], permissions: [String] = []) {
+        self.rpc = rpc
+        self.events = previewEvents
+        self.myPermissions = permissions
+        self.phase = .loaded
+    }
+
+    public var upcoming: [CalendarEvent] {
+        events.filter(\.isScheduled).sorted { ($0.startsAt ?? .distantFuture) < ($1.startsAt ?? .distantFuture) }
+    }
+
+    public var past: [CalendarEvent] {
+        events.filter { !$0.isScheduled }.sorted { ($0.startsAt ?? .distantPast) > ($1.startsAt ?? .distantPast) }
+    }
+
+    public func load(context: AppContext) async {
+        if events.isEmpty { phase = .loading }
+        do {
+            async let eventsTask = rpc.listEvents(contextId: context.id)
+            async let summaryTask = rpc.contextSummary(contextId: context.id)
+            let (loaded, summary) = try await (eventsTask, summaryTask)
+            events = loaded
+            myPermissions = summary.myPermissions
+            phase = .loaded
+        } catch {
+            phase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+
+    public func canCreate(in context: AppContext) -> Bool {
+        context.isPersonal || myPermissions.contains("events.create")
+    }
+
+    public func canManage(in context: AppContext) -> Bool {
+        context.isPersonal || myPermissions.contains("events.manage")
+    }
+
+    public func createEvent(_ input: CreateEventInput, context: AppContext) async throws -> CalendarEvent {
+        let event = try await rpc.createCalendarEvent(input)
+        await load(context: context)
+        return event
+    }
+}
+
+/// F.7 — store del detalle de un evento: evento + participantes + acciones.
+@MainActor
+@Observable
+public final class EventDetailStore {
+    public private(set) var event: CalendarEvent?
+    public private(set) var participants: [EventParticipant] = []
+    public private(set) var members: [ContextMember] = []
+    public private(set) var myPermissions: [String] = []
+    public private(set) var phase: StorePhase = .idle
+    /// Resultado del último check-in (para mostrar "llegaste tarde → multa").
+    public private(set) var lastCheckIn: CheckInResult?
+    /// Resultado de la última cancelación.
+    public private(set) var lastCancellation: CancelParticipationResult?
+    /// Resultado del último cierre.
+    public private(set) var lastClose: CloseEventResult?
+
+    private let rpc: any RuulRPCClient
+
+    public init(rpc: any RuulRPCClient) {
+        self.rpc = rpc
+    }
+
+    public func load(eventId: UUID, context: AppContext) async {
+        if event == nil { phase = .loading }
+        do {
+            async let eventTask = rpc.getEvent(eventId: eventId)
+            async let participantsTask = rpc.listEventParticipants(eventId: eventId)
+            async let summaryTask = rpc.contextSummary(contextId: context.id)
+            let (loadedEvent, loadedParticipants, summary) = try await (eventTask, participantsTask, summaryTask)
+            event = loadedEvent
+            participants = loadedParticipants
+            members = summary.members
+            myPermissions = summary.myPermissions
+            phase = .loaded
+        } catch {
+            phase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+
+    public func displayName(for actorId: UUID?) -> String {
+        guard let actorId else { return "—" }
+        return members.first { $0.actorId == actorId }?.displayName ?? "Alguien"
+    }
+
+    public func myParticipation(myActorId: UUID?) -> EventParticipant? {
+        guard let myActorId else { return nil }
+        return participants.first { $0.participantActorId == myActorId }
+    }
+
+    public func canManage(in context: AppContext) -> Bool {
+        context.isPersonal || myPermissions.contains("events.manage")
+    }
+
+    // MARK: - Acciones
+
+    public func rsvp(_ status: RSVPStatus, eventId: UUID, context: AppContext) async throws {
+        try await rpc.rsvpEvent(eventId: eventId, status: status)
+        await load(eventId: eventId, context: context)
+    }
+
+    /// Check-in propio o de otro participante (host).
+    public func checkIn(eventId: UUID, participantActorId: UUID?, context: AppContext) async throws -> CheckInResult {
+        let result = try await rpc.checkInParticipant(eventId: eventId, participantActorId: participantActorId)
+        lastCheckIn = result
+        await load(eventId: eventId, context: context)
+        return result
+    }
+
+    public func cancelParticipation(eventId: UUID, context: AppContext) async throws -> CancelParticipationResult {
+        let result = try await rpc.cancelParticipation(eventId: eventId)
+        lastCancellation = result
+        await load(eventId: eventId, context: context)
+        return result
+    }
+
+    public func closeEvent(eventId: UUID, context: AppContext) async throws -> CloseEventResult {
+        let result = try await rpc.closeEvent(eventId: eventId)
+        lastClose = result
+        await load(eventId: eventId, context: context)
+        return result
+    }
+}
