@@ -28,19 +28,32 @@ declare
   v_jose_auth uuid;
   a_jose uuid;
   -- personas demo (@canonical.ruul.test)
-  u_papa uuid := gen_random_uuid(); a_papa uuid;
-  u_abuelo uuid := gen_random_uuid(); a_abuelo uuid;
+  u_papa uuid := gen_random_uuid(); a_papa uuid;       -- Jacobo Mizrahi (papá de José)
+  u_abuelo uuid := gen_random_uuid(); a_abuelo uuid;   -- José Mizrahi (Abuelo)
   u_pepe uuid := gen_random_uuid(); a_pepe uuid;
   u_alberto uuid := gen_random_uuid(); a_alberto uuid;
   u_david uuid := gen_random_uuid(); a_david uuid;   -- David Achar
   u_boaz uuid := gen_random_uuid(); a_boaz uuid;
+  -- grupo del Palco Mundial 2026 (primos, tíos, amigos)
+  u_mochon uuid := gen_random_uuid(); a_mochon uuid;
+  u_alan uuid := gen_random_uuid(); a_alan uuid;        -- Alan Cohen (primo, hijo de Víctor)
+  u_victor uuid := gen_random_uuid(); a_victor uuid;    -- Víctor Cohen (papá de Alan)
+  u_joseserur uuid := gen_random_uuid(); a_joseserur uuid;
+  u_danserur uuid := gen_random_uuid(); a_danserur uuid;
+  u_beto uuid := gen_random_uuid(); a_beto uuid;        -- Beto Serur (papá de Daniel y José Serur)
+  u_salo uuid := gen_random_uuid(); a_salo uuid;        -- Salo Saade (cuñado de Alan, yerno de Víctor)
   -- contextos
-  c_fam_miz uuid; c_fam_sha uuid; c_comidas uuid; c_proyecto uuid; c_quimibond uuid; c_trust uuid;
+  c_fam_miz uuid; c_fam_sha uuid; c_comidas uuid; c_proyecto uuid; c_quimibond uuid; c_trust uuid; c_palco uuid;
   -- recursos
   r_palco uuid; r_terreno uuid; r_nave uuid; r_acciones uuid; r_cuenta uuid;
   -- flujo
-  v_code text; v_partido1 uuid; v_e uuid; v_dec uuid; v_txn uuid; v_ob uuid;
-  v_p1_start timestamptz := '2026-11-21 13:00-06'::timestamptz;
+  v_code text; v_dec uuid; v_txn uuid;
+  -- fechas reales de los partidos del grupo (Mundial 2026)
+  v_m1 timestamptz := '2026-06-11 13:00-06'::timestamptz;  -- Inauguración México vs Sudáfrica
+  v_m2 timestamptz := '2026-06-17 13:00-06'::timestamptz;  -- Colombia vs Uzbekistán
+  v_m3 timestamptz := '2026-06-24 13:00-06'::timestamptz;  -- México vs Chequia
+  v_m4 timestamptz := '2026-06-30 13:00-06'::timestamptz;  -- Ronda de 32
+  v_m5 timestamptz := '2026-07-05 13:00-06'::timestamptz;  -- Ronda de 16
   r record;
 begin
   -- ───────────────────────────────────────────────────────────────────────────
@@ -94,12 +107,19 @@ begin
   perform public.update_my_profile(p_full_name := 'José Mizrahi');
 
   for r in select * from (values
-      ('Papá Mizrahi',    'papa',    u_papa),
-      ('Abuelo Mizrahi',  'abuelo',  u_abuelo),
-      ('Pepe Shamosh',    'pepe',    u_pepe),
-      ('Alberto Shamosh', 'alberto', u_alberto),
-      ('David Achar',     'davidachar', u_david),
-      ('Boaz',            'boaz',    u_boaz)) t(who, handle, uid)
+      ('Jacobo Mizrahi',       'jacobo',     u_papa),     -- papá de José, hijo del Abuelo
+      ('José Mizrahi (Abuelo)','joseabuelo', u_abuelo),   -- el patriarca
+      ('Pepe Shamosh',         'pepe',       u_pepe),
+      ('Alberto Shamosh',      'alberto',    u_alberto),
+      ('David Achar',          'davidachar', u_david),
+      ('Boaz',                 'boaz',       u_boaz),
+      ('José Mochon',          'mochon',     u_mochon),
+      ('Alan Cohen',           'alancohen',  u_alan),
+      ('Víctor Cohen',         'victorcohen',u_victor),
+      ('José Serur',           'joseserur',  u_joseserur),
+      ('Daniel Serur',         'danielserur',u_danserur),
+      ('Beto Serur',           'betoserur',  u_beto),
+      ('Salo Saade',           'salosaade',  u_salo)) t(who, handle, uid)
   loop
     insert into auth.users (id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
     values (r.uid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
@@ -114,6 +134,13 @@ begin
   select actor_id into a_alberto from public.person_profiles where auth_user_id = u_alberto;
   select actor_id into a_david   from public.person_profiles where auth_user_id = u_david;
   select actor_id into a_boaz    from public.person_profiles where auth_user_id = u_boaz;
+  select actor_id into a_mochon    from public.person_profiles where auth_user_id = u_mochon;
+  select actor_id into a_alan      from public.person_profiles where auth_user_id = u_alan;
+  select actor_id into a_victor    from public.person_profiles where auth_user_id = u_victor;
+  select actor_id into a_joseserur from public.person_profiles where auth_user_id = u_joseserur;
+  select actor_id into a_danserur  from public.person_profiles where auth_user_id = u_danserur;
+  select actor_id into a_beto      from public.person_profiles where auth_user_id = u_beto;
+  select actor_id into a_salo      from public.person_profiles where auth_user_id = u_salo;
 
   -- ───────────────────────────────────────────────────────────────────────────
   -- 3. CONTEXTOS + MEMBERSHIPS
@@ -154,6 +181,16 @@ begin
   perform set_config('request.jwt.claims', jsonb_build_object('sub', v_jose_auth::text)::text, true);
   c_trust := ((public.create_context('Fideicomiso Nave Industrial', 'legal_entity', 'trust'))->>'context_actor_id')::uuid;
 
+  -- Palco Mundial 2026 (friend_group; José founder) — el grupo que comparte el palco:
+  -- Abuelo (dueño), Jacobo, José Mochon, Cohens, Serurs, Salo.
+  c_palco := ((public.create_context('Palco Mundial 2026', 'collective', 'friend_group'))->>'context_actor_id')::uuid;
+  v_code := (public.create_invite(c_palco))->>'code';
+  for r in select unnest(array[u_abuelo, u_papa, u_mochon, u_alan, u_victor, u_joseserur, u_danserur, u_beto, u_salo]) as uid loop
+    perform set_config('request.jwt.claims', jsonb_build_object('sub', r.uid::text)::text, true);
+    perform public.join_by_invite_code(v_code);
+  end loop;
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_jose_auth::text)::text, true);
+
   -- Capital stack del Proyecto (metadata)
   update public.actors set metadata = metadata || jsonb_build_object(
     'capital_stack', jsonb_build_object(
@@ -176,19 +213,37 @@ begin
     (c_fam_miz, 'beneficiary_of', c_proyecto, '{"planned":true,"kind":"beneficial","percent":50}'::jsonb, a_jose),
     (c_fam_sha, 'beneficiary_of', c_proyecto, '{"planned":true,"kind":"beneficial","percent":50}'::jsonb, a_jose);
 
+  -- Grafo familiar del grupo del palco
+  insert into public.actor_relationships (subject_actor_id, relationship_type, object_actor_id, metadata, created_by_actor_id) values
+    (a_beto,      'related_to', a_papa,   '{"kind":"brother_in_law"}'::jsonb, a_jose), -- esposo de la hermana de Jacobo
+    (a_beto,      'related_to', a_joseserur,'{"kind":"father"}'::jsonb, a_jose),
+    (a_beto,      'related_to', a_danserur, '{"kind":"father"}'::jsonb, a_jose),
+    (a_victor,    'related_to', a_alan,   '{"kind":"father"}'::jsonb, a_jose),
+    (a_salo,      'related_to', a_alan,   '{"kind":"brother_in_law"}'::jsonb, a_jose),
+    (a_salo,      'related_to', a_victor, '{"kind":"son_in_law"}'::jsonb, a_jose), -- yerno de Víctor
+    (a_alan,      'related_to', a_jose,   '{"kind":"cousin"}'::jsonb, a_jose),
+    (a_joseserur, 'related_to', a_jose,   '{"kind":"cousin"}'::jsonb, a_jose),
+    (a_danserur,  'related_to', a_jose,   '{"kind":"cousin"}'::jsonb, a_jose);
+
   -- ───────────────────────────────────────────────────────────────────────────
   -- 5. RECURSOS + RIGHTS  (se limpia el auto-OWN y se fijan los rights del spec)
   -- ───────────────────────────────────────────────────────────────────────────
   perform set_config('request.jwt.claims', jsonb_build_object('sub', v_jose_auth::text)::text, true);
 
-  -- Palco Estadio Azteca (house = reservable). Contexto Familia Mizrahi.
-  r_palco := ((public.create_resource(c_fam_miz, 'house', 'Palco Estadio Azteca',
-    p_metadata := '{"capacity":10,"mizrahi_allocation":5,"world_cup":true}'::jsonb))->>'resource_id')::uuid;
+  -- Palco Estadio Azteca (house = reservable). Contexto: Palco Mundial 2026.
+  -- Abuelo (el patriarca) es dueño del 50% (mitad Mizrahi); el grupo lo usa/gobierna.
+  r_palco := ((public.create_resource(c_palco, 'house', 'Palco Estadio Azteca',
+    p_metadata := '{"capacity":10,"mizrahi_allocation":5,"world_cup":true,"estadio":"Azteca"}'::jsonb))->>'resource_id')::uuid;
   perform public.grant_right(r_palco, a_abuelo, 'OWN', p_percent := 50);
-  perform public.grant_right(r_palco, c_fam_miz, 'GOVERN');
-  perform public.grant_right(r_palco, a_jose,  'USE');
-  perform public.grant_right(r_palco, a_papa,  'USE');
-  perform public.grant_right(r_palco, a_pepe,  'USE');  -- in-law puede pedir lugar
+  perform public.grant_right(r_palco, a_jose,      'USE');
+  perform public.grant_right(r_palco, a_papa,      'USE');
+  perform public.grant_right(r_palco, a_mochon,    'USE');
+  perform public.grant_right(r_palco, a_alan,      'USE');
+  perform public.grant_right(r_palco, a_victor,    'USE');
+  perform public.grant_right(r_palco, a_joseserur, 'USE');
+  perform public.grant_right(r_palco, a_danserur,  'USE');
+  perform public.grant_right(r_palco, a_beto,      'USE');
+  perform public.grant_right(r_palco, a_salo,      'USE');
 
   -- Terreno Toluca (property). Papá 50 / Abuelo 50.
   r_terreno := ((public.create_resource(c_proyecto, 'property', 'Terreno Toluca',
@@ -233,17 +288,17 @@ begin
   -- ───────────────────────────────────────────────────────────────────────────
   -- 6. EVENTOS
   -- ───────────────────────────────────────────────────────────────────────────
-  -- Mundial (Familia Mizrahi) — 5 partidos
-  v_partido1 := ((public.create_calendar_event(c_fam_miz, 'Partido Mundial 1', 'other',
-    p_starts_at := v_p1_start, p_ends_at := v_p1_start + interval '2 hours'))->>'event_id')::uuid;
-  perform public.create_calendar_event(c_fam_miz, 'Partido Mundial 2', 'other',
-    p_starts_at := v_p1_start + interval '4 days', p_ends_at := v_p1_start + interval '4 days 2 hours');
-  perform public.create_calendar_event(c_fam_miz, 'Partido Mundial 3', 'other',
-    p_starts_at := v_p1_start + interval '8 days', p_ends_at := v_p1_start + interval '8 days 2 hours');
-  perform public.create_calendar_event(c_fam_miz, 'Partido Mundial 4', 'other',
-    p_starts_at := v_p1_start + interval '12 days', p_ends_at := v_p1_start + interval '12 days 2 hours');
-  perform public.create_calendar_event(c_fam_miz, 'Partido Mundial 5', 'other',
-    p_starts_at := v_p1_start + interval '16 days', p_ends_at := v_p1_start + interval '16 days 2 hours');
+  -- Mundial 2026 (Palco Mundial 2026) — 5 partidos reales
+  perform public.create_calendar_event(c_palco, 'Inauguración — México vs Sudáfrica', 'community_event',
+    p_starts_at := v_m1, p_ends_at := v_m1 + interval '2 hours');
+  perform public.create_calendar_event(c_palco, 'Colombia vs Uzbekistán', 'community_event',
+    p_starts_at := v_m2, p_ends_at := v_m2 + interval '2 hours');
+  perform public.create_calendar_event(c_palco, 'México vs Chequia', 'community_event',
+    p_starts_at := v_m3, p_ends_at := v_m3 + interval '2 hours');
+  perform public.create_calendar_event(c_palco, 'Ronda de 32', 'community_event',
+    p_starts_at := v_m4, p_ends_at := v_m4 + interval '2 hours');
+  perform public.create_calendar_event(c_palco, 'Ronda de 16', 'community_event',
+    p_starts_at := v_m5, p_ends_at := v_m5 + interval '2 hours');
 
   -- Comidas Miércoles — 4 comidas
   for r in select g, (date_trunc('week', now()) + (g || ' weeks')::interval + interval '20 hours')::timestamptz as ts
@@ -253,20 +308,34 @@ begin
   end loop;
 
   -- ───────────────────────────────────────────────────────────────────────────
-  -- 7. RESERVATIONS + CONFLICTO (Palco, Partido 1) — demanda 7 > capacidad 5
+  -- 7. RESERVATIONS — una por partido, con su roster (≤5 lugares cada uno)
   -- ───────────────────────────────────────────────────────────────────────────
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_jose_auth::text)::text, true);
-  perform public.request_resource_reservation(r_palco, c_fam_miz, v_p1_start, v_p1_start + interval '2 hours',
-    p_reserved_for_actor_id := a_jose, p_metadata := '{"seats":1,"partido":1}'::jsonb, p_client_id := 'seed-palco-jose');
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_papa::text)::text, true);
-  perform public.request_resource_reservation(r_palco, c_fam_miz, v_p1_start, v_p1_start + interval '2 hours',
-    p_reserved_for_actor_id := a_papa, p_metadata := '{"seats":2,"partido":1}'::jsonb, p_client_id := 'seed-palco-papa');
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_abuelo::text)::text, true);
-  perform public.request_resource_reservation(r_palco, c_fam_miz, v_p1_start, v_p1_start + interval '2 hours',
-    p_reserved_for_actor_id := a_abuelo, p_metadata := '{"seats":2,"partido":1}'::jsonb, p_client_id := 'seed-palco-abuelo');
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_pepe::text)::text, true);
-  perform public.request_resource_reservation(r_palco, c_fam_miz, v_p1_start, v_p1_start + interval '2 hours',
-    p_reserved_for_actor_id := a_pepe, p_metadata := '{"seats":2,"partido":1}'::jsonb, p_client_id := 'seed-palco-pepe');
+  -- Insert directo, status 'confirmed'. Fechas distintas → sin traslapes ni
+  -- conflictos. El roster va en metadata.attendees (ids) + attendee_names.
+  insert into public.resource_reservations
+    (resource_id, context_actor_id, requested_by_actor_id, reserved_for_actor_id, starts_at, ends_at, status, metadata)
+  values
+    (r_palco, c_palco, a_jose, c_palco, v_m1, v_m1 + interval '2 hours', 'confirmed',
+     jsonb_build_object('match','Inauguración','teams','México vs Sudáfrica','seats',5,
+       'attendees', jsonb_build_array(a_jose, a_mochon, a_alan, a_joseserur, a_danserur),
+       'attendee_names', jsonb_build_array('José Mizrahi','José Mochon','Alan Cohen','José Serur','Daniel Serur'))),
+    (r_palco, c_palco, a_jose, c_palco, v_m2, v_m2 + interval '2 hours', 'confirmed',
+     jsonb_build_object('match','Fase de grupos','teams','Colombia vs Uzbekistán','seats',4,'pending_seats',1,
+       'attendees', jsonb_build_array(a_beto, a_joseserur, a_danserur, a_mochon),
+       'attendee_names', jsonb_build_array('Beto Serur','José Serur','Daniel Serur','José Mochon'),
+       'note','1 lugar por definir')),
+    (r_palco, c_palco, a_jose, c_palco, v_m3, v_m3 + interval '2 hours', 'confirmed',
+     jsonb_build_object('match','Fase de grupos','teams','México vs Chequia','seats',5,
+       'attendees', jsonb_build_array(a_jose, a_danserur, a_mochon, a_papa, a_alan),
+       'attendee_names', jsonb_build_array('José Mizrahi','Daniel Serur','José Mochon','Jacobo Mizrahi','Alan Cohen'))),
+    (r_palco, c_palco, a_jose, c_palco, v_m4, v_m4 + interval '2 hours', 'confirmed',
+     jsonb_build_object('match','Ronda de 32','teams','Por definir','seats',5,
+       'attendees', jsonb_build_array(a_jose, a_salo, a_beto, a_mochon, a_alan),
+       'attendee_names', jsonb_build_array('José Mizrahi','Salo Saade','Beto Serur','José Mochon','Alan Cohen'))),
+    (r_palco, c_palco, a_jose, c_palco, v_m5, v_m5 + interval '2 hours', 'confirmed',
+     jsonb_build_object('match','Ronda de 16','teams','Por definir','seats',5,
+       'attendees', jsonb_build_array(a_jose, a_alan, a_mochon, a_salo, a_victor),
+       'attendee_names', jsonb_build_array('José Mizrahi','Alan Cohen','José Mochon','Salo Saade','Víctor Cohen')));
 
   -- ───────────────────────────────────────────────────────────────────────────
   -- 8. DECISIONS
@@ -288,11 +357,12 @@ begin
     'Selección del contratista.', null,
     '{"options":["David Achar","Boaz"]}'::jsonb, 'seed-dec-constructor', 'single_choice');
 
-  -- Conflicto Mundial (single_choice) — open, en Familia Mizrahi
-  perform public.create_decision(c_fam_miz, 'generic', '¿Cómo asignamos los lugares del Partido 1?',
-    'Demanda 7 lugares sobre 5 disponibles.', null,
-    '{"options":["Propuesta Abuelo","Propuesta Papá","Sorteo","First Come First Served"]}'::jsonb,
-    'seed-dec-conflicto-mundial', 'single_choice');
+  -- Asignación del palco (single_choice) — open, en Palco Mundial 2026.
+  -- El palco tiene 5 lugares; cuando un partido tiene más demanda, el grupo decide.
+  perform public.create_decision(c_palco, 'generic', '¿Cómo repartimos los lugares cuando hay más de 5 interesados?',
+    'El palco tiene 5 lugares por partido; algunos partidos (p. ej. la inauguración) tienen más demanda.', null,
+    '{"options":["Sorteo","Rotación entre familias","Antigüedad","First Come First Served"]}'::jsonb,
+    'seed-dec-palco', 'single_choice');
 
   -- Venta Futura Nave (yes_no_abstain) — 'draft' representado como open + payload.lifecycle
   v_dec := ((public.create_decision(c_proyecto, 'generic', '¿Vendemos la Nave Industrial?',
@@ -361,5 +431,5 @@ begin
   -- ───────────────────────────────────────────────────────────────────────────
   perform set_config('request.jwt.claims', null, true);
 
-  raise notice 'R.SEED.2 CANONICAL: OK — José=% · 6 contextos · 5 recursos · 5 partidos + 4 comidas · conflicto de palco · 4 decisiones · obligaciones (acción+capital) · renta Quimibond · 2 reglas · 4 documentos · trust sin beneficiarios.', a_jose;
+  raise notice 'R.SEED.2 CANONICAL: OK — José=% · 7 contextos (incl. Palco Mundial 2026) · 5 recursos · 5 partidos reales con roster + 4 comidas · 4 decisiones · obligaciones (acción+capital) · renta Quimibond · 2 reglas · 4 documentos · trust sin beneficiarios.', a_jose;
 end; $$;
