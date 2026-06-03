@@ -212,6 +212,24 @@ begin
   perform public.grant_right(r_cuenta, a_jose, 'MANAGE');
   perform public.grant_right(r_cuenta, a_jose, 'VIEW');
 
+  -- ── Propiedad ≤ 100%: el auto-OWN del contexto (create_resource otorga OWN 100%
+  --    al contexto) es REDUNDANTE donde ya hay dueños reales (persona/entidad). Lo
+  --    convertimos en GOVERN (para que el recurso siga listándose en su contexto) y
+  --    lo borramos. Así Papá+Abuelo = 100% del Terreno, etc. — nunca >100%. La Cuenta,
+  --    sin otros dueños, conserva su OWN del contexto (dueño institucional legítimo).
+  insert into public.resource_rights (resource_id, holder_actor_id, right_kind, granted_by_actor_id, metadata)
+  select rr.resource_id, rr.holder_actor_id, 'GOVERN', public.system_actor_id(), '{"source":"seed_fix_ownership"}'::jsonb
+    from public.resource_rights rr
+   where rr.right_kind = 'OWN' and rr.metadata->>'source' = 'auto_own_on_create'
+     and exists (select 1 from public.resource_rights o where o.resource_id = rr.resource_id and o.right_kind = 'OWN'
+                  and o.id <> rr.id and o.revoked_at is null and o.expired_at is null)
+     and not exists (select 1 from public.resource_rights g where g.resource_id = rr.resource_id
+                  and g.holder_actor_id = rr.holder_actor_id and g.right_kind = 'GOVERN' and g.revoked_at is null);
+  delete from public.resource_rights rr
+   where rr.right_kind = 'OWN' and rr.metadata->>'source' = 'auto_own_on_create'
+     and exists (select 1 from public.resource_rights o where o.resource_id = rr.resource_id and o.right_kind = 'OWN'
+                  and o.id <> rr.id and o.revoked_at is null and o.expired_at is null);
+
   -- ───────────────────────────────────────────────────────────────────────────
   -- 6. EVENTOS
   -- ───────────────────────────────────────────────────────────────────────────
