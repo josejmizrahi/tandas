@@ -72,7 +72,8 @@ public struct MembersListView: View {
                             member: member,
                             context: context,
                             store: store,
-                            myActorId: container.currentActorStore.actorId
+                            myActorId: container.currentActorStore.actorId,
+                            container: container
                         )
                     } label: {
                         HStack(spacing: 12) {

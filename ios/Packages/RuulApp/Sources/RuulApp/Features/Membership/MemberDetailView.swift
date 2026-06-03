@@ -8,17 +8,24 @@ public struct MemberDetailView: View {
     let context: AppContext
     let store: MembersStore
     let myActorId: UUID?
+    /// R.2R — opcional: si llega, se renderiza la sección "Compromisos" del miembro.
+    let container: DependencyContainer?
 
     @Environment(\.dismiss) private var dismiss
     @State private var runner = ActionRunner()
     @State private var isConfirmingRemove = false
     @State private var isConfirmingLeave = false
+    /// R.2R — compromisos de acción donde este miembro es deudor o acreedor.
+    @State private var memberObligations: [Obligation] = []
+    @State private var selectedObligationId: UUID?
+    @State private var isShowingCreateObligation = false
 
-    public init(member: ContextMember, context: AppContext, store: MembersStore, myActorId: UUID?) {
+    public init(member: ContextMember, context: AppContext, store: MembersStore, myActorId: UUID?, container: DependencyContainer? = nil) {
         self.member = member
         self.context = context
         self.store = store
         self.myActorId = myActorId
+        self.container = container
     }
 
     private var isMe: Bool { member.actorId == myActorId }
@@ -50,6 +57,11 @@ public struct MemberDetailView: View {
                     title: "Roles",
                     value: member.roles.isEmpty ? "Miembro" : member.roles.joined(separator: ", ")
                 )
+            }
+
+            // R.2R — compromisos donde participa este miembro
+            if container != nil, !context.isPersonal {
+                obligationsSection
             }
 
             // Acciones de admin
@@ -88,6 +100,22 @@ public struct MemberDetailView: View {
         }
         .navigationTitle(member.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await loadObligations()
+        }
+        .sheet(item: Binding(get: { selectedObligationId.map { ObligationIdSheetWrapper(id: $0) } },
+                              set: { selectedObligationId = $0?.id })) { wrapper in
+            if let container {
+                ObligationDetailView(obligationId: wrapper.id, context: context, container: container)
+            }
+        }
+        .sheet(isPresented: $isShowingCreateObligation, onDismiss: {
+            Task { await loadObligations() }
+        }) {
+            if let container {
+                CreateObligationView(context: context, container: container, preselectedDebtorId: member.actorId)
+            }
+        }
         .actionErrorAlert(runner)
         .confirmationDialog(
             "¿Remover a \(member.displayName)?",
@@ -122,6 +150,78 @@ public struct MemberDetailView: View {
             Button("Cancelar", role: .cancel) {}
         }
     }
+
+    // MARK: - R.2R obligations
+
+    @ViewBuilder
+    private var obligationsSection: some View {
+        Section {
+            if memberObligations.isEmpty {
+                Text("Sin compromisos pendientes")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
+                ForEach(memberObligations.prefix(5)) { obligation in
+                    Button {
+                        selectedObligationId = obligation.id
+                    } label: {
+                        InfoRow(
+                            symbolName: obligationSymbol(obligation.obligationKind),
+                            title: obligation.title ?? obligation.kindLabel,
+                            subtitle: obligation.debtorActorId == member.actorId ? "Debe cumplir" : "Es acreedor",
+                            value: obligation.dueAt?.formatted(date: .abbreviated, time: .omitted)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if !isMe {
+                Button {
+                    isShowingCreateObligation = true
+                } label: {
+                    Label("Asignar compromiso", systemImage: "plus.circle")
+                        .font(.callout)
+                }
+            }
+        } header: {
+            Text("Compromisos")
+        } footer: {
+            Text("Compromisos de acción donde \(member.displayName) participa.")
+        }
+    }
+
+    private func loadObligations() async {
+        guard let container, !context.isPersonal else {
+            memberObligations = []
+            return
+        }
+        do {
+            let all = try await container.rpc.listObligations(contextId: context.id)
+            memberObligations = all.filter { ob in
+                ob.isActionKind && ob.isOpen
+                    && (ob.debtorActorId == member.actorId || ob.creditorActorId == member.actorId)
+            }
+        } catch {
+            memberObligations = []
+        }
+    }
+
+    private func obligationSymbol(_ kind: String) -> String {
+        switch kind {
+        case "action": return "checkmark.circle"
+        case "approval": return "checkmark.seal"
+        case "delivery": return "shippingbox"
+        case "attendance": return "person.crop.circle.badge.checkmark"
+        case "document": return "doc.text"
+        case "reservation": return "calendar.badge.clock"
+        default: return "circle.dashed"
+        }
+    }
+}
+
+/// Wrapper Identifiable para `.sheet(item:)`.
+private struct ObligationIdSheetWrapper: Identifiable {
+    let id: UUID
 }
 
 #Preview("Detalle de miembro") {

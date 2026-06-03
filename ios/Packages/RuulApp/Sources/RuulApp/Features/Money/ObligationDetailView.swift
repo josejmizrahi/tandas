@@ -16,6 +16,9 @@ public struct ObligationDetailView: View {
     @State private var completionNotes: String = ""
     @State private var isShowingCompleteSheet = false
     @State private var memberNamesById: [UUID: String] = [:]
+    /// R.2S.10 — sheet "¿Por qué este compromiso?" con why_obligation_exists.
+    @State private var why: WhyObligationExists?
+    @State private var isLoadingWhy = false
 
     public init(obligationId: UUID, context: AppContext, container: DependencyContainer) {
         self.obligationId = obligationId
@@ -41,6 +44,10 @@ public struct ObligationDetailView: View {
                 .actionErrorAlert(runner)
                 .sheet(isPresented: $isShowingCompleteSheet) {
                     completeSheet
+                }
+                .sheet(item: Binding(get: { why.map { WhyObligationSheetItem(value: $0) } },
+                                      set: { why = $0?.value })) { wrapper in
+                    WhyObligationSheet(result: wrapper.value)
                 }
         }
     }
@@ -147,6 +154,26 @@ public struct ObligationDetailView: View {
                     }
                 }
             }
+
+            // R.2S.10 — ¿Por qué este compromiso?
+            Section {
+                Button {
+                    Task { await loadWhy() }
+                } label: {
+                    Label("¿Por qué este compromiso?", systemImage: "questionmark.circle")
+                }
+                .disabled(isLoadingWhy)
+            }
+        }
+    }
+
+    private func loadWhy() async {
+        isLoadingWhy = true
+        defer { isLoadingWhy = false }
+        do {
+            why = try await rpc.whyObligationExists(obligationId: obligationId)
+        } catch {
+            why = nil
         }
     }
 
@@ -296,6 +323,74 @@ public struct ObligationDetailView: View {
         case "forgive": return "heart"
         case "cancel": return "xmark.circle"
         default: return "circle"
+        }
+    }
+}
+
+// MARK: - R.2S.10 ¿Por qué? sheet
+
+private struct WhyObligationSheetItem: Identifiable {
+    let value: WhyObligationExists
+    var id: UUID { value.obligationId }
+}
+
+private struct WhyObligationSheet: View {
+    let result: WhyObligationExists
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Image(systemName: sourceSymbol(result.source))
+                            .foregroundStyle(.purple)
+                        VStack(alignment: .leading) {
+                            Text(sourceLabel(result.source))
+                                .font(.callout.weight(.semibold))
+                            Text(result.reason)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if let ruleTitle = result.ruleTitle, !ruleTitle.isEmpty {
+                    Section("Regla") {
+                        Label(ruleTitle, systemImage: "wand.and.rays")
+                    }
+                }
+            }
+            .navigationTitle("¿Por qué?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private func sourceLabel(_ source: String) -> String {
+        switch source {
+        case "rule": return "Generada por una regla"
+        case "decision": return "Resultado de una decisión"
+        case "event": return "Ligada a un evento"
+        case "reservation": return "Ligada a una reservación"
+        case "manual": return "Creada manualmente"
+        default: return source
+        }
+    }
+
+    private func sourceSymbol(_ source: String) -> String {
+        switch source {
+        case "rule": return "wand.and.rays"
+        case "decision": return "checkmark.seal.fill"
+        case "event": return "calendar"
+        case "reservation": return "calendar.badge.clock"
+        case "manual": return "hand.raised"
+        default: return "questionmark.circle"
         }
     }
 }

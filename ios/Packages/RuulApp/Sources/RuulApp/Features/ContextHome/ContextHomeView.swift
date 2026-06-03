@@ -17,6 +17,7 @@ public struct ContextHomeView: View {
     /// aparte porque `context_summary().money.open_obligations` solo trae money.
     @State private var actionObligations: [Obligation] = []
     @State private var selectedObligationId: UUID?
+    @State private var isShowingCreateObligation = false
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -64,6 +65,11 @@ public struct ContextHomeView: View {
                               set: { selectedObligationId = $0?.id })) { wrapper in
             ObligationDetailView(obligationId: wrapper.id, context: context, container: container)
         }
+        .sheet(isPresented: $isShowingCreateObligation, onDismiss: {
+            Task { await loadActionObligations() }
+        }) {
+            CreateObligationView(context: context, container: container)
+        }
     }
 
     private func loadActionObligations() async {
@@ -100,9 +106,7 @@ public struct ContextHomeView: View {
                 resourcesSection(summary)
                 eventsSection(summary)
                 obligationsSection(summary)
-                if !actionObligations.isEmpty {
-                    actionObligationsSection(summary)
-                }
+                actionObligationsSection(summary)
                 decisionsSection(summary)
                 rulesSection(summary)
                 activitySection(summary)
@@ -342,18 +346,30 @@ public struct ContextHomeView: View {
     @ViewBuilder
     private func actionObligationsSection(_ summary: ContextSummary) -> some View {
         Section {
-            ForEach(actionObligations.prefix(5)) { obligation in
-                Button {
-                    selectedObligationId = obligation.id
-                } label: {
-                    InfoRow(
-                        symbolName: actionKindSymbol(obligation.obligationKind),
-                        title: obligation.title ?? obligation.kindLabel,
-                        subtitle: summary.displayName(for: obligation.debtorActorId, me: myActorId),
-                        value: obligation.dueAt?.formatted(date: .abbreviated, time: .omitted)
-                    )
+            if actionObligations.isEmpty {
+                Text("Sin compromisos pendientes")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+            } else {
+                ForEach(actionObligations.prefix(5)) { obligation in
+                    Button {
+                        selectedObligationId = obligation.id
+                    } label: {
+                        InfoRow(
+                            symbolName: actionKindSymbol(obligation.obligationKind),
+                            title: obligation.title ?? obligation.kindLabel,
+                            subtitle: summary.displayName(for: obligation.debtorActorId, me: myActorId),
+                            value: obligation.dueAt?.formatted(date: .abbreviated, time: .omitted)
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+            }
+            Button {
+                isShowingCreateObligation = true
+            } label: {
+                Label("Nuevo compromiso", systemImage: "plus.circle")
+                    .font(.callout)
             }
         } header: {
             Text("Compromisos pendientes (\(actionObligations.count))")
