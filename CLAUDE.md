@@ -1,126 +1,125 @@
-@AGENTS.md
+# Tandas / Ruul — Project Context (iOS native, MVP 2.0)
 
-# Tandas / Ruul — Project Context (iOS native)
+App nativa iOS para administrar contextos compartidos (grupos de amigos, familias,
+viajes, negocios, trusts): miembros, recursos, eventos, reglas, decisiones, dinero y
+actividad. SwiftUI + Supabase. Liquid Glass real gracias a iOS 26+.
 
-App nativa iOS para administrar grupos de amigos. SwiftUI + Supabase.
-Liquid Glass real (no fallback CSS) gracias a iOS 26+.
+## Doctrina MVP 2.0 (2026-06-02, founder-signed)
 
-## Pivotación 2026-04-30
+```
+Actor        = quién existe (person / collective / legal_entity / system)
+Contexto     = el actor desde el cual operas (UX = context-first)
+Resource     = qué cosa existe
+Right        = qué derecho tiene un actor sobre un recurso (OWN/USE/MANAGE/VIEW/…)
+Membership   = quién participa en un contexto
+Event        = qué ocurre en el tiempo (calendar_events + participants)
+Rule         = qué pasa automáticamente (condition_tree → consequences)
+Decision     = cómo se aprueba algo (votos, mayoría simple)
+Obligation   = qué debe quién (multas, partes de gasto, deudas de juego)
+Money        = transacciones + splits + settlement (neteo min-cashflow)
+Activity     = qué pasó (append-only, por contexto)
+```
 
-Antes: Next.js 16 PWA (4 phases shipped, 24 routes, 9 migrations).
-Ahora: SwiftUI nativo, mismo Supabase backend.
-
-Razón: Liquid Glass real requiere Metal shaders (no disponibles en
-navegador web). El usuario quería específicamente el material auténtico
-de iOS, no aproximaciones CSS.
+**No hay tablas group-céntricas.** El "grupo" es solo un actor `collective`.
+Backend = autoridad; frontend = operación clara por contexto, sin lógica duplicada.
 
 ## Stack
 
-- **SwiftUI** (iOS 26+ deployment target — `.glassEffect()` y materiales nuevos)
-- **Swift 6** + concurrency strict
-- **supabase-swift** SDK
-- **Xcode 16+** required
-- **Backend**: Supabase project `fpfvlrwcskhgsjuhrjpz`
-
-## Arquitectura objetivo
-
-```
-Template → Group → Resource → Rule → Vote → Fine → History
-```
-
-- **Group** = comunidad persistente (no se subdivide por verticales).
-- **Template** = preset inicial — solo arranca el grupo, no es cárcel.
-- **Modules** = capacidades activables (`basic_fines`, `rotating_host`,
-  `rsvp`, `check_in`, `appeal_voting`; futuros `slot_assignment`,
-  `common_fund`, etc.).
-- **Resources** = objetos gobernables (`event` hoy; `slot`, `fund`,
-  `position`, `asset` en fases siguientes). Polimórficos via
-  `resources.resource_type`.
-- **Rules** = WHEN/IF/THEN data en jsonb. Engine server-only.
-- **Votes / Fines / History** = polimórficos por `reference_id` /
-  `resource_id` / `event_type`.
-
-Un mismo grupo puede combinar varios módulos y tipos de resource al mismo tiempo.
+- **SwiftUI** (iOS 26+ deployment target, Liquid Glass real)
+- **Swift 6** + strict concurrency
+- **supabase-swift** SDK (RPCs + lecturas PostgREST read-only)
+- **Xcode 16+** / CI en macos-15
+- **Backend**: Supabase project `wyvkqveienzixinonhum` — schema MVP2
+  (migrations `supabase/migrations/2026*`)
 
 ## Estructura del repo
 
 ```
 ios/
-├── Tandas.xcodeproj/                # xcodegen-driven
+├── Tandas/                          # @main (TandasApp → RuulAppShell), recursos
+├── Tandas.xcodeproj/                # generado con xcodegen (ios/project.yml)
 └── Packages/
-    ├── RuulCore/                    # Modelos + Repositories + Servicios + Templates
+    ├── RuulCore/                    # Sin UI
     │   └── Sources/RuulCore/
-    │       ├── Group.swift          # base_template, active_modules, governance jsonb
-    │       ├── PlatformModels/      # Resource, Fine, Vote, Rule, Template, GroupModule
-    │       ├── PlatformModules/     # ModuleRegistry, V1Modules
-    │       ├── Templates/           # TemplateRegistry, DinnerRecurringTemplate
-    │       ├── Repositories/        # Mock + Live (Groups, Events, Resources, Fines, …)
-    │       └── Supabase/            # SupabaseClient, AuthService, RPC bindings
-    ├── RuulUI/                      # DesignSystem v3 (tokens, primitives, patterns)
-    └── RuulFeatures/                # Feature views + coordinators (per-domain)
-        └── Sources/RuulFeatures/Features/
-            ├── Auth/  Onboarding/  Groups/  Events/  Rules/
-            ├── Fines/ Votes/  Resources/  Inbox/  History/  Settings/
-└── Tandas/                          # @main entry, Shell, AppState wiring
+    │       ├── JSONCoding.swift     # PostgresTimestamp (fechas con microsegundos) + JSONValue
+    │       ├── Supabase/            # SupabaseClient env + AuthService (phone/email OTP, Apple)
+    │       ├── Errors/              # RuulError / BackendError / RPCErrorMapper / UserFacingError
+    │       ├── Domain/              # Modelos 1:1 con el wire (ContextSummary, Resource, …)
+    │       ├── API/                 # RuulRPCClient (protocolo) + SupabaseRuulRPCClient (live)
+    │       │                        #   + MockRuulRPCClient (demo world para previews/tests)
+    │       └── Stores/              # @MainActor @Observable (Session, CurrentActor, Context,
+    │                                #   ContextHome, Members, Resources, Events, Rules,
+    │                                #   Reservations, Decisions, Money, Settlement, Activity)
+    └── RuulApp/                     # UI
+        └── Sources/RuulApp/
+            ├── App/                 # DependencyContainer (slim) + RuulAppShell (3 gates)
+            ├── Components/          # StateViews, ActionRunner, InfoRow, StatusBadge
+            └── Features/            # Auth, ContextShell, ContextHome, Membership, Resources,
+                                     #   Events, Rules, Reservations, Decisions, Money,
+                                     #   Settlement, Activity
 
-supabase/
-├── migrations/                      # 43 forward migrations (00001-00042)
-└── functions/                       # Edge functions
-    ├── _shared/ruleEngine.ts        # determinístico, server-only, phase_target mapping + scope hierarchy
-    ├── process-system-events/       # cron orquestador del rule engine (lee `resources` polimórfico)
-    ├── dispatch-notifications/      # APNs outbox (cron 1/min)
-    └── send-event-notification/, finalize-votes/, finalize-fine-reviews/, …
+supabase/migrations/                 # Cadena MVP2 (mvp2_000 … r2k) — fuente única del backend
+Plans/Active/MVP2_iOS_Contract.md    # Contrato completo backend ↔ iOS (RPCs + shapes)
+Plans/Active/Frontend_MVP2_Rebuild.md# Estado del rebuild F.0–F.14
 ```
+
+## Arquitectura iOS
+
+1. **3 gates en RuulAppShell**: sesión (`SessionStore`) → person actor
+   (`CurrentActorStore` / `ensure_person_actor()`) → contexto (`ContextShell`).
+   Usuarios anónimos no entran.
+2. **Context-first**: `ContextStore` carga `context_candidates()`, persiste la selección;
+   `ContextShell` hace rebuild completo al cambiar de contexto (`.id(context.id)`).
+   Sin tabs globales — `ContextHomeView` es la raíz y navega a cada feature.
+3. **Stores por pantalla**: cada vista de feature crea su store con `@State` y el `rpc`
+   compartido del `DependencyContainer`. Sin capa de repositories.
+4. **Lecturas**: RPC cuando existe (`context_summary`, `list_context_resources`,
+   `resource_detail`, `my_world`, `list_activity`); PostgREST directo (RLS read-only)
+   para `calendar_events`, `event_participants`, `rules`, `decisions`, `decision_votes`,
+   `obligations`, `resource_reservations`, `reservation_conflicts`, `settlement_*`.
+5. **Escrituras**: SOLO vía RPCs SECURITY DEFINER (el backend valida permisos; la UI
+   gatea botones con `my_permissions` de `context_summary`).
+6. **Errores**: `RPCErrorMapper` → `UserFacingError` con copy en español. Nunca mostrar
+   mensajes crudos del backend.
+7. **Previews**: toda vista tiene preview contra `MockRuulRPCClient.demo()` (mundo del
+   founder: Cena Semanal, Familia Mizrahi, Casa Valle).
+
+## Backend (referencia rápida)
+
+Contrato completo en `Plans/Active/MVP2_iOS_Contract.md`. Resumen:
+
+| Dominio | RPCs |
+|---|---|
+| Identity | `ensure_person_actor` · `current_actor_id` · `update_my_profile` |
+| Contexts | `create_context` · `context_candidates` · `context_summary` · `my_world` |
+| Membership | `create_invite` · `revoke_invite` · `join_by_invite_code` · `invite_member` · `accept_invitation` · `remove_member` · `leave_context` · `assign_role` |
+| Resources | `create_resource` · `list_context_resources` · `resource_detail` · `grant_right` · `revoke_right` · `update_resource` · `archive_resource` |
+| Events | `create_calendar_event` · `rsvp_event` · `check_in_participant` · `cancel_participation` · `close_event` |
+| Rules | `create_rule` · `evaluate_rules_for_event` (lo invocan check-in/cancel) |
+| Reservations | `request_resource_reservation` · `approve/confirm/cancel_reservation` · `detect_reservation_conflicts` · `resolve_reservation_conflict` |
+| Decisions | `create_decision` · `vote_decision` · `close_decision` · `execute_decision` |
+| Money | `record_expense` · `record_fine` · `record_game_result` |
+| Settlement | `generate_settlement_batch` · `mark_settlement_paid` |
+| Activity | `list_activity` |
 
 ## Reglas
 
-- iOS 26+ deployment target (Liquid Glass real, sin fallback)
-- SwiftUI exclusively — UIKit solo para deeplinks/push handlers
-- Async/await everywhere
-- `@Observable` para viewmodels
-- Strict concurrency mode on
-- Mock + Live de cada repositorio para previews + tests
-- Codegen Swift↔TS enforced via Lefthook (`scripts/codegen/`)
-
-## Backend (referencia)
-
-63 forward migrations en `supabase/migrations/` son la fuente única.
-La iOS app consume:
-
-| Recurso | Cómo |
-|---|---|
-| Auth (phone/email OTP) | `supabase.auth.signInWithOtp` + `verifyOtp`; anon→phone upgrade es automático en Supabase (verifyOtp promueve un `is_anonymous` user al teléfono verificado y dispara el trigger `on_auth_user_phone_sync` para mirror a `profiles.phone`) |
-| Groups CRUD | `from('groups')` + `rpc('create_group_with_admin')` (lee `templates.config`) |
-| Members | `from('group_members')` + `rpc('join_group_by_code')` + `rpc('set_turn_order')` + `rpc('remove_member')` |
-| Events | `rpc('create_event')` + `rpc('set_rsvp')` + `rpc('check_in_attendee')` + `rpc('close_event')` (trigger 00039 dual-write a `resources`) |
-| Resources | `LiveResourceRepository` lee `from('resources')` polimórficamente |
-| Rules | `rpc('create_initial_rule')` (platform-only post-mig 00058) + `rpc('seed_template_rules')` (generic, post-mig 00062) + `from('rules').update(...)` para toggle is_active |
-| Votes | `rpc('start_vote')` + `rpc('cast_vote')` + `rpc('finalize_vote')` (polimórfico via `vote_type` + `reference_id`) |
-| Fines | `rpc('issue_manual_fine')` + `rpc('pay_fine')` + `rpc('void_fine')` + `rpc('start_appeal')` |
-| Notifications | `notifications_outbox` table + cron `dispatch-notifications-every-minute` (APNs real) |
-| System events | `system_events` table append-only + `record_system_event` SECURITY DEFINER |
-| Templates | `from('templates')` + `rpc('seed_template_rules')` (lee `templates.config.defaultRules`) |
-| Modules | `from('modules')` + `rpc('list_modules')` + `rpc('set_group_module')` (cascade dynamic post-mig 00061) |
-| Roles + Permissions | `from('groups')` (jsonb `roles`, mig 00063) + `rpc('has_permission')` |
-| Governance | `from('groups').update({governance})` gated by `groups_update_governance` RLS |
-
-## Estado al 2026-05-09
-
-- **L1 primitives todas verdes** FE+BE post-Gaps 1-4: Identity, Membership,
-  Group, Template, ModuleRegistry, CapabilityResolver, Resource, Rule,
-  SystemEvent, RoleStack (foundation slice).
-- **Atom/Projection** marker protocols en código (`AtomProjection.swift`)
-  + plan canónico (`Plans/Active/AtomProjection.md`).
-- **Phase 2 ready to start**. Decision sobre primitiva específica
-  (Slot/Rotation/Fund/Asset/mezcla) viene del journal de cenas o
-  del founder explícitamente. Ver `Plans/Active/Phase2Readiness.md`.
-- **Beta 1 freeze levantado** 2026-05-08; cenas siguen documentándose
-  en `Plans/Active/Beta1.md` § 5 como señal cualitativa.
+- iOS 26+ deployment target, SwiftUI exclusivamente
+- Async/await everywhere, `@Observable` para stores, strict concurrency on
+- Mock + preview por cada vista
+- Strings de UI en español (founder locale); errores siempre vía `UserFacingError`
+- Migrations del backend SOLO vía MCP `apply_migration` con review SQL antes
+- Las migrations en `supabase/migrations/` son la fuente única del backend
 
 ## DoD por commit
 
 - Compila en Xcode 16+ sin warnings
-- `xcodebuild test` pasa (Swift Testing en RuulCore + RuulFeatures)
-- Codegen sin diff (lefthook lo enforces; CI también)
-- Functional smoke en simulador iOS 26 (o device si toca push)
-- Migrations aplicadas vía MCP `mcp__supabase__apply_migration` (con review SQL antes)
+- `xcodebuild test` pasa (RuulCore package tests + TandasTests en CI)
+- Functional smoke en simulador iOS 26 (o device si aplica)
+
+## CI
+
+- `.github/workflows/ios-ci.yml`: xcodegen + RuulCore package tests + app build/test
+  (macos-15, iPhone 16 Pro simulator)
+- `.github/workflows/edge-tests.yml`: replay de la cadena de migrations MVP2 + smokes
+  `_smoke_mvp2_*` en Supabase local

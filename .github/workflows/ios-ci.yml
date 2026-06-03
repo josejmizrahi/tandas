@@ -42,16 +42,25 @@ jobs:
       - name: Generate project
         run: cd ios && xcodegen
 
+      - name: RuulCore package tests
+        # Los tests del contrato MVP2 (decoding, error mapping, mock client,
+        # stores) viven en el package RuulCore. xcodebuild contra el
+        # Package.swift usa el scheme auto-generado del package.
+        run: |
+          set -o pipefail
+          cd ios/Packages/RuulCore
+          xcodebuild test \
+            -scheme RuulCore \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' \
+            | xcpretty || (xcodebuild test \
+                -scheme RuulCore \
+                -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+                CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='')
+
       - name: Build & test
-        # SWIFT_ACTIVE_COMPILATION_CONDITIONS=CI sets a compile-time
-        # `#if CI` flag the test bundle picks up. Used by
-        # PrimitiveSnapshotTests.skipOnCI() to gate the two
-        # RuulMoneyView snapshots that can't survive Xcode minor-SDK
-        # font-rendering drift (CI is on macos-15 / Xcode 26.3; local
-        # devs are on 26.4+). Three prior attempts (env var on runner,
-        # TEST_RUNNER_CI=true) didn't propagate to the iOS Simulator
-        # test process — compile-time flag is the only channel that
-        # actually reaches the test bundle for iOS unit tests.
+        # SWIFT_ACTIVE_COMPILATION_CONDITIONS=CI deja disponible `#if CI`
+        # para tests que necesiten gatearse en CI.
         run: |
           set -o pipefail
           xcodebuild test \
