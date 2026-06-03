@@ -47,7 +47,7 @@ declare
   -- recursos
   r_palco uuid; r_terreno uuid; r_nave uuid; r_acciones uuid; r_cuenta uuid;
   -- flujo
-  v_code text; v_dec uuid; v_txn uuid;
+  v_code text; v_dec uuid; v_txn uuid; v_ev uuid;
   -- fechas reales de los partidos del grupo (Mundial 2026)
   v_m1 timestamptz := '2026-06-11 13:00-06'::timestamptz;  -- Inauguración México vs Sudáfrica
   v_m2 timestamptz := '2026-06-17 13:00-06'::timestamptz;  -- Colombia vs Uzbekistán
@@ -288,17 +288,38 @@ begin
   -- ───────────────────────────────────────────────────────────────────────────
   -- 6. EVENTOS
   -- ───────────────────────────────────────────────────────────────────────────
-  -- Mundial 2026 (Palco Mundial 2026) — 5 partidos reales
-  perform public.create_calendar_event(c_palco, 'Inauguración — México vs Sudáfrica', 'community_event',
-    p_starts_at := v_m1, p_ends_at := v_m1 + interval '2 hours');
-  perform public.create_calendar_event(c_palco, 'Colombia vs Uzbekistán', 'community_event',
-    p_starts_at := v_m2, p_ends_at := v_m2 + interval '2 hours');
-  perform public.create_calendar_event(c_palco, 'México vs Chequia', 'community_event',
-    p_starts_at := v_m3, p_ends_at := v_m3 + interval '2 hours');
-  perform public.create_calendar_event(c_palco, 'Ronda de 32', 'community_event',
-    p_starts_at := v_m4, p_ends_at := v_m4 + interval '2 hours');
-  perform public.create_calendar_event(c_palco, 'Ronda de 16', 'community_event',
-    p_starts_at := v_m5, p_ends_at := v_m5 + interval '2 hours');
+  -- Mundial 2026 (Palco Mundial 2026) — 5 partidos reales.
+  -- p_invite_all_members:=false → el evento NO invita a todo el contexto; solo
+  -- agregamos el roster real de cada partido como participantes.
+  v_ev := ((public.create_calendar_event(c_palco, 'Inauguración — México vs Sudáfrica', 'community_event',
+    p_starts_at := v_m1, p_ends_at := v_m1 + interval '2 hours', p_invite_all_members := false))->>'event_id')::uuid;
+  delete from public.event_participants where event_id = v_ev;  -- quita el auto-host; dejamos solo el roster
+  insert into public.event_participants (event_id, participant_actor_id, status, rsvp_at)
+    select v_ev, x, 'going', now() from unnest(array[a_jose, a_mochon, a_alan, a_joseserur, a_danserur]) x;
+
+  v_ev := ((public.create_calendar_event(c_palco, 'Colombia vs Uzbekistán', 'community_event',
+    p_starts_at := v_m2, p_ends_at := v_m2 + interval '2 hours', p_invite_all_members := false))->>'event_id')::uuid;
+  delete from public.event_participants where event_id = v_ev;  -- quita el auto-host; dejamos solo el roster
+  insert into public.event_participants (event_id, participant_actor_id, status, rsvp_at)
+    select v_ev, x, 'going', now() from unnest(array[a_beto, a_joseserur, a_danserur, a_mochon, a_alan]) x;
+
+  v_ev := ((public.create_calendar_event(c_palco, 'México vs Chequia', 'community_event',
+    p_starts_at := v_m3, p_ends_at := v_m3 + interval '2 hours', p_invite_all_members := false))->>'event_id')::uuid;
+  delete from public.event_participants where event_id = v_ev;  -- quita el auto-host; dejamos solo el roster
+  insert into public.event_participants (event_id, participant_actor_id, status, rsvp_at)
+    select v_ev, x, 'going', now() from unnest(array[a_jose, a_danserur, a_mochon, a_papa, a_alan]) x;
+
+  v_ev := ((public.create_calendar_event(c_palco, 'Ronda de 32', 'community_event',
+    p_starts_at := v_m4, p_ends_at := v_m4 + interval '2 hours', p_invite_all_members := false))->>'event_id')::uuid;
+  delete from public.event_participants where event_id = v_ev;  -- quita el auto-host; dejamos solo el roster
+  insert into public.event_participants (event_id, participant_actor_id, status, rsvp_at)
+    select v_ev, x, 'going', now() from unnest(array[a_jose, a_salo, a_beto, a_mochon, a_alan]) x;
+
+  v_ev := ((public.create_calendar_event(c_palco, 'Ronda de 16', 'community_event',
+    p_starts_at := v_m5, p_ends_at := v_m5 + interval '2 hours', p_invite_all_members := false))->>'event_id')::uuid;
+  delete from public.event_participants where event_id = v_ev;  -- quita el auto-host; dejamos solo el roster
+  insert into public.event_participants (event_id, participant_actor_id, status, rsvp_at)
+    select v_ev, x, 'going', now() from unnest(array[a_jose, a_alan, a_mochon, a_salo, a_victor]) x;
 
   -- Comidas Miércoles — 4 comidas
   for r in select g, (date_trunc('week', now()) + (g || ' weeks')::interval + interval '20 hours')::timestamptz as ts
@@ -320,10 +341,9 @@ begin
        'attendees', jsonb_build_array(a_jose, a_mochon, a_alan, a_joseserur, a_danserur),
        'attendee_names', jsonb_build_array('José Mizrahi','José Mochon','Alan Cohen','José Serur','Daniel Serur'))),
     (r_palco, c_palco, a_jose, c_palco, v_m2, v_m2 + interval '2 hours', 'confirmed',
-     jsonb_build_object('match','Fase de grupos','teams','Colombia vs Uzbekistán','seats',4,'pending_seats',1,
-       'attendees', jsonb_build_array(a_beto, a_joseserur, a_danserur, a_mochon),
-       'attendee_names', jsonb_build_array('Beto Serur','José Serur','Daniel Serur','José Mochon'),
-       'note','1 lugar por definir')),
+     jsonb_build_object('match','Fase de grupos','teams','Colombia vs Uzbekistán','seats',5,
+       'attendees', jsonb_build_array(a_beto, a_joseserur, a_danserur, a_mochon, a_alan),
+       'attendee_names', jsonb_build_array('Beto Serur','José Serur','Daniel Serur','José Mochon','Alan Cohen'))),
     (r_palco, c_palco, a_jose, c_palco, v_m3, v_m3 + interval '2 hours', 'confirmed',
      jsonb_build_object('match','Fase de grupos','teams','México vs Chequia','seats',5,
        'attendees', jsonb_build_array(a_jose, a_danserur, a_mochon, a_papa, a_alan),
