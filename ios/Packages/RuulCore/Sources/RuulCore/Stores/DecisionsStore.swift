@@ -162,22 +162,26 @@ public final class DecisionDetailStore {
     public func load(decisionId: UUID, context: AppContext) async {
         if decision == nil { phase = .loading }
         do {
+            // Required: decisión (vía listDecisions PostgREST, RLS-safe) + summary
+            // del contexto (debe pasar — el caller llegó aquí desde el contexto).
             async let decisionsTask = rpc.listDecisions(contextId: context.id)
-            async let votesTask = rpc.listDecisionVotes(decisionId: decisionId)
-            async let optionsTask = rpc.listDecisionOptions(decisionId: decisionId)
             async let summaryTask = rpc.contextSummary(contextId: context.id)
-            let (decisions, loadedVotes, loadedOptions, summary) = try await (
-                decisionsTask, votesTask, optionsTask, summaryTask
-            )
+            let (decisions, summary) = try await (decisionsTask, summaryTask)
             decision = decisions.first { $0.id == decisionId }
-            votes = loadedVotes
-            options = loadedOptions.filter(\.isActive).sorted { $0.sortOrder < $1.sortOrder }
             members = summary.members
             myPermissions = summary.myPermissions
-            // R.2S — best-effort: si decision_detail falla (p. ej. drift de
-            // autorización entre RLS y is_context_member en el backend), la
-            // vista sigue funcionando con el gateado por permisos del summary.
-            detail = try? await rpc.decisionDetail(decisionId: decisionId)
+
+            // Best-effort: las RPCs que chequean is_context_member sobre el
+            // contexto de la decisión pueden raise 42501 si el caller llegó
+            // a la decisión desde un contexto distinto (deep link, my_world,
+            // historial). No rompemos la vista — caemos al gateado por summary.
+            async let votesTask: [DecisionVote]? = try? await rpc.listDecisionVotes(decisionId: decisionId)
+            async let optionsTask: [DecisionOption]? = try? await rpc.listDecisionOptions(decisionId: decisionId)
+            async let detailTask: DecisionDetail? = try? await rpc.decisionDetail(decisionId: decisionId)
+            let (loadedVotes, loadedOptions, loadedDetail) = await (votesTask, optionsTask, detailTask)
+            votes = loadedVotes ?? []
+            options = (loadedOptions ?? []).filter(\.isActive).sorted { $0.sortOrder < $1.sortOrder }
+            detail = loadedDetail
             phase = .loaded
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
