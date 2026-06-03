@@ -42,6 +42,11 @@ public protocol AuthService: Actor {
     nonisolated var sessionStream: AsyncStream<AppSession?> { get }
 
     func signInWithApple() async throws -> AppSession
+    /// Native Sign in with Apple: the UI obtains an Apple identity token (and the
+    /// raw nonce it hashed into the request) via `ASAuthorization`, then hands
+    /// them here. LiveAuthService exchanges them with Supabase
+    /// (`signInWithIdToken`, provider `.apple`).
+    func signInWithApple(idToken: String, nonce: String) async throws -> AppSession
     func sendPhoneOTP(_ phone: String) async throws
     func verifyPhoneOTP(_ phone: String, code: String) async throws -> AppSession
     func sendEmailOTP(_ email: String) async throws
@@ -124,6 +129,15 @@ public actor MockAuthService: AuthService {
         let s = AppSession(
             user: AppUser(id: UUID(), email: "apple@example.com", phone: nil),
             accessToken: "mock-apple-token"
+        )
+        applySession(s)
+        return s
+    }
+
+    public func signInWithApple(idToken: String, nonce: String) async throws -> AppSession {
+        let s = AppSession(
+            user: AppUser(id: UUID(), email: "apple@example.com", phone: nil),
+            accessToken: "mock-apple-idtoken"
         )
         applySession(s)
         return s

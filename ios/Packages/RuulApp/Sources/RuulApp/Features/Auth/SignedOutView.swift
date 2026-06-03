@@ -1,10 +1,14 @@
 import SwiftUI
 import RuulCore
+import AuthenticationServices
+import CryptoKit
 
-/// F.2 — pantalla de entrada: OTP por teléfono o email.
-/// `anon` no entra: el único camino a la app es verificar un OTP real.
+/// F.2 — pantalla de entrada: Sign in with Apple u OTP por teléfono/email.
+/// `anon` no entra: el único camino a la app es Apple o verificar un OTP real.
 public struct SignedOutView: View {
     let authService: any AuthService
+
+    @Environment(\.colorScheme) private var colorScheme
 
     private enum Channel: String, CaseIterable, Identifiable {
         case phone = "Teléfono"
@@ -23,6 +27,9 @@ public struct SignedOutView: View {
     @State private var code = ""
     @State private var isWorking = false
     @State private var errorMessage: String?
+    /// Nonce crudo que se hashea (SHA256) en el request de Apple y se manda en
+    /// crudo a Supabase para validar el id_token.
+    @State private var appleNonce: String?
 
     public init(authService: any AuthService) {
         self.authService = authService
@@ -49,7 +56,11 @@ public struct SignedOutView: View {
 
                 switch step {
                 case .enterDestination:
-                    destinationForm
+                    VStack(spacing: 20) {
+                        appleSection
+                        orDivider
+                        destinationForm
+                    }
                 case .enterCode:
                     codeForm
                 }
@@ -65,6 +76,51 @@ public struct SignedOutView: View {
                 Spacer()
             }
             .padding(.horizontal, 24)
+        }
+    }
+
+    // MARK: - Sign in with Apple
+
+    @ViewBuilder
+    private var appleSection: some View {
+        SignInWithAppleButton(.signIn) { request in
+            let nonce = Self.randomNonce()
+            appleNonce = nonce
+            request.requestedScopes = [.fullName, .email]
+            request.nonce = Self.sha256(nonce)
+        } onCompletion: { result in
+            // Extraemos los Strings (Sendable) en el closure (MainActor) y solo
+            // esos cruzan al Task — ASAuthorization no es Sendable.
+            switch result {
+            case .success(let authorization):
+                guard
+                    let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                    let tokenData = credential.identityToken,
+                    let idToken = String(data: tokenData, encoding: .utf8),
+                    let nonce = appleNonce
+                else {
+                    errorMessage = "No pudimos completar el inicio con Apple. Intenta de nuevo."
+                    return
+                }
+                Task { await completeApple(idToken: idToken, nonce: nonce) }
+            case .failure(let error):
+                // El usuario canceló: no mostramos error.
+                if let asError = error as? ASAuthorizationError, asError.code == .canceled { return }
+                errorMessage = "Inicio con Apple cancelado o fallido."
+            }
+        }
+        .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+        .frame(height: 50)
+        .frame(maxWidth: .infinity)
+        .disabled(isWorking)
+    }
+
+    @ViewBuilder
+    private var orDivider: some View {
+        HStack(spacing: 12) {
+            Rectangle().fill(.quaternary).frame(height: 1)
+            Text("o").font(.footnote).foregroundStyle(.secondary)
+            Rectangle().fill(.quaternary).frame(height: 1)
         }
     }
 
@@ -178,6 +234,36 @@ public struct SignedOutView: View {
         } catch {
             errorMessage = "Código incorrecto o expirado. Vuelve a intentar."
         }
+    }
+
+    private func completeApple(idToken: String, nonce: String) async {
+        isWorking = true
+        errorMessage = nil
+        defer { isWorking = false }
+        do {
+            _ = try await authService.signInWithApple(idToken: idToken, nonce: nonce)
+            // La sesión se propaga sola vía AuthService.sessionStream → SessionStore.
+        } catch {
+            errorMessage = "No pudimos iniciar sesión con Apple. Intenta de nuevo."
+        }
+    }
+
+    // MARK: - Nonce (Sign in with Apple)
+
+    /// Nonce aleatorio (caracteres URL-safe). Se manda en crudo a Supabase y su
+    /// SHA256 va en el request de Apple (anti-replay del id_token).
+    /// `randomElement()` usa `SystemRandomNumberGenerator`, criptográficamente
+    /// seguro en plataformas Apple.
+    private static func randomNonce(length: Int = 32) -> String {
+        precondition(length > 0)
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String((0..<length).map { _ in charset.randomElement()! })
+    }
+
+    private static func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
     }
 }
 
