@@ -16,6 +16,8 @@ public struct RequestReservationView: View {
     @State private var reservedForActorId: UUID?
     @State private var runner = ActionRunner()
     @State private var conflictNotice: String?
+    /// R.2S.10 — preview de permiso (why_can_reserve).
+    @State private var whyCanReserve: WhyCanReserve?
 
     public init(resource: Resource, context: AppContext, reservationContextId: UUID? = nil, store: ReservationsStore, container: DependencyContainer) {
         self.resource = resource
@@ -28,6 +30,8 @@ public struct RequestReservationView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                whySection
+
                 Section("Fechas") {
                     DatePicker("Desde", selection: $startsAt, displayedComponents: [.date, .hourAndMinute])
                     DatePicker("Hasta", selection: $endsAt, in: startsAt..., displayedComponents: [.date, .hourAndMinute])
@@ -74,7 +78,39 @@ public struct RequestReservationView: View {
                 }
             }
             .actionErrorAlert(runner)
+            .task {
+                await loadWhy()
+            }
         }
+    }
+
+    @ViewBuilder
+    private var whySection: some View {
+        if let why = whyCanReserve {
+            Section {
+                HStack(spacing: 12) {
+                    Image(systemName: why.canReserve ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(why.canReserve ? .green : .orange)
+                        .imageScale(.large)
+                    Text(why.canReserve ? "Puedes reservar" : "No puedes reservar")
+                        .font(.callout.weight(.semibold))
+                }
+                ForEach(why.reasons, id: \.self) { reason in
+                    Text(reason)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Permisos")
+            }
+        }
+    }
+
+    private func loadWhy() async {
+        guard let actorId = container.currentActorStore.actorId else { return }
+        whyCanReserve = try? await container.rpc.whyCanReserve(
+            actorId: actorId, resourceId: resource.id
+        )
     }
 
     private func request() async {
