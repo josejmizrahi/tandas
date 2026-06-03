@@ -11,6 +11,9 @@ public struct DecisionDetailView: View {
     @State private var runner = ActionRunner()
     @State private var isConfirmingClose = false
     @State private var isConfirmingExecute = false
+    /// R.2S.10 — sheet "¿Por qué este resultado?" con `why_decision_result`.
+    @State private var whyResult: WhyDecisionResult?
+    @State private var isLoadingWhy = false
 
     public init(decisionId: UUID, context: AppContext, container: DependencyContainer) {
         self.decisionId = decisionId
@@ -88,6 +91,12 @@ public struct DecisionDetailView: View {
                 winnerSection(winner)
             }
 
+            // R.2S.10 — "¿Por qué este resultado?" sheet via why_decision_result.
+            // Solo aparece cuando la decisión ya no está abierta.
+            if !decision.isOpen {
+                whySection(decisionId: decisionId)
+            }
+
             // Votos
             votesSection(decision)
 
@@ -126,6 +135,10 @@ public struct DecisionDetailView: View {
                 }
             }
             Button("Todavía no", role: .cancel) {}
+        }
+        .sheet(item: Binding(get: { whyResult.map { WhyResultIdentifiable(value: $0) } },
+                              set: { whyResult = $0?.value })) { wrapper in
+            WhyDecisionResultSheet(result: wrapper.value)
         }
     }
 
@@ -275,6 +288,31 @@ public struct DecisionDetailView: View {
         .disabled(runner.isRunning)
     }
 
+    // MARK: ¿Por qué? (R.2S.10)
+
+    @ViewBuilder
+    private func whySection(decisionId: UUID) -> some View {
+        Section {
+            Button {
+                Task { await loadWhy(decisionId: decisionId) }
+            } label: {
+                Label("¿Por qué este resultado?", systemImage: "questionmark.circle")
+            }
+            .disabled(isLoadingWhy)
+        }
+    }
+
+    private func loadWhy(decisionId: UUID) async {
+        isLoadingWhy = true
+        defer { isLoadingWhy = false }
+        do {
+            whyResult = try await container.rpc.whyDecisionResult(decisionId: decisionId)
+        } catch {
+            // Si falla, no rompemos la vista — el sheet simplemente no se abre.
+            whyResult = nil
+        }
+    }
+
     // MARK: Ganadora
 
     @ViewBuilder
@@ -375,6 +413,92 @@ public struct DecisionDetailView: View {
         case "cancelled": return .gray
         default: return .secondary
         }
+    }
+}
+
+// MARK: - WhyDecisionResult sheet (R.2S.10)
+
+/// Wrapper Identifiable para `.sheet(item:)`.
+private struct WhyResultIdentifiable: Identifiable {
+    let value: WhyDecisionResult
+    var id: UUID { value.decisionId }
+}
+
+/// Sheet que renderiza la razón del resultado de la decisión — sin computar
+/// nada en iOS, todo viene del backend.
+private struct WhyDecisionResultSheet: View {
+    let result: WhyDecisionResult
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(.purple)
+                        Text("Estado: \(result.status)")
+                            .font(.callout.weight(.semibold))
+                    }
+                    HStack {
+                        Image(systemName: "person.3.fill")
+                            .foregroundStyle(.secondary)
+                        Text("Modelo: \(result.votingModel)")
+                            .font(.callout)
+                    }
+                }
+
+                Section("Conteo") {
+                    HStack(spacing: 16) {
+                        tallyCounter("A favor", count: result.tally.approve, color: .green)
+                        tallyCounter("En contra", count: result.tally.reject, color: .red)
+                        tallyCounter("Abstención", count: result.tally.abstain, color: .gray)
+                        tallyCounter("Miembros", count: result.activeMembers, color: .secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                if !result.optionTally.isEmpty {
+                    Section("Opciones") {
+                        ForEach(result.optionTally.sorted(by: { $0.value > $1.value }), id: \.key) { option, count in
+                            HStack {
+                                Text(option)
+                                Spacer()
+                                Text("\(Int(count)) voto\(count == 1 ? "" : "s")")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                Section("Razones") {
+                    ForEach(result.reasons, id: \.self) { reason in
+                        Text(reason)
+                            .font(.callout)
+                    }
+                }
+            }
+            .navigationTitle("¿Por qué?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Listo") { dismiss() }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tallyCounter(_ label: String, count: Double, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text("\(Int(count))")
+                .font(.title3.bold())
+                .foregroundStyle(color)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

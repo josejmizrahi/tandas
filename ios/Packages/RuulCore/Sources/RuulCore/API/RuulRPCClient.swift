@@ -164,6 +164,19 @@ public protocol RuulRPCClient: Sendable {
     /// `mark_settlement_paid(p_settlement_item_id)`
     func markSettlementPaid(itemId: UUID) async throws -> MarkPaidResult
 
+    // MARK: - Explanation engine (R.2S.10)
+
+    /// `why_can_view_resource(p_actor_id, p_resource_id)`.
+    func whyCanViewResource(actorId: UUID, resourceId: UUID) async throws -> WhyCanViewResource
+    /// `why_can_reserve(p_actor_id, p_resource_id)`.
+    func whyCanReserve(actorId: UUID, resourceId: UUID) async throws -> WhyCanReserve
+    /// `why_decision_result(p_decision_id)`.
+    func whyDecisionResult(decisionId: UUID) async throws -> WhyDecisionResult
+    /// `why_reservation_won(p_conflict_id)`.
+    func whyReservationWon(conflictId: UUID) async throws -> WhyReservationWon
+    /// `why_obligation_exists(p_obligation_id)`.
+    func whyObligationExists(obligationId: UUID) async throws -> WhyObligationExists
+
     // MARK: - Activity
 
     /// `list_activity(p_context_actor_id, p_limit, p_before)`

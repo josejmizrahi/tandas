@@ -943,6 +943,40 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("mark_settlement_paid", params: Params(pSettlementItemId: itemId))
     }
 
+    // MARK: - Explanation engine (R.2S.10)
+
+    public func whyCanViewResource(actorId: UUID, resourceId: UUID) async throws -> WhyCanViewResource {
+        try await call("why_can_view_resource", params: ActorResourceParams(actorId: actorId, resourceId: resourceId))
+    }
+
+    public func whyCanReserve(actorId: UUID, resourceId: UUID) async throws -> WhyCanReserve {
+        try await call("why_can_reserve", params: ActorResourceParams(actorId: actorId, resourceId: resourceId))
+    }
+
+    public func whyDecisionResult(decisionId: UUID) async throws -> WhyDecisionResult {
+        struct Params: Encodable, Sendable {
+            let pDecisionId: UUID
+            enum CodingKeys: String, CodingKey { case pDecisionId = "p_decision_id" }
+        }
+        return try await call("why_decision_result", params: Params(pDecisionId: decisionId))
+    }
+
+    public func whyReservationWon(conflictId: UUID) async throws -> WhyReservationWon {
+        struct Params: Encodable, Sendable {
+            let pConflictId: UUID
+            enum CodingKeys: String, CodingKey { case pConflictId = "p_conflict_id" }
+        }
+        return try await call("why_reservation_won", params: Params(pConflictId: conflictId))
+    }
+
+    public func whyObligationExists(obligationId: UUID) async throws -> WhyObligationExists {
+        struct Params: Encodable, Sendable {
+            let pObligationId: UUID
+            enum CodingKeys: String, CodingKey { case pObligationId = "p_obligation_id" }
+        }
+        return try await call("why_obligation_exists", params: Params(pObligationId: obligationId))
+    }
+
     // MARK: - Activity
 
     public func listActivity(contextId: UUID, limit: Int, before: Date?) async throws -> [ActivityEvent] {
@@ -968,6 +1002,15 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
 private struct ContextIdParams: Encodable, Sendable {
     let contextId: UUID
     enum CodingKeys: String, CodingKey { case contextId = "p_context_actor_id" }
+}
+
+private struct ActorResourceParams: Encodable, Sendable {
+    let actorId: UUID
+    let resourceId: UUID
+    enum CodingKeys: String, CodingKey {
+        case actorId = "p_actor_id"
+        case resourceId = "p_resource_id"
+    }
 }
 
 private struct ReservationIdParams: Encodable, Sendable {

@@ -905,6 +905,109 @@ struct DecodingTests {
         #expect(!detail.can("resolve_conflict"))
     }
 
+    // MARK: - Explanation engine (R.2S.10)
+
+    @Test("why_can_view_resource — reasons + canView")
+    func whyCanViewResourceShape() throws {
+        let json = """
+        {
+          "actor_id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "resource_id": "11111111-c51c-4bf4-9960-e1c80e27aba1",
+          "can_view": true,
+          "reasons": ["Es el dueño canónico del recurso (OWN dominante)"]
+        }
+        """
+        let why = try decode(WhyCanViewResource.self, json)
+        #expect(why.canView)
+        #expect(why.reasons.count == 1)
+    }
+
+    @Test("why_can_reserve — required_capability + reasons")
+    func whyCanReserveShape() throws {
+        let json = """
+        {
+          "actor_id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "resource_id": "11111111-c51c-4bf4-9960-e1c80e27aba1",
+          "can_reserve": false,
+          "required_capability": "reservable",
+          "reasons": [
+            "El tipo \\"bank_account\\" no tiene la capability reservable",
+            "Falta un derecho USE, MANAGE u OWN (o autoridad para administrar reservaciones)"
+          ]
+        }
+        """
+        let why = try decode(WhyCanReserve.self, json)
+        #expect(!why.canReserve)
+        #expect(why.requiredCapability == "reservable")
+        #expect(why.reasons.count == 2)
+    }
+
+    @Test("why_decision_result — tally + option_tally + reasons")
+    func whyDecisionResultShape() throws {
+        let json = """
+        {
+          "decision_id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "status": "approved",
+          "voting_model": "yes_no_abstain",
+          "tally": {"approve": 3, "reject": 1, "abstain": 0},
+          "option_tally": {},
+          "active_members": 5,
+          "result": {"winning": "approve"},
+          "reasons": [
+            "Modelo de votación: yes_no_abstain",
+            "Conteo: 3 a favor, 1 en contra, 0 abstención sobre 5 miembros",
+            "Estado actual: approved"
+          ]
+        }
+        """
+        let why = try decode(WhyDecisionResult.self, json)
+        #expect(why.tally.approve == 3)
+        #expect(why.tally.reject == 1)
+        #expect(why.activeMembers == 5)
+        #expect(why.reasons.count == 3)
+    }
+
+    @Test("why_reservation_won — winner + reasons; sin resolver devuelve null")
+    func whyReservationWonShape() throws {
+        let json = """
+        {
+          "conflict_id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "resolution_status": "resolved",
+          "winner_reservation_id": "11111111-c51c-4bf4-9960-e1c80e27aba1",
+          "winner_actor_id": "22222222-c51c-4bf4-9960-e1c80e27aba1",
+          "recommended_winner_actor_id": "22222222-c51c-4bf4-9960-e1c80e27aba1",
+          "reasons": ["Modelo de resolución: admin_override", "El motor de conflictos había recomendado a este actor"]
+        }
+        """
+        let why = try decode(WhyReservationWon.self, json)
+        #expect(why.resolutionStatus == "resolved")
+        #expect(why.winnerReservationId != nil)
+        #expect(why.reasons.count == 2)
+    }
+
+    @Test("why_obligation_exists — source + ruleTitle")
+    func whyObligationExistsShape() throws {
+        let json = """
+        {
+          "obligation_id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "kind": "money",
+          "source": "rule",
+          "reason": "Multa por llegar tarde",
+          "source_rule_id": "33333333-c51c-4bf4-9960-e1c80e27aba1",
+          "source_decision_id": null,
+          "source_event_id": "44444444-c51c-4bf4-9960-e1c80e27aba1",
+          "source_reservation_id": null,
+          "rule_title": "Multa por tarde",
+          "metadata": {"minutes_late": 22}
+        }
+        """
+        let why = try decode(WhyObligationExists.self, json)
+        #expect(why.source == "rule")
+        #expect(why.ruleTitle == "Multa por tarde")
+        #expect(why.sourceRuleId != nil)
+        #expect(why.sourceDecisionId == nil)
+    }
+
     // MARK: - Reglas legibles
 
     @Test("descripción legible de reglas")

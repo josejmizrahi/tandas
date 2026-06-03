@@ -1861,6 +1861,153 @@ public actor MockRuulRPCClient: RuulRPCClient {
         )
     }
 
+    // MARK: - Explanation engine (R.2S.10)
+
+    public func whyCanViewResource(actorId: UUID, resourceId: UUID) async throws -> WhyCanViewResource {
+        try throwIfNeeded()
+        let allRights = rights[resourceId] ?? []
+        let mine = allRights.filter { $0.holderActorId == actorId }
+        var reasons: [String] = []
+        if let resource = resources[resourceId], resource.canonicalOwnerActorId == actorId {
+            reasons.append("Es el dueño canónico del recurso (OWN dominante)")
+        }
+        for right in mine {
+            reasons.append("Tiene el derecho \(right.rightKind) sobre el recurso")
+        }
+        let canView = !mine.isEmpty || resources[resourceId]?.canonicalOwnerActorId == actorId
+        if reasons.isEmpty {
+            reasons = ["No tiene ningún derecho activo ni autoridad sobre un holder del recurso"]
+        }
+        return WhyCanViewResource(actorId: actorId, resourceId: resourceId, canView: canView, reasons: reasons)
+    }
+
+    public func whyCanReserve(actorId: UUID, resourceId: UUID) async throws -> WhyCanReserve {
+        try throwIfNeeded()
+        guard let resource = resources[resourceId] else {
+            throw RuulError.unexpected(message: "Recurso no encontrado")
+        }
+        let caps = Self.capabilities(for: resource.resourceType)
+        let isReservable = caps.contains("reservable")
+        let actorRights = (rights[resourceId] ?? []).filter { $0.holderActorId == actorId }
+        let hasRight = actorRights.contains {
+            $0.rightKind == "USE" || $0.rightKind == "MANAGE" || $0.rightKind == "OWN"
+        }
+        var reasons: [String] = []
+        if isReservable {
+            reasons.append("El recurso es reservable")
+        } else {
+            reasons.append("El tipo \"\(resource.resourceType)\" no tiene la capability reservable")
+        }
+        if isReservable && !hasRight {
+            reasons.append("Falta un derecho USE, MANAGE u OWN (o autoridad para administrar reservaciones)")
+        } else if hasRight {
+            reasons.append("Tiene un derecho que habilita reservar")
+        }
+        return WhyCanReserve(
+            actorId: actorId,
+            resourceId: resourceId,
+            canReserve: isReservable && hasRight,
+            requiredCapability: "reservable",
+            reasons: reasons
+        )
+    }
+
+    public func whyDecisionResult(decisionId: UUID) async throws -> WhyDecisionResult {
+        try throwIfNeeded()
+        guard let decision = decisions[decisionId] else {
+            throw RuulError.unexpected(message: "Decisión no encontrada")
+        }
+        let votesList = votes[decisionId] ?? []
+        let approve = Double(votesList.filter { $0.vote == "approve" }.count)
+        let reject = Double(votesList.filter { $0.vote == "reject" }.count)
+        let abstain = Double(votesList.filter { $0.vote == "abstain" }.count)
+        let members = Double(memberships[decision.contextActorId]?.count ?? 0)
+
+        var optionTally: [String: Double] = [:]
+        let options = decisionOptions[decisionId] ?? []
+        for option in options {
+            let count = votesList.filter { $0.optionId == option.id }.count
+            if count > 0 { optionTally[option.title] = Double(count) }
+        }
+
+        var reasons: [String] = []
+        reasons.append("Modelo de votación: \(decision.votingModel)")
+        reasons.append("Conteo: \(Int(approve)) a favor, \(Int(reject)) en contra, \(Int(abstain)) abstención sobre \(Int(members)) miembros")
+        if let winning = decision.result?["winning_option"]?.stringValue {
+            reasons.append("Opción ganadora: \(winning)")
+        }
+        reasons.append("Estado actual: \(decision.status)")
+
+        return WhyDecisionResult(
+            decisionId: decisionId,
+            status: decision.status,
+            votingModel: decision.votingModel,
+            tally: WhyDecisionTally(approve: approve, reject: reject, abstain: abstain),
+            optionTally: optionTally,
+            activeMembers: members,
+            result: decision.result,
+            reasons: reasons
+        )
+    }
+
+    public func whyReservationWon(conflictId: UUID) async throws -> WhyReservationWon {
+        try throwIfNeeded()
+        guard let conflict = conflicts[conflictId] else {
+            throw RuulError.unexpected(message: "Conflicto no encontrado")
+        }
+        var reasons: [String] = []
+        if conflict.resolutionStatus != "resolved" {
+            reasons.append("El conflicto aún no se resuelve")
+            return WhyReservationWon(
+                conflictId: conflictId,
+                resolutionStatus: conflict.resolutionStatus,
+                recommendedWinnerActorId: conflict.recommendedWinnerActorId,
+                reasons: reasons
+            )
+        }
+        let a = reservations[conflict.reservationAId]
+        let b = reservations[conflict.reservationBId]
+        let winner: Reservation? = (a?.status == "approved" || a?.status == "confirmed") ? a : b
+        if conflict.recommendedWinnerActorId != nil {
+            reasons.append("El motor de conflictos había recomendado a este actor")
+        }
+        reasons.append("Lo resolvió un administrador con autoridad sobre las reservaciones")
+        return WhyReservationWon(
+            conflictId: conflictId,
+            resolutionStatus: conflict.resolutionStatus,
+            winnerReservationId: winner?.id,
+            winnerActorId: winner?.reservedForActorId ?? winner?.requestedByActorId,
+            recommendedWinnerActorId: conflict.recommendedWinnerActorId,
+            reasons: reasons
+        )
+    }
+
+    public func whyObligationExists(obligationId: UUID) async throws -> WhyObligationExists {
+        try throwIfNeeded()
+        guard let obligation = obligations[obligationId] else {
+            throw RuulError.unexpected(message: "Obligación no encontrada")
+        }
+        let source: String
+        if obligation.sourceRuleId != nil { source = "rule" }
+        else if obligation.sourceEventId != nil { source = "event" }
+        else { source = "manual" }
+        let ruleTitle: String? = obligation.sourceRuleId.flatMap { ruleId in
+            rules.values.flatMap { $0 }.first { $0.id == ruleId }?.title
+        }
+        return WhyObligationExists(
+            obligationId: obligationId,
+            kind: "money", // R.2R kind aún no en el domain — defaultea a money.
+            source: source,
+            reason: ruleTitle ?? obligation.typeLabel,
+            sourceRuleId: obligation.sourceRuleId,
+            sourceDecisionId: nil,
+            sourceEventId: obligation.sourceEventId,
+            sourceReservationId: nil,
+            ruleTitle: ruleTitle,
+            metadata: nil
+        )
+    }
+
     // MARK: - Activity
 
     public func listActivity(contextId: UUID, limit: Int, before: Date?) async throws -> [ActivityEvent] {

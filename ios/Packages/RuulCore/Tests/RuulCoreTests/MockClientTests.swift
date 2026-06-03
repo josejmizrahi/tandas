@@ -431,6 +431,43 @@ struct MockClientTests {
         }
     }
 
+    // MARK: - Explanation engine (R.2S.10)
+
+    @Test("why_can_view_resource — Casa Valle visible para José por OWN/USE")
+    func whyCanViewResourceMock() async throws {
+        let mock = await makeDemoClient()
+        let casa = MockRuulRPCClient.DemoIds.casaValle
+        let jose = MockRuulRPCClient.DemoIds.jose
+        let why = try await mock.whyCanViewResource(actorId: jose, resourceId: casa)
+        #expect(why.canView)
+        #expect(!why.reasons.isEmpty)
+    }
+
+    @Test("why_can_reserve — Casa Valle (house) reservable para José que tiene USE")
+    func whyCanReserveMock() async throws {
+        let mock = await makeDemoClient()
+        let casa = MockRuulRPCClient.DemoIds.casaValle
+        let jose = MockRuulRPCClient.DemoIds.jose
+        let why = try await mock.whyCanReserve(actorId: jose, resourceId: casa)
+        #expect(why.canReserve)
+        #expect(why.requiredCapability == "reservable")
+        #expect(why.reasons.contains { $0.contains("reservable") })
+    }
+
+    @Test("why_decision_result — tally refleja votos emitidos")
+    func whyDecisionResultMock() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let created = try await mock.createDecision(CreateDecisionInput(
+            contextId: cena, decisionType: .ruleChange, title: "Subir multa de tarde"
+        ))
+        _ = try await mock.voteDecision(decisionId: created.id, vote: .approve, option: nil)
+        let why = try await mock.whyDecisionResult(decisionId: created.id)
+        #expect(why.tally.approve == 1)
+        #expect(why.activeMembers > 0)
+        #expect(why.reasons.contains { $0.contains("Modelo de votación") })
+    }
+
     @Test("nextError se lanza una sola vez")
     func nextError() async throws {
         let mock = await makeDemoClient()
