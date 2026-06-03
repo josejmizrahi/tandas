@@ -78,7 +78,12 @@ public struct ContextShell: View {
                         ContextSwitcherMenu(
                             contextStore: contextStore,
                             onCreate: { isShowingCreateContext = true },
-                            onJoin: { isShowingJoinByCode = true },
+                            onJoin: { isShowingJoinByCode = true }
+                        )
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        ProfileAvatarMenu(
+                            currentActorStore: container.currentActorStore,
                             onEditProfile: { isShowingEditProfile = true },
                             onSignOut: { Task { await container.signOut() } }
                         )

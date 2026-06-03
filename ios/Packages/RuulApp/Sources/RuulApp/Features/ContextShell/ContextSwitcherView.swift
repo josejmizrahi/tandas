@@ -3,25 +3,20 @@ import RuulCore
 
 /// F.3 — switcher de contexto. Menu en el toolbar: lista los contextos del
 /// usuario (persona + colectivos), marca el activo y persiste el cambio.
+/// El perfil del usuario vive aparte en `ProfileAvatarMenu` (top-right).
 public struct ContextSwitcherMenu: View {
     let contextStore: ContextStore
     let onCreate: () -> Void
     let onJoin: () -> Void
-    let onEditProfile: () -> Void
-    let onSignOut: () -> Void
 
     public init(
         contextStore: ContextStore,
         onCreate: @escaping () -> Void,
-        onJoin: @escaping () -> Void,
-        onEditProfile: @escaping () -> Void,
-        onSignOut: @escaping () -> Void
+        onJoin: @escaping () -> Void
     ) {
         self.contextStore = contextStore
         self.onCreate = onCreate
         self.onJoin = onJoin
-        self.onEditProfile = onEditProfile
-        self.onSignOut = onSignOut
     }
 
     public var body: some View {
@@ -48,15 +43,6 @@ public struct ContextSwitcherMenu: View {
                     Label("Unirme con código", systemImage: "ticket")
                 }
             }
-
-            Section {
-                Button(action: onEditProfile) {
-                    Label("Tu perfil", systemImage: "person.crop.circle")
-                }
-                Button(role: .destructive, action: onSignOut) {
-                    Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
-                }
-            }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: contextStore.currentContext?.symbolName ?? "person.crop.circle")
@@ -66,6 +52,45 @@ public struct ContextSwitcherMenu: View {
                     .font(.caption2)
             }
             .font(.subheadline.weight(.semibold))
+        }
+    }
+}
+
+/// R.2Q-6 — avatar del usuario en el top-right. Menu con perfil y logout.
+public struct ProfileAvatarMenu: View {
+    let currentActorStore: CurrentActorStore
+    let onEditProfile: () -> Void
+    let onSignOut: () -> Void
+
+    public init(
+        currentActorStore: CurrentActorStore,
+        onEditProfile: @escaping () -> Void,
+        onSignOut: @escaping () -> Void
+    ) {
+        self.currentActorStore = currentActorStore
+        self.onEditProfile = onEditProfile
+        self.onSignOut = onSignOut
+    }
+
+    public var body: some View {
+        Menu {
+            if let name = currentActorStore.actor?.displayName, !name.isEmpty {
+                Text(name)
+            }
+            Section {
+                Button(action: onEditProfile) {
+                    Label("Tu perfil", systemImage: "person.crop.circle")
+                }
+                Button(role: .destructive, action: onSignOut) {
+                    Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            }
+        } label: {
+            ActorInitialsView(
+                name: currentActorStore.actor?.displayName ?? "?",
+                size: 32
+            )
+            .accessibilityLabel("Mi perfil")
         }
     }
 }
@@ -84,7 +109,22 @@ public struct ContextSwitcherMenu: View {
                             ]
                         ),
                         onCreate: {},
-                        onJoin: {},
+                        onJoin: {}
+                    )
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    ProfileAvatarMenu(
+                        currentActorStore: CurrentActorStore(
+                            rpc: MockRuulRPCClient.demo(),
+                            previewActor: CurrentActor(
+                                actor: ActorRecord(
+                                    id: UUID(),
+                                    actorKind: .person,
+                                    actorSubtype: "person",
+                                    displayName: "José"
+                                )
+                            )
+                        ),
                         onEditProfile: {},
                         onSignOut: {}
                     )
