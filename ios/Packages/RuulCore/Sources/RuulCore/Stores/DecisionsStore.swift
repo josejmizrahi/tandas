@@ -166,16 +166,18 @@ public final class DecisionDetailStore {
             async let votesTask = rpc.listDecisionVotes(decisionId: decisionId)
             async let optionsTask = rpc.listDecisionOptions(decisionId: decisionId)
             async let summaryTask = rpc.contextSummary(contextId: context.id)
-            async let detailTask = rpc.decisionDetail(decisionId: decisionId)
-            let (decisions, loadedVotes, loadedOptions, summary, loadedDetail) = try await (
-                decisionsTask, votesTask, optionsTask, summaryTask, detailTask
+            let (decisions, loadedVotes, loadedOptions, summary) = try await (
+                decisionsTask, votesTask, optionsTask, summaryTask
             )
             decision = decisions.first { $0.id == decisionId }
             votes = loadedVotes
             options = loadedOptions.filter(\.isActive).sorted { $0.sortOrder < $1.sortOrder }
             members = summary.members
             myPermissions = summary.myPermissions
-            detail = loadedDetail
+            // R.2S — best-effort: si decision_detail falla (p. ej. drift de
+            // autorización entre RLS y is_context_member en el backend), la
+            // vista sigue funcionando con el gateado por permisos del summary.
+            detail = try? await rpc.decisionDetail(decisionId: decisionId)
             phase = .loaded
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
@@ -188,9 +190,18 @@ public final class DecisionDetailStore {
         detail?.action(key)
     }
 
-    /// R.2S — ¿la acción está habilitada para este actor?
+    /// R.2S — ¿la acción está habilitada para este actor? Si no hay detail
+    /// (best-effort falló), cae al gateado por `myPermissions` del summary.
     public func canDo(_ key: String) -> Bool {
-        detail?.can(key) ?? false
+        if let detail { return detail.can(key) }
+        switch key {
+        case "vote", "change_vote":
+            return myPermissions.contains("decisions.vote") || myPermissions.contains("decisions.create")
+        case "close_decision", "execute_decision", "cancel_decision":
+            return myPermissions.contains("decisions.execute") || myPermissions.contains("context.manage")
+        default:
+            return false
+        }
     }
 
     public func displayName(for actorId: UUID?) -> String {

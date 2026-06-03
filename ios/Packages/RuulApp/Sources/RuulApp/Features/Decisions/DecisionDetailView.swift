@@ -369,30 +369,33 @@ public struct DecisionDetailView: View {
 
     @ViewBuilder
     private func adminSection(_ decision: Decision) -> some View {
-        // R.2S: cada botón aparece SOLO si el backend lo trae habilitado.
-        if let action = store.availableAction("close_decision") {
+        // R.2S: prefiere available_actions del backend; sino, cae al gateado
+        // por permisos del summary (compat con flujos legacy).
+        if decision.isOpen, store.canDo("close_decision") {
+            let action = store.availableAction("close_decision")
             Section {
                 Button {
                     isConfirmingClose = true
                 } label: {
-                    Label(action.label, systemImage: "stop.circle")
+                    Label(action?.label ?? "Cerrar votación", systemImage: "stop.circle")
                 }
                 .disabled(runner.isRunning)
             } footer: {
-                Text(action.reason ?? "Cierra la votación con los votos actuales.")
+                Text(action?.reason ?? "Cierra la votación con los votos actuales: gana la mayoría.")
             }
         }
 
-        if let action = store.availableAction("execute_decision") {
+        if decision.isApproved, store.canDo("execute_decision") {
+            let action = store.availableAction("execute_decision")
             Section {
                 Button {
                     isConfirmingExecute = true
                 } label: {
-                    Label(action.label, systemImage: "play.circle.fill")
+                    Label(action?.label ?? "Ejecutar decisión", systemImage: "play.circle.fill")
                 }
                 .disabled(runner.isRunning)
             } footer: {
-                Text(action.reason ?? "Marca la decisión como ejecutada.")
+                Text(action?.reason ?? "Marca la decisión como ejecutada.")
             }
         }
 
