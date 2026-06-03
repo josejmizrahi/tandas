@@ -136,8 +136,15 @@ Listas/votos: lectura PostgREST de `decisions` + `decision_votes`.
 | `record_expense(p_context_actor_id, p_amount, p_currency, p_description, p_split_with?, p_event_id?, p_metadata?, p_client_id?, p_paid_by_actor_id?, p_split_method='equal', p_splits?, p_excluded_actor_ids?)` | requiere `money.record` (+ `money.record_for_others` si paga otro). Custom: `p_splits=[{actor_id, amount}]` debe sumar el total | `{transaction_id, share_per_person, split_method, obligations: [{obligation_id, debtor, amount}], idempotent_replay?}` |
 | `record_fine(p_context_actor_id, p_debtor_actor_id, p_amount, p_currency, p_reason?)` | self: `money.record`; otros: + `members.manage` | `{obligation_id}` |
 | `record_game_result(p_context_actor_id, p_event_id, p_game_name, p_winner_actor_id, p_loser_actor_id, p_amount, p_currency='MXN', p_client_id?)` | requiere `money.record` | `{transaction_id, obligation_id, idempotent_replay?}` |
-| `generate_settlement_batch(p_context_actor_id, p_currency)` | requiere `money.settle`; neteo greedy min-cashflow de obligations abiertas | `{batch_id, items: [{from, to, amount}], obligations_netted}` · si todo netea a cero: `{batch_id: null, items: [], message, obligations_settled}` |
+| `generate_settlement_batch(p_context_actor_id, p_currency)` | requiere `money.settle`; neteo greedy min-cashflow de obligations abiertas | `{batch_id, items: [{item_id, from, to, amount}], obligations_netted, idempotent_replay?}` |
 | `mark_settlement_paid(p_settlement_item_id)` | from_actor o `money.settle` | `{item_id, transaction_id, batch_finalized, obligations_closed, already_paid?}` |
+
+**Semántica R.2N (neteo vivo por novación):** al generar/recalcular un batch draft, las
+obligations abiertas se *novan*: quedan `settled` (metadata `netted_into_batch`) y se
+reemplazan por obligations `iou` netas 1:1 con los `settlement_items`. Cada pago cierra su
+iou al instante (balance en tiempo real). Un trigger en `obligations` recalcula el batch
+draft automáticamente cuando entran deudas nuevas; los items reemplazados quedan
+`cancelled` (el frontend los filtra).
 
 Listas: lectura PostgREST de `obligations`, `settlement_batches`, `settlement_items`.
 `obligation_type` ∈ iou, fine, sanction, expense_share, loan, contribution, dues, trip_share, game_debt, reservation_fee, other

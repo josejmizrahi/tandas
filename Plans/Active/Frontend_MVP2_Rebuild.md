@@ -92,6 +92,9 @@ pantallas legacy.
 - ~~Reservar desde el contexto personal creaba la reservación en el contexto
   equivocado~~ → **hecho**: las solicitudes usan el contexto con right GOVERN
   sobre el recurso, no el contexto desde el que se navega.
+- ~~El settlement era un corte manual y los pagos parciales no bajaban el balance~~ →
+  **hecho (R.2N, backend + iOS)**: neteo vivo por novación — se recalcula solo al
+  registrar deudas nuevas y cada pago cierra su saldo al instante.
 - `execute_decision` no aplica efectos automáticos sobre reservaciones (el backend
   tampoco — `effects` es informativo); el admin resuelve el conflicto desde el recurso.
 - Sin push notifications (el backend MVP2 no las tiene; pull vía Activity).

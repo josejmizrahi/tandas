@@ -398,6 +398,7 @@ public struct ContextHomeView: View {
         case "fine": return "Multa"
         case "expense_share": return "Parte de gasto"
         case "game_debt": return "Deuda de juego"
+        case "iou": return "Saldo neto"
         default: return type
         }
     }

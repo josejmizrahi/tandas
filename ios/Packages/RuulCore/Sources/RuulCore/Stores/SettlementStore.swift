@@ -68,7 +68,8 @@ public final class SettlementStore {
     }
 
     public func items(for batchId: UUID) -> [SettlementItem] {
-        itemsByBatch[batchId] ?? []
+        // R.2N: los items cancelados son historia de recálculos del neteo vivo.
+        (itemsByBatch[batchId] ?? []).filter { !$0.isCancelled }
     }
 
     public func canSettle(in context: AppContext) -> Bool {

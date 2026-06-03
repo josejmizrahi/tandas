@@ -16,7 +16,7 @@ Event        = qué ocurre en el tiempo (calendar_events + participants)
 Rule         = qué pasa automáticamente (condition_tree → consequences)
 Decision     = cómo se aprueba algo (votos, mayoría simple)
 Obligation   = qué debe quién (multas, partes de gasto, deudas de juego)
-Money        = transacciones + splits + settlement (neteo min-cashflow)
+Money        = transacciones + splits + settlement (neteo vivo min-cashflow por novación)
 Activity     = qué pasó (append-only, por contexto)
 ```
 
@@ -60,7 +60,7 @@ ios/
 
 web/public/                          # Estático en Cloudflare Pages (ruul.mx): landing + AASA
                                      #   (universal links) + página de invitación. No toca el backend.
-supabase/migrations/                 # Cadena MVP2 (mvp2_000 … r2k) — fuente única del backend
+supabase/migrations/                 # Cadena MVP2 (mvp2_000 … r2n) — fuente única del backend
 Plans/Active/MVP2_iOS_Contract.md    # Contrato completo backend ↔ iOS (RPCs + shapes)
 Plans/Active/Frontend_MVP2_Rebuild.md# Estado del rebuild F.0–F.14
 ```

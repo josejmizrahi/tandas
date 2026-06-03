@@ -66,7 +66,8 @@ public struct Obligation: Codable, Sendable, Equatable, Identifiable {
         case "fine": return "Multa"
         case "expense_share": return "Parte de gasto"
         case "game_debt": return "Deuda de juego"
-        case "iou": return "Préstamo"
+        // R.2N: los ious son saldos neteados por el settlement vivo.
+        case "iou": return "Saldo neto"
         case "contribution": return "Aportación"
         case "dues": return "Cuota"
         case "trip_share": return "Parte de viaje"
@@ -250,6 +251,8 @@ public struct SettlementItem: Codable, Sendable, Equatable, Identifiable {
     }
 
     public var isPaid: Bool { status == "paid" }
+    /// R.2N: items reemplazados por un recálculo del neteo vivo — no se muestran.
+    public var isCancelled: Bool { status == "cancelled" }
 }
 
 /// Una transferencia sugerida (`generate_settlement_batch().items[]`).
