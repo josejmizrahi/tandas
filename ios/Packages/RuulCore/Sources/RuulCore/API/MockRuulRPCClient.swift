@@ -15,6 +15,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
     public var me: CurrentActor
     var actors: [UUID: ActorRecord] = [:]
     var profileMetadata: JSONValue = .object([:])     // F.1A-1 persiste prefs personales
+    /// F.1A polish — overrides de metadata por contexto (description, image_url, *_config).
+    var contextMetadata: [UUID: JSONValue] = [:]
     var memberships: [UUID: [ContextMember]] = [:]          // contextId → members
     var permissions: [UUID: [String]] = [:]                  // contextId → my permissions
     var invites: [String: (id: UUID, contextId: UUID)] = [:] // code → invite
@@ -202,37 +204,105 @@ public actor MockRuulRPCClient: RuulRPCClient {
         }
 
         let memberCount = memberships[contextId]?.count ?? 0
+        let meta = contextMetadata[contextId]?.objectValue ?? [:]
+        let decisionsMeta = meta["decisions_config"]?.objectValue ?? [:]
+        let moneyMeta = meta["money_config"]?.objectValue ?? [:]
+        let reservationsMeta = meta["reservations_config"]?.objectValue ?? [:]
+        let invitationsMeta = meta["invitations_config"]?.objectValue ?? [:]
+
         return ContextSettings(
             contextActorId: contextId,
             general: ContextGeneralSummary(
                 displayName: ctxActor.displayName,
-                description: nil,
+                description: meta["description"]?.stringValue,
                 subtype: ctxActor.actorSubtype,
-                visibility: "private",
+                visibility: ctxActor.visibility,
                 memberCount: memberCount,
-                imageUrl: nil
+                imageUrl: meta["image_url"]?.stringValue
             ),
             decisionsConfig: ContextDecisionsConfig(
-                defaultVotingModel: "yes_no_abstain",
-                quorum: "simple_majority",
-                majorityRule: "simple"
+                defaultVotingModel: decisionsMeta["default_voting_model"]?.stringValue ?? "yes_no_abstain",
+                quorum: decisionsMeta["quorum"]?.stringValue ?? "simple_majority",
+                majorityRule: decisionsMeta["majority_rule"]?.stringValue ?? "simple"
             ),
             moneyConfig: ContextMoneyConfig(
-                currency: "MXN",
-                defaultSplit: "equal",
-                settlementPolicy: "monthly"
+                currency: moneyMeta["currency"]?.stringValue ?? "MXN",
+                defaultSplit: moneyMeta["default_split"]?.stringValue ?? "equal",
+                settlementPolicy: moneyMeta["settlement_policy"]?.stringValue ?? "monthly"
             ),
             reservationsConfig: ContextReservationsConfig(
-                priorityPolicy: "least_recent_use_wins",
-                conflictResolution: "community_vote",
-                cancellationPolicy: "open"
+                priorityPolicy: reservationsMeta["priority_policy"]?.stringValue ?? "least_recent_use_wins",
+                conflictResolution: reservationsMeta["conflict_resolution"]?.stringValue ?? "community_vote",
+                cancellationPolicy: reservationsMeta["cancellation_policy"]?.stringValue ?? "open"
             ),
             invitationsConfig: ContextInvitationsConfig(
-                whoCanInvite: "admins",
-                openInvites: false
+                whoCanInvite: invitationsMeta["who_can_invite"]?.stringValue ?? "admins",
+                openInvites: invitationsMeta["open_invites"]?.boolValue ?? false
             ),
             availableActions: actions
         )
+    }
+
+    public func updateContext(_ input: UpdateContextInput) async throws -> ContextSettings {
+        try throwIfNeeded()
+        guard let ctxActor = actors[input.contextId] else {
+            throw RuulError.unexpected(message: "Contexto no encontrado")
+        }
+        guard ctxActor.actorKind != .person else {
+            throw RuulError.backend(.validation(message: "cannot update personal context via update_context"))
+        }
+        let myPerms = permissions[input.contextId] ?? []
+        guard myPerms.contains("context.manage") else {
+            throw RuulError.unexpected(message: "context.manage required to edit this context")
+        }
+        if let visibility = input.visibility,
+           !["private", "members", "public"].contains(visibility) {
+            throw RuulError.unexpected(message: "invalid visibility \"\(visibility)\"")
+        }
+        if let displayName = input.displayName,
+           displayName.trimmingCharacters(in: .whitespaces).isEmpty {
+            throw RuulError.unexpected(message: "display_name cannot be empty")
+        }
+
+        // Merge metadata por slot — mismo deep-merge que el backend.
+        var meta = contextMetadata[input.contextId]?.objectValue ?? [:]
+        if let description = input.description {
+            meta["description"] = .string(description)
+        }
+        if let imageUrl = input.imageUrl {
+            meta["image_url"] = .string(imageUrl)
+        }
+        func mergeSlot(_ key: String, with newValue: JSONValue?) {
+            guard let newValue, case .object(let newDict) = newValue else { return }
+            var current = meta[key]?.objectValue ?? [:]
+            for (k, v) in newDict { current[k] = v }
+            meta[key] = .object(current)
+        }
+        mergeSlot("decisions_config", with: input.decisionsConfig)
+        mergeSlot("money_config", with: input.moneyConfig)
+        mergeSlot("reservations_config", with: input.reservationsConfig)
+        mergeSlot("invitations_config", with: input.invitationsConfig)
+        contextMetadata[input.contextId] = .object(meta)
+
+        // Actualizar actor (display_name, visibility) si vinieron.
+        if input.displayName != nil || input.visibility != nil {
+            let updated = ActorRecord(
+                id: ctxActor.id,
+                actorKind: ctxActor.actorKind,
+                actorSubtype: ctxActor.actorSubtype,
+                displayName: input.displayName?.trimmingCharacters(in: .whitespaces) ?? ctxActor.displayName,
+                slug: ctxActor.slug,
+                status: ctxActor.status,
+                visibility: input.visibility ?? ctxActor.visibility,
+                createdAt: ctxActor.createdAt
+            )
+            actors[input.contextId] = updated
+        }
+
+        emit(input.contextId, "context.updated", payload: .object([
+            "context_actor_id": .string(input.contextId.uuidString)
+        ]))
+        return try await contextSettingsSummary(contextId: input.contextId)
     }
 
     public func personalSettingsSummary() async throws -> PersonalSettings {

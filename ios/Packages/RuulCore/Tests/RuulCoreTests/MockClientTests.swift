@@ -670,6 +670,52 @@ struct MockClientTests {
         }
     }
 
+    // MARK: - F.1A polish update_context (backend RPC + iOS wire)
+
+    @Test("update_context cambia display_name + description y persiste en summary")
+    func updateContextGeneralMock() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let result = try await mock.updateContext(UpdateContextInput(
+            contextId: cena,
+            displayName: "Cena Semanal (rebautizada)",
+            description: "Cena de los viernes",
+            visibility: "members"
+        ))
+        #expect(result.general.displayName == "Cena Semanal (rebautizada)")
+        #expect(result.general.description == "Cena de los viernes")
+        #expect(result.general.visibility == "members")
+    }
+
+    @Test("update_context merge profundo en money_config preserva keys existentes")
+    func updateContextDeepMergeMock() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        // Cambia solo currency. settlement_policy debe quedar en su default (monthly).
+        let first = try await mock.updateContext(UpdateContextInput(
+            contextId: cena, moneyConfig: .object(["currency": .string("USD")])
+        ))
+        #expect(first.moneyConfig.currency == "USD")
+        #expect(first.moneyConfig.settlementPolicy == "monthly")
+        // Ahora cambia solo settlement_policy. currency debe seguir USD.
+        let second = try await mock.updateContext(UpdateContextInput(
+            contextId: cena, moneyConfig: .object(["settlement_policy": .string("weekly")])
+        ))
+        #expect(second.moneyConfig.currency == "USD")
+        #expect(second.moneyConfig.settlementPolicy == "weekly")
+    }
+
+    @Test("update_context rechaza visibility inválida")
+    func updateContextRejectsInvalidVisibility() async throws {
+        let mock = await makeDemoClient()
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.updateContext(UpdateContextInput(
+                contextId: MockRuulRPCClient.DemoIds.cenaSemanal,
+                visibility: "invalid_value"
+            ))
+        }
+    }
+
     @Test("nextError se lanza una sola vez")
     func nextError() async throws {
         let mock = await makeDemoClient()

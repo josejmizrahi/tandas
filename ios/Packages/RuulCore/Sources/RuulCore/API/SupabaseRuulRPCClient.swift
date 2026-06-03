@@ -80,6 +80,42 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("context_settings_summary", params: Params(pContextActorId: contextId))
     }
 
+    public func updateContext(_ input: UpdateContextInput) async throws -> ContextSettings {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pDisplayName: String?
+            let pDescription: String?
+            let pVisibility: String?
+            let pImageUrl: String?
+            let pDecisionsConfig: JSONValue?
+            let pMoneyConfig: JSONValue?
+            let pReservationsConfig: JSONValue?
+            let pInvitationsConfig: JSONValue?
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pDisplayName = "p_display_name"
+                case pDescription = "p_description"
+                case pVisibility = "p_visibility"
+                case pImageUrl = "p_image_url"
+                case pDecisionsConfig = "p_decisions_config"
+                case pMoneyConfig = "p_money_config"
+                case pReservationsConfig = "p_reservations_config"
+                case pInvitationsConfig = "p_invitations_config"
+            }
+        }
+        return try await call("update_context", params: Params(
+            pContextActorId: input.contextId,
+            pDisplayName: input.displayName,
+            pDescription: input.description,
+            pVisibility: input.visibility,
+            pImageUrl: input.imageUrl,
+            pDecisionsConfig: input.decisionsConfig,
+            pMoneyConfig: input.moneyConfig,
+            pReservationsConfig: input.reservationsConfig,
+            pInvitationsConfig: input.invitationsConfig
+        ))
+    }
+
     public func resourceSettingsSummary(resourceId: UUID) async throws -> ResourceSettings {
         struct Params: Encodable, Sendable {
             let pResourceId: UUID

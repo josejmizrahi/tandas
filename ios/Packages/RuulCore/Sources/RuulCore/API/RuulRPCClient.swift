@@ -18,6 +18,9 @@ public protocol RuulRPCClient: Sendable {
     func personalSettingsSummary() async throws -> PersonalSettings
     /// `context_settings_summary(p_context_actor_id)` — F.1A-2.
     func contextSettingsSummary(contextId: UUID) async throws -> ContextSettings
+    /// `update_context(p_context_actor_id, display_name?, description?, visibility?, image_url?, decisions_config?, money_config?, reservations_config?, invitations_config?)` — F.1A polish.
+    /// Devuelve el `ContextSettings` actualizado para refresh inmediato.
+    func updateContext(_ input: UpdateContextInput) async throws -> ContextSettings
     /// `resource_settings_summary(p_resource_id)` — F.1A-3.
     func resourceSettingsSummary(resourceId: UUID) async throws -> ResourceSettings
 
@@ -242,6 +245,44 @@ public struct CreateResourceInput: Sendable, Equatable {
         self.estimatedValue = estimatedValue
         self.currency = currency
         self.clientId = clientId
+    }
+}
+
+/// Input de `update_context` (F.1A polish). Todos los campos son opcionales —
+/// solo se aplica lo que llegue distinto de nil. Los configs son jsonb que se
+/// fusionan con la versión existente en backend (deep merge por slot).
+public struct UpdateContextInput: Sendable, Equatable {
+    public var contextId: UUID
+    public var displayName: String?
+    public var description: String?
+    /// `private` | `members` | `public`.
+    public var visibility: String?
+    public var imageUrl: String?
+    public var decisionsConfig: JSONValue?
+    public var moneyConfig: JSONValue?
+    public var reservationsConfig: JSONValue?
+    public var invitationsConfig: JSONValue?
+
+    public init(
+        contextId: UUID,
+        displayName: String? = nil,
+        description: String? = nil,
+        visibility: String? = nil,
+        imageUrl: String? = nil,
+        decisionsConfig: JSONValue? = nil,
+        moneyConfig: JSONValue? = nil,
+        reservationsConfig: JSONValue? = nil,
+        invitationsConfig: JSONValue? = nil
+    ) {
+        self.contextId = contextId
+        self.displayName = displayName
+        self.description = description
+        self.visibility = visibility
+        self.imageUrl = imageUrl
+        self.decisionsConfig = decisionsConfig
+        self.moneyConfig = moneyConfig
+        self.reservationsConfig = reservationsConfig
+        self.invitationsConfig = invitationsConfig
     }
 }
 

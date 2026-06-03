@@ -11,6 +11,8 @@ public struct ContextSettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var store: ContextSettingsStore
+    @State private var isShowingEditGeneral = false
+    @State private var runner = ActionRunner()
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -46,6 +48,18 @@ public struct ContextSettingsView: View {
         }
         .task { await store.load(contextId: context.id) }
         .refreshable { await store.load(contextId: context.id) }
+        .sheet(isPresented: $isShowingEditGeneral, onDismiss: {
+            Task { await store.load(contextId: context.id) }
+        }) {
+            if let settings = store.settings {
+                EditContextGeneralSheet(
+                    contextId: context.id,
+                    initial: settings.general,
+                    store: store
+                )
+            }
+        }
+        .actionErrorAlert(runner)
     }
 
     @ViewBuilder
@@ -90,12 +104,14 @@ public struct ContextSettingsView: View {
                 InfoRow(symbolName: "eye", title: "Visibilidad", value: visibilityLabel(visibility))
             }
 
-            if !store.can("edit_general") {
-                Text("Solo administradores pueden editar.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            if store.can("edit_general") {
+                Button {
+                    isShowingEditGeneral = true
+                } label: {
+                    Label("Editar general", systemImage: "pencil")
+                }
             } else {
-                Text("Edición inline llega en una próxima versión.")
+                Text("Solo administradores pueden editar.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -105,8 +121,8 @@ public struct ContextSettingsView: View {
     private func visibilityLabel(_ raw: String) -> String {
         switch raw {
         case "private": return "Privado"
+        case "members": return "Solo miembros"
         case "public":  return "Público"
-        case "members_in_common": return "Miembros en común"
         default:        return raw.capitalized
         }
     }
@@ -160,15 +176,76 @@ public struct ContextSettingsView: View {
 
     @ViewBuilder
     private func decisionsSection(_ config: ContextDecisionsConfig) -> some View {
+        let canEdit = store.can("edit_decisions")
         Section("Decisiones") {
-            InfoRow(symbolName: "checkmark.square", title: "Modo de votación", value: votingModelLabel(config.defaultVotingModel))
-            InfoRow(symbolName: "person.3", title: "Quórum", value: quorumLabel(config.quorum))
-            InfoRow(symbolName: "percent", title: "Regla de mayoría", value: majorityLabel(config.majorityRule))
-            if store.can("edit_decisions") {
-                Text("Configuración inline llega después.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            configPicker(
+                title: "Modo de votación",
+                systemImage: "checkmark.square",
+                current: config.defaultVotingModel,
+                options: [
+                    ("yes_no_abstain", "Sí / No / Abstención"),
+                    ("single_choice", "Elegir una opción"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setDecisionsConfig(contextId: context.id, ["default_voting_model": .string(newValue)])
             }
+            configPicker(
+                title: "Quórum",
+                systemImage: "person.3",
+                current: config.quorum,
+                options: [
+                    ("simple_majority", "Mayoría simple"),
+                    ("two_thirds_majority", "Dos tercios"),
+                    ("unanimous", "Unánime"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setDecisionsConfig(contextId: context.id, ["quorum": .string(newValue)])
+            }
+            configPicker(
+                title: "Regla de mayoría",
+                systemImage: "percent",
+                current: config.majorityRule,
+                options: [
+                    ("simple", "Simple (>50%)"),
+                    ("super", "Superior (>66%)"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setDecisionsConfig(contextId: context.id, ["majority_rule": .string(newValue)])
+            }
+        }
+    }
+
+    /// Helper genérico: HStack(label + Picker) que dispara setter del store.
+    @ViewBuilder
+    private func configPicker(
+        title: String,
+        systemImage: String,
+        current: String,
+        options: [(value: String, label: String)],
+        enabled: Bool,
+        onChange: @escaping (String) async throws -> Void
+    ) -> some View {
+        HStack {
+            Label(title, systemImage: systemImage)
+            Spacer()
+            Picker("", selection: Binding<String>(
+                get: { current },
+                set: { newValue in
+                    guard newValue != current, enabled else { return }
+                    Task {
+                        await runner.run { try await onChange(newValue) }
+                    }
+                }
+            )) {
+                ForEach(options, id: \.value) { option in
+                    Text(option.label).tag(option.value)
+                }
+            }
+            .labelsHidden()
+            .disabled(!enabled || runner.isRunning)
         }
     }
 
@@ -197,10 +274,46 @@ public struct ContextSettingsView: View {
 
     @ViewBuilder
     private func moneySection(_ config: ContextMoneyConfig) -> some View {
+        let canEdit = store.can("edit_money")
         Section("Dinero") {
-            InfoRow(symbolName: "creditcard", title: "Moneda", value: config.currency)
-            InfoRow(symbolName: "divide", title: "Split por defecto", value: splitLabel(config.defaultSplit))
-            InfoRow(symbolName: "calendar.badge.clock", title: "Política de settlement", value: settlementLabel(config.settlementPolicy))
+            configPicker(
+                title: "Moneda",
+                systemImage: "creditcard",
+                current: config.currency,
+                options: [
+                    ("MXN", "MXN"), ("USD", "USD"), ("EUR", "EUR"),
+                    ("ARS", "ARS"), ("CLP", "CLP"), ("COP", "COP"), ("BRL", "BRL"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setMoneyConfig(contextId: context.id, ["currency": .string(newValue)])
+            }
+            configPicker(
+                title: "Split por defecto",
+                systemImage: "divide",
+                current: config.defaultSplit,
+                options: [
+                    ("equal", "Parejo"),
+                    ("custom", "Personalizado"),
+                    ("weighted", "Ponderado"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setMoneyConfig(contextId: context.id, ["default_split": .string(newValue)])
+            }
+            configPicker(
+                title: "Política de settlement",
+                systemImage: "calendar.badge.clock",
+                current: config.settlementPolicy,
+                options: [
+                    ("monthly", "Mensual"),
+                    ("weekly", "Semanal"),
+                    ("on_demand", "A demanda"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setMoneyConfig(contextId: context.id, ["settlement_policy": .string(newValue)])
+            }
         }
     }
 
@@ -226,10 +339,47 @@ public struct ContextSettingsView: View {
 
     @ViewBuilder
     private func reservationsSection(_ config: ContextReservationsConfig) -> some View {
+        let canEdit = store.can("edit_reservations")
         Section("Reservaciones") {
-            InfoRow(symbolName: "list.number", title: "Prioridad", value: priorityLabel(config.priorityPolicy))
-            InfoRow(symbolName: "exclamationmark.triangle", title: "Resolución de conflictos", value: conflictLabel(config.conflictResolution))
-            InfoRow(symbolName: "xmark.circle", title: "Cancelación", value: config.cancellationPolicy.capitalized)
+            configPicker(
+                title: "Prioridad",
+                systemImage: "list.number",
+                current: config.priorityPolicy,
+                options: [
+                    ("least_recent_use_wins", "Quien usó hace más tiempo"),
+                    ("first_come_first_served", "Primero en llegar"),
+                    ("round_robin", "Rotativo"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setReservationsConfig(contextId: context.id, ["priority_policy": .string(newValue)])
+            }
+            configPicker(
+                title: "Resolución de conflictos",
+                systemImage: "exclamationmark.triangle",
+                current: config.conflictResolution,
+                options: [
+                    ("community_vote", "Voto comunitario"),
+                    ("admin_decides", "Decide admin"),
+                    ("auto", "Automático"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setReservationsConfig(contextId: context.id, ["conflict_resolution": .string(newValue)])
+            }
+            configPicker(
+                title: "Cancelación",
+                systemImage: "xmark.circle",
+                current: config.cancellationPolicy,
+                options: [
+                    ("open", "Abierta"),
+                    ("strict", "Estricta"),
+                    ("admin_only", "Solo admin"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setReservationsConfig(contextId: context.id, ["cancellation_policy": .string(newValue)])
+            }
         }
     }
 
@@ -255,11 +405,38 @@ public struct ContextSettingsView: View {
 
     @ViewBuilder
     private func invitationsSection(_ config: ContextInvitationsConfig) -> some View {
+        let canEdit = store.can("edit_invitations")
         Section("Invitaciones") {
-            InfoRow(symbolName: "person.crop.circle.badge.plus", title: "Quién puede invitar", value: whoCanInviteLabel(config.whoCanInvite))
-            InfoRow(symbolName: "link",
-                    title: "Invitaciones abiertas",
-                    value: config.openInvites ? "Activadas" : "Solo links manuales")
+            configPicker(
+                title: "Quién puede invitar",
+                systemImage: "person.crop.circle.badge.plus",
+                current: config.whoCanInvite,
+                options: [
+                    ("admins", "Solo administradores"),
+                    ("members", "Todos los miembros"),
+                    ("founder_only", "Solo fundador"),
+                ],
+                enabled: canEdit
+            ) { newValue in
+                try await store.setInvitationsConfig(contextId: context.id, ["who_can_invite": .string(newValue)])
+            }
+            HStack {
+                Label("Invitaciones abiertas", systemImage: "link")
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { config.openInvites },
+                    set: { newValue in
+                        guard newValue != config.openInvites, canEdit else { return }
+                        Task {
+                            await runner.run {
+                                try await store.setInvitationsConfig(contextId: context.id, ["open_invites": .bool(newValue)])
+                            }
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .disabled(!canEdit || runner.isRunning)
+            }
         }
     }
 
@@ -288,6 +465,85 @@ public struct ContextSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+// MARK: - Edit general sheet (F.1A polish)
+
+private struct EditContextGeneralSheet: View {
+    let contextId: UUID
+    let initial: ContextGeneralSummary
+    let store: ContextSettingsStore
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var displayName: String
+    @State private var description: String
+    @State private var visibility: String
+    @State private var runner = ActionRunner()
+
+    init(contextId: UUID, initial: ContextGeneralSummary, store: ContextSettingsStore) {
+        self.contextId = contextId
+        self.initial = initial
+        self.store = store
+        _displayName = State(initialValue: initial.displayName)
+        _description = State(initialValue: initial.description ?? "")
+        _visibility = State(initialValue: initial.visibility ?? "private")
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Nombre") {
+                    TextField("Nombre del contexto", text: $displayName)
+                }
+                Section("Descripción") {
+                    TextField("Descripción (opcional)", text: $description, axis: .vertical)
+                        .lineLimit(2...5)
+                }
+                Section("Visibilidad") {
+                    Picker("Visibilidad", selection: $visibility) {
+                        Text("Privado").tag("private")
+                        Text("Solo miembros").tag("members")
+                        Text("Público").tag("public")
+                    }
+                    .pickerStyle(.segmented)
+                }
+            }
+            .navigationTitle("Editar general")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Guardar") { Task { await save() } }
+                        .disabled(!canSave || runner.isRunning)
+                }
+            }
+            .actionErrorAlert(runner)
+        }
+    }
+
+    private var canSave: Bool {
+        let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
+        guard !trimmedName.isEmpty else { return false }
+        return trimmedName != initial.displayName
+            || description != (initial.description ?? "")
+            || visibility != (initial.visibility ?? "private")
+    }
+
+    private func save() async {
+        let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
+        let trimmedDesc = description.trimmingCharacters(in: .whitespaces)
+        let success = await runner.run {
+            try await store.setGeneral(
+                contextId: contextId,
+                displayName: trimmedName != initial.displayName ? trimmedName : nil,
+                description: trimmedDesc != (initial.description ?? "") ? trimmedDesc : nil,
+                visibility: visibility != (initial.visibility ?? "private") ? visibility : nil
+            )
+        }
+        if success { dismiss() }
     }
 }
 
