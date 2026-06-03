@@ -91,8 +91,9 @@ public struct DecisionDetailView: View {
             // Votos
             votesSection(decision)
 
-            // VoteButtons (yes_no_abstain) o filas de opciones (single_choice)
-            if decision.isOpen && store.canVote(in: context) {
+            // VoteButtons (yes_no_abstain) o filas de opciones (single_choice).
+            // R.2S: gateado por `available_actions` del backend, no por roles locales.
+            if decision.isOpen, store.canDo("vote") || store.canDo("change_vote") {
                 switch decision.voting {
                 case .singleChoice:
                     optionsSection(decision)
@@ -330,29 +331,30 @@ public struct DecisionDetailView: View {
 
     @ViewBuilder
     private func adminSection(_ decision: Decision) -> some View {
-        if decision.isOpen && store.canExecute(in: context) {
+        // R.2S: cada botón aparece SOLO si el backend lo trae habilitado.
+        if let action = store.availableAction("close_decision") {
             Section {
                 Button {
                     isConfirmingClose = true
                 } label: {
-                    Label("Cerrar votación", systemImage: "stop.circle")
+                    Label(action.label, systemImage: "stop.circle")
                 }
                 .disabled(runner.isRunning)
             } footer: {
-                Text("Cierra la votación con los votos actuales: gana la mayoría.")
+                Text(action.reason ?? "Cierra la votación con los votos actuales.")
             }
         }
 
-        if decision.isApproved && store.canExecute(in: context) {
+        if let action = store.availableAction("execute_decision") {
             Section {
                 Button {
                     isConfirmingExecute = true
                 } label: {
-                    Label("Ejecutar decisión", systemImage: "play.circle.fill")
+                    Label(action.label, systemImage: "play.circle.fill")
                 }
                 .disabled(runner.isRunning)
             } footer: {
-                Text("Marca la decisión como ejecutada. Si era un conflicto de reservación, resuélvelo desde el recurso a favor del ganador.")
+                Text(action.reason ?? "Marca la decisión como ejecutada.")
             }
         }
 

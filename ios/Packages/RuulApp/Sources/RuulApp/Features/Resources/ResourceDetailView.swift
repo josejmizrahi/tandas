@@ -237,9 +237,10 @@ public struct ResourceDetailView: View {
     /// Fila de acción disponible. Las acciones sin pantalla operativa propia se
     /// muestran como affordance (lo que el actor PUEDE hacer), sin inventar UI falsa.
     @ViewBuilder
-    private func actionRow(_ action: ResourceAvailableAction) -> some View {
+    private func actionRow(_ action: AvailableAction) -> some View {
         Label(action.label, systemImage: ResourceActionSection(rawValue: action.section)?.symbolName ?? "circle")
             .font(.callout)
+            .foregroundStyle(action.enabled ? .primary : .secondary)
     }
 
     /// Derechos activos sobre el recurso + otorgar (gated por available_actions).

@@ -58,6 +58,17 @@ public struct CreateContextView: View {
         self.container = container
     }
 
+    private var capStore: ActorCapabilitiesStore { container.actorCapabilitiesStore }
+
+    /// Solo se ofrecen los subtypes que el catálogo del backend reconoce.
+    /// Cualquier subtype nuevo del backend (sin label/icon iOS) queda fuera
+    /// hasta que se agregue al enum.
+    private var availableSubtypes: [Subtype] {
+        let known = Set(capStore.catalog?.subtypes.map(\.actorSubtype) ?? [])
+        let filtered = Subtype.allCases.filter { known.isEmpty || known.contains($0.rawValue) }
+        return filtered.isEmpty ? Subtype.allCases : filtered
+    }
+
     public var body: some View {
         NavigationStack {
             Form {
@@ -65,22 +76,19 @@ public struct CreateContextView: View {
                     TextField("Cena Semanal, Familia, Viaje Japón…", text: $displayName)
                 }
 
-                Section("Tipo") {
-                    ForEach(Subtype.allCases) { option in
+                Section {
+                    ForEach(availableSubtypes) { option in
                         Button {
                             subtype = option
                         } label: {
-                            HStack {
-                                Label(option.label, systemImage: option.symbolName)
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                if subtype == option {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.tint)
-                                }
-                            }
+                            subtypeRow(option)
                         }
+                        .buttonStyle(.plain)
                     }
+                } header: {
+                    Text("Tipo")
+                } footer: {
+                    Text("Las capabilities las determina el backend según el tipo. Tú no decides permisos individuales aquí.")
                 }
 
                 Section {
@@ -106,6 +114,52 @@ public struct CreateContextView: View {
                 }
             }
             .actionErrorAlert(runner)
+            .task {
+                await capStore.loadCatalogIfNeeded()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func subtypeRow(_ option: Subtype) -> some View {
+        let caps = capStore.capabilities(forSubtype: option.rawValue)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label(option.label, systemImage: option.symbolName)
+                    .foregroundStyle(.primary)
+                Spacer()
+                if subtype == option {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.tint)
+                }
+            }
+            if !caps.isEmpty {
+                FlowingChips(items: capabilityHints(caps))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+    }
+
+    /// Convierte capability keys en labels cortos amigables.
+    private func capabilityHints(_ keys: [String]) -> [String] {
+        keys.compactMap { key in
+            switch key {
+            case "can_have_members": return "Miembros"
+            case "can_have_beneficiaries": return "Beneficiarios"
+            case "can_have_trustees": return "Trustees"
+            case "can_have_shareholders": return "Accionistas"
+            case "can_hold_money": return "Dinero"
+            case "can_hold_assets": return "Activos"
+            case "can_own_resources": return "Recursos"
+            case "can_issue_decisions": return "Decisiones"
+            case "can_receive_contributions": return "Aportaciones"
+            case "can_govern_resources": return "Gobierno"
+            case "can_receive_obligations", "can_issue_obligations": return nil
+            default: return capStore.displayName(for: key)
+            }
         }
     }
 
@@ -123,6 +177,33 @@ public struct CreateContextView: View {
             }
         }
         if success { dismiss() }
+    }
+}
+
+/// Wrap horizontal de chips compacto sin overflow.
+private struct FlowingChips: View {
+    let items: [String]
+
+    var body: some View {
+        let rows = chunked(items, per: 4)
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: 6) {
+                    ForEach(row, id: \.self) { item in
+                        Text(item)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.secondary.opacity(0.15), in: Capsule())
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    private func chunked(_ items: [String], per size: Int) -> [[String]] {
+        guard size > 0 else { return [items] }
+        return stride(from: 0, to: items.count, by: size).map { Array(items[$0..<min($0+size, items.count)]) }
     }
 }
 

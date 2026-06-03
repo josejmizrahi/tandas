@@ -19,6 +19,7 @@ public final class DependencyContainer {
     public let sessionStore: SessionStore
     public let currentActorStore: CurrentActorStore
     public let contextStore: ContextStore
+    public let actorCapabilitiesStore: ActorCapabilitiesStore
 
     /// Rutea universal links / ruul:// (hoy: invitaciones).
     public let deepLinks: DeepLinkRouter
@@ -35,6 +36,7 @@ public final class DependencyContainer {
         self.sessionStore = SessionStore(authService: auth)
         self.currentActorStore = CurrentActorStore(rpc: rpcClient)
         self.contextStore = ContextStore(rpc: rpcClient)
+        self.actorCapabilitiesStore = ActorCapabilitiesStore(rpc: rpcClient)
         self.deepLinks = DeepLinkRouter()
     }
 
@@ -46,6 +48,7 @@ public final class DependencyContainer {
         self.sessionStore = SessionStore(authService: authService)
         self.currentActorStore = CurrentActorStore(rpc: rpc)
         self.contextStore = ContextStore(rpc: rpc)
+        self.actorCapabilitiesStore = ActorCapabilitiesStore(rpc: rpc)
         self.deepLinks = DeepLinkRouter()
     }
 
@@ -72,5 +75,6 @@ public final class DependencyContainer {
         await sessionStore.signOut()
         currentActorStore.reset()
         contextStore.reset()
+        actorCapabilitiesStore.reset()
     }
 }

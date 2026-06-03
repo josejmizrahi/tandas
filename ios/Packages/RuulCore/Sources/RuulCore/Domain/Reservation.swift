@@ -140,3 +140,88 @@ public struct ReservationConflict: Codable, Sendable, Equatable, Identifiable {
 
     public var isOpen: Bool { resolutionStatus == "open" }
 }
+
+/// R.2S — detalle de una reservación con `available_actions` canónicos
+/// (`reservation_detail(p_reservation_id)`). El frontend renderiza los botones
+/// (aprobar/confirmar/cancelar/resolver) desde aquí, no por status.
+public struct ReservationDetail: Decodable, Sendable, Equatable {
+    public let id: UUID
+    public let resourceId: UUID
+    public let contextActorId: UUID
+    public let requestedByActorId: UUID
+    public let reservedForActorId: UUID?
+    public let startsAt: Date
+    public let endsAt: Date
+    public let status: String
+    public let priorityScore: Double?
+    public let sourceDecisionId: UUID?
+    public let metadata: JSONValue?
+    public let availableActions: [AvailableAction]
+    public let createdAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case resourceId = "resource_id"
+        case contextActorId = "context_actor_id"
+        case requestedByActorId = "requested_by_actor_id"
+        case reservedForActorId = "reserved_for_actor_id"
+        case startsAt = "starts_at"
+        case endsAt = "ends_at"
+        case status
+        case priorityScore = "priority_score"
+        case sourceDecisionId = "source_decision_id"
+        case metadata
+        case availableActions = "available_actions"
+        case createdAt = "created_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.resourceId = try c.decode(UUID.self, forKey: .resourceId)
+        self.contextActorId = try c.decode(UUID.self, forKey: .contextActorId)
+        self.requestedByActorId = try c.decode(UUID.self, forKey: .requestedByActorId)
+        self.reservedForActorId = try c.decodeIfPresent(UUID.self, forKey: .reservedForActorId)
+        self.startsAt = try c.decode(Date.self, forKey: .startsAt)
+        self.endsAt = try c.decode(Date.self, forKey: .endsAt)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "requested"
+        self.priorityScore = try c.decodeIfPresent(Double.self, forKey: .priorityScore)
+        self.sourceDecisionId = try c.decodeIfPresent(UUID.self, forKey: .sourceDecisionId)
+        self.metadata = try c.decodeIfPresent(JSONValue.self, forKey: .metadata)
+        self.availableActions = try c.decodeIfPresent([AvailableAction].self, forKey: .availableActions) ?? []
+        self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+    }
+
+    public init(
+        id: UUID,
+        resourceId: UUID,
+        contextActorId: UUID,
+        requestedByActorId: UUID,
+        reservedForActorId: UUID? = nil,
+        startsAt: Date,
+        endsAt: Date,
+        status: String = "requested",
+        priorityScore: Double? = nil,
+        sourceDecisionId: UUID? = nil,
+        metadata: JSONValue? = nil,
+        availableActions: [AvailableAction] = [],
+        createdAt: Date? = nil
+    ) {
+        self.id = id
+        self.resourceId = resourceId
+        self.contextActorId = contextActorId
+        self.requestedByActorId = requestedByActorId
+        self.reservedForActorId = reservedForActorId
+        self.startsAt = startsAt
+        self.endsAt = endsAt
+        self.status = status
+        self.priorityScore = priorityScore
+        self.sourceDecisionId = sourceDecisionId
+        self.metadata = metadata
+        self.availableActions = availableActions
+        self.createdAt = createdAt
+    }
+
+    public func action(_ key: String) -> AvailableAction? { availableActions.enabled(key) }
+    public func can(_ key: String) -> Bool { availableActions.can(key) }
+}

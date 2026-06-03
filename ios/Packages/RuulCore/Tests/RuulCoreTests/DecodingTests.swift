@@ -716,6 +716,195 @@ struct DecodingTests {
         #expect(page.activity[0].domain == "fine")
     }
 
+    // MARK: - Actor capabilities (R.2S.1)
+
+    @Test("actor_capabilities — collective con capabilities")
+    func actorCapabilitiesShape() throws {
+        let json = """
+        {
+          "actor_id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "actor_kind": "collective",
+          "actor_subtype": "friend_group",
+          "capabilities": [
+            "can_govern_resources",
+            "can_have_members",
+            "can_hold_money",
+            "can_issue_decisions",
+            "can_receive_contributions"
+          ]
+        }
+        """
+        let caps = try decode(ActorCapabilities.self, json)
+        #expect(caps.actorKind == .collective)
+        #expect(caps.actorSubtype == "friend_group")
+        #expect(caps.has(.canHaveMembers))
+        #expect(caps.has(.canHoldMoney))
+        #expect(!caps.has(.canHaveBeneficiaries))
+        #expect(!caps.has("can_have_trustees"))
+    }
+
+    @Test("actor_capabilities — array vacío decodifica como []")
+    func actorCapabilitiesEmpty() throws {
+        let json = """
+        {
+          "actor_id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "actor_kind": "person",
+          "actor_subtype": "person"
+        }
+        """
+        let caps = try decode(ActorCapabilities.self, json)
+        #expect(caps.capabilities.isEmpty)
+    }
+
+    @Test("actor_capabilities_catalog — matriz subtype + descripciones")
+    func actorCapabilitiesCatalogShape() throws {
+        let json = """
+        {
+          "capabilities": [
+            {"capability_key": "can_have_members", "display_name": "Puede tener miembros", "description": "Otros actores participan"},
+            {"capability_key": "can_hold_money", "display_name": "Puede tener dinero", "description": "Participa en settlement"}
+          ],
+          "subtypes": [
+            {"actor_subtype": "trust", "capabilities": ["can_have_beneficiaries", "can_have_trustees"]},
+            {"actor_subtype": "friend_group", "capabilities": ["can_have_members", "can_hold_money"]}
+          ]
+        }
+        """
+        let catalog = try decode(ActorCapabilitiesCatalog.self, json)
+        #expect(catalog.capabilities.count == 2)
+        #expect(catalog.subtypes.count == 2)
+        #expect(catalog.capabilities(forSubtype: "friend_group") == ["can_have_members", "can_hold_money"])
+        #expect(catalog.subtypes(with: .canHaveMembers) == ["friend_group"])
+        #expect(catalog.displayName(for: "can_hold_money") == "Puede tener dinero")
+        #expect(catalog.capabilities(forSubtype: "no_existe").isEmpty)
+    }
+
+    // MARK: - Available action canónico (R.2S-FIX)
+
+    @Test("AvailableAction — shape canónico de 7 campos (enabled + reason + arrays)")
+    func availableActionCanonical() throws {
+        let json = """
+        {
+          "action_key": "vote",
+          "label": "Votar",
+          "section": "decisions",
+          "enabled": true,
+          "reason": "La decisión está abierta y puedes votar",
+          "required_rights": [],
+          "required_capabilities": []
+        }
+        """
+        let action = try decode(AvailableAction.self, json)
+        #expect(action.actionKey == "vote")
+        #expect(action.label == "Votar")
+        #expect(action.section == "decisions")
+        #expect(action.enabled)
+        #expect(action.reason == "La decisión está abierta y puedes votar")
+        #expect(action.requiredRights.isEmpty)
+        #expect(action.requiredCapabilities.isEmpty)
+    }
+
+    @Test("AvailableAction — defaults seguros para campos ausentes")
+    func availableActionDefaults() throws {
+        let json = """
+        {
+          "action_key": "approve",
+          "label": "Aprobar",
+          "section": "reservations"
+        }
+        """
+        let action = try decode(AvailableAction.self, json)
+        #expect(action.enabled)
+        #expect(action.reason == nil)
+        #expect(action.requiredRights.isEmpty)
+        #expect(action.requiredCapabilities.isEmpty)
+    }
+
+    @Test("AvailableAction.can/enabled/inSection")
+    func availableActionHelpers() {
+        let actions: [AvailableAction] = [
+            AvailableAction(actionKey: "vote", label: "Votar", section: "decisions", enabled: true),
+            AvailableAction(actionKey: "close_decision", label: "Cerrar", section: "decisions", enabled: false, reason: "Sin permiso"),
+            AvailableAction(actionKey: "pay", label: "Pagar", section: "obligations", enabled: true)
+        ]
+        #expect(actions.can("vote"))
+        #expect(!actions.can("close_decision"))
+        #expect(actions.enabled("close_decision") == nil)
+        #expect(actions.inSection("decisions").count == 2)
+    }
+
+    // MARK: - DecisionDetail (R.2S)
+
+    @Test("decision_detail con opciones + available_actions canónicos")
+    func decisionDetailShape() throws {
+        let json = """
+        {
+          "id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "context_actor_id": "55555555-c51c-4bf4-9960-e1c80e27aba1",
+          "decision_type": "reservation_dispute",
+          "voting_model": "single_choice",
+          "title": "¿Quién se queda con Casa Valle?",
+          "description": null,
+          "status": "open",
+          "opens_at": "2026-06-03T18:15:30.123456+00:00",
+          "closes_at": null,
+          "decided_at": null,
+          "executed_at": null,
+          "payload": {},
+          "result": null,
+          "options": [
+            {"id": "11111111-c51c-4bf4-9960-e1c80e27aba1", "option_key": "david", "title": "David", "description": null, "payload": null, "sort_order": 0, "votes": 2},
+            {"id": "22222222-c51c-4bf4-9960-e1c80e27aba1", "option_key": "isaac", "title": "Isaac", "description": null, "payload": null, "sort_order": 1, "votes": 1}
+          ],
+          "votes_count": 3,
+          "available_actions": [
+            {"action_key": "vote", "label": "Votar", "section": "decisions", "enabled": true, "reason": "Puedes votar", "required_rights": [], "required_capabilities": []},
+            {"action_key": "close_decision", "label": "Cerrar", "section": "decisions", "enabled": false, "reason": "Sin permiso", "required_rights": [], "required_capabilities": []}
+          ],
+          "created_at": "2026-06-03T18:00:00.000000+00:00"
+        }
+        """
+        let detail = try decode(DecisionDetail.self, json)
+        #expect(detail.voting == .singleChoice)
+        #expect(detail.options.count == 2)
+        #expect(detail.options[0].votes == 2)
+        #expect(detail.votesCount == 3)
+        #expect(detail.can("vote"))
+        #expect(!detail.can("close_decision"))
+        #expect(detail.action("close_decision") == nil)  // disabled → not "enabled"
+    }
+
+    // MARK: - ReservationDetail (R.2S)
+
+    @Test("reservation_detail con available_actions canónicos")
+    func reservationDetailShape() throws {
+        let json = """
+        {
+          "id": "0e984725-c51c-4bf4-9960-e1c80e27aba1",
+          "resource_id": "11111111-c51c-4bf4-9960-e1c80e27aba1",
+          "context_actor_id": "55555555-c51c-4bf4-9960-e1c80e27aba1",
+          "requested_by_actor_id": "22222222-c51c-4bf4-9960-e1c80e27aba1",
+          "reserved_for_actor_id": null,
+          "starts_at": "2026-06-10T18:00:00.000000+00:00",
+          "ends_at": "2026-06-12T18:00:00.000000+00:00",
+          "status": "requested",
+          "priority_score": null,
+          "source_decision_id": null,
+          "metadata": {},
+          "available_actions": [
+            {"action_key": "approve", "label": "Aprobar", "section": "reservations", "enabled": true, "reason": "Eres admin del recurso", "required_rights": [], "required_capabilities": []},
+            {"action_key": "reject", "label": "Rechazar", "section": "reservations", "enabled": true, "reason": "Eres admin del recurso", "required_rights": [], "required_capabilities": []}
+          ],
+          "created_at": "2026-06-03T18:00:00.000000+00:00"
+        }
+        """
+        let detail = try decode(ReservationDetail.self, json)
+        #expect(detail.status == "requested")
+        #expect(detail.can("approve"))
+        #expect(detail.can("reject"))
+        #expect(!detail.can("resolve_conflict"))
+    }
+
     // MARK: - Reglas legibles
 
     @Test("descripción legible de reglas")

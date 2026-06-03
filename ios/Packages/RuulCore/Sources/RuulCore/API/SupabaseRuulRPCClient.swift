@@ -88,6 +88,32 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("resource_settings_summary", params: Params(pResourceId: resourceId))
     }
 
+    // MARK: - Actor capabilities (R.2S.1)
+
+    public func actorCapabilities(actorId: UUID) async throws -> ActorCapabilities {
+        struct Params: Encodable, Sendable {
+            let pActorId: UUID
+            enum CodingKeys: String, CodingKey { case pActorId = "p_actor_id" }
+        }
+        return try await call("actor_capabilities", params: Params(pActorId: actorId))
+    }
+
+    public func actorCapabilitiesCatalog() async throws -> ActorCapabilitiesCatalog {
+        try await call("actor_capabilities_catalog")
+    }
+
+    public func actorCan(actorId: UUID, capability: String) async throws -> Bool {
+        struct Params: Encodable, Sendable {
+            let pActorId: UUID
+            let pCapability: String
+            enum CodingKeys: String, CodingKey {
+                case pActorId = "p_actor_id"
+                case pCapability = "p_capability"
+            }
+        }
+        return try await call("actor_can", params: Params(pActorId: actorId, pCapability: capability))
+    }
+
     // MARK: - Contexts
 
     public func contextCandidates() async throws -> ContextCandidates {
@@ -547,6 +573,10 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func reservationDetail(reservationId: UUID) async throws -> ReservationDetail {
+        try await call("reservation_detail", params: ReservationIdParams(reservationId: reservationId))
+    }
+
     public func approveReservation(reservationId: UUID) async throws {
         try await callVoid("approve_reservation", params: ReservationIdParams(reservationId: reservationId))
     }
@@ -671,6 +701,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             }
         }
         try await callVoid("execute_decision", params: Params(pDecisionId: decisionId, pResult: result))
+    }
+
+    public func decisionDetail(decisionId: UUID) async throws -> DecisionDetail {
+        struct Params: Encodable, Sendable {
+            let pDecisionId: UUID
+            enum CodingKeys: String, CodingKey { case pDecisionId = "p_decision_id" }
+        }
+        return try await call("decision_detail", params: Params(pDecisionId: decisionId))
     }
 
     public func listDecisionOptions(decisionId: UUID) async throws -> [DecisionOption] {

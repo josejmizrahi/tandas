@@ -14,6 +14,9 @@ public struct ReservationConflictView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var runner = ActionRunner()
     @State private var isShowingEscalate = false
+    /// R.2S — detail por reservación con `available_actions` canónicos del backend.
+    @State private var detailA: ReservationDetail?
+    @State private var detailB: ReservationDetail?
 
     public init(
         conflict: ReservationConflict,
@@ -32,6 +35,12 @@ public struct ReservationConflictView: View {
     private var reservationA: Reservation? { store.reservation(byId: conflict.reservationAId) }
     private var reservationB: Reservation? { store.reservation(byId: conflict.reservationBId) }
 
+    /// R.2S — `resolve_conflict` aparece habilitado en CUALQUIERA de las dos
+    /// reservaciones cuando el actor puede administrar.
+    private var canResolve: Bool {
+        (detailA?.can("resolve_conflict") ?? false) || (detailB?.can("resolve_conflict") ?? false)
+    }
+
     public var body: some View {
         List {
             Section {
@@ -45,13 +54,13 @@ public struct ReservationConflictView: View {
             }
 
             if let a = reservationA {
-                reservationSection(a, title: "Solicitud A")
+                reservationSection(a, detail: detailA, title: "Solicitud A")
             }
             if let b = reservationB {
-                reservationSection(b, title: "Solicitud B")
+                reservationSection(b, detail: detailB, title: "Solicitud B")
             }
 
-            if store.canManage(in: context) && conflict.isOpen {
+            if canResolve && conflict.isOpen {
                 Section {
                     NavigationLink {
                         CreateDecisionView(
@@ -71,11 +80,14 @@ public struct ReservationConflictView: View {
         }
         .navigationTitle("Conflicto")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await reloadDetails()
+        }
         .actionErrorAlert(runner)
     }
 
     @ViewBuilder
-    private func reservationSection(_ reservation: Reservation, title: String) -> some View {
+    private func reservationSection(_ reservation: Reservation, detail: ReservationDetail?, title: String) -> some View {
         let requesterName = store.displayName(for: reservation.reservedForActorId ?? reservation.requestedByActorId)
 
         Section(title) {
@@ -91,18 +103,27 @@ public struct ReservationConflictView: View {
                 StatusBadge(reservation.statusLabel, color: reservation.isActive ? .green : .orange)
             }
 
-            if conflict.isOpen && store.canManage(in: context) && reservation.isPending {
+            if conflict.isOpen, let resolve = detail?.action("resolve_conflict") {
                 Button {
-                    Task { await resolve(winner: reservation) }
+                    Task { await resolveConflict(winner: reservation) }
                 } label: {
                     Label("Darle la reservación a \(requesterName)", systemImage: "checkmark.circle.fill")
                 }
                 .disabled(runner.isRunning)
+                .accessibilityHint(resolve.reason ?? "")
             }
         }
     }
 
-    private func resolve(winner: Reservation) async {
+    private func reloadDetails() async {
+        async let a: ReservationDetail? = try? container.rpc.reservationDetail(reservationId: conflict.reservationAId)
+        async let b: ReservationDetail? = try? container.rpc.reservationDetail(reservationId: conflict.reservationBId)
+        let (loadedA, loadedB) = await (a, b)
+        detailA = loadedA
+        detailB = loadedB
+    }
+
+    private func resolveConflict(winner: Reservation) async {
         let success = await runner.run {
             try await store.resolveConflict(
                 conflictId: conflict.id,

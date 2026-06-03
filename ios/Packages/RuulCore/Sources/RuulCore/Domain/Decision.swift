@@ -234,6 +234,166 @@ public struct DecisionOption: Codable, Sendable, Equatable, Identifiable {
     public var actionKey: String? { payload?["action"]?.stringValue }
 }
 
+/// R.2S — detalle completo de una decisión (`decision_detail(p_decision_id)`).
+/// El frontend renderiza botones desde `availableActions` (forma canónica de 7
+/// campos calculada por backend). Reemplaza el modelo legacy de gateo por status.
+public struct DecisionDetail: Decodable, Sendable, Equatable {
+    public let id: UUID
+    public let contextActorId: UUID
+    public let decisionType: String
+    public let votingModel: String
+    public let title: String
+    public let description: String?
+    public let status: String
+    public let opensAt: Date?
+    public let closesAt: Date?
+    public let decidedAt: Date?
+    public let executedAt: Date?
+    public let payload: JSONValue?
+    public let result: JSONValue?
+    public let options: [DecisionDetailOption]
+    public let votesCount: Int
+    public let availableActions: [AvailableAction]
+    public let createdAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case contextActorId = "context_actor_id"
+        case decisionType = "decision_type"
+        case votingModel = "voting_model"
+        case title
+        case description
+        case status
+        case opensAt = "opens_at"
+        case closesAt = "closes_at"
+        case decidedAt = "decided_at"
+        case executedAt = "executed_at"
+        case payload
+        case result
+        case options
+        case votesCount = "votes_count"
+        case availableActions = "available_actions"
+        case createdAt = "created_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.contextActorId = try c.decode(UUID.self, forKey: .contextActorId)
+        self.decisionType = try c.decode(String.self, forKey: .decisionType)
+        self.votingModel = try c.decodeIfPresent(String.self, forKey: .votingModel) ?? "yes_no_abstain"
+        self.title = try c.decode(String.self, forKey: .title)
+        self.description = try c.decodeIfPresent(String.self, forKey: .description)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "open"
+        self.opensAt = try c.decodeIfPresent(Date.self, forKey: .opensAt)
+        self.closesAt = try c.decodeIfPresent(Date.self, forKey: .closesAt)
+        self.decidedAt = try c.decodeIfPresent(Date.self, forKey: .decidedAt)
+        self.executedAt = try c.decodeIfPresent(Date.self, forKey: .executedAt)
+        self.payload = try c.decodeIfPresent(JSONValue.self, forKey: .payload)
+        self.result = try c.decodeIfPresent(JSONValue.self, forKey: .result)
+        self.options = try c.decodeIfPresent([DecisionDetailOption].self, forKey: .options) ?? []
+        self.votesCount = try c.decodeIfPresent(Int.self, forKey: .votesCount) ?? 0
+        self.availableActions = try c.decodeIfPresent([AvailableAction].self, forKey: .availableActions) ?? []
+        self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+    }
+
+    public init(
+        id: UUID,
+        contextActorId: UUID,
+        decisionType: String,
+        votingModel: String,
+        title: String,
+        description: String? = nil,
+        status: String = "open",
+        opensAt: Date? = nil,
+        closesAt: Date? = nil,
+        decidedAt: Date? = nil,
+        executedAt: Date? = nil,
+        payload: JSONValue? = nil,
+        result: JSONValue? = nil,
+        options: [DecisionDetailOption] = [],
+        votesCount: Int = 0,
+        availableActions: [AvailableAction] = [],
+        createdAt: Date? = nil
+    ) {
+        self.id = id
+        self.contextActorId = contextActorId
+        self.decisionType = decisionType
+        self.votingModel = votingModel
+        self.title = title
+        self.description = description
+        self.status = status
+        self.opensAt = opensAt
+        self.closesAt = closesAt
+        self.decidedAt = decidedAt
+        self.executedAt = executedAt
+        self.payload = payload
+        self.result = result
+        self.options = options
+        self.votesCount = votesCount
+        self.availableActions = availableActions
+        self.createdAt = createdAt
+    }
+
+    public var type: DecisionType { DecisionType(rawValue: decisionType) ?? .generic }
+    public var voting: VotingModel { VotingModel(rawValue: votingModel) ?? .yesNoAbstain }
+    public var isOpen: Bool { status == "open" }
+
+    /// Acción habilitada con ese key, si existe.
+    public func action(_ key: String) -> AvailableAction? { availableActions.enabled(key) }
+    public func can(_ key: String) -> Bool { availableActions.can(key) }
+}
+
+/// Una opción dentro de `decision_detail.options` — incluye `votes` (count).
+public struct DecisionDetailOption: Decodable, Sendable, Equatable, Identifiable {
+    public let id: UUID
+    public let optionKey: String
+    public let title: String
+    public let description: String?
+    public let payload: JSONValue?
+    public let sortOrder: Int
+    public let votes: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case optionKey = "option_key"
+        case title
+        case description
+        case payload
+        case sortOrder = "sort_order"
+        case votes
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.optionKey = try c.decode(String.self, forKey: .optionKey)
+        self.title = try c.decode(String.self, forKey: .title)
+        self.description = try c.decodeIfPresent(String.self, forKey: .description)
+        self.payload = try c.decodeIfPresent(JSONValue.self, forKey: .payload)
+        self.sortOrder = try c.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
+        self.votes = try c.decodeIfPresent(Int.self, forKey: .votes) ?? 0
+    }
+
+    public init(
+        id: UUID,
+        optionKey: String,
+        title: String,
+        description: String? = nil,
+        payload: JSONValue? = nil,
+        sortOrder: Int = 0,
+        votes: Int = 0
+    ) {
+        self.id = id
+        self.optionKey = optionKey
+        self.title = title
+        self.description = description
+        self.payload = payload
+        self.sortOrder = sortOrder
+        self.votes = votes
+    }
+}
+
 /// Resultado de `create_decision()`.
 public struct DecisionCreated: Decodable, Sendable, Equatable {
     public let decisionId: UUID

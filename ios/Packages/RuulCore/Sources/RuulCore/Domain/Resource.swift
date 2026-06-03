@@ -215,7 +215,7 @@ public struct ResourceDetail: Decodable, Sendable, Equatable {
     public let capabilities: [String]
     /// R.2M-3: acciones que ESTE actor puede ejecutar ahora (capability ∩ rights).
     /// El frontend renderiza la UX desde aquí, nunca desde `resource_type`.
-    public let availableActions: [ResourceAvailableAction]
+    public let availableActions: [AvailableAction]
     /// R.2M-3: por qué este actor ve el recurso (p. ej. ["USE", "GOVERN via Familia"]).
     public let whyVisible: [String]
 
@@ -231,7 +231,7 @@ public struct ResourceDetail: Decodable, Sendable, Equatable {
         resource: Resource,
         rights: [ResourceRight] = [],
         capabilities: [String] = [],
-        availableActions: [ResourceAvailableAction] = [],
+        availableActions: [AvailableAction] = [],
         whyVisible: [String] = []
     ) {
         self.resource = resource
@@ -246,7 +246,7 @@ public struct ResourceDetail: Decodable, Sendable, Equatable {
         self.resource = try c.decode(Resource.self, forKey: .resource)
         self.rights = try c.decodeIfPresent([ResourceRight].self, forKey: .rights) ?? []
         self.capabilities = try c.decodeIfPresent([String].self, forKey: .capabilities) ?? []
-        self.availableActions = try c.decodeIfPresent([ResourceAvailableAction].self, forKey: .availableActions) ?? []
+        self.availableActions = try c.decodeIfPresent([AvailableAction].self, forKey: .availableActions) ?? []
         self.whyVisible = try c.decodeIfPresent([String].self, forKey: .whyVisible) ?? []
     }
 
@@ -255,31 +255,15 @@ public struct ResourceDetail: Decodable, Sendable, Equatable {
         rights.filter { $0.holderActorId == actorId }
     }
 
-    /// ¿El backend ofrece esta acción a este actor?
-    public func can(_ action: String) -> Bool {
-        availableActions.contains { $0.action == action }
+    /// ¿El backend ofrece esta acción habilitada para este actor?
+    public func can(_ actionKey: String) -> Bool {
+        availableActions.can(actionKey)
     }
 
     /// Acciones de una sección de UI (reservations, money, beneficiaries, …).
-    public func actions(in section: ResourceActionSection) -> [ResourceAvailableAction] {
-        availableActions.filter { $0.section == section.rawValue }
+    public func actions(in section: ResourceActionSection) -> [AvailableAction] {
+        availableActions.inSection(section.rawValue)
     }
-}
-
-/// R.2M-3 — una acción disponible calculada por backend
-/// (`resource_detail().available_actions` / `resource_available_actions()`).
-public struct ResourceAvailableAction: Codable, Sendable, Equatable, Identifiable {
-    public let action: String
-    public let label: String
-    public let section: String
-
-    public init(action: String, label: String, section: String) {
-        self.action = action
-        self.label = label
-        self.section = section
-    }
-
-    public var id: String { action }
 }
 
 /// Secciones de UI que agrupan las available_actions. El orden define el render.

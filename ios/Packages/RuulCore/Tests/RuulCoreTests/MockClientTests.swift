@@ -338,6 +338,99 @@ struct MockClientTests {
         #expect(familiaActivity.contains { $0.eventType == "resource.created" })
     }
 
+    // MARK: - Actor capabilities (R.2S.1)
+
+    @Test("actor_capabilities devuelve la matriz del subtype")
+    func actorCapabilitiesForCollective() async throws {
+        let mock = await makeDemoClient()
+        let caps = try await mock.actorCapabilities(actorId: MockRuulRPCClient.DemoIds.cenaSemanal)
+        #expect(caps.actorKind == .collective)
+        #expect(caps.actorSubtype == "friend_group")
+        #expect(caps.has(.canHaveMembers))
+        #expect(caps.has(.canHoldMoney))
+        #expect(caps.has(.canIssueDecisions))
+        // friend_group NO tiene beneficiarios ni trustees
+        #expect(!caps.has(.canHaveBeneficiaries))
+        #expect(!caps.has(.canHaveTrustees))
+    }
+
+    @Test("actor_can refleja la matriz del catálogo")
+    func actorCanMirrorsCatalog() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        #expect(try await mock.actorCan(actorId: cena, capability: "can_hold_money"))
+        #expect(!(try await mock.actorCan(actorId: cena, capability: "can_have_shareholders")))
+    }
+
+    @Test("actor_capabilities_catalog incluye todos los subtypes seed")
+    func actorCapabilitiesCatalog() async throws {
+        let mock = await makeDemoClient()
+        let catalog = try await mock.actorCapabilitiesCatalog()
+        let subtypeKeys = Set(catalog.subtypes.map(\.actorSubtype))
+        #expect(subtypeKeys.contains("friend_group"))
+        #expect(subtypeKeys.contains("trust"))
+        #expect(subtypeKeys.contains("company"))
+        // Trust tiene beneficiarios pero NO miembros
+        let trustCaps = catalog.capabilities(forSubtype: "trust")
+        #expect(trustCaps.contains("can_have_beneficiaries"))
+        #expect(!trustCaps.contains("can_have_members"))
+        // El catálogo de 12 capabilities tiene displayName en español
+        #expect(catalog.displayName(for: "can_have_members") == "Puede tener miembros")
+        // subtypes(with:) filtra correctamente
+        #expect(catalog.subtypes(with: .canHaveTrustees) == ["trust"])
+    }
+
+    // MARK: - decision_detail / reservation_detail (R.2S.2)
+
+    @Test("decision_detail trae available_actions canónicos (forma 7 campos)")
+    func decisionDetailMock() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let created = try await mock.createDecision(CreateDecisionInput(
+            contextId: cena,
+            decisionType: .ruleChange,
+            title: "Subir multa de tarde a $150"
+        ))
+        let detail = try await mock.decisionDetail(decisionId: created.id)
+        #expect(detail.title == "Subir multa de tarde a $150")
+        #expect(detail.status == "open")
+        // Como founder/admin debería poder votar Y cerrar/cancelar la decisión
+        #expect(detail.can("vote"))
+        #expect(detail.can("close_decision"))
+        // Forma canónica (7 campos)
+        if let vote = detail.action("vote") {
+            #expect(vote.section == "decisions")
+            #expect(vote.enabled)
+            #expect(vote.reason != nil)
+        }
+    }
+
+    @Test("reservation_detail trae approve/reject habilitados para admin con MANAGE/OWN")
+    func reservationDetailMock() async throws {
+        let mock = await makeDemoClient()
+        let casa = MockRuulRPCClient.DemoIds.casaValle
+        let david = MockRuulRPCClient.DemoIds.david
+        // David tiene USE en Casa Valle (demo seed). Pedir reservación.
+        let result = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa,
+            contextId: MockRuulRPCClient.DemoIds.familia,
+            startsAt: Date().addingTimeInterval(86_400 * 3),
+            endsAt: Date().addingTimeInterval(86_400 * 5),
+            reservedForActorId: david
+        ))
+        let detail = try await mock.reservationDetail(reservationId: result.reservationId)
+        #expect(detail.status == "requested")
+        // José (admin de Familia) puede aprobar
+        #expect(detail.can("approve"))
+        #expect(detail.can("reject"))
+        // Forma canónica
+        if let approve = detail.action("approve") {
+            #expect(approve.section == "reservations")
+            #expect(approve.actionKey == "approve")
+            #expect(approve.reason != nil)
+        }
+    }
+
     @Test("nextError se lanza una sola vez")
     func nextError() async throws {
         let mock = await makeDemoClient()

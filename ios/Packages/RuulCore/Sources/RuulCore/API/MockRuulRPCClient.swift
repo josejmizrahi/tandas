@@ -299,6 +299,67 @@ public actor MockRuulRPCClient: RuulRPCClient {
         )
     }
 
+    // MARK: - Actor capabilities (R.2S.1)
+
+    public func actorCapabilities(actorId: UUID) async throws -> ActorCapabilities {
+        try throwIfNeeded()
+        guard let actor = actors[actorId] else {
+            throw RuulError.unexpected(message: "Actor no encontrado")
+        }
+        return ActorCapabilities(
+            actorId: actorId,
+            actorKind: actor.actorKind,
+            actorSubtype: actor.actorSubtype,
+            capabilities: Self.mockActorCapabilities(forSubtype: actor.actorSubtype)
+        )
+    }
+
+    public func actorCapabilitiesCatalog() async throws -> ActorCapabilitiesCatalog {
+        try throwIfNeeded()
+        return ActorCapabilitiesCatalog(
+            capabilities: Self.mockActorCapabilityCatalog,
+            subtypes: Self.mockSubtypeMatrix
+        )
+    }
+
+    public func actorCan(actorId: UUID, capability: String) async throws -> Bool {
+        let caps = try await actorCapabilities(actorId: actorId)
+        return caps.has(capability)
+    }
+
+    /// Matriz `actor_subtype → capabilities` (espeja `public.actor_type_capabilities`).
+    static func mockActorCapabilities(forSubtype subtype: String) -> [String] {
+        mockSubtypeMatrix.first { $0.actorSubtype == subtype }?.capabilities ?? []
+    }
+
+    static let mockActorCapabilityCatalog: [ActorCapabilityCatalogEntry] = [
+        .init(capabilityKey: "can_govern_resources", displayName: "Puede gobernar recursos", description: "Ejerce GOVERN/MANAGE sobre recursos del contexto"),
+        .init(capabilityKey: "can_have_beneficiaries", displayName: "Puede tener beneficiarios", description: "Puede designar actores como beneficiarios"),
+        .init(capabilityKey: "can_have_members", displayName: "Puede tener miembros", description: "Otros actores participan en él vía membership"),
+        .init(capabilityKey: "can_have_shareholders", displayName: "Puede tener accionistas", description: "Su propiedad se reparte en acciones (shares)"),
+        .init(capabilityKey: "can_have_trustees", displayName: "Puede tener fideicomisarios", description: "Administrado por trustees en nombre de beneficiarios"),
+        .init(capabilityKey: "can_hold_assets", displayName: "Puede tener activos", description: "Puede ser holder de rights OWN sobre recursos"),
+        .init(capabilityKey: "can_hold_money", displayName: "Puede tener dinero", description: "Participa en transacciones y settlement"),
+        .init(capabilityKey: "can_issue_decisions", displayName: "Puede emitir decisiones", description: "Puede abrir decisiones y votar"),
+        .init(capabilityKey: "can_issue_obligations", displayName: "Puede emitir obligaciones", description: "Puede ser acreedor / originar obligaciones"),
+        .init(capabilityKey: "can_own_resources", displayName: "Puede poseer recursos", description: "Puede ser dueño (OWN) de recursos"),
+        .init(capabilityKey: "can_receive_contributions", displayName: "Puede recibir aportaciones", description: "Recibe contribuciones de sus miembros"),
+        .init(capabilityKey: "can_receive_obligations", displayName: "Puede recibir obligaciones", description: "Puede ser deudor de una obligación"),
+    ]
+
+    static let mockSubtypeMatrix: [ActorSubtypeCapabilities] = [
+        .init(actorSubtype: "community", capabilities: ["can_govern_resources","can_have_members","can_hold_money","can_issue_decisions","can_issue_obligations","can_receive_contributions","can_receive_obligations"]),
+        .init(actorSubtype: "company", capabilities: ["can_govern_resources","can_have_members","can_have_shareholders","can_hold_assets","can_hold_money","can_issue_decisions","can_issue_obligations","can_own_resources","can_receive_contributions","can_receive_obligations"]),
+        .init(actorSubtype: "family", capabilities: ["can_govern_resources","can_have_beneficiaries","can_have_members","can_hold_assets","can_hold_money","can_issue_decisions","can_issue_obligations","can_own_resources","can_receive_contributions","can_receive_obligations"]),
+        .init(actorSubtype: "friend_group", capabilities: ["can_govern_resources","can_have_members","can_hold_money","can_issue_decisions","can_issue_obligations","can_receive_contributions","can_receive_obligations"]),
+        .init(actorSubtype: "other", capabilities: ["can_hold_assets","can_own_resources"]),
+        .init(actorSubtype: "person", capabilities: ["can_hold_assets","can_hold_money","can_issue_obligations","can_own_resources","can_receive_obligations"]),
+        .init(actorSubtype: "project", capabilities: ["can_govern_resources","can_have_members","can_hold_money","can_issue_decisions","can_issue_obligations","can_receive_contributions","can_receive_obligations"]),
+        .init(actorSubtype: "system", capabilities: ["can_issue_decisions","can_issue_obligations"]),
+        .init(actorSubtype: "trip", capabilities: ["can_govern_resources","can_have_members","can_hold_money","can_issue_obligations","can_receive_contributions","can_receive_obligations"]),
+        .init(actorSubtype: "trust", capabilities: ["can_govern_resources","can_have_beneficiaries","can_have_trustees","can_hold_assets","can_issue_decisions","can_own_resources"]),
+    ]
+
     // MARK: - Contexts
 
     public func contextCandidates() async throws -> ContextCandidates {
@@ -596,7 +657,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 (action.capability == nil || caps.contains(action.capability!))
                     && (action.rights.isEmpty || !action.rights.isDisjoint(with: effective))
             }
-            .map { ResourceAvailableAction(action: $0.key, label: $0.label, section: $0.section) }
+            .map { AvailableAction(actionKey: $0.key, label: $0.label, section: $0.section, enabled: true) }
         return ResourceDetail(
             resource: resource,
             rights: resourceRights,
@@ -1051,6 +1112,86 @@ public actor MockRuulRPCClient: RuulRPCClient {
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
     }
 
+    public func reservationDetail(reservationId: UUID) async throws -> ReservationDetail {
+        try throwIfNeeded()
+        guard let reservation = reservations[reservationId] else {
+            throw RuulError.unexpected(message: "Reservación no encontrada")
+        }
+        let isMember = memberships[reservation.contextActorId]?.contains(where: { $0.actorId == me.id }) == true
+        let resourceRights = rights[reservation.resourceId] ?? []
+        let myEffectiveRights = effectiveRights(on: reservation.resourceId, rights: resourceRights)
+        let canSeeViaResource = !myEffectiveRights.isEmpty
+        guard isMember || canSeeViaResource else {
+            throw RuulError.unexpected(message: "No autorizado para ver esta reservación")
+        }
+
+        let canManage = myEffectiveRights.contains("MANAGE") || myEffectiveRights.contains("OWN")
+            || myEffectiveRights.contains("GOVERN")
+            || (permissions[reservation.contextActorId] ?? []).contains("reservations.manage")
+        let isParty = me.id == reservation.requestedByActorId || me.id == reservation.reservedForActorId
+        let hasConflict = conflicts.values.contains { c in
+            c.resolutionStatus == "open" && (c.reservationAId == reservationId || c.reservationBId == reservationId)
+        }
+
+        var actions: [AvailableAction] = []
+        if reservation.status == "requested" {
+            actions.append(AvailableAction(
+                actionKey: "approve", label: "Aprobar", section: "reservations",
+                enabled: canManage,
+                reason: canManage ? "Puedes administrar reservaciones del recurso"
+                                  : "Requiere MANAGE/OWN/GOVERN o permiso reservations.manage"
+            ))
+            actions.append(AvailableAction(
+                actionKey: "reject", label: "Rechazar", section: "reservations",
+                enabled: canManage,
+                reason: canManage ? "Puedes administrar reservaciones del recurso"
+                                  : "Requiere MANAGE/OWN/GOVERN o permiso reservations.manage"
+            ))
+        }
+        if reservation.status == "approved" {
+            actions.append(AvailableAction(
+                actionKey: "confirm", label: "Confirmar", section: "reservations",
+                enabled: isParty || canManage,
+                reason: (isParty || canManage)
+                    ? "Puedes confirmar esta reservación"
+                    : "Solo quien reserva o un administrador puede confirmar"
+            ))
+        }
+        if reservation.status == "requested" || reservation.status == "approved" || reservation.status == "confirmed" {
+            actions.append(AvailableAction(
+                actionKey: "cancel", label: "Cancelar", section: "reservations",
+                enabled: isParty || canManage,
+                reason: (isParty || canManage)
+                    ? "Puedes cancelar esta reservación"
+                    : "Solo quien reserva o un administrador puede cancelar"
+            ))
+        }
+        if hasConflict {
+            actions.append(AvailableAction(
+                actionKey: "resolve_conflict", label: "Resolver conflicto", section: "reservations",
+                enabled: canManage,
+                reason: canManage ? "Hay un conflicto abierto que puedes resolver"
+                                  : "Requiere administrar reservaciones del recurso"
+            ))
+        }
+
+        return ReservationDetail(
+            id: reservation.id,
+            resourceId: reservation.resourceId,
+            contextActorId: reservation.contextActorId,
+            requestedByActorId: reservation.requestedByActorId,
+            reservedForActorId: reservation.reservedForActorId,
+            startsAt: reservation.startsAt,
+            endsAt: reservation.endsAt,
+            status: reservation.status,
+            priorityScore: reservation.priorityScore,
+            sourceDecisionId: nil,
+            metadata: nil,
+            availableActions: actions,
+            createdAt: reservation.createdAt
+        )
+    }
+
     public func approveReservation(reservationId: UUID) async throws {
         try throwIfNeeded()
         setReservationStatus(reservationId, "approved")
@@ -1301,6 +1442,94 @@ public actor MockRuulRPCClient: RuulRPCClient {
     public func listDecisionOptions(decisionId: UUID) async throws -> [DecisionOption] {
         try throwIfNeeded()
         return (decisionOptions[decisionId] ?? []).sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    public func decisionDetail(decisionId: UUID) async throws -> DecisionDetail {
+        try throwIfNeeded()
+        guard let decision = decisions[decisionId] else {
+            throw RuulError.unexpected(message: "Decisión no encontrada")
+        }
+        guard memberships[decision.contextActorId]?.contains(where: { $0.actorId == me.id }) == true else {
+            throw RuulError.unexpected(message: "No autorizado para ver esta decisión")
+        }
+        let votesList = votes[decisionId] ?? []
+        let detailOptions: [DecisionDetailOption] = (decisionOptions[decisionId] ?? [])
+            .filter(\.isActive)
+            .sorted { $0.sortOrder < $1.sortOrder }
+            .map { option in
+                DecisionDetailOption(
+                    id: option.id,
+                    optionKey: option.optionKey,
+                    title: option.title,
+                    description: option.description,
+                    payload: option.payload,
+                    sortOrder: option.sortOrder,
+                    votes: votesList.filter { $0.optionId == option.id }.count
+                )
+            }
+        let myPerms = permissions[decision.contextActorId] ?? []
+        let canVote = myPerms.contains("decisions.vote") || myPerms.contains("decisions.create")
+        let canManage = myPerms.contains("decisions.execute") || myPerms.contains("context.manage")
+        let alreadyVoted = votesList.contains { $0.voterActorId == me.id }
+
+        var actions: [AvailableAction] = []
+        switch decision.status {
+        case "open":
+            if alreadyVoted {
+                actions.append(AvailableAction(
+                    actionKey: "change_vote", label: "Cambiar voto", section: "decisions",
+                    enabled: canVote,
+                    reason: canVote ? "Ya votaste; puedes cambiar tu voto"
+                                    : "No tienes permiso para votar en este contexto"
+                ))
+            } else {
+                actions.append(AvailableAction(
+                    actionKey: "vote", label: "Votar", section: "decisions",
+                    enabled: canVote,
+                    reason: canVote ? "La decisión está abierta y puedes votar"
+                                    : "No tienes permiso para votar en este contexto"
+                ))
+            }
+            actions.append(AvailableAction(
+                actionKey: "close_decision", label: "Cerrar votación", section: "decisions",
+                enabled: canManage,
+                reason: canManage ? "Puedes cerrar la votación" : "Requiere permiso decisions.execute"
+            ))
+            actions.append(AvailableAction(
+                actionKey: "cancel_decision", label: "Cancelar decisión", section: "decisions",
+                enabled: canManage,
+                reason: canManage ? "Puedes cancelar la decisión" : "Requiere permiso decisions.execute"
+            ))
+        case "approved", "rejected":
+            actions.append(AvailableAction(
+                actionKey: "execute_decision", label: "Ejecutar resultado", section: "decisions",
+                enabled: canManage,
+                reason: canManage ? "La decisión está cerrada y lista para ejecutar"
+                                  : "Requiere permiso decisions.execute"
+            ))
+        default:
+            break
+        }
+
+        return DecisionDetail(
+            id: decision.id,
+            contextActorId: decision.contextActorId,
+            decisionType: decision.decisionType,
+            votingModel: decision.votingModel,
+            title: decision.title,
+            description: decision.description,
+            status: decision.status,
+            opensAt: decision.createdAt,
+            closesAt: decision.closesAt,
+            decidedAt: decision.decidedAt,
+            executedAt: decision.executedAt,
+            payload: decision.payload,
+            result: decision.result,
+            options: detailOptions,
+            votesCount: votesList.count,
+            availableActions: actions,
+            createdAt: decision.createdAt
+        )
     }
 
     public func voteForOption(decisionId: UUID, optionId: UUID) async throws -> VoteResult {

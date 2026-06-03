@@ -21,6 +21,16 @@ public protocol RuulRPCClient: Sendable {
     /// `resource_settings_summary(p_resource_id)` — F.1A-3.
     func resourceSettingsSummary(resourceId: UUID) async throws -> ResourceSettings
 
+    // MARK: - Actor capabilities (R.2S.1)
+
+    /// `actor_capabilities(p_actor_id)` — capabilities universales del actor
+    /// (subtype + overrides). El frontend NO deriva comportamiento por subtype.
+    func actorCapabilities(actorId: UUID) async throws -> ActorCapabilities
+    /// `actor_capabilities_catalog()` — catálogo global + matriz subtype→capabilities.
+    func actorCapabilitiesCatalog() async throws -> ActorCapabilitiesCatalog
+    /// `actor_can(p_actor_id, p_capability)` — boolean.
+    func actorCan(actorId: UUID, capability: String) async throws -> Bool
+
     // MARK: - Contexts
 
     /// `context_candidates()`
@@ -98,6 +108,8 @@ public protocol RuulRPCClient: Sendable {
     func listContextReservations(contextId: UUID) async throws -> [Reservation]
     /// Lectura PostgREST: conflictos abiertos de un recurso.
     func listConflicts(resourceId: UUID) async throws -> [ReservationConflict]
+    /// `reservation_detail(p_reservation_id)` — R.2S: detalle + `available_actions` canónicos.
+    func reservationDetail(reservationId: UUID) async throws -> ReservationDetail
     /// `approve_reservation(p_reservation_id)`
     func approveReservation(reservationId: UUID) async throws
     /// `confirm_reservation(p_reservation_id)`
@@ -121,6 +133,8 @@ public protocol RuulRPCClient: Sendable {
     func closeDecision(decisionId: UUID) async throws -> VoteResult
     /// `execute_decision(p_decision_id, p_result?)`
     func executeDecision(decisionId: UUID, result: JSONValue?) async throws
+    /// `decision_detail(p_decision_id)` — R.2S: detalle + `available_actions` canónicos.
+    func decisionDetail(decisionId: UUID) async throws -> DecisionDetail
     /// `list_decision_options(p_decision_id)` — R.2Q.
     func listDecisionOptions(decisionId: UUID) async throws -> [DecisionOption]
     /// `vote_for_option(p_decision_id, p_option_id)` — R.2Q.

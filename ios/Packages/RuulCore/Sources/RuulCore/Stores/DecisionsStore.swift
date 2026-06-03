@@ -140,6 +140,7 @@ public struct DecisionOptionDraft: Sendable, Identifiable, Equatable {
 @Observable
 public final class DecisionDetailStore {
     public private(set) var decision: Decision?
+    public private(set) var detail: DecisionDetail?
     public private(set) var votes: [DecisionVote] = []
     public private(set) var options: [DecisionOption] = []
     public private(set) var members: [ContextMember] = []
@@ -165,18 +166,31 @@ public final class DecisionDetailStore {
             async let votesTask = rpc.listDecisionVotes(decisionId: decisionId)
             async let optionsTask = rpc.listDecisionOptions(decisionId: decisionId)
             async let summaryTask = rpc.contextSummary(contextId: context.id)
-            let (decisions, loadedVotes, loadedOptions, summary) = try await (
-                decisionsTask, votesTask, optionsTask, summaryTask
+            async let detailTask = rpc.decisionDetail(decisionId: decisionId)
+            let (decisions, loadedVotes, loadedOptions, summary, loadedDetail) = try await (
+                decisionsTask, votesTask, optionsTask, summaryTask, detailTask
             )
             decision = decisions.first { $0.id == decisionId }
             votes = loadedVotes
             options = loadedOptions.filter(\.isActive).sorted { $0.sortOrder < $1.sortOrder }
             members = summary.members
             myPermissions = summary.myPermissions
+            detail = loadedDetail
             phase = .loaded
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
         }
+    }
+
+    /// R.2S — gateado por backend (`available_actions[]`). Devuelve la acción
+    /// canónica si el actor puede ejecutarla ahora; nil si no aplica.
+    public func availableAction(_ key: String) -> AvailableAction? {
+        detail?.action(key)
+    }
+
+    /// R.2S — ¿la acción está habilitada para este actor?
+    public func canDo(_ key: String) -> Bool {
+        detail?.can(key) ?? false
     }
 
     public func displayName(for actorId: UUID?) -> String {
