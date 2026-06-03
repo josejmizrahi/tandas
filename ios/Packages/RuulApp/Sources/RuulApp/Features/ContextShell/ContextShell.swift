@@ -12,6 +12,7 @@ public struct ContextShell: View {
     @State private var isShowingJoinByCode = false
     @State private var isShowingPersonalSettings = false
     @State private var isShowingContextSettings = false
+    @State private var isShowingInvitations = false
     @State private var prefilledInviteCode: String?
 
     public init(container: DependencyContainer) {
@@ -38,19 +39,24 @@ public struct ContextShell: View {
                     NoContextsView(
                         onCreate: { isShowingCreateContext = true },
                         onJoin: { isShowingJoinByCode = true },
-                        onSignOut: { Task { await container.signOut() } }
+                        onSignOut: { Task { await container.signOut() } },
+                        pendingInvitationsCount: container.invitationsStore.invitations.count,
+                        onOpenInvitations: { isShowingInvitations = true }
                     )
                 }
             }
         }
         .task {
             await contextStore.load()
+            await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
         }
-        // Refrescar la lista de contextos al volver del background — p.ej. si te
-        // agregaron a un grupo (o se sembraron datos) mientras la app estaba abierta.
+        // Refrescar la lista de contextos + invitaciones al volver del background.
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
-            Task { await contextStore.load() }
+            Task {
+                await contextStore.load()
+                await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+            }
         }
         // Invitación entrante por universal link / ruul:// — el código quedó
         // pendiente en el router (aunque haya llegado antes de pasar los gates).
@@ -73,6 +79,9 @@ public struct ContextShell: View {
                 ContextSettingsView(context: current, container: container)
             }
         }
+        .sheet(isPresented: $isShowingInvitations) {
+            PendingInvitationsView(container: container)
+        }
     }
 
     @ViewBuilder
@@ -83,9 +92,11 @@ public struct ContextShell: View {
                     ToolbarItem(placement: .topBarLeading) {
                         ContextSwitcherMenu(
                             contextStore: contextStore,
+                            invitationsStore: container.invitationsStore,
                             onCreate: { isShowingCreateContext = true },
                             onJoin: { isShowingJoinByCode = true },
-                            onOpenContextSettings: { isShowingContextSettings = true }
+                            onOpenContextSettings: { isShowingContextSettings = true },
+                            onOpenInvitations: { isShowingInvitations = true }
                         )
                     }
                     ToolbarItem(placement: .topBarTrailing) {

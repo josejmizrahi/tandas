@@ -20,6 +20,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var memberships: [UUID: [ContextMember]] = [:]          // contextId → members
     var permissions: [UUID: [String]] = [:]                  // contextId → my permissions
     var invites: [String: (id: UUID, contextId: UUID)] = [:] // code → invite
+    /// Invitaciones pendientes por actor_id invitado → lista.
+    var pendingInvitations: [UUID: [PendingInvitation]] = [:]
     var resources: [UUID: Resource] = [:]
     var rights: [UUID: [ResourceRight]] = [:]                // resourceId → rights
     var resourceContext: [UUID: UUID] = [:]                  // resourceId → contextId
@@ -632,6 +634,60 @@ public actor MockRuulRPCClient: RuulRPCClient {
         }
         emit(invite.contextId, "membership.joined")
         return JoinResult(contextActorId: invite.contextId, membershipId: membershipId, context: context)
+    }
+
+    public func inviteMember(contextId: UUID, memberActorId: UUID, membershipType: String) async throws -> InviteMemberResult {
+        try throwIfNeeded()
+        guard let context = actors[contextId] else {
+            throw RuulError.backend(.unknown(message: "context not found"))
+        }
+        // Si ya es miembro activo, devolver su status actual sin re-invitar.
+        if let existing = memberships[contextId]?.first(where: { $0.actorId == memberActorId }) {
+            return InviteMemberResult(membershipId: existing.id, status: "active")
+        }
+        let membershipId = UUID()
+        let invitation = PendingInvitation(
+            membershipId: membershipId,
+            contextActorId: contextId,
+            contextDisplayName: context.displayName,
+            contextActorKind: context.actorKind,
+            contextActorSubtype: context.actorSubtype,
+            invitedAt: Date()
+        )
+        // Reemplazar invitación pendiente previa al mismo contexto si existe.
+        pendingInvitations[memberActorId, default: []].removeAll { $0.contextActorId == contextId }
+        pendingInvitations[memberActorId, default: []].insert(invitation, at: 0)
+        emit(contextId, "member.invited", actorId: me.id)
+        return InviteMemberResult(membershipId: membershipId, status: "invited")
+    }
+
+    public func acceptInvitation(contextId: UUID) async throws -> AcceptInvitationResult {
+        try throwIfNeeded()
+        // Idempotente: si ya soy miembro activo, devolver already_member=true.
+        if let existing = memberships[contextId]?.first(where: { $0.actorId == me.id }) {
+            return AcceptInvitationResult(membershipId: existing.id, status: "active", alreadyMember: true)
+        }
+        guard let pending = pendingInvitations[me.id]?.first(where: { $0.contextActorId == contextId }) else {
+            throw RuulError.backend(.unknown(message: "no pending invitation"))
+        }
+        pendingInvitations[me.id]?.removeAll { $0.contextActorId == contextId }
+        memberships[contextId, default: []].append(
+            ContextMember(
+                actorId: me.id,
+                displayName: me.displayName,
+                membershipType: "member",
+                joinedAt: Date(),
+                roles: ["member"]
+            )
+        )
+        permissions[contextId] = MockRuulRPCClient.memberPermissions
+        emit(contextId, "member.joined", actorId: me.id, payload: .object(["via": .string("invitation")]))
+        return AcceptInvitationResult(membershipId: pending.membershipId, status: "active", alreadyMember: false)
+    }
+
+    public func listMyPendingInvitations(actorId: UUID) async throws -> [PendingInvitation] {
+        try throwIfNeeded()
+        return pendingInvitations[actorId] ?? []
     }
 
     public func removeMember(contextId: UUID, memberActorId: UUID, reason: String?) async throws {
@@ -2462,6 +2518,7 @@ extension MockRuulRPCClient {
         public static let cenaSemanal = UUID(uuidString: "00000000-0000-0000-0000-0000000000c1")!
         public static let familia = UUID(uuidString: "00000000-0000-0000-0000-0000000000c2")!
         public static let casaValle = UUID(uuidString: "00000000-0000-0000-0000-0000000000d1")!
+        public static let viajeJapon = UUID(uuidString: "00000000-0000-0000-0000-0000000000c3")!
     }
 
     /// Mundo seedeado con el escenario del founder para previews.
@@ -2617,5 +2674,24 @@ extension MockRuulRPCClient {
         ]))
         emit(familia.id, "context.created", actorId: DemoIds.jose)
         emit(familia.id, "resource.created", actorId: DemoIds.jose)
+
+        // Invitación pendiente: Isaac invitó a José a "Viaje a Japón 2026".
+        let viaje = ActorRecord(
+            id: DemoIds.viajeJapon,
+            actorKind: .collective,
+            actorSubtype: "trip",
+            displayName: "Viaje a Japón 2026"
+        )
+        actors[viaje.id] = viaje
+        pendingInvitations[DemoIds.jose] = [
+            PendingInvitation(
+                membershipId: UUID(),
+                contextActorId: viaje.id,
+                contextDisplayName: viaje.displayName,
+                contextActorKind: viaje.actorKind,
+                contextActorSubtype: viaje.actorSubtype,
+                invitedAt: Date().addingTimeInterval(-3600)
+            )
+        ]
     }
 }

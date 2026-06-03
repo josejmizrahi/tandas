@@ -52,7 +52,7 @@ public struct MembersListView: View {
             }
         }
         .sheet(isPresented: $isShowingInvite) {
-            InviteMembersView(context: context, store: store)
+            InviteMembersView(context: context, store: store, container: container)
         }
     }
 

@@ -53,6 +53,17 @@ public protocol RuulRPCClient: Sendable {
     func revokeInvite(inviteId: UUID) async throws
     /// `join_by_invite_code(p_code)`
     func joinByInviteCode(_ code: String) async throws -> JoinResult
+    /// `invite_member(p_context_actor_id, p_member_actor_id, p_membership_type)` —
+    /// invitación directa actor→actor (status='invited' hasta accept).
+    func inviteMember(contextId: UUID, memberActorId: UUID, membershipType: String) async throws -> InviteMemberResult
+    /// `accept_invitation(p_context_actor_id)` — el caller acepta una invitación
+    /// pendiente y queda como miembro activo. Idempotente: `already_member=true`
+    /// si ya era miembro.
+    func acceptInvitation(contextId: UUID) async throws -> AcceptInvitationResult
+    /// Lectura PostgREST: invitaciones pendientes del actor (`actor_memberships`
+    /// con `member_actor_id = actor AND membership_status = 'invited'`, embebido
+    /// con `actors` para el nombre del contexto).
+    func listMyPendingInvitations(actorId: UUID) async throws -> [PendingInvitation]
     /// `remove_member(...)`
     func removeMember(contextId: UUID, memberActorId: UUID, reason: String?) async throws
     /// `leave_context(p_context_actor_id)`

@@ -50,6 +50,75 @@ struct MockClientTests {
         }
     }
 
+    @Test("el mundo demo siembra una invitación pendiente para José")
+    func demoSeedsPendingInvitation() async throws {
+        let mock = await makeDemoClient()
+        let pending = try await mock.listMyPendingInvitations(actorId: MockRuulRPCClient.DemoIds.jose)
+        #expect(pending.count == 1)
+        #expect(pending.first?.contextDisplayName == "Viaje a Japón 2026")
+    }
+
+    @Test("accept_invitation activa la membresía y vacía la pendiente")
+    func acceptPendingInvitation() async throws {
+        let mock = await makeDemoClient()
+        let result = try await mock.acceptInvitation(contextId: MockRuulRPCClient.DemoIds.viajeJapon)
+        #expect(result.status == "active")
+        #expect(result.alreadyMember == false)
+
+        // Ya no debe quedar pendiente.
+        let pending = try await mock.listMyPendingInvitations(actorId: MockRuulRPCClient.DemoIds.jose)
+        #expect(pending.isEmpty)
+
+        // Segunda llamada → already_member=true (idempotente).
+        let again = try await mock.acceptInvitation(contextId: MockRuulRPCClient.DemoIds.viajeJapon)
+        #expect(again.alreadyMember == true)
+    }
+
+    @Test("accept_invitation sin invitación previa lanza error")
+    func acceptWithoutPendingFails() async throws {
+        let mock = await makeDemoClient()
+        // José ya es miembro activo de Cena Semanal → already_member=true, no error
+        let result = try await mock.acceptInvitation(contextId: MockRuulRPCClient.DemoIds.cenaSemanal)
+        #expect(result.alreadyMember == true)
+
+        // Un contexto random sin invitación → error
+        let randomContext = UUID()
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.acceptInvitation(contextId: randomContext)
+        }
+    }
+
+    @Test("invite_member crea una invitación pendiente para el invitado")
+    func inviteMemberCreatesPending() async throws {
+        let mock = await makeDemoClient()
+        // José invita a Daniel a "Familia" (Daniel no es miembro de Familia).
+        let result = try await mock.inviteMember(
+            contextId: MockRuulRPCClient.DemoIds.familia,
+            memberActorId: MockRuulRPCClient.DemoIds.daniel,
+            membershipType: "member"
+        )
+        #expect(result.status == "invited")
+
+        let pending = try await mock.listMyPendingInvitations(actorId: MockRuulRPCClient.DemoIds.daniel)
+        #expect(pending.contains { $0.contextActorId == MockRuulRPCClient.DemoIds.familia })
+    }
+
+    @Test("invite_member es no-op si el actor ya es miembro activo")
+    func inviteMemberIdempotent() async throws {
+        let mock = await makeDemoClient()
+        // Isaac ya es miembro activo de Familia.
+        let result = try await mock.inviteMember(
+            contextId: MockRuulRPCClient.DemoIds.familia,
+            memberActorId: MockRuulRPCClient.DemoIds.isaac,
+            membershipType: "member"
+        )
+        #expect(result.status == "active")
+
+        // No debió crear pendiente.
+        let pending = try await mock.listMyPendingInvitations(actorId: MockRuulRPCClient.DemoIds.isaac)
+        #expect(!pending.contains { $0.contextActorId == MockRuulRPCClient.DemoIds.familia })
+    }
+
     @Test("context_summary refleja members, rules y obligations del demo")
     func contextSummary() async throws {
         let mock = await makeDemoClient()

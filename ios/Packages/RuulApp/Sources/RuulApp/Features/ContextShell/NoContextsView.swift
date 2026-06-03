@@ -7,15 +7,21 @@ public struct NoContextsView: View {
     let onCreate: () -> Void
     let onJoin: () -> Void
     let onSignOut: () -> Void
+    let pendingInvitationsCount: Int
+    let onOpenInvitations: (() -> Void)?
 
     public init(
         onCreate: @escaping () -> Void,
         onJoin: @escaping () -> Void,
-        onSignOut: @escaping () -> Void
+        onSignOut: @escaping () -> Void,
+        pendingInvitationsCount: Int = 0,
+        onOpenInvitations: (() -> Void)? = nil
     ) {
         self.onCreate = onCreate
         self.onJoin = onJoin
         self.onSignOut = onSignOut
+        self.pendingInvitationsCount = pendingInvitationsCount
+        self.onOpenInvitations = onOpenInvitations
     }
 
     public var body: some View {
@@ -37,6 +43,19 @@ public struct NoContextsView: View {
             .padding(.horizontal, 24)
 
             VStack(spacing: 12) {
+                if pendingInvitationsCount > 0, let onOpenInvitations {
+                    Button(action: onOpenInvitations) {
+                        Label(
+                            "Tienes \(pendingInvitationsCount) invitación\(pendingInvitationsCount == 1 ? "" : "es")",
+                            systemImage: "tray.full"
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .controlSize(.large)
+                    .tint(.orange)
+                }
+
                 Button(action: onCreate) {
                     Label("Crear contexto", systemImage: "plus")
                         .frame(maxWidth: .infinity)
@@ -68,4 +87,14 @@ public struct NoContextsView: View {
 
 #Preview("Sin contextos") {
     NoContextsView(onCreate: {}, onJoin: {}, onSignOut: {})
+}
+
+#Preview("Sin contextos · con invitaciones") {
+    NoContextsView(
+        onCreate: {},
+        onJoin: {},
+        onSignOut: {},
+        pendingInvitationsCount: 2,
+        onOpenInvitations: {}
+    )
 }

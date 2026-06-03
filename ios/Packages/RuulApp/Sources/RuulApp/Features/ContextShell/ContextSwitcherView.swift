@@ -6,20 +6,30 @@ import RuulCore
 /// El perfil del usuario vive aparte en `ProfileAvatarMenu` (top-right).
 public struct ContextSwitcherMenu: View {
     let contextStore: ContextStore
+    let invitationsStore: InvitationsStore?
     let onCreate: () -> Void
     let onJoin: () -> Void
     let onOpenContextSettings: () -> Void
+    let onOpenInvitations: (() -> Void)?
 
     public init(
         contextStore: ContextStore,
+        invitationsStore: InvitationsStore? = nil,
         onCreate: @escaping () -> Void,
         onJoin: @escaping () -> Void,
-        onOpenContextSettings: @escaping () -> Void = {}
+        onOpenContextSettings: @escaping () -> Void = {},
+        onOpenInvitations: (() -> Void)? = nil
     ) {
         self.contextStore = contextStore
+        self.invitationsStore = invitationsStore
         self.onCreate = onCreate
         self.onJoin = onJoin
         self.onOpenContextSettings = onOpenContextSettings
+        self.onOpenInvitations = onOpenInvitations
+    }
+
+    private var pendingCount: Int {
+        invitationsStore?.invitations.count ?? 0
     }
 
     public var body: some View {
@@ -47,6 +57,14 @@ public struct ContextSwitcherMenu: View {
                 }
             }
 
+            if pendingCount > 0, let onOpenInvitations {
+                Section {
+                    Button(action: onOpenInvitations) {
+                        Label("Invitaciones (\(pendingCount))", systemImage: "tray.full")
+                    }
+                }
+            }
+
             Section {
                 Button(action: onCreate) {
                     Label("Crear contexto", systemImage: "plus")
@@ -57,13 +75,27 @@ public struct ContextSwitcherMenu: View {
             }
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: contextStore.currentContext?.symbolName ?? "person.crop.circle")
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: contextStore.currentContext?.symbolName ?? "person.crop.circle")
+                    if pendingCount > 0 {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 4, y: -4)
+                            .accessibilityHidden(true)
+                    }
+                }
                 Text(contextStore.currentContext?.displayName ?? "Contexto")
                     .lineLimit(1)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.caption2)
             }
             .font(.subheadline.weight(.semibold))
+            .accessibilityLabel(
+                pendingCount > 0
+                    ? "\(contextStore.currentContext?.displayName ?? "Contexto"). \(pendingCount) invitaciones pendientes"
+                    : (contextStore.currentContext?.displayName ?? "Contexto")
+            )
         }
     }
 }

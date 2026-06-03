@@ -219,6 +219,43 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("join_by_invite_code", params: Params(pCode: code))
     }
 
+    public func inviteMember(contextId: UUID, memberActorId: UUID, membershipType: String) async throws -> InviteMemberResult {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pMemberActorId: UUID
+            let pMembershipType: String
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pMemberActorId = "p_member_actor_id"
+                case pMembershipType = "p_membership_type"
+            }
+        }
+        return try await call("invite_member", params: Params(
+            pContextActorId: contextId,
+            pMemberActorId: memberActorId,
+            pMembershipType: membershipType
+        ))
+    }
+
+    public func acceptInvitation(contextId: UUID) async throws -> AcceptInvitationResult {
+        try await call("accept_invitation", params: ContextIdParams(contextId: contextId))
+    }
+
+    public func listMyPendingInvitations(actorId: UUID) async throws -> [PendingInvitation] {
+        do {
+            return try await client
+                .from("actor_memberships")
+                .select("id,context_actor_id,created_at,context:actors!context_actor_id(display_name,actor_kind,actor_subtype)")
+                .eq("member_actor_id", value: actorId.uuidString)
+                .eq("membership_status", value: "invited")
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func removeMember(contextId: UUID, memberActorId: UUID, reason: String?) async throws {
         struct Params: Encodable, Sendable {
             let pContextActorId: UUID
