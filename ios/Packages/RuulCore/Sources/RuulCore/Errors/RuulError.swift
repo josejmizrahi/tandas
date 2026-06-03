@@ -1,10 +1,9 @@
 import Foundation
 
-/// Top-level error type used everywhere in RuulCore + Features. Wraps
-/// `CanonicalBackendError` (parsed Postgrest raise messages) and a few
-/// orthogonal client-side cases (network, decoding, cancellation).
+/// Error raíz usado en todo RuulCore + RuulApp. Envuelve `BackendError`
+/// (raises de los RPCs MVP2) y casos client-side ortogonales.
 public enum RuulError: Error, Sendable, Equatable {
-    case backend(CanonicalBackendError)
+    case backend(BackendError)
     case network(message: String)
     case decoding(message: String)
     case cancelled

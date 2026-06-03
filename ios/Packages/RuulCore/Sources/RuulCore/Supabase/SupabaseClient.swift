@@ -35,8 +35,8 @@ public enum SupabaseEnvironment {
             supabaseKey: anonKey,
             options: SupabaseClientOptions(
                 db: SupabaseClientOptions.DatabaseOptions(
-                    encoder: .tandas,
-                    decoder: .tandas
+                    encoder: .ruul,
+                    decoder: .ruul
                 )
             )
         )
