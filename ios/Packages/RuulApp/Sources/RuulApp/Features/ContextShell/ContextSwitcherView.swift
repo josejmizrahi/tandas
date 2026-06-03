@@ -7,17 +7,20 @@ public struct ContextSwitcherMenu: View {
     let contextStore: ContextStore
     let onCreate: () -> Void
     let onJoin: () -> Void
+    let onEditProfile: () -> Void
     let onSignOut: () -> Void
 
     public init(
         contextStore: ContextStore,
         onCreate: @escaping () -> Void,
         onJoin: @escaping () -> Void,
+        onEditProfile: @escaping () -> Void,
         onSignOut: @escaping () -> Void
     ) {
         self.contextStore = contextStore
         self.onCreate = onCreate
         self.onJoin = onJoin
+        self.onEditProfile = onEditProfile
         self.onSignOut = onSignOut
     }
 
@@ -47,6 +50,9 @@ public struct ContextSwitcherMenu: View {
             }
 
             Section {
+                Button(action: onEditProfile) {
+                    Label("Tu perfil", systemImage: "person.crop.circle")
+                }
                 Button(role: .destructive, action: onSignOut) {
                     Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
                 }
@@ -79,6 +85,7 @@ public struct ContextSwitcherMenu: View {
                         ),
                         onCreate: {},
                         onJoin: {},
+                        onEditProfile: {},
                         onSignOut: {}
                     )
                 }

@@ -9,6 +9,7 @@ public struct ContextShell: View {
 
     @State private var isShowingCreateContext = false
     @State private var isShowingJoinByCode = false
+    @State private var isShowingEditProfile = false
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -48,6 +49,9 @@ public struct ContextShell: View {
         .sheet(isPresented: $isShowingJoinByCode) {
             JoinByCodeView(container: container)
         }
+        .sheet(isPresented: $isShowingEditProfile) {
+            EditProfileView(container: container)
+        }
     }
 
     @ViewBuilder
@@ -60,6 +64,7 @@ public struct ContextShell: View {
                             contextStore: contextStore,
                             onCreate: { isShowingCreateContext = true },
                             onJoin: { isShowingJoinByCode = true },
+                            onEditProfile: { isShowingEditProfile = true },
                             onSignOut: { Task { await container.signOut() } }
                         )
                     }
