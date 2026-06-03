@@ -129,6 +129,38 @@ struct StoreTests {
         #expect(personalStore.world?.resources.contains { $0.displayName == "Casa Valle" } == true)
     }
 
+    // MARK: - ResourcesStore
+
+    @Test("ResourcesStore: contexto personal usa my_world; colectivo usa list_context_resources")
+    func resourcesStorePersonalVsCollective() async {
+        let mock = await makeDemoClient()
+
+        // Personal: "Todos los recursos" debe coincidir con el home (my_world),
+        // no con list_context_resources(actor_persona).
+        let personal = AppContext(
+            id: MockRuulRPCClient.DemoIds.jose,
+            kind: .person,
+            subtype: "person",
+            displayName: "José"
+        )
+        let personalStore = ResourcesStore(rpc: mock)
+        await personalStore.load(context: personal)
+        #expect(personalStore.resources.isEmpty)
+        #expect(personalStore.personalResources.contains { $0.displayName == "Casa Valle" })
+
+        // Colectivo: ruta clásica por list_context_resources.
+        let familia = AppContext(
+            id: MockRuulRPCClient.DemoIds.familia,
+            kind: .collective,
+            subtype: "family",
+            displayName: "Familia Mizrahi"
+        )
+        let collectiveStore = ResourcesStore(rpc: mock)
+        await collectiveStore.load(context: familia)
+        #expect(collectiveStore.personalResources.isEmpty)
+        #expect(collectiveStore.resources.contains { $0.displayName == "Casa Valle" })
+    }
+
     // MARK: - MembersStore
 
     @Test("MembersStore carga miembros y respeta permisos")

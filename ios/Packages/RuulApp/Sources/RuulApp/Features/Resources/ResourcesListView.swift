@@ -58,6 +58,42 @@ public struct ResourcesListView: View {
 
     @ViewBuilder
     private var resourcesList: some View {
+        if context.isPersonal {
+            personalResourcesList
+        } else {
+            contextResourcesList
+        }
+    }
+
+    /// Contexto personal: el mismo conjunto que el home ("Recursos que puedes ver"),
+    /// con las razones de visibilidad como subtítulo.
+    @ViewBuilder
+    private var personalResourcesList: some View {
+        if store.personalResources.isEmpty {
+            EmptyStateView(
+                symbolName: "shippingbox",
+                title: "Sin recursos",
+                message: "Nadie te ha compartido recursos todavía."
+            )
+        } else {
+            List {
+                ForEach(store.personalResources) { resource in
+                    NavigationLink {
+                        ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
+                    } label: {
+                        InfoRow(
+                            symbolName: (ResourceType(rawValue: resource.resourceType) ?? .other).symbolName,
+                            title: resource.displayName,
+                            subtitle: resource.reasons.joined(separator: " · ")
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var contextResourcesList: some View {
         if store.resources.isEmpty {
             EmptyStateView(
                 symbolName: "shippingbox",

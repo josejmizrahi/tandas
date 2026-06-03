@@ -7,6 +7,10 @@ import Observation
 @Observable
 public final class ResourcesStore {
     public private(set) var resources: [ContextResource] = []
+    /// Contexto personal: recursos que puedes ver vía `my_world()` (incluye los
+    /// que ves a través de los colectivos a los que perteneces, no solo los que
+    /// tienes en directo). Para contextos colectivos queda vacío.
+    public private(set) var personalResources: [MyWorldResource] = []
     public private(set) var myPermissions: [String] = []
     public private(set) var phase: StorePhase = .idle
 
@@ -25,13 +29,27 @@ public final class ResourcesStore {
     }
 
     public func load(context: AppContext) async {
-        if resources.isEmpty { phase = .loading }
+        if resources.isEmpty && personalResources.isEmpty { phase = .loading }
         do {
-            async let resourcesTask = rpc.listContextResources(contextId: context.id)
-            async let summaryTask = rpc.contextSummary(contextId: context.id)
-            let (loaded, summary) = try await (resourcesTask, summaryTask)
-            resources = loaded
-            myPermissions = summary.myPermissions
+            // El contexto personal lista lo mismo que `my_world()` muestra en el
+            // home ("Recursos que puedes ver"): list_context_resources(actor_persona)
+            // solo devolvería los recursos con un right directo de la persona, no
+            // los que ve vía sus colectivos.
+            if context.isPersonal {
+                async let worldTask = rpc.myWorld()
+                async let summaryTask = rpc.contextSummary(contextId: context.id)
+                let (world, summary) = try await (worldTask, summaryTask)
+                personalResources = world.resources
+                resources = []
+                myPermissions = summary.myPermissions
+            } else {
+                async let resourcesTask = rpc.listContextResources(contextId: context.id)
+                async let summaryTask = rpc.contextSummary(contextId: context.id)
+                let (loaded, summary) = try await (resourcesTask, summaryTask)
+                resources = loaded
+                personalResources = []
+                myPermissions = summary.myPermissions
+            }
             phase = .loaded
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
