@@ -113,6 +113,12 @@ public protocol RuulRPCClient: Sendable {
     func closeDecision(decisionId: UUID) async throws -> VoteResult
     /// `execute_decision(p_decision_id, p_result?)`
     func executeDecision(decisionId: UUID, result: JSONValue?) async throws
+    /// `list_decision_options(p_decision_id)` — R.2Q.
+    func listDecisionOptions(decisionId: UUID) async throws -> [DecisionOption]
+    /// `vote_for_option(p_decision_id, p_option_id)` — R.2Q.
+    func voteForOption(decisionId: UUID, optionId: UUID) async throws -> VoteResult
+    /// `create_decision_option(...)` — R.2Q.
+    func createDecisionOption(_ input: CreateDecisionOptionInput) async throws -> DecisionOption
 
     // MARK: - Money
 
@@ -333,6 +339,8 @@ public struct CreateDecisionInput: Sendable, Equatable {
     public var closesAt: Date?
     public var payload: JSONValue?
     public var clientId: String?
+    /// R.2Q — override del voting_model. Si es nil, el backend autodetecta.
+    public var votingModel: VotingModel?
 
     public init(
         contextId: UUID,
@@ -341,7 +349,8 @@ public struct CreateDecisionInput: Sendable, Equatable {
         description: String? = nil,
         closesAt: Date? = nil,
         payload: JSONValue? = nil,
-        clientId: String? = nil
+        clientId: String? = nil,
+        votingModel: VotingModel? = nil
     ) {
         self.contextId = contextId
         self.decisionType = decisionType
@@ -350,6 +359,33 @@ public struct CreateDecisionInput: Sendable, Equatable {
         self.closesAt = closesAt
         self.payload = payload
         self.clientId = clientId
+        self.votingModel = votingModel
+    }
+}
+
+/// Input de `create_decision_option` — R.2Q.
+public struct CreateDecisionOptionInput: Sendable, Equatable {
+    public var decisionId: UUID
+    public var optionKey: String
+    public var title: String
+    public var description: String?
+    public var payload: JSONValue?
+    public var sortOrder: Int?
+
+    public init(
+        decisionId: UUID,
+        optionKey: String,
+        title: String,
+        description: String? = nil,
+        payload: JSONValue? = nil,
+        sortOrder: Int? = nil
+    ) {
+        self.decisionId = decisionId
+        self.optionKey = optionKey
+        self.title = title
+        self.description = description
+        self.payload = payload
+        self.sortOrder = sortOrder
     }
 }
 

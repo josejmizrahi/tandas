@@ -563,6 +563,128 @@ struct DecodingTests {
         #expect(result.tally?.members == 5)
     }
 
+    @Test("vote_for_option result con winning_option_id (R.2Q)")
+    func voteForOptionResult() throws {
+        let json = """
+        {
+          "decision_id": "e8098c1a-f86e-11da-bd1a-00112444be1e",
+          "my_vote": "approve",
+          "my_option": "award_a",
+          "my_option_id": "11111111-1111-1111-1111-111111111111",
+          "status": "approved",
+          "winning_option": "award_a",
+          "winning_option_id": "11111111-1111-1111-1111-111111111111",
+          "tally": {"approve": 2, "reject": 0, "members": 3,
+                    "option_tally": {"award_a": 2}}
+        }
+        """
+        let result = try decode(VoteResult.self, json)
+        #expect(result.status == "approved")
+        #expect(result.winningOption == "award_a")
+        #expect(result.winningOptionId?.uuidString.lowercased() == "11111111-1111-1111-1111-111111111111")
+        #expect(result.myOptionId != nil)
+    }
+
+    @Test("decisions row con voting_model (R.2Q)")
+    func decisionWithVotingModel() throws {
+        let json = """
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "context_actor_id": "22222222-2222-2222-2222-222222222222",
+          "decision_type": "reservation_dispute",
+          "title": "Disputa Casa Valle",
+          "description": null,
+          "status": "approved",
+          "voting_model": "single_choice",
+          "created_by_actor_id": "33333333-3333-3333-3333-333333333333",
+          "closes_at": null,
+          "decided_at": "2026-06-03T18:15:30.123456+00:00",
+          "executed_at": null,
+          "payload": {"conflict_id": "44444444-4444-4444-4444-444444444444"},
+          "result": {
+            "winning_option": "award_a",
+            "winning_option_id": "55555555-5555-5555-5555-555555555555"
+          },
+          "created_at": "2026-06-03T18:15:30+00:00"
+        }
+        """
+        let decision = try decode(Decision.self, json)
+        #expect(decision.voting == .singleChoice)
+        #expect(decision.winningOptionKey == "award_a")
+        #expect(decision.winningOptionId?.uuidString.lowercased() == "55555555-5555-5555-5555-555555555555")
+    }
+
+    @Test("decision sin voting_model defaultea a yes_no_abstain")
+    func decisionWithoutVotingModelDefaults() throws {
+        let json = """
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "context_actor_id": "22222222-2222-2222-2222-222222222222",
+          "decision_type": "generic",
+          "title": "Sin voting_model",
+          "status": "open"
+        }
+        """
+        let decision = try decode(Decision.self, json)
+        #expect(decision.voting == .yesNoAbstain)
+    }
+
+    @Test("list_decision_options (R.2Q)")
+    func listDecisionOptions() throws {
+        let json = """
+        [
+          {
+            "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "decision_id": "11111111-1111-1111-1111-111111111111",
+            "option_key": "award_a",
+            "title": "Asignar a David",
+            "description": null,
+            "payload": {
+              "action": "reservation_award",
+              "winner_reservation_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+              "conflict_id": "44444444-4444-4444-4444-444444444444"
+            },
+            "sort_order": 0,
+            "status": "active",
+            "created_at": "2026-06-03T18:15:30+00:00"
+          },
+          {
+            "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "decision_id": "11111111-1111-1111-1111-111111111111",
+            "option_key": "award_b",
+            "title": "Asignar a Isaac",
+            "description": null,
+            "payload": {"action": "reservation_award"},
+            "sort_order": 1,
+            "status": "active",
+            "created_at": null
+          }
+        ]
+        """
+        let options = try decode([DecisionOption].self, json)
+        #expect(options.count == 2)
+        #expect(options[0].optionKey == "award_a")
+        #expect(options[0].actionKey == "reservation_award")
+        #expect(options[0].sortOrder == 0)
+        #expect(options[1].isActive)
+    }
+
+    @Test("decision_vote con option_id (R.2Q)")
+    func decisionVoteWithOptionId() throws {
+        let json = """
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "decision_id": "22222222-2222-2222-2222-222222222222",
+          "voter_actor_id": "33333333-3333-3333-3333-333333333333",
+          "vote": "approve",
+          "option_id": "44444444-4444-4444-4444-444444444444",
+          "voted_at": "2026-06-03T18:15:30+00:00"
+        }
+        """
+        let vote = try decode(DecisionVote.self, json)
+        #expect(vote.optionId?.uuidString.lowercased() == "44444444-4444-4444-4444-444444444444")
+    }
+
     // MARK: - Activity
 
     @Test("list_activity")

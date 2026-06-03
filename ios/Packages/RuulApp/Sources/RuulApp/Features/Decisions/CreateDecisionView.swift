@@ -1,7 +1,7 @@
 import SwiftUI
 import RuulCore
 
-/// F.10 — proponer una decisión. Puede llegar precargada desde un conflicto
+/// F.10 + R.2Q — proponer una decisión. Puede llegar precargada desde un conflicto
 /// de reservación (F.9 → "Escalar a votación").
 public struct CreateDecisionView: View {
     let context: AppContext
@@ -13,6 +13,9 @@ public struct CreateDecisionView: View {
     @State private var title: String
     @State private var description = ""
     @State private var decisionType: DecisionType
+    @State private var votingModel: VotingModel
+    @State private var optionDrafts: [DecisionOptionDraft] = []
+    @State private var newOptionText: String = ""
     @State private var runner = ActionRunner()
 
     public init(
@@ -28,6 +31,10 @@ public struct CreateDecisionView: View {
         _store = State(initialValue: DecisionsStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
         _title = State(initialValue: prefilledTitle)
         _decisionType = State(initialValue: prefilledType)
+        // En conflictos de reservación el backend auto-seedea las 4 opciones,
+        // así que mantenemos single_choice por defecto en ese flow.
+        let defaultModel: VotingModel = conflictReference != nil ? .singleChoice : .yesNoAbstain
+        _votingModel = State(initialValue: defaultModel)
     }
 
     public var body: some View {
@@ -48,6 +55,27 @@ public struct CreateDecisionView: View {
                 .pickerStyle(.navigationLink)
             }
 
+            // R.2Q — voting model picker
+            // En conflictos de reservación el modo es fijo (single_choice con
+            // 4 opciones auto-seedeadas). En el resto, el usuario elige.
+            if conflictReference == nil {
+                Section {
+                    Picker("Modo de votación", selection: $votingModel) {
+                        ForEach(supportedVotingModels, id: \.self) { model in
+                            Text(model.label).tag(model)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                } footer: {
+                    Text(votingModelHint)
+                }
+            }
+
+            // R.2Q — opciones manuales para single_choice no-disputa
+            if votingModel == .singleChoice && conflictReference == nil {
+                optionsSection
+            }
+
             Section {
                 Button {
                     Task { await create() }
@@ -58,9 +86,9 @@ public struct CreateDecisionView: View {
                         Text("Proponer").frame(maxWidth: .infinity)
                     }
                 }
-                .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || runner.isRunning)
+                .disabled(!canSubmit || runner.isRunning)
             } footer: {
-                Text("La decisión queda abierta para que los miembros voten. Se aprueba con mayoría simple.")
+                Text(submitFooter)
             }
         }
         .navigationTitle("Nueva decisión")
@@ -73,23 +101,112 @@ public struct CreateDecisionView: View {
         .actionErrorAlert(runner)
     }
 
+    // MARK: - Opciones (R.2Q)
+
+    @ViewBuilder
+    private var optionsSection: some View {
+        Section {
+            ForEach(optionDrafts) { draft in
+                HStack(spacing: 12) {
+                    Image(systemName: "circle")
+                        .foregroundStyle(.secondary)
+                        .imageScale(.large)
+                    Text(draft.title)
+                    Spacer()
+                    Button(role: .destructive) {
+                        optionDrafts.removeAll { $0.id == draft.id }
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack {
+                TextField("Nueva opción", text: $newOptionText)
+                    .submitLabel(.done)
+                    .onSubmit(addOption)
+                Button {
+                    addOption()
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .imageScale(.large)
+                }
+                .disabled(newOptionText.trimmingCharacters(in: .whitespaces).isEmpty)
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Text("Opciones a votar")
+        } footer: {
+            Text("Agregá al menos dos opciones. Gana la más votada.")
+        }
+    }
+
+    private func addOption() {
+        let trimmed = newOptionText.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        optionDrafts.append(DecisionOptionDraft(title: trimmed))
+        newOptionText = ""
+    }
+
+    // MARK: - Helpers
+
+    private var supportedVotingModels: [VotingModel] { [.yesNoAbstain, .singleChoice] }
+
+    private var votingModelHint: String {
+        switch votingModel {
+        case .yesNoAbstain:
+            return "Cada miembro vota a favor, en contra o abstención."
+        case .singleChoice:
+            return "Cada miembro elige una opción de las que definas abajo."
+        default:
+            return ""
+        }
+    }
+
+    private var canSubmit: Bool {
+        let titleOK = !title.trimmingCharacters(in: .whitespaces).isEmpty
+        guard titleOK else { return false }
+        if votingModel == .singleChoice && conflictReference == nil {
+            return optionDrafts.count >= 2
+        }
+        return true
+    }
+
+    private var submitFooter: String {
+        switch votingModel {
+        case .yesNoAbstain:
+            return "Se aprueba con mayoría simple."
+        case .singleChoice where conflictReference != nil:
+            return "Las opciones de la disputa se crean automáticamente."
+        case .singleChoice:
+            return "Gana la opción más votada al pasar la mitad de los miembros o cuando todos voten."
+        default:
+            return ""
+        }
+    }
+
     private func create() async {
         let success = await runner.run {
             var payload: JSONValue?
             if let conflictReference {
                 payload = .object(["conflict_id": .string(conflictReference.uuidString)])
             }
-            _ = try await store.createDecision(
-                CreateDecisionInput(
-                    contextId: context.id,
-                    decisionType: decisionType,
-                    title: title.trimmingCharacters(in: .whitespaces),
-                    description: description.isEmpty ? nil : description,
-                    payload: payload,
-                    clientId: UUID().uuidString
-                ),
-                context: context
+            let input = CreateDecisionInput(
+                contextId: context.id,
+                decisionType: decisionType,
+                title: title.trimmingCharacters(in: .whitespaces),
+                description: description.isEmpty ? nil : description,
+                payload: payload,
+                clientId: UUID().uuidString,
+                votingModel: votingModel
             )
+            if votingModel == .singleChoice && conflictReference == nil {
+                _ = try await store.createDecision(input, options: optionDrafts, context: context)
+            } else {
+                _ = try await store.createDecision(input, context: context)
+            }
         }
         if success { dismiss() }
     }

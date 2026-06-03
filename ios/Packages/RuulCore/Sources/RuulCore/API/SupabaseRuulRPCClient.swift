@@ -556,6 +556,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pClosesAt: Date?
             let pPayload: JSONValue?
             let pClientId: String?
+            let pVotingModel: String?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pDecisionType = "p_decision_type"
@@ -564,6 +565,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pClosesAt = "p_closes_at"
                 case pPayload = "p_payload"
                 case pClientId = "p_client_id"
+                case pVotingModel = "p_voting_model"
             }
         }
         let created: DecisionCreated = try await call("create_decision", params: Params(
@@ -573,7 +575,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pDescription: input.description,
             pClosesAt: input.closesAt,
             pPayload: input.payload,
-            pClientId: input.clientId
+            pClientId: input.clientId,
+            pVotingModel: input.votingModel?.rawValue
         ))
         return created.decision
     }
@@ -640,6 +643,57 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             }
         }
         try await callVoid("execute_decision", params: Params(pDecisionId: decisionId, pResult: result))
+    }
+
+    public func listDecisionOptions(decisionId: UUID) async throws -> [DecisionOption] {
+        struct Params: Encodable, Sendable {
+            let pDecisionId: UUID
+            enum CodingKeys: String, CodingKey { case pDecisionId = "p_decision_id" }
+        }
+        return try await call("list_decision_options", params: Params(pDecisionId: decisionId))
+    }
+
+    public func voteForOption(decisionId: UUID, optionId: UUID) async throws -> VoteResult {
+        struct Params: Encodable, Sendable {
+            let pDecisionId: UUID
+            let pOptionId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pDecisionId = "p_decision_id"
+                case pOptionId = "p_option_id"
+            }
+        }
+        return try await call("vote_for_option", params: Params(pDecisionId: decisionId, pOptionId: optionId))
+    }
+
+    public func createDecisionOption(_ input: CreateDecisionOptionInput) async throws -> DecisionOption {
+        struct Params: Encodable, Sendable {
+            let pDecisionId: UUID
+            let pOptionKey: String
+            let pTitle: String
+            let pDescription: String?
+            let pPayload: JSONValue?
+            let pSortOrder: Int?
+            enum CodingKeys: String, CodingKey {
+                case pDecisionId = "p_decision_id"
+                case pOptionKey = "p_option_key"
+                case pTitle = "p_title"
+                case pDescription = "p_description"
+                case pPayload = "p_payload"
+                case pSortOrder = "p_sort_order"
+            }
+        }
+        struct Response: Decodable {
+            let option: DecisionOption
+        }
+        let response: Response = try await call("create_decision_option", params: Params(
+            pDecisionId: input.decisionId,
+            pOptionKey: input.optionKey,
+            pTitle: input.title,
+            pDescription: input.description,
+            pPayload: input.payload,
+            pSortOrder: input.sortOrder
+        ))
+        return response.option
     }
 
     // MARK: - Money

@@ -83,12 +83,24 @@ public struct DecisionDetailView: View {
                 }
             }
 
+            // Ganadora (post-cierre)
+            if let winner = store.winningOption(), !decision.isOpen {
+                winnerSection(winner)
+            }
+
             // Votos
             votesSection(decision)
 
-            // VoteButtons
+            // VoteButtons (yes_no_abstain) o filas de opciones (single_choice)
             if decision.isOpen && store.canVote(in: context) {
-                voteButtonsSection(decision)
+                switch decision.voting {
+                case .singleChoice:
+                    optionsSection(decision)
+                case .yesNoAbstain:
+                    voteButtonsSection(decision)
+                default:
+                    unsupportedVotingModelSection(decision)
+                }
             }
 
             // Cerrar / Ejecutar
@@ -176,6 +188,92 @@ public struct DecisionDetailView: View {
             Text(mine == nil ? "Tu voto" : "Cambiar tu voto")
         } footer: {
             Text("Se aprueba automáticamente cuando más de la mitad de los miembros vota a favor.")
+        }
+    }
+
+    // MARK: Opciones (single_choice — R.2Q)
+
+    @ViewBuilder
+    private func optionsSection(_ decision: Decision) -> some View {
+        let mine = store.myVote(myActorId: myActorId)
+        let myOptionId = mine?.optionId
+
+        Section {
+            ForEach(store.options) { option in
+                optionRow(option, isCurrent: option.id == myOptionId, decision: decision)
+            }
+        } header: {
+            Text(mine == nil ? "Elige una opción" : "Cambia tu voto")
+        } footer: {
+            Text("Gana la opción con más votos cuando supere la mitad de los miembros o cuando todos voten.")
+        }
+    }
+
+    @ViewBuilder
+    private func optionRow(_ option: DecisionOption, isCurrent: Bool, decision: Decision) -> some View {
+        Button {
+            Task {
+                await runner.run {
+                    _ = try await store.vote(for: option, decisionId: decisionId, context: context)
+                }
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isCurrent ? "largecircle.fill.circle" : "circle")
+                    .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
+                    .imageScale(.large)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(option.title)
+                        .font(.body.weight(isCurrent ? .semibold : .regular))
+                        .foregroundStyle(.primary)
+                    if let description = option.description, !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                let count = store.voteCount(for: option)
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 24)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(runner.isRunning)
+    }
+
+    // MARK: Ganadora
+
+    @ViewBuilder
+    private func winnerSection(_ winner: DecisionOption) -> some View {
+        Section {
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(.green)
+                    .imageScale(.large)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ganadora")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(winner.title)
+                        .font(.body.weight(.semibold))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func unsupportedVotingModelSection(_ decision: Decision) -> some View {
+        Section {
+            Label("Modo de votación no disponible todavía", systemImage: "exclamationmark.circle")
+                .foregroundStyle(.secondary)
+        } footer: {
+            Text("\(decision.voting.label) llega en una próxima versión.")
         }
     }
 

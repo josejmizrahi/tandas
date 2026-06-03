@@ -232,6 +232,83 @@ struct MockClientTests {
         #expect(decisions.first { $0.id == decision.id }?.isExecuted == true)
     }
 
+    @Test("R.2Q — decision yes_no_abstain auto-seedea approve/reject/abstain")
+    func yesNoAbstainAutoSeed() async throws {
+        let mock = await makeDemoClient()
+        let familia = MockRuulRPCClient.DemoIds.familia
+
+        let decision = try await mock.createDecision(CreateDecisionInput(
+            contextId: familia,
+            decisionType: .expenseApproval,
+            title: "Aprobar gasto"
+        ))
+        #expect(decision.voting == .yesNoAbstain)
+
+        let options = try await mock.listDecisionOptions(decisionId: decision.id)
+        #expect(options.count == 3)
+        #expect(options.map(\.optionKey) == ["approve", "reject", "abstain"])
+
+        guard let approve = options.first(where: { $0.optionKey == "approve" }) else {
+            Issue.record("No approve option"); return
+        }
+        let result = try await mock.voteForOption(decisionId: decision.id, optionId: approve.id)
+        #expect(result.myOptionId == approve.id)
+    }
+
+    @Test("R.2Q — single_choice con payload.options auto-seedea options de strings")
+    func singleChoicePayloadOptionsAutoSeed() async throws {
+        let mock = await makeDemoClient()
+        let familia = MockRuulRPCClient.DemoIds.familia
+
+        let decision = try await mock.createDecision(CreateDecisionInput(
+            contextId: familia,
+            decisionType: .generic,
+            title: "¿Hotel A o Hotel B?",
+            payload: .object(["options": .array([.string("Hotel A"), .string("Hotel B")])])
+        ))
+        #expect(decision.voting == .singleChoice)
+
+        let options = try await mock.listDecisionOptions(decisionId: decision.id)
+        #expect(options.count == 2)
+        #expect(options.map(\.optionKey) == ["Hotel A", "Hotel B"])
+    }
+
+    @Test("R.2Q.4 — createDecision override votingModel + createDecisionOption manual")
+    func createDecisionWithVotingModelOverride() async throws {
+        let mock = await makeDemoClient()
+        let familia = MockRuulRPCClient.DemoIds.familia
+
+        let decision = try await mock.createDecision(CreateDecisionInput(
+            contextId: familia,
+            decisionType: .generic,
+            title: "Elegir hotel",
+            votingModel: .singleChoice
+        ))
+        #expect(decision.voting == .singleChoice)
+        // single_choice sin payload.options ni conflict_id → sin opciones
+        let initialOpts = try await mock.listDecisionOptions(decisionId: decision.id)
+        #expect(initialOpts.isEmpty)
+
+        // El usuario agrega 2 opciones a mano
+        _ = try await mock.createDecisionOption(CreateDecisionOptionInput(
+            decisionId: decision.id, optionKey: "hotel-a", title: "Hotel A"
+        ))
+        _ = try await mock.createDecisionOption(CreateDecisionOptionInput(
+            decisionId: decision.id, optionKey: "hotel-b", title: "Hotel B"
+        ))
+
+        let opts = try await mock.listDecisionOptions(decisionId: decision.id)
+        #expect(opts.count == 2)
+        #expect(opts.map(\.sortOrder) == [0, 1])
+    }
+
+    @Test("DecisionOptionDraft.slugify")
+    func decisionOptionDraftSlugify() {
+        #expect(DecisionOptionDraft.slugify("Hotel A") == "hotel-a")
+        #expect(DecisionOptionDraft.slugify("  Hotel A!  ") == "hotel-a")
+        #expect(DecisionOptionDraft.slugify("Mar y Sol") == "mar-y-sol")
+    }
+
     @Test("la actividad queda registrada por contexto sin mezclarse")
     func activityIsolation() async throws {
         let mock = await makeDemoClient()

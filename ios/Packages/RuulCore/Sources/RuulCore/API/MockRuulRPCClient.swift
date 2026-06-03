@@ -27,6 +27,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var conflicts: [UUID: ReservationConflict] = [:]
     var decisions: [UUID: Decision] = [:]
     var votes: [UUID: [DecisionVote]] = [:]                  // decisionId → votes
+    var decisionOptions: [UUID: [DecisionOption]] = [:]      // decisionId → options
     var obligations: [UUID: Obligation] = [:]
     var batches: [UUID: SettlementBatch] = [:]
     var settlementItems: [UUID: [SettlementItem]] = [:]      // batchId → items
@@ -811,6 +812,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     public func createDecision(_ input: CreateDecisionInput) async throws -> Decision {
         try throwIfNeeded()
+        let votingModel = input.votingModel?.rawValue
+            ?? inferVotingModel(decisionType: input.decisionType, payload: input.payload)
         let decision = Decision(
             id: UUID(),
             contextActorId: input.contextId,
@@ -818,14 +821,112 @@ public actor MockRuulRPCClient: RuulRPCClient {
             title: input.title,
             description: input.description,
             status: "open",
+            votingModel: votingModel,
             createdByActorId: me.id,
             closesAt: input.closesAt,
             payload: input.payload,
             createdAt: Date()
         )
         decisions[decision.id] = decision
+        decisionOptions[decision.id] = seedOptions(for: decision, payload: input.payload)
         emit(input.contextId, "decision.created")
         return decision
+    }
+
+    /// Espeja la heurística de `create_decision` en el backend (R.2Q).
+    private func inferVotingModel(decisionType: DecisionType, payload: JSONValue?) -> String {
+        if payload?["options"]?.arrayValue != nil {
+            return "single_choice"
+        }
+        if decisionType == .reservationDispute,
+           (payload?["conflict_id"]?.stringValue != nil
+            || payload?["reservation_conflict_id"]?.stringValue != nil) {
+            return "single_choice"
+        }
+        return "yes_no_abstain"
+    }
+
+    /// Espeja el trigger `_auto_seed_decision_options` del backend (R.2Q).
+    private func seedOptions(for decision: Decision, payload: JSONValue?) -> [DecisionOption] {
+        switch decision.voting {
+        case .yesNoAbstain:
+            return [
+                DecisionOption(id: UUID(), decisionId: decision.id, optionKey: "approve", title: "A favor", sortOrder: 0),
+                DecisionOption(id: UUID(), decisionId: decision.id, optionKey: "reject", title: "En contra", sortOrder: 1),
+                DecisionOption(id: UUID(), decisionId: decision.id, optionKey: "abstain", title: "Abstención", sortOrder: 2),
+            ]
+        case .singleChoice:
+            if let options = payload?["options"]?.arrayValue {
+                return options.enumerated().compactMap { idx, opt in
+                    guard let label = opt.stringValue else { return nil }
+                    return DecisionOption(
+                        id: UUID(),
+                        decisionId: decision.id,
+                        optionKey: label,
+                        title: label,
+                        sortOrder: idx
+                    )
+                }
+            }
+            // reservation_dispute con conflict_id: 4 opciones canónicas
+            if decision.type == .reservationDispute,
+               let conflictIdRaw = (payload?["conflict_id"]?.stringValue ?? payload?["reservation_conflict_id"]?.stringValue),
+               let conflictId = UUID(uuidString: conflictIdRaw),
+               let conflict = conflicts[conflictId] {
+                let resA = reservations[conflict.reservationAId]
+                let resB = reservations[conflict.reservationBId]
+                let nameA = lookupActorName(resA?.reservedForActorId ?? resA?.requestedByActorId) ?? "Solicitud A"
+                let nameB = lookupActorName(resB?.reservedForActorId ?? resB?.requestedByActorId) ?? "Solicitud B"
+                return [
+                    DecisionOption(
+                        id: UUID(), decisionId: decision.id, optionKey: "award_a",
+                        title: "Asignar a \(nameA)",
+                        payload: .object([
+                            "action": .string("reservation_award"),
+                            "winner_reservation_id": .string(conflict.reservationAId.uuidString),
+                            "conflict_id": .string(conflict.id.uuidString),
+                        ]),
+                        sortOrder: 0
+                    ),
+                    DecisionOption(
+                        id: UUID(), decisionId: decision.id, optionKey: "award_b",
+                        title: "Asignar a \(nameB)",
+                        payload: .object([
+                            "action": .string("reservation_award"),
+                            "winner_reservation_id": .string(conflict.reservationBId.uuidString),
+                            "conflict_id": .string(conflict.id.uuidString),
+                        ]),
+                        sortOrder: 1
+                    ),
+                    DecisionOption(
+                        id: UUID(), decisionId: decision.id, optionKey: "split",
+                        title: "Dividir fechas",
+                        payload: .object([
+                            "action": .string("split_reservation"),
+                            "conflict_id": .string(conflict.id.uuidString),
+                        ]),
+                        sortOrder: 2
+                    ),
+                    DecisionOption(
+                        id: UUID(), decisionId: decision.id, optionKey: "cancel",
+                        title: "Cancelar ambas",
+                        payload: .object([
+                            "action": .string("cancel_reservations"),
+                            "conflict_id": .string(conflict.id.uuidString),
+                        ]),
+                        sortOrder: 3
+                    ),
+                ]
+            }
+            return []
+        default:
+            return []
+        }
+    }
+
+    private func lookupActorName(_ actorId: UUID?) -> String? {
+        guard let actorId else { return nil }
+        return actors[actorId]?.displayName
     }
 
     public func listDecisions(contextId: UUID) async throws -> [Decision] {
@@ -845,28 +946,100 @@ public actor MockRuulRPCClient: RuulRPCClient {
         guard let decision = decisions[decisionId] else {
             throw RuulError.unexpected(message: "Decisión no encontrada")
         }
+        let resolvedOptionId: UUID? = {
+            if let option {
+                return decisionOptions[decisionId]?.first(where: { $0.optionKey == option })?.id
+            }
+            return decisionOptions[decisionId]?.first(where: { $0.optionKey == vote.rawValue })?.id
+        }()
         var decisionVotes = (votes[decisionId] ?? []).filter { $0.voterActorId != me.id }
-        decisionVotes.append(DecisionVote(id: UUID(), decisionId: decisionId, voterActorId: me.id, vote: vote.rawValue, votedAt: Date()))
+        decisionVotes.append(DecisionVote(
+            id: UUID(), decisionId: decisionId, voterActorId: me.id,
+            vote: vote.rawValue, optionId: resolvedOptionId, votedAt: Date()
+        ))
         votes[decisionId] = decisionVotes
 
         let members = memberships[decision.contextActorId]?.count ?? 1
         let approve = decisionVotes.filter { $0.vote == "approve" }.count
         let reject = decisionVotes.filter { $0.vote == "reject" }.count
         var status = decision.status
-        if Double(approve) > Double(members) / 2 {
-            status = "approved"
-            emit(decision.contextActorId, "decision.approved")
-        } else if Double(reject) >= Double(members) / 2 && approve + (members - decisionVotes.count) <= members / 2 {
-            status = "rejected"
-            emit(decision.contextActorId, "decision.rejected")
+        var winningOption: String?
+        var winningOptionId: UUID?
+
+        if decision.voting == .singleChoice {
+            let tally = Dictionary(grouping: decisionVotes.compactMap { $0.optionId }, by: { $0 })
+                .mapValues(\.count)
+            if let (topId, topCount) = tally.max(by: { $0.value < $1.value }),
+               topCount > members / 2 || (decisionVotes.count >= members && topCount > 0) {
+                status = "approved"
+                winningOptionId = topId
+                winningOption = decisionOptions[decisionId]?.first(where: { $0.id == topId })?.optionKey
+                emit(decision.contextActorId, "decision.approved")
+            }
+        } else {
+            if Double(approve) > Double(members) / 2 {
+                status = "approved"
+                winningOption = "approve"
+                winningOptionId = decisionOptions[decisionId]?.first(where: { $0.optionKey == "approve" })?.id
+                emit(decision.contextActorId, "decision.approved")
+            } else if Double(reject) >= Double(members) / 2 && approve + (members - decisionVotes.count) <= members / 2 {
+                status = "rejected"
+                winningOption = "reject"
+                winningOptionId = decisionOptions[decisionId]?.first(where: { $0.optionKey == "reject" })?.id
+                emit(decision.contextActorId, "decision.rejected")
+            }
         }
-        setDecisionStatus(decisionId, status)
+        setDecisionStatus(decisionId, status, winningOption: winningOption, winningOptionId: winningOptionId)
         return VoteResult(
             decisionId: decisionId,
             myVote: vote.rawValue,
+            myOptionId: resolvedOptionId,
             status: status,
+            winningOption: winningOption,
+            winningOptionId: winningOptionId,
             tally: VoteTally(approve: approve, reject: reject, members: members)
         )
+    }
+
+    public func listDecisionOptions(decisionId: UUID) async throws -> [DecisionOption] {
+        try throwIfNeeded()
+        return (decisionOptions[decisionId] ?? []).sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    public func voteForOption(decisionId: UUID, optionId: UUID) async throws -> VoteResult {
+        guard let option = decisionOptions[decisionId]?.first(where: { $0.id == optionId }) else {
+            throw RuulError.unexpected(message: "Opción no encontrada")
+        }
+        let voteValue: VoteChoice = {
+            switch option.optionKey {
+            case "reject": return .reject
+            case "abstain": return .abstain
+            default: return .approve
+            }
+        }()
+        return try await voteDecision(decisionId: decisionId, vote: voteValue, option: option.optionKey)
+    }
+
+    public func createDecisionOption(_ input: CreateDecisionOptionInput) async throws -> DecisionOption {
+        try throwIfNeeded()
+        guard decisions[input.decisionId] != nil else {
+            throw RuulError.unexpected(message: "Decisión no encontrada")
+        }
+        let existing = decisionOptions[input.decisionId] ?? []
+        let nextOrder = input.sortOrder ?? ((existing.map(\.sortOrder).max() ?? -1) + 1)
+        let option = DecisionOption(
+            id: UUID(),
+            decisionId: input.decisionId,
+            optionKey: input.optionKey,
+            title: input.title.trimmingCharacters(in: .whitespaces),
+            description: input.description,
+            payload: input.payload,
+            sortOrder: nextOrder,
+            status: "active",
+            createdAt: Date()
+        )
+        decisionOptions[input.decisionId] = existing + [option]
+        return option
     }
 
     public func closeDecision(decisionId: UUID) async throws -> VoteResult {
@@ -878,12 +1051,33 @@ public actor MockRuulRPCClient: RuulRPCClient {
         let members = memberships[decision.contextActorId]?.count ?? 1
         let approve = decisionVotes.filter { $0.vote == "approve" }.count
         let reject = decisionVotes.filter { $0.vote == "reject" }.count
-        let status = approve > reject ? "approved" : "rejected"
-        setDecisionStatus(decisionId, status)
+        var status: String
+        var winningOption: String?
+        var winningOptionId: UUID?
+
+        if decision.voting == .singleChoice {
+            let tally = Dictionary(grouping: decisionVotes.compactMap { $0.optionId }, by: { $0 })
+                .mapValues(\.count)
+            if let (topId, _) = tally.max(by: { $0.value < $1.value }) {
+                status = "approved"
+                winningOptionId = topId
+                winningOption = decisionOptions[decisionId]?.first(where: { $0.id == topId })?.optionKey
+            } else {
+                status = "rejected"
+            }
+        } else {
+            status = approve > reject ? "approved" : "rejected"
+            winningOption = status == "approved" ? "approve" : "reject"
+            winningOptionId = decisionOptions[decisionId]?.first(where: { $0.optionKey == winningOption })?.id
+        }
+
+        setDecisionStatus(decisionId, status, winningOption: winningOption, winningOptionId: winningOptionId)
         emit(decision.contextActorId, "decision.\(status)")
         return VoteResult(
             decisionId: decisionId,
             status: status,
+            winningOption: winningOption,
+            winningOptionId: winningOptionId,
             tally: VoteTally(approve: approve, reject: reject, members: members)
         )
     }
@@ -893,12 +1087,19 @@ public actor MockRuulRPCClient: RuulRPCClient {
         guard let decision = decisions[decisionId], decision.isApproved else {
             throw RuulError.backend(.validation(message: "decision is not approved"))
         }
-        setDecisionStatus(decisionId, "executed")
+        setDecisionStatus(decisionId, "executed", winningOption: decision.winningOptionKey, winningOptionId: decision.winningOptionId)
         emit(decision.contextActorId, "decision.executed")
     }
 
-    private func setDecisionStatus(_ id: UUID, _ status: String) {
+    private func setDecisionStatus(_ id: UUID, _ status: String, winningOption: String? = nil, winningOptionId: UUID? = nil) {
         guard let d = decisions[id] else { return }
+        var newResult: JSONValue? = d.result
+        if winningOption != nil || winningOptionId != nil {
+            var obj: [String: JSONValue] = d.result?.objectValue ?? [:]
+            if let winningOption { obj["winning_option"] = .string(winningOption) }
+            if let winningOptionId { obj["winning_option_id"] = .string(winningOptionId.uuidString) }
+            newResult = .object(obj)
+        }
         decisions[id] = Decision(
             id: d.id,
             contextActorId: d.contextActorId,
@@ -906,12 +1107,13 @@ public actor MockRuulRPCClient: RuulRPCClient {
             title: d.title,
             description: d.description,
             status: status,
+            votingModel: d.votingModel,
             createdByActorId: d.createdByActorId,
             closesAt: d.closesAt,
             decidedAt: status == "approved" || status == "rejected" ? Date() : d.decidedAt,
             executedAt: status == "executed" ? Date() : d.executedAt,
             payload: d.payload,
-            result: d.result,
+            result: newResult,
             createdAt: d.createdAt
         )
     }
