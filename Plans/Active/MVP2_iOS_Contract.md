@@ -51,7 +51,7 @@ Reglas generales:
 |---|---|---|
 | `create_resource(p_context_actor_id, p_resource_type, p_display_name, p_description?, p_estimated_value?, p_currency?, p_metadata?, p_client_id?)` | requiere `resources.create`; trigger auto-OWN 100% al contexto | `{resource_id, resource: {row}}` |
 | `list_context_resources(p_context_actor_id)` | filtra por visibilidad rights-based del caller | `[{resource_id, resource_type, display_name, status, estimated_value, currency, canonical_owner_actor_id, rights: [{right_id, holder_actor_id, right_kind, percent}]}]` |
-| `resource_detail(p_resource_id)` | requiere right activo o membership del owner | `{resource: {row}, resource_type, capabilities: [text], available_actions: [{action, label, section}], why_visible: [text], metadata, rights: [{right_id, holder_actor_id, holder_display_name, right_kind, percent, scope, starts_at, ends_at}]}` |
+| `resource_detail(p_resource_id)` | requiere right activo o membership del owner | `{resource: {row}, resource_type, capabilities: [text], available_actions: [{action_key, label, section, enabled, reason, required_rights, required_capabilities}], why_visible: [text], metadata, rights: [{right_id, holder_actor_id, holder_display_name, right_kind, percent, scope, starts_at, ends_at}]}` |
 | `grant_right(p_resource_id, p_holder_actor_id, p_right_kind, p_percent?, p_scope?, p_starts_at?, p_ends_at?, p_metadata?)` | OWN/SELL/TRANSFER/LIEN exigen OWN o `resources.manage` del owner | `{right_id}` |
 | `revoke_right(p_right_id)` | | `void` |
 | `update_resource(p_resource_id, …)` | | `{resource}` |
@@ -59,7 +59,7 @@ Reglas generales:
 | `resource_type_catalog()` | catálogo global (R.2M) | `[{type_key, display_name, description, icon, expected_metadata, capabilities: [text]}]` |
 | `resource_capabilities(p_resource_id)` | visibilidad rights-based | `{resource_id, resource_type, capabilities: [text]}` |
 | `resource_can(p_resource_id, p_capability)` | | `boolean` |
-| `resource_available_actions(p_resource_id)` | R.2M-3: capability ∩ rights del actor | `[{action, label, section}]` |
+| `resource_available_actions(p_resource_id, p_actor_id)` | R.2S-FIX: actor-aware (capability ∩ rights). 1-arg delega con `current_actor_id()` | `[{action_key, label, section, enabled, reason, required_rights, required_capabilities}]` |
 
 `right_kind` ∈ OWN, USE, MANAGE, VIEW, SELL, TRANSFER, GOVERN, BENEFICIARY, LIEN, LEASE, APPROVE, AUDIT
 
@@ -82,10 +82,12 @@ expirable, depreciable, sellable, rentable). La matriz tipo→capability define 
 (p. ej. bank_account/security/property **NO** reservable; security **sí** transferable).
 
 `resource_action_catalog` mapea cada acción a `{required_capability, required_rights[], ui_section}`.
-`resource_available_actions(resource_id)` devuelve, para el actor actual, las acciones donde
-`resource_can(capability)` **Y** el actor posee uno de los rights requeridos (directos, vía contexto
-que administra, o VIEW por membresía). Secciones de UI: reservations, money, beneficiaries, ownership,
-documents, approvals, maintenance, audit, rights.
+`resource_available_actions(resource_id, actor_id)` (R.2S-FIX, actor-aware canónico; el overload de
+1 arg delega con `current_actor_id()`) devuelve las acciones donde `resource_can(capability)` **Y** el
+actor posee uno de los rights requeridos (directos, vía contexto que administra, o VIEW por membresía),
+en la **forma canónica** `{action_key, label, section, enabled, reason, required_rights,
+required_capabilities}`. Secciones de UI: reservations, money, beneficiaries, ownership, documents,
+approvals, maintenance, audit, rights.
 
 `capability` ∈ reservable, monetary, transferable, shareable, governable, beneficiary_supported,
 approval_required, expirable, depreciable, documentable, sellable, rentable, auditable,
@@ -252,23 +254,28 @@ Override explícito por actor: `actors.metadata.capability_overrides = {"can_hav
 (habilita) o `false` (deshabilita) sin tocar el catálogo. Ej.: una person no tiene `can_have_shareholders`
 salvo override; un trust sí tiene `can_have_beneficiaries`/`can_have_trustees`.
 
-### 13.2 Available actions (R.2S.3 + R.2S.9)
+### 13.2 Available actions (R.2S.3 + R.2S.9 + R.2S-FIX)
 
-Cada detail RPC devuelve `available_actions: [action]` donde:
+**Forma canónica única** (7 campos, uniforme en todos los dominios):
 
 ```json
-{"action_key": "reserve_resource", "label": "Reservar", "enabled": true,
- "reason": "El recurso es reservable y tienes derecho de uso",
+{"action_key": "reserve_resource", "label": "Reservar", "section": "reservations",
+ "enabled": true, "reason": "El recurso soporta reservable y el actor tiene el derecho requerido",
  "required_rights": ["USE"], "required_capabilities": ["reservable"]}
 ```
 
-Una acción **aparece** solo si es aplicable por capability + estado; `enabled` refleja el permiso del
-caller (con `reason`). Cubierto en: `resource_detail`, `obligation_detail`, `decision_detail` (nuevo),
-`reservation_detail` (nuevo).
+**R.2S-FIX** reconcilia R.2M-3 (recursos) y R.2S.9 en un solo contrato: las acciones son **actor-aware**
+(`resource_available_actions(resource_id, actor_id)`, con overload de 1 arg que delega a
+`current_actor_id()`). Una acción **aparece** solo si la capability/estado la habilita **y** el actor tiene
+los rights requeridos; `enabled` + `reason` mantienen la forma uniforme. Cubierto en: `resource_detail`,
+`obligation_detail`, `decision_detail` (nuevo), `reservation_detail` (nuevo).
 
-- **resource**: `reserve_resource` (reservable), `record_expense`/`view_transactions` (monetary),
-  `view_beneficiaries` (beneficiary_supported), `view_ownership` (ownership_trackable),
-  `transfer_ownership` (transferable), `grant_right`/`revoke_right`.
+- **resource** (catálogo `resource_action_catalog`, R.2M-3): `view_reservations`/`reserve_resource`/
+  `manage_reservations` (reservable), `view_transactions`/`record_expense`/`record_contribution`/
+  `generate_settlement` (monetary), `view_beneficiaries`/`grant_beneficiary` (beneficiary_supported),
+  `view_ownership`/`transfer_interest` (ownership_trackable/transferable), `view_document`/`review_document`
+  (documentable), `approve_document` (approval_required), `view_maintenance`/`log_maintenance`
+  (maintainable), `view_audit` (auditable), `grant_right` (universal).
 - **obligation**: `pay` (money + activa + deudor), `mark_completed` (acción), `dispute`, `forgive`, `cancel`.
   No muestra `pay` en `settled`.
 - **decision**: `vote`/`change_vote`, `close_decision`, `cancel_decision` (abiertas), `execute_decision`
