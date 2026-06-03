@@ -132,28 +132,55 @@ public struct DecisionDetailView: View {
 
     @ViewBuilder
     private func votesSection(_ decision: Decision) -> some View {
-        let approveCount = store.votes.filter { $0.vote == "approve" }.count
-        let rejectCount = store.votes.filter { $0.vote == "reject" }.count
         let totalMembers = max(store.members.count, 1)
+        let missing = max(0, totalMembers - store.votes.count)
 
         Section("Votos (\(store.votes.count) de \(totalMembers))") {
-            HStack(spacing: 16) {
-                voteCounter("A favor", count: approveCount, color: .green)
-                voteCounter("En contra", count: rejectCount, color: .red)
-                voteCounter("Faltan", count: max(0, totalMembers - store.votes.count), color: .gray)
+            switch decision.voting {
+            case .singleChoice:
+                HStack(spacing: 16) {
+                    voteCounter("Votos", count: store.votes.count, color: .accentColor)
+                    voteCounter("Faltan", count: missing, color: .gray)
+                }
+                .padding(.vertical, 4)
+            default:
+                let approveCount = store.votes.filter { $0.vote == "approve" }.count
+                let rejectCount = store.votes.filter { $0.vote == "reject" }.count
+                HStack(spacing: 16) {
+                    voteCounter("A favor", count: approveCount, color: .green)
+                    voteCounter("En contra", count: rejectCount, color: .red)
+                    voteCounter("Faltan", count: missing, color: .gray)
+                }
+                .padding(.vertical, 4)
             }
-            .padding(.vertical, 4)
 
             ForEach(store.votes) { vote in
-                HStack(spacing: 12) {
-                    ActorInitialsView(name: store.displayName(for: vote.voterActorId), size: 30)
-                    Text(store.displayName(for: vote.voterActorId))
-                    Spacer()
-                    StatusBadge(
-                        vote.choice?.label ?? vote.vote,
-                        color: vote.vote == "approve" ? .green : (vote.vote == "reject" ? .red : .gray)
-                    )
+                voteRow(vote, decision: decision)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func voteRow(_ vote: DecisionVote, decision: Decision) -> some View {
+        HStack(spacing: 12) {
+            ActorInitialsView(name: store.displayName(for: vote.voterActorId), size: 30)
+            Text(store.displayName(for: vote.voterActorId))
+            Spacer()
+            switch decision.voting {
+            case .singleChoice:
+                if let optionId = vote.optionId,
+                   let option = store.options.first(where: { $0.id == optionId }) {
+                    StatusBadge(option.title, color: .accentColor)
+                } else if vote.vote == "abstain" {
+                    StatusBadge("Abstención", color: .gray)
+                } else {
+                    StatusBadge("Sin opción", color: .gray)
                 }
+            default:
+                StatusBadge(
+                    vote.choice?.label ?? vote.vote,
+                    color: vote.vote == "approve" ? .green : (vote.vote == "reject" ? .red : .gray)
+                )
             }
         }
     }
