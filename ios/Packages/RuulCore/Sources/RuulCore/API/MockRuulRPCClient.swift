@@ -1564,11 +1564,27 @@ public actor MockRuulRPCClient: RuulRPCClient {
             }
             return decisionOptions[decisionId]?.first(where: { $0.optionKey == vote.rawValue })?.id
         }()
-        var decisionVotes = (votes[decisionId] ?? []).filter { $0.voterActorId != me.id }
-        decisionVotes.append(DecisionVote(
-            id: UUID(), decisionId: decisionId, voterActorId: me.id,
-            vote: vote.rawValue, optionId: resolvedOptionId, votedAt: Date()
-        ))
+        var decisionVotes = votes[decisionId] ?? []
+        // R.2Q-6: branch por voting_model.
+        if decision.voting == .multipleChoice {
+            // Duplicate (voter, option) → no-op idempotente.
+            let alreadyVoted = decisionVotes.contains {
+                $0.voterActorId == me.id && $0.optionId == resolvedOptionId
+            }
+            if !alreadyVoted {
+                decisionVotes.append(DecisionVote(
+                    id: UUID(), decisionId: decisionId, voterActorId: me.id,
+                    vote: vote.rawValue, optionId: resolvedOptionId, votedAt: Date()
+                ))
+            }
+        } else {
+            // yes_no_abstain / single_choice: 1 vote per voter (reemplaza el anterior).
+            decisionVotes = decisionVotes.filter { $0.voterActorId != me.id }
+            decisionVotes.append(DecisionVote(
+                id: UUID(), decisionId: decisionId, voterActorId: me.id,
+                vote: vote.rawValue, optionId: resolvedOptionId, votedAt: Date()
+            ))
+        }
         votes[decisionId] = decisionVotes
 
         let members = memberships[decision.contextActorId]?.count ?? 1
@@ -1578,7 +1594,9 @@ public actor MockRuulRPCClient: RuulRPCClient {
         var winningOption: String?
         var winningOptionId: UUID?
 
-        if decision.voting == .singleChoice {
+        if decision.voting == .multipleChoice {
+            // Sin auto-finalize — cierre manual con close_decision.
+        } else if decision.voting == .singleChoice {
             let tally = Dictionary(grouping: decisionVotes.compactMap { $0.optionId }, by: { $0 })
                 .mapValues(\.count)
             if let (topId, topCount) = tally.max(by: { $0.value < $1.value }),
@@ -1616,6 +1634,27 @@ public actor MockRuulRPCClient: RuulRPCClient {
     public func listDecisionOptions(decisionId: UUID) async throws -> [DecisionOption] {
         try throwIfNeeded()
         return (decisionOptions[decisionId] ?? []).sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    public func unvoteOption(decisionId: UUID, optionId: UUID) async throws -> UnvoteResult {
+        try throwIfNeeded()
+        guard let decision = decisions[decisionId] else {
+            throw RuulError.unexpected(message: "Decisión no encontrada")
+        }
+        guard decision.voting == .multipleChoice else {
+            throw RuulError.unexpected(message: "unvote_option solo aplica a multiple_choice")
+        }
+        let before = votes[decisionId] ?? []
+        let after = before.filter { !($0.voterActorId == me.id && $0.optionId == optionId) }
+        let removed = before.count != after.count
+        votes[decisionId] = after
+        if removed {
+            emit(decision.contextActorId, "decision.vote_removed", payload: .object([
+                "decision_id": .string(decisionId.uuidString),
+                "option_id": .string(optionId.uuidString)
+            ]))
+        }
+        return UnvoteResult(decisionId: decisionId, optionId: optionId, removed: removed)
     }
 
     public func decisionDetail(decisionId: UUID) async throws -> DecisionDetail {

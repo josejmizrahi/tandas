@@ -525,3 +525,29 @@ public struct VoteResult: Decodable, Sendable, Equatable {
         self.tally = tally
     }
 }
+
+/// Resultado de `unvote_option()` — R.2Q-6 multiple_choice toggle-off.
+public struct UnvoteResult: Decodable, Sendable, Equatable {
+    public let decisionId: UUID
+    public let optionId: UUID
+    public let removed: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case decisionId = "decision_id"
+        case optionId = "option_id"
+        case removed
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.decisionId = try c.decode(UUID.self, forKey: .decisionId)
+        self.optionId = try c.decode(UUID.self, forKey: .optionId)
+        self.removed = try c.decodeIfPresent(Bool.self, forKey: .removed) ?? false
+    }
+
+    public init(decisionId: UUID, optionId: UUID, removed: Bool) {
+        self.decisionId = decisionId
+        self.optionId = optionId
+        self.removed = removed
+    }
+}

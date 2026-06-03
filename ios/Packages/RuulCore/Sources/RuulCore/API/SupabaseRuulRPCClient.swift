@@ -814,6 +814,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("vote_for_option", params: Params(pDecisionId: decisionId, pOptionId: optionId))
     }
 
+    public func unvoteOption(decisionId: UUID, optionId: UUID) async throws -> UnvoteResult {
+        struct Params: Encodable, Sendable {
+            let pDecisionId: UUID
+            let pOptionId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pDecisionId = "p_decision_id"
+                case pOptionId = "p_option_id"
+            }
+        }
+        return try await call("unvote_option", params: Params(pDecisionId: decisionId, pOptionId: optionId))
+    }
+
     public func createDecisionOption(_ input: CreateDecisionOptionInput) async throws -> DecisionOption {
         struct Params: Encodable, Sendable {
             let pDecisionId: UUID

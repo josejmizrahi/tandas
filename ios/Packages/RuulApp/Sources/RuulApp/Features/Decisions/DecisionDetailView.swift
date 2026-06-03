@@ -106,6 +106,8 @@ public struct DecisionDetailView: View {
                 switch decision.voting {
                 case .singleChoice:
                     optionsSection(decision)
+                case .multipleChoice:
+                    multipleChoiceSection(decision)
                 case .yesNoAbstain:
                     voteButtonsSection(decision)
                 default:
@@ -266,6 +268,67 @@ public struct DecisionDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.title)
                         .font(.body.weight(isCurrent ? .semibold : .regular))
+                        .foregroundStyle(.primary)
+                    if let description = option.description, !description.isEmpty {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                let count = store.voteCount(for: option)
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 24)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(runner.isRunning)
+    }
+
+    // MARK: Opciones multiple_choice (R.2Q-6)
+
+    @ViewBuilder
+    private func multipleChoiceSection(_ decision: Decision) -> some View {
+        let myVotes = Set(
+            store.votes.filter { $0.voterActorId == myActorId }.compactMap { $0.optionId }
+        )
+        Section {
+            ForEach(store.options) { option in
+                multiOptionRow(option, isSelected: myVotes.contains(option.id))
+            }
+        } header: {
+            Text(myVotes.isEmpty ? "Elige una o varias opciones" : "Tus elecciones (\(myVotes.count))")
+        } footer: {
+            Text("Toca para marcar/desmarcar. Pueden ganar varias opciones; el cierre lo decide un admin.")
+        }
+    }
+
+    @ViewBuilder
+    private func multiOptionRow(_ option: DecisionOption, isSelected: Bool) -> some View {
+        Button {
+            Task {
+                await runner.run {
+                    if isSelected {
+                        _ = try await container.rpc.unvoteOption(decisionId: decisionId, optionId: option.id)
+                    } else {
+                        _ = try await store.vote(for: option, decisionId: decisionId, context: context)
+                    }
+                    await store.load(decisionId: decisionId, context: context)
+                }
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                    .imageScale(.large)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(option.title)
+                        .font(.body.weight(isSelected ? .semibold : .regular))
                         .foregroundStyle(.primary)
                     if let description = option.description, !description.isEmpty {
                         Text(description)

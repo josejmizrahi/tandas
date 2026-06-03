@@ -148,6 +148,9 @@ public protocol RuulRPCClient: Sendable {
     func listDecisionOptions(decisionId: UUID) async throws -> [DecisionOption]
     /// `vote_for_option(p_decision_id, p_option_id)` — R.2Q.
     func voteForOption(decisionId: UUID, optionId: UUID) async throws -> VoteResult
+    /// `unvote_option(p_decision_id, p_option_id)` — R.2Q-6 (multiple_choice toggle-off).
+    /// Returns `{removed: bool}` — idempotente.
+    func unvoteOption(decisionId: UUID, optionId: UUID) async throws -> UnvoteResult
     /// `create_decision_option(...)` — R.2Q.
     func createDecisionOption(_ input: CreateDecisionOptionInput) async throws -> DecisionOption
 

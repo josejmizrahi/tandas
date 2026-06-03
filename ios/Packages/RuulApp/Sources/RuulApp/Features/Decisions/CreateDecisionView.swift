@@ -71,8 +71,8 @@ public struct CreateDecisionView: View {
                 }
             }
 
-            // R.2Q — opciones manuales para single_choice no-disputa
-            if votingModel == .singleChoice && conflictReference == nil {
+            // R.2Q — opciones manuales para single_choice y multiple_choice no-disputa
+            if (votingModel == .singleChoice || votingModel == .multipleChoice) && conflictReference == nil {
                 optionsSection
             }
 
@@ -152,7 +152,7 @@ public struct CreateDecisionView: View {
 
     // MARK: - Helpers
 
-    private var supportedVotingModels: [VotingModel] { [.yesNoAbstain, .singleChoice] }
+    private var supportedVotingModels: [VotingModel] { [.yesNoAbstain, .singleChoice, .multipleChoice] }
 
     private var votingModelHint: String {
         switch votingModel {
@@ -160,6 +160,8 @@ public struct CreateDecisionView: View {
             return "Cada miembro vota a favor, en contra o abstención."
         case .singleChoice:
             return "Cada miembro elige una opción de las que definas abajo."
+        case .multipleChoice:
+            return "Cada miembro puede elegir varias opciones. El cierre es manual."
         default:
             return ""
         }
@@ -168,7 +170,7 @@ public struct CreateDecisionView: View {
     private var canSubmit: Bool {
         let titleOK = !title.trimmingCharacters(in: .whitespaces).isEmpty
         guard titleOK else { return false }
-        if votingModel == .singleChoice && conflictReference == nil {
+        if (votingModel == .singleChoice || votingModel == .multipleChoice) && conflictReference == nil {
             return optionDrafts.count >= 2
         }
         return true
@@ -182,6 +184,8 @@ public struct CreateDecisionView: View {
             return "Las opciones de la disputa se crean automáticamente."
         case .singleChoice:
             return "Gana la opción más votada al pasar la mitad de los miembros o cuando todos voten."
+        case .multipleChoice:
+            return "Sin auto-cierre — el admin cierra cuando todos hayan votado."
         default:
             return ""
         }
@@ -202,7 +206,7 @@ public struct CreateDecisionView: View {
                 clientId: UUID().uuidString,
                 votingModel: votingModel
             )
-            if votingModel == .singleChoice && conflictReference == nil {
+            if (votingModel == .singleChoice || votingModel == .multipleChoice) && conflictReference == nil {
                 _ = try await store.createDecision(input, options: optionDrafts, context: context)
             } else {
                 _ = try await store.createDecision(input, context: context)

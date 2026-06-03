@@ -782,6 +782,88 @@ struct MockClientTests {
         }
     }
 
+    // MARK: - R.2Q-6 multiple_choice voting
+
+    @Test("multiple_choice permite varios votos del mismo voter")
+    func multipleChoiceVoteAccumulates() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let created = try await mock.createDecision(CreateDecisionInput(
+            contextId: cena,
+            decisionType: .generic,
+            title: "Qué hacemos viernes",
+            votingModel: .multipleChoice
+        ))
+        let opt1 = try await mock.createDecisionOption(CreateDecisionOptionInput(
+            decisionId: created.id, optionKey: "cine", title: "Cine"
+        ))
+        let opt2 = try await mock.createDecisionOption(CreateDecisionOptionInput(
+            decisionId: created.id, optionKey: "cena", title: "Cena"
+        ))
+
+        _ = try await mock.voteForOption(decisionId: created.id, optionId: opt1.id)
+        _ = try await mock.voteForOption(decisionId: created.id, optionId: opt2.id)
+
+        let votes = try await mock.listDecisionVotes(decisionId: created.id)
+        let myVotes = votes.filter { $0.voterActorId == MockRuulRPCClient.DemoIds.jose }
+        #expect(myVotes.count == 2)
+    }
+
+    @Test("multiple_choice duplicate vote es idempotente")
+    func multipleChoiceDuplicateIdempotent() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let created = try await mock.createDecision(CreateDecisionInput(
+            contextId: cena, decisionType: .generic, title: "X",
+            votingModel: .multipleChoice
+        ))
+        let opt = try await mock.createDecisionOption(CreateDecisionOptionInput(
+            decisionId: created.id, optionKey: "a", title: "A"
+        ))
+        _ = try await mock.voteForOption(decisionId: created.id, optionId: opt.id)
+        _ = try await mock.voteForOption(decisionId: created.id, optionId: opt.id)
+        let votes = try await mock.listDecisionVotes(decisionId: created.id)
+        #expect(votes.filter { $0.voterActorId == MockRuulRPCClient.DemoIds.jose }.count == 1)
+    }
+
+    @Test("unvote_option remueve uno de varios votos")
+    func unvoteOptionRemoves() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let created = try await mock.createDecision(CreateDecisionInput(
+            contextId: cena, decisionType: .generic, title: "Y",
+            votingModel: .multipleChoice
+        ))
+        let optA = try await mock.createDecisionOption(CreateDecisionOptionInput(
+            decisionId: created.id, optionKey: "a", title: "A"
+        ))
+        let optB = try await mock.createDecisionOption(CreateDecisionOptionInput(
+            decisionId: created.id, optionKey: "b", title: "B"
+        ))
+        _ = try await mock.voteForOption(decisionId: created.id, optionId: optA.id)
+        _ = try await mock.voteForOption(decisionId: created.id, optionId: optB.id)
+        let result = try await mock.unvoteOption(decisionId: created.id, optionId: optA.id)
+        #expect(result.removed)
+        let votes = try await mock.listDecisionVotes(decisionId: created.id)
+        #expect(votes.filter { $0.voterActorId == MockRuulRPCClient.DemoIds.jose }.count == 1)
+        // Repeat → no-op
+        let noop = try await mock.unvoteOption(decisionId: created.id, optionId: optA.id)
+        #expect(!noop.removed)
+    }
+
+    @Test("unvote_option rechaza en yes_no_abstain")
+    func unvoteRejectsWrongModel() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let created = try await mock.createDecision(CreateDecisionInput(
+            contextId: cena, decisionType: .generic, title: "Z",
+            votingModel: .yesNoAbstain
+        ))
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.unvoteOption(decisionId: created.id, optionId: UUID())
+        }
+    }
+
     @Test("nextError se lanza una sola vez")
     func nextError() async throws {
         let mock = await makeDemoClient()
