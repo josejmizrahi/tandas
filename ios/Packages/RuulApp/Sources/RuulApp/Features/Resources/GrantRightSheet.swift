@@ -90,6 +90,7 @@ public struct GrantRightSheet: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulSheet()
     }
 
     private var footerText: String {

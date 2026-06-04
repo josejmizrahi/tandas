@@ -83,6 +83,7 @@ public struct EditProfileView: View {
             .interactiveDismissDisabled(runner.isRunning)
             .onAppear(perform: populate)
         }
+        .ruulSheet()
     }
 
     @ViewBuilder

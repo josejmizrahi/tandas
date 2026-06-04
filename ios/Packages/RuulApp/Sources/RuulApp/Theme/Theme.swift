@@ -173,4 +173,20 @@ public extension View {
             y: Theme.Shadow.subtleY
         )
     }
+
+    /// Package HIG estándar para sheets de formulario (Create/Record/Edit/Invite).
+    /// Hace visible el drag indicator — el usuario puede dismissear arrastrando
+    /// igual que en apps de Apple (Messages, Mail, Calendar).
+    /// Úsalo sobre el contenido root de la sheet (NavigationStack interior).
+    func ruulSheet() -> some View {
+        presentationDragIndicator(.visible)
+    }
+
+    /// Package HIG para sheets compactas tipo picker/lookup/detail
+    /// (ContextSwitcher, CreateIntent, ObligationDetail, MemberDetail).
+    /// Permite preview a media altura y expandir a completa — patrón Maps/Stocks.
+    func ruulCompactSheet() -> some View {
+        presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+    }
 }

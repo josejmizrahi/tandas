@@ -125,6 +125,7 @@ public struct CreateObligationView: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulSheet()
     }
 
     private var canSubmit: Bool {

@@ -79,6 +79,7 @@ public struct RecordGameResultView: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulSheet()
     }
 
     @ViewBuilder
@@ -211,6 +212,7 @@ public struct RecordFineView: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulSheet()
     }
 
     private func record() async {

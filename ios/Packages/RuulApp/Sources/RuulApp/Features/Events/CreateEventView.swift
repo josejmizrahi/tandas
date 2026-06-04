@@ -135,6 +135,7 @@ public struct CreateEventView: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulSheet()
     }
 
     private func create() async {

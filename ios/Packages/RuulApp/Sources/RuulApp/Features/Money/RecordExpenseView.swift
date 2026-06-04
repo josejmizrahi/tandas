@@ -166,6 +166,7 @@ public struct RecordExpenseView: View {
                 Text(resultNotice ?? "")
             }
         }
+        .ruulSheet()
     }
 
     // MARK: - SplitEditor rows

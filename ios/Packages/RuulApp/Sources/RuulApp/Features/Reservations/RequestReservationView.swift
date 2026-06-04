@@ -82,6 +82,7 @@ public struct RequestReservationView: View {
                 await loadWhy()
             }
         }
+        .ruulSheet()
     }
 
     @ViewBuilder

@@ -171,6 +171,7 @@ public struct ResourceDetailView: View {
             Image(systemName: detail.resource.type.symbolName)
                 .font(.system(size: 36))
                 .foregroundStyle(.tint)
+                .symbolRenderingMode(.hierarchical)
                 .frame(width: 68, height: 68)
                 .background(Color.accentColor.badgeFill, in: Circle())
             Text(detail.resource.displayName)

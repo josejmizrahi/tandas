@@ -109,6 +109,7 @@ public struct CreateResourceView: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulSheet()
     }
 
     /// Capability legible (sin hardcodear comportamiento — solo presentación).

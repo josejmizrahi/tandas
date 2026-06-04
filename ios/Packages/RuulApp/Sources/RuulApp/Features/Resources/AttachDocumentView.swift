@@ -117,6 +117,7 @@ public struct AttachDocumentView: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulSheet()
     }
 
     private var canSubmit: Bool {

@@ -149,6 +149,7 @@ public struct MemberDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         }
+        .ruulCompactSheet()
     }
 
     // MARK: - R.2R obligations

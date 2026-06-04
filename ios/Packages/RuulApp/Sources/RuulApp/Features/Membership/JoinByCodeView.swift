@@ -57,6 +57,7 @@ public struct JoinByCodeView: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulSheet()
     }
 
     private func join() async {

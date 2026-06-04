@@ -244,6 +244,7 @@ public struct ObligationDetailView: View {
             .actionErrorAlert(runner)
         }
         .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 
     private func load() async {
@@ -375,6 +376,7 @@ private struct WhyObligationSheet: View {
             }
         }
         .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 
     private func sourceLabel(_ source: String) -> String {

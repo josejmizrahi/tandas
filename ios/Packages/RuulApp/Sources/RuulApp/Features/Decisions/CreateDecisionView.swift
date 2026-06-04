@@ -99,6 +99,7 @@ public struct CreateDecisionView: View {
             }
         }
         .actionErrorAlert(runner)
+        .ruulSheet()
     }
 
     // MARK: - Opciones (R.2Q)

@@ -160,6 +160,7 @@ public struct DecisionDetailView: View {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 44))
                 .foregroundStyle(.tint)
+                .symbolRenderingMode(.hierarchical)
                 .frame(width: 80, height: 80)
                 .background(Color.accentColor.badgeFill, in: Circle())
 

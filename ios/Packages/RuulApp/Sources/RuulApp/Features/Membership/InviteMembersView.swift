@@ -87,6 +87,7 @@ public struct InviteMembersView: View {
                 Text("Nadie más podrá usarlo. Los miembros que ya se unieron siguen siendo miembros.")
             }
         }
+        .ruulSheet()
     }
 
     // MARK: - Direct (invite_member)

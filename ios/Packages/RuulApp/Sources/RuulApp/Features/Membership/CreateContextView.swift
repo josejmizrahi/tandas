@@ -144,6 +144,7 @@ public struct CreateContextView: View {
                 }
             }
         }
+        .ruulSheet()
     }
 
     @ViewBuilder

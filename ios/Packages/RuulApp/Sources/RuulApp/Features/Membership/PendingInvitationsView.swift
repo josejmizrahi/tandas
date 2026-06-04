@@ -45,6 +45,7 @@ public struct PendingInvitationsView: View {
             }
             .actionErrorAlert(runner)
         }
+        .ruulCompactSheet()
     }
 
     @ViewBuilder
