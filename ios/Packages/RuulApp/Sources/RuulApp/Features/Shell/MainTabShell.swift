@@ -55,7 +55,7 @@ public struct MainTabShell: View {
             }
 
             Tab("Yo", systemImage: "person.crop.circle.fill", value: AppTab.me) {
-                MeTabPlaceholderView(container: container)
+                MeView(container: container, goToContexts: { selectedTab = .contexts })
             }
         }
         .sheet(isPresented: $isShowingCreateSheet) {
@@ -100,55 +100,6 @@ public enum AppTab: Hashable {
 }
 
 // MARK: - Stubs F.NAV.1
-
-/// F.NAV.6 reemplaza con la pantalla de perfil consolidada
-/// (mi actividad / mis contextos / mis recursos / mis suscripciones / mi red
-/// de confianza / configuración). F.NAV.1 stub: navega a PersonalSettingsView.
-private struct MeTabPlaceholderView: View {
-    let container: DependencyContainer
-    @State private var isShowingSettings = false
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    HStack {
-                        ActorInitialsView(
-                            name: container.currentActorStore.actor?.displayName ?? "—",
-                            size: 56
-                        )
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(container.currentActorStore.actor?.displayName ?? "—")
-                                .font(.title3.weight(.semibold))
-                            Text("Tu perfil")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                Section {
-                    Button {
-                        isShowingSettings = true
-                    } label: {
-                        Label("Configuración", systemImage: "gearshape")
-                    }
-                    Button {
-                        Task { await container.signOut() }
-                    } label: {
-                        Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
-                            .foregroundStyle(.red)
-                    }
-                }
-            }
-            .navigationTitle("Yo")
-            .sheet(isPresented: $isShowingSettings) {
-                PersonalSettingsView(container: container)
-            }
-        }
-    }
-}
 
 #Preview("Tab Shell (demo)") {
     MainTabShell(container: .demo())
