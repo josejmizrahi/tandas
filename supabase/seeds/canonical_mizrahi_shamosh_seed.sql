@@ -44,6 +44,8 @@ declare
   u_salo uuid := gen_random_uuid(); a_salo uuid;        -- Salo Saade (cuñado de Alan, yerno de Víctor)
   -- contextos
   c_fam_miz uuid; c_fam_sha uuid; c_comidas uuid; c_proyecto uuid; c_quimibond uuid; c_trust uuid; c_palco uuid;
+  -- R.2V — duplicados intencionales del Proyecto Nave Industrial Toluca para QA
+  c_proy_toluca uuid; c_nave_toluca uuid;
   -- recursos
   r_palco uuid; r_terreno uuid; r_nave uuid; r_acciones uuid; r_cuenta uuid;
   -- flujo
@@ -181,6 +183,26 @@ begin
   perform set_config('request.jwt.claims', jsonb_build_object('sub', v_jose_auth::text)::text, true);
   c_trust := ((public.create_context('Fideicomiso Nave Industrial', 'legal_entity', 'trust'))->>'context_actor_id')::uuid;
 
+  -- R.2V — DUPLICADOS intencionales del Proyecto Nave Industrial Toluca.
+  -- Simulan que Pepe y Papá modelaron el mismo proyecto con nombres distintos
+  -- antes de coordinarse. Los 4 socios entran a cada uno → members Jaccard alto.
+  -- El sistema debe sugerir via duplicate_candidates() + creation_guard.
+  c_proy_toluca := ((public.create_context('Proyecto Toluca', 'collective', 'project'))->>'context_actor_id')::uuid;
+  v_code := (public.create_invite(c_proy_toluca))->>'code';
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_papa::text)::text, true);    perform public.join_by_invite_code(v_code);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_abuelo::text)::text, true);  perform public.join_by_invite_code(v_code);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_pepe::text)::text, true);    perform public.join_by_invite_code(v_code);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_alberto::text)::text, true); perform public.join_by_invite_code(v_code);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_jose_auth::text)::text, true);
+
+  c_nave_toluca := ((public.create_context('Nave Toluca', 'collective', 'project'))->>'context_actor_id')::uuid;
+  v_code := (public.create_invite(c_nave_toluca))->>'code';
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_papa::text)::text, true);    perform public.join_by_invite_code(v_code);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_abuelo::text)::text, true);  perform public.join_by_invite_code(v_code);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_pepe::text)::text, true);    perform public.join_by_invite_code(v_code);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_alberto::text)::text, true); perform public.join_by_invite_code(v_code);
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_jose_auth::text)::text, true);
+
   -- Palco Mundial 2026 (friend_group; José founder) — el grupo que comparte el palco:
   -- Abuelo (dueño), Jacobo, José Mochon, Cohens, Serurs, Salo.
   c_palco := ((public.create_context('Palco Mundial 2026', 'collective', 'friend_group'))->>'context_actor_id')::uuid;
@@ -255,6 +277,13 @@ begin
   r_nave := ((public.create_resource(c_proyecto, 'property', 'Nave Industrial Toluca',
     p_metadata := '{"status":"planned"}'::jsonb))->>'resource_id')::uuid;
   perform public.grant_right(r_nave, c_trust, 'OWN', p_percent := 100);
+
+  -- R.2V — los contextos duplicados también mencionan el "Terreno Toluca" como
+  -- recurso. Eso eleva el score de duplicate_candidates por encima de 0.50.
+  perform public.create_resource(c_proy_toluca, 'property', 'Terreno Toluca',
+    p_metadata := '{"r2v_seed":"duplicate_for_qa"}'::jsonb);
+  perform public.create_resource(c_nave_toluca, 'property', 'Terreno Toluca',
+    p_metadata := '{"r2v_seed":"duplicate_for_qa"}'::jsonb);
 
   -- Acciones Quimibond (security). Papá 50 / Abuelo 50.
   r_acciones := ((public.create_resource(c_quimibond, 'security', 'Acciones Quimibond'))->>'resource_id')::uuid;
@@ -468,5 +497,5 @@ begin
   -- ───────────────────────────────────────────────────────────────────────────
   perform set_config('request.jwt.claims', null, true);
 
-  raise notice 'R.SEED.2 CANONICAL: OK — José=% · 7 contextos (incl. Palco Mundial 2026) · 5 recursos · 5 partidos reales con roster + 4 comidas · 4 decisiones · obligaciones (acción+capital) · renta Quimibond · 2 reglas · 4 documentos · trust sin beneficiarios · jerarquía R.2U Familia Mizrahi → 3 hijos → Fideicomiso.', a_jose;
+  raise notice 'R.SEED.2 CANONICAL: OK — José=% · 9 contextos (incl. Palco Mundial 2026 + R.2V duplicados Proyecto Toluca/Nave Toluca) · 7 recursos (5 base + 2 duplicate-of-Terreno-Toluca) · 5 partidos reales con roster + 4 comidas · 4 decisiones · obligaciones (acción+capital) · renta Quimibond · 2 reglas · 4 documentos · trust sin beneficiarios · jerarquía R.2U Familia Mizrahi → 3 hijos → Fideicomiso.', a_jose;
 end; $$;
