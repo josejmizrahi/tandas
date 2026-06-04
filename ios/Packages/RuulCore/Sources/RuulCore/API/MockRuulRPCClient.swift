@@ -40,6 +40,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var batches: [UUID: SettlementBatch] = [:]
     var settlementItems: [UUID: [SettlementItem]] = [:]      // batchId → items
     var activity: [UUID: [ActivityEvent]] = [:]              // contextId → events
+    /// R.2U — Context Hierarchy: parent → children directos activos.
+    var contextChildrenById: [UUID: [UUID]] = [:]
 
     /// Error a lanzar en la siguiente llamada (para probar manejo de errores).
     public var nextError: RuulError?
@@ -604,6 +606,177 @@ public actor MockRuulRPCClient: RuulRPCClient {
         permissions[id] = MockRuulRPCClient.allPermissions
         emit(id, "context.created")
         return CreatedContext(contextActorId: id, context: actor)
+    }
+
+    // MARK: - Context hierarchy (R.2U)
+
+    private func hierarchyNode(_ actorId: UUID, depth: Int? = nil, linkedAt: Date? = nil) -> ContextHierarchyNode? {
+        guard let actor = actors[actorId] else { return nil }
+        return ContextHierarchyNode(
+            id: actor.id,
+            name: actor.displayName,
+            actorKind: actor.actorKind,
+            actorSubtype: actor.actorSubtype,
+            visibility: actor.visibility,
+            linkedAt: linkedAt,
+            depth: depth
+        )
+    }
+
+    public func contextChildren(contextId: UUID) async throws -> [ContextHierarchyNode] {
+        try throwIfNeeded()
+        let children = contextChildrenById[contextId, default: []]
+        return children.compactMap { hierarchyNode($0, linkedAt: Date()) }
+            .sorted { $0.name < $1.name }
+    }
+
+    public func contextParents(contextId: UUID) async throws -> [ContextHierarchyNode] {
+        try throwIfNeeded()
+        let parents = contextChildrenById
+            .filter { $0.value.contains(contextId) }
+            .map { $0.key }
+        return parents.compactMap { hierarchyNode($0, linkedAt: Date()) }
+            .sorted { $0.name < $1.name }
+    }
+
+    public func contextTree(rootContextId: UUID) async throws -> ContextTreeNode {
+        try throwIfNeeded()
+        return buildTree(rootContextId)
+    }
+
+    private func buildTree(_ id: UUID) -> ContextTreeNode {
+        guard let actor = actors[id] else {
+            return ContextTreeNode(
+                id: id,
+                name: "Desconocido",
+                actorKind: .collective,
+                actorSubtype: "other",
+                restricted: true,
+                children: nil
+            )
+        }
+        let kids = contextChildrenById[id, default: []].sorted { (a, b) in
+            (actors[a]?.displayName ?? "") < (actors[b]?.displayName ?? "")
+        }
+        return ContextTreeNode(
+            id: actor.id,
+            name: actor.displayName,
+            actorKind: actor.actorKind,
+            actorSubtype: actor.actorSubtype,
+            restricted: false,
+            children: kids.map { buildTree($0) }
+        )
+    }
+
+    public func contextAncestors(contextId: UUID) async throws -> [ContextHierarchyNode] {
+        try throwIfNeeded()
+        var result: [ContextHierarchyNode] = []
+        var current = contextId
+        var depth = 1
+        while let parentId = contextChildrenById.first(where: { $0.value.contains(current) })?.key {
+            if let node = hierarchyNode(parentId, depth: depth) {
+                result.append(node)
+            }
+            current = parentId
+            depth += 1
+            if depth > 64 { break }
+        }
+        return result
+    }
+
+    public func contextDescendants(contextId: UUID) async throws -> [ContextHierarchyNode] {
+        try throwIfNeeded()
+        var result: [ContextHierarchyNode] = []
+        var queue: [(UUID, Int)] = contextChildrenById[contextId, default: []].map { ($0, 1) }
+        while !queue.isEmpty {
+            let (id, depth) = queue.removeFirst()
+            if let node = hierarchyNode(id, depth: depth) {
+                result.append(node)
+            }
+            for child in contextChildrenById[id, default: []] {
+                queue.append((child, depth + 1))
+            }
+            if result.count > 256 { break }
+        }
+        return result
+            .sorted { ($0.depth ?? 0, $0.name) < ($1.depth ?? 0, $1.name) }
+    }
+
+    public func createChildContext(_ input: CreateChildContextInput) async throws -> CreatedChildContext {
+        try throwIfNeeded()
+        let id = UUID()
+        let actor = ActorRecord(
+            id: id,
+            actorKind: input.actorKind,
+            actorSubtype: input.actorSubtype,
+            displayName: input.displayName,
+            visibility: input.visibility,
+            createdAt: Date()
+        )
+        actors[id] = actor
+        memberships[id] = [
+            ContextMember(actorId: me.id, displayName: me.displayName, membershipType: "founder", joinedAt: Date(), roles: ["admin"])
+        ]
+        permissions[id] = MockRuulRPCClient.allPermissions
+        contextChildrenById[input.parentContextActorId, default: []].append(id)
+        emit(input.parentContextActorId, "context.child.created", payload: .object([
+            "child_actor_id": .string(id.uuidString),
+            "display_name": .string(input.displayName)
+        ]))
+        emit(id, "context.created")
+        return CreatedChildContext(
+            parentContextActorId: input.parentContextActorId,
+            childContextActorId: id,
+            relationshipId: UUID(),
+            context: actor
+        )
+    }
+
+    public func linkChildContext(parentId: UUID, childId: UUID) async throws -> LinkChildContextResult {
+        try throwIfNeeded()
+        var children = contextChildrenById[parentId, default: []]
+        if children.contains(childId) {
+            return LinkChildContextResult(
+                parentContextActorId: parentId,
+                childContextActorId: childId,
+                relationshipId: UUID(),
+                alreadyLinked: true
+            )
+        }
+        children.append(childId)
+        contextChildrenById[parentId] = children
+        emit(parentId, "context.child.linked", payload: .object([
+            "child_actor_id": .string(childId.uuidString)
+        ]))
+        return LinkChildContextResult(
+            parentContextActorId: parentId,
+            childContextActorId: childId,
+            relationshipId: UUID(),
+            alreadyLinked: false
+        )
+    }
+
+    public func unlinkChildContext(parentId: UUID, childId: UUID) async throws -> UnlinkChildContextResult {
+        try throwIfNeeded()
+        let children = contextChildrenById[parentId, default: []]
+        guard children.contains(childId) else {
+            return UnlinkChildContextResult(
+                parentContextActorId: parentId,
+                childContextActorId: childId,
+                relationshipId: nil,
+                unlinked: false
+            )
+        }
+        contextChildrenById[parentId] = children.filter { $0 != childId }
+        emit(parentId, "context.child.unlinked", payload: .object([
+            "child_actor_id": .string(childId.uuidString)
+        ]))
+        return UnlinkChildContextResult(
+            parentContextActorId: parentId,
+            childContextActorId: childId,
+            relationshipId: UUID(),
+            unlinked: true
+        )
     }
 
     // MARK: - Invites & membership
@@ -2704,6 +2877,11 @@ extension MockRuulRPCClient {
         public static let familia = UUID(uuidString: "00000000-0000-0000-0000-0000000000c2")!
         public static let casaValle = UUID(uuidString: "00000000-0000-0000-0000-0000000000d1")!
         public static let viajeJapon = UUID(uuidString: "00000000-0000-0000-0000-0000000000c3")!
+        // R.2U — Familia Mizrahi → { Comidas, Mundial, Proyecto Nave → Fideicomiso }
+        public static let comidasMiercoles = UUID(uuidString: "00000000-0000-0000-0000-0000000000c4")!
+        public static let mundialPalco2026 = UUID(uuidString: "00000000-0000-0000-0000-0000000000c5")!
+        public static let proyectoNave = UUID(uuidString: "00000000-0000-0000-0000-0000000000c6")!
+        public static let fideicomiso = UUID(uuidString: "00000000-0000-0000-0000-0000000000c7")!
     }
 
     /// Mundo seedeado con el escenario del founder para previews.
@@ -2761,6 +2939,38 @@ extension MockRuulRPCClient {
             ContextMember(actorId: DemoIds.david, displayName: "David", membershipType: "member", joinedAt: Date(), roles: ["member"])
         ]
         permissions[familia.id] = MockRuulRPCClient.allPermissions
+
+        // R.2U — Jerarquía Mizrahi: Familia → { Comidas, Mundial, Proyecto → Fideicomiso }
+        let comidas = ActorRecord(id: DemoIds.comidasMiercoles, actorKind: .collective, actorSubtype: "community", displayName: "Comidas Miércoles")
+        actors[comidas.id] = comidas
+        memberships[comidas.id] = [
+            ContextMember(actorId: DemoIds.jose, displayName: "José", membershipType: "founder", joinedAt: Date(), roles: ["admin"])
+        ]
+        permissions[comidas.id] = MockRuulRPCClient.allPermissions
+
+        let mundial = ActorRecord(id: DemoIds.mundialPalco2026, actorKind: .collective, actorSubtype: "friend_group", displayName: "Mundial Palco 2026")
+        actors[mundial.id] = mundial
+        memberships[mundial.id] = [
+            ContextMember(actorId: DemoIds.jose, displayName: "José", membershipType: "founder", joinedAt: Date(), roles: ["admin"])
+        ]
+        permissions[mundial.id] = MockRuulRPCClient.allPermissions
+
+        let proyecto = ActorRecord(id: DemoIds.proyectoNave, actorKind: .collective, actorSubtype: "project", displayName: "Proyecto Nave Industrial")
+        actors[proyecto.id] = proyecto
+        memberships[proyecto.id] = [
+            ContextMember(actorId: DemoIds.jose, displayName: "José", membershipType: "founder", joinedAt: Date(), roles: ["admin"])
+        ]
+        permissions[proyecto.id] = MockRuulRPCClient.allPermissions
+
+        let fideo = ActorRecord(id: DemoIds.fideicomiso, actorKind: .legalEntity, actorSubtype: "trust", displayName: "Fideicomiso Nave Industrial")
+        actors[fideo.id] = fideo
+        memberships[fideo.id] = [
+            ContextMember(actorId: DemoIds.jose, displayName: "José", membershipType: "founder", joinedAt: Date(), roles: ["admin"])
+        ]
+        permissions[fideo.id] = MockRuulRPCClient.allPermissions
+
+        contextChildrenById[familia.id] = [comidas.id, mundial.id, proyecto.id]
+        contextChildrenById[proyecto.id] = [fideo.id]
 
         // Recurso: Casa Valle (de Familia, José tiene USE)
         let casa = Resource(

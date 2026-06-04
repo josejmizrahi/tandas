@@ -18,11 +18,15 @@ public struct ContextHomeView: View {
     @State private var actionObligations: [Obligation] = []
     @State private var selectedObligationId: UUID?
     @State private var isShowingCreateObligation = false
+    /// R.2U.3 — jerarquía padre/hijos del contexto (breadcrumb + section).
+    @State private var hierarchyStore: ContextHierarchyStore
+    @State private var isShowingCreateChild = false
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
         self.container = container
         _store = State(initialValue: ContextHomeStore(rpc: container.rpc))
+        _hierarchyStore = State(initialValue: ContextHierarchyStore(rpc: container.rpc))
     }
 
     private var rpc: any RuulRPCClient { container.rpc }
@@ -47,19 +51,38 @@ public struct ContextHomeView: View {
         }
         .navigationTitle(context.displayName)
         .navigationBarTitleDisplayMode(.large)
+        // R.2U.3 — breadcrumb sticky arriba (sólo si hay ancestros).
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
+                BreadcrumbView(
+                    context: context,
+                    ancestors: hierarchyStore.ancestors,
+                    contextStore: container.contextStore
+                )
+            }
+        }
         .task(id: context.id) {
             await store.load(context: context)
             await loadActionObligations()
+            if !context.isPersonal {
+                await hierarchyStore.load(contextId: context.id)
+            }
         }
         .refreshable {
             await store.load(context: context)
             await loadActionObligations()
+            if !context.isPersonal {
+                await hierarchyStore.load(contextId: context.id)
+            }
             // El pull-to-refresh también actualiza la lista de contextos del switcher.
             await container.contextStore.load()
         }
         .refreshOnReappear(if: store.phase.isLoaded) {
             await store.load(context: context)
             await loadActionObligations()
+            if !context.isPersonal {
+                await hierarchyStore.load(contextId: context.id)
+            }
         }
         .sheet(item: Binding(get: { selectedObligationId.map { ObligationIdWrapper(id: $0) } },
                               set: { selectedObligationId = $0?.id })) { wrapper in
@@ -69,6 +92,11 @@ public struct ContextHomeView: View {
             Task { await loadActionObligations() }
         }) {
             CreateObligationView(context: context, container: container)
+        }
+        .sheet(isPresented: $isShowingCreateChild) {
+            CreateChildContextSheet(parent: context, container: container) { newCtx in
+                container.contextStore.switchTo(newCtx)
+            }
         }
     }
 
@@ -102,6 +130,7 @@ public struct ContextHomeView: View {
                     myWorldSections(world)
                 }
             } else {
+                childContextsSection(summary)
                 membersSection(summary)
                 resourcesSection(summary)
                 eventsSection(summary)
@@ -113,6 +142,82 @@ public struct ContextHomeView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    // MARK: Subcontextos (R.2U.3)
+
+    @ViewBuilder
+    private func childContextsSection(_ summary: ContextSummary) -> some View {
+        // No mostrar mientras carga (evita flicker de empty state).
+        if hierarchyStore.phase.isLoaded {
+            Section {
+                if hierarchyStore.children.isEmpty {
+                    Text("Sin subcontextos todavía")
+                        .foregroundStyle(.secondary)
+                        .font(.callout)
+                } else {
+                    ForEach(hierarchyStore.children) { child in
+                        Button {
+                            if let target = container.contextStore.availableContexts.first(where: { $0.id == child.id }) {
+                                container.contextStore.switchTo(target)
+                            }
+                        } label: {
+                            InfoRow(
+                                symbolName: child.appContext.symbolName,
+                                title: child.name,
+                                subtitle: subtypeLabel(child.actorSubtype)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // Acciones gateadas por backend (my_permissions).
+                if summary.can("context.children.create") {
+                    Button {
+                        isShowingCreateChild = true
+                    } label: {
+                        Label("Crear subcontexto", systemImage: "plus.rectangle.on.rectangle")
+                            .font(.callout)
+                    }
+                }
+                if summary.can("context.tree.view") &&
+                   (!hierarchyStore.children.isEmpty || !hierarchyStore.ancestors.isEmpty) {
+                    NavigationLink {
+                        ContextTreeView(rootContext: rootForTree(summary), container: container)
+                    } label: {
+                        Label("Ver estructura", systemImage: "rectangle.connected.to.line.below")
+                            .font(.callout)
+                    }
+                }
+            } header: {
+                Text("Subcontextos (\(hierarchyStore.children.count))")
+            }
+        }
+    }
+
+    /// Para el tree: si hay ancestores, usar la raíz; si no, el contexto actual.
+    private func rootForTree(_ summary: ContextSummary) -> AppContext {
+        if let root = hierarchyStore.ancestors
+            .sorted(by: { ($0.depth ?? 0) > ($1.depth ?? 0) })
+            .first,
+           let available = container.contextStore.availableContexts.first(where: { $0.id == root.id }) {
+            return available
+        }
+        return context
+    }
+
+    private func subtypeLabel(_ subtype: String) -> String {
+        switch subtype {
+        case "family": return "Familia"
+        case "community": return "Comunidad"
+        case "project": return "Proyecto"
+        case "trip": return "Viaje"
+        case "friend_group": return "Grupo"
+        case "company": return "Negocio"
+        case "trust": return "Trust"
+        default: return subtype
+        }
     }
 
     // MARK: Header

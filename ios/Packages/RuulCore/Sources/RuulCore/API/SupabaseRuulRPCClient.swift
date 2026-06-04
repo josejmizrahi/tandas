@@ -185,6 +185,86 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
     }
 
+    // MARK: - Context hierarchy (R.2U)
+
+    public func contextChildren(contextId: UUID) async throws -> [ContextHierarchyNode] {
+        try await call("context_children", params: ContextIdParams(contextId: contextId))
+    }
+
+    public func contextParents(contextId: UUID) async throws -> [ContextHierarchyNode] {
+        try await call("context_parents", params: ContextIdParams(contextId: contextId))
+    }
+
+    public func contextTree(rootContextId: UUID) async throws -> ContextTreeNode {
+        struct Params: Encodable, Sendable {
+            let pRootContextActorId: UUID
+            enum CodingKeys: String, CodingKey { case pRootContextActorId = "p_root_context_actor_id" }
+        }
+        return try await call("context_tree", params: Params(pRootContextActorId: rootContextId))
+    }
+
+    public func contextAncestors(contextId: UUID) async throws -> [ContextHierarchyNode] {
+        try await call("context_ancestors", params: ContextIdParams(contextId: contextId))
+    }
+
+    public func contextDescendants(contextId: UUID) async throws -> [ContextHierarchyNode] {
+        try await call("context_descendants", params: ContextIdParams(contextId: contextId))
+    }
+
+    public func createChildContext(_ input: CreateChildContextInput) async throws -> CreatedChildContext {
+        struct Params: Encodable, Sendable {
+            let pParentContextActorId: UUID
+            let pDisplayName: String
+            let pActorKind: String
+            let pActorSubtype: String
+            let pVisibility: String
+            enum CodingKeys: String, CodingKey {
+                case pParentContextActorId = "p_parent_context_actor_id"
+                case pDisplayName = "p_display_name"
+                case pActorKind = "p_actor_kind"
+                case pActorSubtype = "p_actor_subtype"
+                case pVisibility = "p_visibility"
+            }
+        }
+        return try await call("create_child_context", params: Params(
+            pParentContextActorId: input.parentContextActorId,
+            pDisplayName: input.displayName,
+            pActorKind: input.actorKind.rawValue,
+            pActorSubtype: input.actorSubtype,
+            pVisibility: input.visibility
+        ))
+    }
+
+    public func linkChildContext(parentId: UUID, childId: UUID) async throws -> LinkChildContextResult {
+        struct Params: Encodable, Sendable {
+            let pParentContextActorId: UUID
+            let pChildContextActorId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pParentContextActorId = "p_parent_context_actor_id"
+                case pChildContextActorId = "p_child_context_actor_id"
+            }
+        }
+        return try await call("link_child_context", params: Params(
+            pParentContextActorId: parentId,
+            pChildContextActorId: childId
+        ))
+    }
+
+    public func unlinkChildContext(parentId: UUID, childId: UUID) async throws -> UnlinkChildContextResult {
+        struct Params: Encodable, Sendable {
+            let pParentContextActorId: UUID
+            let pChildContextActorId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pParentContextActorId = "p_parent_context_actor_id"
+                case pChildContextActorId = "p_child_context_actor_id"
+            }
+        }
+        return try await call("unlink_child_context", params: Params(
+            pParentContextActorId: parentId,
+            pChildContextActorId: childId
+        ))
+    }
+
     // MARK: - Invites & membership
 
     public func createInvite(contextId: UUID, maxUses: Int?, expiresAt: Date?) async throws -> InviteCreated {

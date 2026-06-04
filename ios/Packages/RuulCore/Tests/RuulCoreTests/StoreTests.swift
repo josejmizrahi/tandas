@@ -60,8 +60,9 @@ struct StoreTests {
         let store = ContextStore(rpc: mock, defaults: makeDefaults())
         await store.load()
         #expect(store.phase == .loaded)
-        // persona + Cena Semanal + Familia
-        #expect(store.availableContexts.count == 3)
+        // persona + Cena Semanal + Familia + 3 hijos de Familia (Comidas,
+        // Mundial, Proyecto) + Fideicomiso (hijo de Proyecto) = 7
+        #expect(store.availableContexts.count == 7)
         #expect(store.personalContext != nil)
         // El default es el primer colectivo (no el personal).
         #expect(store.currentContext?.isPersonal == false)
@@ -309,6 +310,70 @@ struct StoreTests {
         } else {
             Issue.record("No se encontró el settlement item de José")
         }
+    }
+
+    // MARK: - ContextHierarchyStore (R.2U.3)
+
+    @Test("ContextHierarchyStore carga children, parents y ancestors de la jerarquía Mizrahi")
+    func contextHierarchyStore() async {
+        let mock = await makeDemoClient()
+        let store = ContextHierarchyStore(rpc: mock)
+
+        // Familia Mizrahi = raíz: 3 children (Comidas, Mundial, Proyecto), 0 parents
+        await store.load(contextId: MockRuulRPCClient.DemoIds.familia)
+        #expect(store.phase == .loaded)
+        #expect(store.parents.isEmpty)
+        #expect(store.children.count == 3)
+        #expect(store.children.contains { $0.id == MockRuulRPCClient.DemoIds.comidasMiercoles })
+        #expect(store.children.contains { $0.id == MockRuulRPCClient.DemoIds.mundialPalco2026 })
+        #expect(store.children.contains { $0.id == MockRuulRPCClient.DemoIds.proyectoNave })
+        #expect(store.ancestors.isEmpty)
+
+        // Fideicomiso = profundidad 2: 0 children, 1 parent (Proyecto), 2 ancestors
+        await store.load(contextId: MockRuulRPCClient.DemoIds.fideicomiso)
+        #expect(store.phase == .loaded)
+        #expect(store.children.isEmpty)
+        #expect(store.parents.count == 1)
+        #expect(store.parents.first?.id == MockRuulRPCClient.DemoIds.proyectoNave)
+        #expect(store.ancestors.count == 2)
+        // Ancestor más profundo (raíz) = Familia con depth=2
+        #expect(store.ancestors.contains { $0.id == MockRuulRPCClient.DemoIds.familia })
+        #expect(store.ancestors.contains { $0.id == MockRuulRPCClient.DemoIds.proyectoNave })
+    }
+
+    @Test("ContextHierarchyStore.loadTree construye árbol completo desde la raíz")
+    func contextHierarchyStoreTree() async {
+        let mock = await makeDemoClient()
+        let store = ContextHierarchyStore(rpc: mock)
+
+        await store.loadTree(rootContextId: MockRuulRPCClient.DemoIds.familia)
+        #expect(store.treePhase == .loaded)
+        #expect(store.tree?.id == MockRuulRPCClient.DemoIds.familia)
+        #expect(store.tree?.children?.count == 3)
+        // Proyecto Nave debe contener a Fideicomiso (recursión).
+        let proyecto = store.tree?.children?.first { $0.id == MockRuulRPCClient.DemoIds.proyectoNave }
+        #expect(proyecto?.children?.count == 1)
+        #expect(proyecto?.children?.first?.id == MockRuulRPCClient.DemoIds.fideicomiso)
+    }
+
+    @Test("createChildContext crea hijo + registra contains + emite activity")
+    func createChildContextFlow() async throws {
+        let mock = await makeDemoClient()
+        let store = ContextHierarchyStore(rpc: mock)
+
+        let result = try await mock.createChildContext(CreateChildContextInput(
+            parentContextActorId: MockRuulRPCClient.DemoIds.familia,
+            displayName: "Vacaciones Europa 2027",
+            actorKind: .collective,
+            actorSubtype: "trip"
+        ))
+        #expect(result.parentContextActorId == MockRuulRPCClient.DemoIds.familia)
+        #expect(result.context.displayName == "Vacaciones Europa 2027")
+
+        // El store ahora ve 4 children (Comidas, Mundial, Proyecto, Vacaciones)
+        await store.load(contextId: MockRuulRPCClient.DemoIds.familia)
+        #expect(store.children.count == 4)
+        #expect(store.children.contains { $0.id == result.childContextActorId })
     }
 
     // MARK: - ActivityStore

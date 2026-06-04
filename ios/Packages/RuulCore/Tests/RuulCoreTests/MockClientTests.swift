@@ -28,8 +28,13 @@ struct MockClientTests {
         let names = candidates.contexts.map(\.displayName)
         #expect(names.contains("Cena Semanal"))
         #expect(names.contains("Familia Mizrahi"))
-        // persona + 2 colectivos
-        #expect(candidates.appContexts.count == 3)
+        // R.2U.3 — Familia Mizrahi gana hijos en el seed canónico.
+        #expect(names.contains("Comidas Miércoles"))
+        #expect(names.contains("Mundial Palco 2026"))
+        #expect(names.contains("Proyecto Nave Industrial"))
+        #expect(names.contains("Fideicomiso Nave Industrial"))
+        // persona + 6 colectivos (Cena, Familia, Comidas, Mundial, Proyecto, Fideicomiso)
+        #expect(candidates.appContexts.count == 7)
     }
 
     @Test("crear contexto + invitar + unirse")

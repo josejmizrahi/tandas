@@ -45,6 +45,29 @@ public protocol RuulRPCClient: Sendable {
     /// `create_context(...)`
     func createContext(_ input: CreateContextInput) async throws -> CreatedContext
 
+    // MARK: - Context hierarchy (R.2U)
+
+    /// `context_children(p_context_actor_id)` — hijos directos activos.
+    func contextChildren(contextId: UUID) async throws -> [ContextHierarchyNode]
+    /// `context_parents(p_context_actor_id)` — padres directos activos.
+    func contextParents(contextId: UUID) async throws -> [ContextHierarchyNode]
+    /// `context_tree(p_root_context_actor_id)` — árbol completo descendente.
+    /// Subárboles donde el caller no es miembro vienen con `restricted = true`.
+    func contextTree(rootContextId: UUID) async throws -> ContextTreeNode
+    /// `context_ancestors(p_context_actor_id)` — padre → abuelo → … con `depth`.
+    func contextAncestors(contextId: UUID) async throws -> [ContextHierarchyNode]
+    /// `context_descendants(p_context_actor_id)` — todos los descendientes plano.
+    func contextDescendants(contextId: UUID) async throws -> [ContextHierarchyNode]
+    /// `create_child_context(...)` — crea contexto hijo. Caller deviene
+    /// founder/admin del child. Requiere `context.children.create` en el padre.
+    func createChildContext(_ input: CreateChildContextInput) async throws -> CreatedChildContext
+    /// `link_child_context(p_parent, p_child)` — vincula contexto existente.
+    /// Requiere `context.children.link` en padre + `context.manage` en child.
+    func linkChildContext(parentId: UUID, childId: UUID) async throws -> LinkChildContextResult
+    /// `unlink_child_context(p_parent, p_child)` — soft-end. Requiere
+    /// `context.children.unlink` en padre. Idempotente.
+    func unlinkChildContext(parentId: UUID, childId: UUID) async throws -> UnlinkChildContextResult
+
     // MARK: - Invites & membership
 
     /// `create_invite(...)`
