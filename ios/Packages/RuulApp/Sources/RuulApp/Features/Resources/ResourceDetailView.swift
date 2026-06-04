@@ -172,7 +172,7 @@ public struct ResourceDetailView: View {
                 .font(.system(size: 36))
                 .foregroundStyle(.tint)
                 .frame(width: 68, height: 68)
-                .background(Color.accentColor.opacity(0.15), in: Circle())
+                .background(Color.accentColor.badgeFill, in: Circle())
             Text(detail.resource.displayName)
                 .font(.title2.weight(.bold))
                 .multilineTextAlignment(.center)
@@ -296,7 +296,7 @@ public struct ResourceDetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+            .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
         }
     }
 
@@ -568,11 +568,11 @@ public struct ResourceDetailView: View {
                     }
                     .buttonStyle(.plain)
                     if idx < owners.count - 1 {
-                        Divider().padding(.leading, 56)
+                        Divider().padding(.leading, Theme.Spacing.dividerLeading)
                     }
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -635,12 +635,12 @@ public struct ResourceDetailView: View {
                     }
                     .buttonStyle(.plain)
                     if idx < preview.count - 1 {
-                        Divider().padding(.leading, 56)
+                        Divider().padding(.leading, Theme.Spacing.dividerLeading)
                     }
                 }
                 if beneficiaries.count > 3 {
                     let extra = beneficiaries.count - 3
-                    Divider().padding(.leading, 56)
+                    Divider().padding(.leading, Theme.Spacing.dividerLeading)
                     HStack {
                         Text("+\(extra) más")
                             .font(.subheadline.weight(.semibold))
@@ -654,7 +654,7 @@ public struct ResourceDetailView: View {
                     .padding(.vertical, 10)
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -674,7 +674,7 @@ public struct ResourceDetailView: View {
                                 .font(.callout.weight(.semibold))
                                 .foregroundStyle(.tint)
                                 .frame(width: 28, height: 28)
-                                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+                                .background(Color.accentColor.badgeFillSubtle, in: Theme.cardShape(Theme.Radius.chip))
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(row.label)
                                     .font(.caption)
@@ -689,11 +689,11 @@ public struct ResourceDetailView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
                         if idx < rows.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -748,11 +748,11 @@ public struct ResourceDetailView: View {
                         }
                         .buttonStyle(.plain)
                         if idx < documentsStore.documents.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -763,7 +763,7 @@ public struct ResourceDetailView: View {
             Image(systemName: doc.documentType.symbolName)
                 .foregroundStyle(.tint)
                 .frame(width: 28, height: 28)
-                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+                .background(Color.accentColor.badgeFillSubtle, in: Theme.cardShape(Theme.Radius.chip))
             VStack(alignment: .leading, spacing: 2) {
                 Text(doc.title).font(.callout).lineLimit(1)
                 HStack(spacing: 6) {
@@ -816,7 +816,7 @@ public struct ResourceDetailView: View {
                     ForEach(Array(preview.enumerated()), id: \.offset) { idx, event in
                         activityRow(event)
                         if idx < preview.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                     if resourceActivity.count > 5 {
@@ -840,7 +840,7 @@ public struct ResourceDetailView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -852,7 +852,7 @@ public struct ResourceDetailView: View {
                 .font(.callout)
                 .foregroundStyle(.tint)
                 .frame(width: 28, height: 28)
-                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+                .background(Color.accentColor.badgeFillSubtle, in: Theme.cardShape(Theme.Radius.chip))
             VStack(alignment: .leading, spacing: 2) {
                 Text(event.friendlyTitle(currentActorId: myActorId))
                     .font(.callout)
@@ -931,7 +931,7 @@ public struct ResourceDetailView: View {
             .labelsHidden()
         }
         .padding(16)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Theme.Surface.card, in: Theme.cardShape())
     }
 
     // MARK: - Helpers
