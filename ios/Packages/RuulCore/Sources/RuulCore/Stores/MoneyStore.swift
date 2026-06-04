@@ -10,6 +10,8 @@ public final class MoneyStore {
     public private(set) var members: [ContextMember] = []
     public private(set) var myPermissions: [String] = []
     public private(set) var contextDisplayName: String = ""
+    public private(set) var availableActions: [AvailableAction] = []
+    public private(set) var recentActivity: [SummaryActivity] = []
     public private(set) var phase: StorePhase = .idle
 
     private let rpc: any RuulRPCClient
@@ -58,6 +60,8 @@ public final class MoneyStore {
             members = summary.members
             myPermissions = summary.myPermissions
             contextDisplayName = summary.context.displayName
+            availableActions = summary.availableActions
+            recentActivity = summary.recentActivity
             phase = .loaded
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
