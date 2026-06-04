@@ -16,10 +16,18 @@ public struct MainTabShell: View {
         self.container = container
     }
 
+    /// F.NAV.2 — Cambia al tab Contextos y switchea el ContextStore al
+    /// contexto pedido. Llamado desde Home cuando el usuario tapea un item
+    /// de "Continuar" o un conflicto de reservación.
+    private func jumpToContext(_ context: AppContext) {
+        container.contextStore.switchTo(context)
+        selectedTab = .contexts
+    }
+
     public var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Home", systemImage: "house.fill", value: AppTab.home) {
-                HomeView(container: container)
+                HomeView(container: container, jumpToContext: jumpToContext)
             }
 
             Tab("Contextos", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
