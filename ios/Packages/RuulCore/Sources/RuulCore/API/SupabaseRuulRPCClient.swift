@@ -243,9 +243,11 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
 
     public func listMyPendingInvitations(actorId: UUID) async throws -> [PendingInvitation] {
         do {
+            // `actor_memberships` tiene 3 FKs a `actors` (context/member/invited_by),
+            // PostgREST requiere el nombre del constraint para desambigüar.
             return try await client
                 .from("actor_memberships")
-                .select("id,context_actor_id,created_at,context:actors!context_actor_id(display_name,actor_kind,actor_subtype)")
+                .select("id,context_actor_id,created_at,context:actors!actor_memberships_context_actor_id_fkey(display_name,actor_kind,actor_subtype)")
                 .eq("member_actor_id", value: actorId.uuidString)
                 .eq("membership_status", value: "invited")
                 .order("created_at", ascending: false)
