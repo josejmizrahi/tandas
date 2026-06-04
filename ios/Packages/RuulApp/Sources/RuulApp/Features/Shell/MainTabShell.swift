@@ -1,13 +1,13 @@
 import SwiftUI
 import RuulCore
 
-/// F.NAV.1+ — Shell global con 5 tabs.
+/// F.NAV — Shell global con 5 tabs (PRODUCTION post-F.NAV.7).
 ///
-/// Doctrina F.NAV (Plans/Doctrine/FNAV_AppShellNavigation.md):
-/// Home / Contextos / Crear / Actividad / Yo. ContextHome ya no es la raíz;
-/// vive dentro de la tab Contextos como destination push. F.NAV.3 sustituyó
-/// el ContextShell preexistente por `ContextsListView` con NavigationStack
-/// propia. El switcher pasa a sheet (F.NAV.4 lo enchufa).
+/// Doctrina F.NAV (`Plans/Doctrine/FNAV_AppShellNavigation.md`):
+/// Home / Contextos / Crear / Actividad / Yo. ContextHome vive dentro de la
+/// tab Contextos como destination push de `ContextsListView`. El switcher es
+/// sheet (F.NAV.4). El tab Crear no tiene contenido propio — auto-bounce a
+/// `CreateIntentSheet` (F.NAV.5).
 public struct MainTabShell: View {
     let container: DependencyContainer
     @Environment(\.scenePhase) private var scenePhase
@@ -29,8 +29,26 @@ public struct MainTabShell: View {
         selectedTab = .contexts
     }
 
+    /// F.NAV.7 fix: Binding proxy intercepta la selección del tab antes de
+    /// mutar el state. Si el usuario tapea `.create`, abrimos la sheet y NO
+    /// movemos el selectedTab (que se quedará en el tab previo). Esto evita
+    /// los crashes esporádicos del patrón onChange.
+    private var tabBinding: Binding<AppTab> {
+        Binding(
+            get: { selectedTab },
+            set: { newValue in
+                if newValue == .create {
+                    isShowingCreateSheet = true
+                } else {
+                    previousTab = selectedTab
+                    selectedTab = newValue
+                }
+            }
+        )
+    }
+
     public var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: tabBinding) {
             Tab("Home", systemImage: "house.fill", value: AppTab.home) {
                 HomeView(container: container, jumpToContext: jumpToContext)
             }
@@ -60,17 +78,6 @@ public struct MainTabShell: View {
         }
         .sheet(isPresented: $isShowingCreateSheet) {
             CreateIntentSheet(container: container)
-        }
-        // F.NAV.5 — auto-bounce: tap al tab Crear dispara la sheet y vuelve
-        // al tab previo. Si el usuario re-tapea Crear estando ya allí, la
-        // sheet vuelve a aparecer.
-        .onChange(of: selectedTab) { oldTab, newTab in
-            if newTab == .create {
-                isShowingCreateSheet = true
-                selectedTab = oldTab == .create ? previousTab : oldTab
-            } else {
-                previousTab = newTab
-            }
         }
         .sheet(isPresented: $isShowingJoinByCode, onDismiss: { prefilledInviteCode = nil }) {
             JoinByCodeView(container: container, prefilledCode: prefilledInviteCode)

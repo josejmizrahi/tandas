@@ -68,22 +68,41 @@ Plans/Active/Frontend_MVP2_Rebuild.md# Estado del rebuild F.0–F.14
 ## Arquitectura iOS
 
 1. **3 gates en RuulAppShell**: sesión (`SessionStore`) → person actor
-   (`CurrentActorStore` / `ensure_person_actor()`) → contexto (`ContextShell`).
+   (`CurrentActorStore` / `ensure_person_actor()`) → `MainTabShell` (F.NAV).
    Usuarios anónimos no entran.
-2. **Context-first**: `ContextStore` carga `context_candidates()`, persiste la selección;
-   `ContextShell` hace rebuild completo al cambiar de contexto (`.id(context.id)`).
-   Sin tabs globales — `ContextHomeView` es la raíz y navega a cada feature.
-3. **Stores por pantalla**: cada vista de feature crea su store con `@State` y el `rpc`
+2. **Tab Shell global (F.NAV)**: 5 tabs — 🏠 Home / 📁 Contextos / ➕ Crear
+   / 🔔 Actividad / 👤 Yo. Doctrina completa en
+   `Plans/Doctrine/FNAV_AppShellNavigation.md`. F.NAV deroga las doctrinas
+   previas `doctrine_r0h_no_yo_tab` y `doctrine_r1_context_first` ("sin tabs
+   globales") — el producto evolucionó.
+   - **Home** muestra atención cross-context + Continuar + Acciones globales
+     mínimas + Actividad relevante (`attention_inbox()` + `list_recent_contexts`).
+   - **Contextos** muestra sólo raíces (`parent_context_actor_id = null`);
+     los subcontextos viven dentro del ContextHome del padre.
+   - **Crear** auto-bouncea a la sheet intent-first (no expone primitivas).
+   - **Actividad** wrappea `MyActivityFeedView` (R.3A.4).
+   - **Yo** consolida actividad / contextos / suscripciones / red de confianza
+     / configuración / cerrar sesión.
+3. **Context-first dentro de la tab Contextos**: `ContextsListView` (NavigationStack
+   propio) → tap → push `ContextHomeView`. `ContextStore` persiste la selección;
+   `mark_context_visited` se llama on tap. `.id(context.id)` rebuild completo al
+   cambiar de contexto. Tap al título → `ContextSwitcherSheet` (Apple Maps style).
+4. **Stores por pantalla**: cada vista de feature crea su store con `@State` y el `rpc`
    compartido del `DependencyContainer`. Sin capa de repositories.
-4. **Lecturas**: RPC cuando existe (`context_summary`, `list_context_resources`,
-   `resource_detail`, `my_world`, `list_activity`); PostgREST directo (RLS read-only)
+5. **Lecturas**: RPC cuando existe (`context_summary`, `list_context_resources`,
+   `resource_detail`, `event_detail`, `attention_inbox`, `list_context_favorites`,
+   `list_recent_contexts`, `list_activity`); PostgREST directo (RLS read-only)
    para `calendar_events`, `event_participants`, `rules`, `decisions`, `decision_votes`,
    `obligations`, `resource_reservations`, `reservation_conflicts`, `settlement_*`.
-5. **Escrituras**: SOLO vía RPCs SECURITY DEFINER (el backend valida permisos; la UI
-   gatea botones con `my_permissions` de `context_summary`).
-6. **Errores**: `RPCErrorMapper` → `UserFacingError` con copy en español. Nunca mostrar
+6. **Escrituras**: SOLO vía RPCs SECURITY DEFINER (el backend valida permisos; la UI
+   gatea botones con `available_actions[]` canónicos (F.2X)).
+7. **Intent-first (F.2X)**: toda acción visible nace de `available_actions[]` del
+   backend. iOS sólo presenta (`ActionPresentationCatalog`) + enruta (`ActionRouter`).
+   Prohibido `if resource.type == ...` / `if event.type == ...` / `if decision.type == ...`.
+   Doctrina: `Plans/Doctrine/F2X_IntentFirst_ContextualActions.md`.
+8. **Errores**: `RPCErrorMapper` → `UserFacingError` con copy en español. Nunca mostrar
    mensajes crudos del backend.
-7. **Previews**: toda vista tiene preview contra `MockRuulRPCClient.demo()` (mundo del
+9. **Previews**: toda vista tiene preview contra `MockRuulRPCClient.demo()` (mundo del
    founder: Cena Semanal, Familia Mizrahi, Casa Valle).
 
 ## Backend (referencia rápida)

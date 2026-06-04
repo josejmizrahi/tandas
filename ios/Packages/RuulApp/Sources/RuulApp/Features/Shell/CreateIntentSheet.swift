@@ -138,25 +138,43 @@ private struct ContextPickerView: View {
     let intent: CreateIntentSheet.Intent
     let onPick: (AppContext) -> Void
 
+    /// F.NAV.7 fix: pre-resolver arrays con identidades estables — los ForEach
+    /// con `if let` condicional adentro causaban crashes esporádicos por
+    /// inestabilidad de identidad en SwiftUI.
+    private var allCollectives: [AppContext] {
+        container.contextStore.availableContexts.filter { !$0.isPersonal }
+    }
+
+    private var recentCollectives: [AppContext] {
+        let lookup = Dictionary(uniqueKeysWithValues: allCollectives.map { ($0.id, $0) })
+        return container.contextPreferencesStore.recents.compactMap { lookup[$0.contextActorId] }
+    }
+
+    private var otherCollectives: [AppContext] {
+        let recentIds = Set(recentCollectives.map(\.id))
+        return allCollectives.filter { !recentIds.contains($0.id) }
+    }
+
     var body: some View {
-        List {
-            if !container.contextPreferencesStore.recents.isEmpty {
-                Section("Recientes") {
-                    ForEach(container.contextPreferencesStore.recents) { pref in
-                        if let ctx = container.contextStore.availableContexts.first(where: { $0.id == pref.contextActorId }),
-                           !ctx.isPersonal {
-                            row(ctx)
+        Group {
+            if allCollectives.isEmpty {
+                ContentUnavailableView(
+                    "Sin contextos",
+                    systemImage: "rectangle.split.2x1",
+                    description: Text("Crea un contexto primero desde \"Crear contexto\".")
+                )
+            } else {
+                List {
+                    if !recentCollectives.isEmpty {
+                        Section("Recientes") {
+                            ForEach(recentCollectives) { ctx in row(ctx) }
                         }
                     }
-                }
-            }
-            Section("Todos") {
-                let recentIds = Set(container.contextPreferencesStore.recents.map(\.contextActorId))
-                let rest = container.contextStore.availableContexts.filter {
-                    !$0.isPersonal && !recentIds.contains($0.id)
-                }
-                ForEach(rest) { ctx in
-                    row(ctx)
+                    if !otherCollectives.isEmpty {
+                        Section(recentCollectives.isEmpty ? "Tus contextos" : "Todos") {
+                            ForEach(otherCollectives) { ctx in row(ctx) }
+                        }
+                    }
                 }
             }
         }

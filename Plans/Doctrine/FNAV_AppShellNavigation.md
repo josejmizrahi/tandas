@@ -157,3 +157,48 @@ Si mañana aparecen nuevos tipos (asientos / NFTs / licencias / yates / membres�
 - Sin lógica doctrinal en frontend. Home consume backend.
 - Tabs son navegación, no modelo de datos.
 - Incrementalmente — fallback a ContextShell mientras F.NAV.2-6 está incompleto.
+
+---
+
+## 13. Doctrina lock (F.NAV.7, 2026-06-04)
+
+Founder-signed tras F.NAV.0 → F.NAV.6 instalados en iPhone JJ y validados en uso.
+
+**Status doctrinal**: PRODUCTION. Aplicar en toda vista nueva del shell.
+
+### Derogaciones formales
+
+- `doctrine_r0h_no_yo_tab` (2026-06-01) — DEROGADA.
+- `doctrine_r1_context_first` (2026-06-01) — DEROGADA.
+- Cualquier línea histórica en CLAUDE.md sobre "sin tabs globales" — DEROGADA.
+
+Razón: el producto evolucionó. Backend ya soporta actor/context/available_actions/
+activity_feed/hierarchy/subscriptions/preferences. La UX correcta NO es ocultar
+tabs — es exponer contextos y atención como ciudadanos de primera clase.
+
+### Cleanup F.NAV.7
+
+- Borrados de `Features/ContextShell/`: `ContextShell.swift`, `ContextSwitcherView.swift`.
+- Estos archivos eran huérfanos desde F.NAV.3 (reemplazo por `ContextsListView`
+  + `ContextSwitcherSheet`).
+- `BreadcrumbView.swift`, `ContextSettingsView.swift`, `ContextTreeView.swift`,
+  `CreateChildContextSheet.swift`, `NoContextsView.swift` siguen vivos — los
+  consume el nuevo flow.
+
+### CLAUDE.md actualizado
+
+La sección "Arquitectura iOS" describe ahora el `MainTabShell` con 5 tabs y
+referencia explícitamente la derogación de las doctrinas previas.
+
+### Slicing total (cerrado)
+
+| Slice | Commit | Notas |
+|---|---|---|
+| F.NAV.0 backend | `08c8e92b` | attention_inbox + context_preferences + 5 RPCs + smoke 8/8 |
+| F.NAV.1 Tab Shell | `db557a15` | 5 tabs + RuulAppShell switch |
+| F.NAV.2 HomeView CTAs | `c0c19ee1` | attention items tap-actionable |
+| F.NAV.3 ContextsView | `a15ad02a` → `f7b3ef97` → `60fba1a4` | favoritos + roots-only |
+| F.NAV.4 Switcher sheet | `142839e1` | tap título → full sheet |
+| F.NAV.5 Create intent sheet | `43d854b9` | auto-bounce + 5 intenciones |
+| F.NAV.6 Yo tab | `332de572` | MeView consolidado |
+| F.NAV.7 Cleanup + lock | (este commit) | borrados + CLAUDE.md + §13 |

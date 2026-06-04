@@ -8,7 +8,8 @@ import RuulCore
 /// 2. **Actor** (`CurrentActorStore`): `ensure_person_actor()` debe resolver
 ///    antes de mostrar contenido.
 /// 3. **Tab shell** (`MainTabShell`, F.NAV.1): tabs Home/Contextos/Crear/
-///    Actividad/Yo. ContextShell vive dentro de la tab Contextos.
+///    Actividad/Yo. La tab Contextos contiene `ContextsListView` con
+///    NavigationStack propio que pushea a `ContextHomeView` por contexto.
 public struct RuulAppShell: View {
     @AppStorage(AppearancePreference.storageKey) private var appearanceRaw: String = AppearancePreference.system.rawValue
     @State private var container: DependencyContainer
