@@ -158,12 +158,12 @@ public struct ActivityDetailView: View {
         NavigationStack {
             List {
                 Section {
-                    HStack(spacing: 16) {
+                    HStack(spacing: Theme.Spacing.lg) {
                         Image(systemName: event.symbolName)
-                            .font(.system(size: 28))
+                            .font(.system(size: Theme.IconSize.sm))
                             .foregroundStyle(event.isSystemGenerated ? Color.indigo : Color.accentColor)
                             .frame(width: 52, height: 52)
-                            .background(Color.accentColor.opacity(0.1), in: Circle())
+                            .background(Color.accentColor.badgeFillSubtle, in: Circle())
                         VStack(alignment: .leading, spacing: 4) {
                             Text(event.typeLabel)
                                 .font(.headline)
