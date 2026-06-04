@@ -70,10 +70,12 @@ public struct ResourceDetailView: View {
             await store.load(resourceId: resourceId)
             await documentsStore.loadResourceDocuments(resourceId: resourceId)
             await loadWhyCanView()
+            await container.subscriptionsStore.load()
         }
         .refreshable {
             await store.load(resourceId: resourceId)
             await documentsStore.loadResourceDocuments(resourceId: resourceId)
+            await container.subscriptionsStore.load()
         }
         .refreshOnReappear(if: store.phase.isLoaded) {
             await store.load(resourceId: resourceId)
@@ -104,6 +106,11 @@ public struct ResourceDetailView: View {
         List {
             headerSection(detail)
             whySection(detail)
+            SubscribeSection(
+                targetType: .resource,
+                targetId: resourceId,
+                store: container.subscriptionsStore
+            )
 
             // R.2M-3: la UX se deriva de available_actions, NUNCA de resource_type.
             // Cada sección aparece solo si el backend ofrece una acción de esa sección.

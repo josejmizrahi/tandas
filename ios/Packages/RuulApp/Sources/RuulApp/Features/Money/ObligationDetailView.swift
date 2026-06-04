@@ -40,6 +40,7 @@ public struct ObligationDetailView: View {
                 }
                 .task {
                     await load()
+                    await container.subscriptionsStore.load()
                 }
                 .actionErrorAlert(runner)
                 .sheet(isPresented: $isShowingCompleteSheet) {
@@ -97,6 +98,12 @@ public struct ObligationDetailView: View {
                     Text(description).font(.callout)
                 }
             }
+
+            SubscribeSection(
+                targetType: .obligation,
+                targetId: obligationId,
+                store: container.subscriptionsStore
+            )
 
             Section("Partes") {
                 InfoRow(

@@ -47,9 +47,11 @@ public struct DecisionDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await store.load(decisionId: decisionId, context: context)
+            await container.subscriptionsStore.load()
         }
         .refreshable {
             await store.load(decisionId: decisionId, context: context)
+            await container.subscriptionsStore.load()
         }
         .actionErrorAlert(runner)
     }
@@ -85,6 +87,12 @@ public struct DecisionDetailView: View {
                     InfoRow(symbolName: "calendar", title: "Fecha", value: created.formatted(date: .abbreviated, time: .shortened))
                 }
             }
+
+            SubscribeSection(
+                targetType: .decision,
+                targetId: decisionId,
+                store: container.subscriptionsStore
+            )
 
             // Ganadora (post-cierre)
             if let winner = store.winningOption(), !decision.isOpen {
