@@ -18,6 +18,10 @@ public struct ResourceDetailView: View {
     /// R.2S.10 — `why_can_view_resource` cacheado para la sección "Por qué lo ves".
     @State private var whyCanView: WhyCanViewResource?
     @State private var runner = ActionRunner()
+    /// F.2X.3 — Quick Actions intent-first del recurso. Router observable +
+    /// push state para `reserve_resource` (que necesita el governing context).
+    @State private var quickActionsRouter = NoopActionRouter()
+    @State private var pushedReservations = false
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -98,7 +102,42 @@ public struct ResourceDetailView: View {
                 )
             }
         }
+        // F.2X.3 — Quick Actions: router observable → handler local que abre
+        // sheets existentes o pushea ReservationsListView.
+        .onChange(of: quickActionsRouter.lastOpened) { _, destination in
+            guard let destination else { return }
+            handleResourceAction(destination)
+            quickActionsRouter.lastOpened = nil
+        }
+        .navigationDestination(isPresented: $pushedReservations) {
+            if let detail = store.detail {
+                ReservationsListView(
+                    resource: detail.resource,
+                    context: context,
+                    reservationContextId: governingContextId(detail),
+                    container: container
+                )
+            }
+        }
         .actionErrorAlert(runner)
+    }
+
+    /// F.2X.3 — Mapea `action_key` de recurso a la acción local. Doctrina:
+    /// iOS sólo enruta; backend ya decidió enabled/reason. Las acciones
+    /// `view_*` no requieren navegación porque las secciones inline ya
+    /// muestran la información (beneficiarios / participaciones / etc).
+    private func handleResourceAction(_ destination: ActionDestination) {
+        switch destination.actionKey {
+        case "reserve_resource":  pushedReservations = true
+        case "attach_document":   isShowingAttachDocument = true
+        case "grant_right":       isShowingGrantRight = true
+        case "view_beneficiaries", "view_ownership":
+            // Las secciones inline (beneficiariesSection / ownershipSection)
+            // muestran ya la lista de holders + porcentajes. No abrimos nada.
+            break
+        default:
+            break
+        }
     }
 
     @ViewBuilder
@@ -106,6 +145,12 @@ public struct ResourceDetailView: View {
         List {
             headerSection(detail)
             whySection(detail)
+            // F.2X.3 — Acciones intent-first del recurso. Verbatim del backend.
+            QuickActionsSection(
+                actions: detail.availableActions,
+                scope: .resource(resourceId),
+                router: quickActionsRouter
+            )
             SubscribeSection(
                 targetType: .resource,
                 targetId: resourceId,

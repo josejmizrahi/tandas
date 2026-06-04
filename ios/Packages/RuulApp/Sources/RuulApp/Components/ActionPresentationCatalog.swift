@@ -61,6 +61,7 @@ public enum ActionPresentationCatalog {
         "reserve_resource":     .init(symbolName: "calendar.badge.clock",   tint: .orange),
         "view_beneficiaries":   .init(symbolName: "gift.fill",              tint: .orange),
         "view_ownership":       .init(symbolName: "chart.pie.fill",         tint: .orange),
+        "grant_right":          .init(symbolName: "key.fill",               tint: .blue),
 
         // ── Decision-level (R.2S.9) ────────────────────────────────────────
         "vote":                 .init(symbolName: "hand.thumbsup.fill",     tint: .purple),
