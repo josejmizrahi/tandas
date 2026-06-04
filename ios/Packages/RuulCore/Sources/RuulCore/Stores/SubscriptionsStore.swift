@@ -70,4 +70,18 @@ public final class SubscriptionsStore {
         _ = try await rpc.unsubscribe(subscriptionId: subscriptionId)
         subscriptions.removeAll { $0.id == subscriptionId }
     }
+
+    /// Atajo dedicado: marca al caller como parte interesada del target via
+    /// `mark_as_stakeholder()` (en lugar de pasar por `subscribe(..., stakeholder)`).
+    /// El backend lo trata como sub tipo `stakeholder` pero deja claro el intent
+    /// en el log de actividad.
+    @discardableResult
+    public func markAsStakeholder(
+        targetType: SubscriptionTargetType,
+        targetId: UUID
+    ) async throws -> UUID {
+        let id = try await rpc.markAsStakeholder(targetType: targetType, targetId: targetId)
+        await load()
+        return id
+    }
 }

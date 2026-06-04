@@ -1158,7 +1158,9 @@ public actor MockRuulRPCClient: RuulRPCClient {
         ActionDef(key: "view_maintenance", label: "Ver mantenimiento", section: "maintenance", capability: "maintainable", rights: ["VIEW", "USE", "MANAGE", "OWN", "GOVERN"]),
         ActionDef(key: "log_maintenance", label: "Registrar mantenimiento", section: "maintenance", capability: "maintainable", rights: ["MANAGE", "OWN"]),
         ActionDef(key: "view_audit", label: "Ver auditoría", section: "audit", capability: "auditable", rights: ["VIEW", "MANAGE", "OWN", "GOVERN"]),
-        ActionDef(key: "grant_right", label: "Otorgar derecho", section: "rights", capability: nil, rights: ["MANAGE", "OWN", "GOVERN"])
+        ActionDef(key: "grant_right", label: "Otorgar derecho", section: "rights", capability: nil, rights: ["MANAGE", "OWN", "GOVERN"]),
+        // F.RESOURCE.5 — attach_document registrado en catálogo backend.
+        ActionDef(key: "attach_document", label: "Adjuntar documento", section: "documents", capability: nil, rights: ["OWN", "MANAGE", "USE"])
     ]
 
     /// Right kinds efectivos de `me` sobre el recurso: directos + vía contexto admin + VIEW por membresía.

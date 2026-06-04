@@ -12,6 +12,10 @@ public struct BreadcrumbView: View {
     let ancestors: [ContextHierarchyNode]
     let contextStore: ContextStore
 
+    /// F.CONTEXT.5 — push real al ContextHome del ancestor. Inyectada por
+    /// ContextsListView. `nil` en previews/tabs fuera de la jerarquía.
+    @Environment(\.navigateToContext) private var navigate
+
     public init(
         context: AppContext,
         ancestors: [ContextHierarchyNode],
@@ -53,7 +57,14 @@ public struct BreadcrumbView: View {
     private func breadcrumbSegment(ancestor: ContextHierarchyNode) -> some View {
         if let available = contextStore.availableContexts.first(where: { $0.id == ancestor.id }) {
             Button {
-                contextStore.switchTo(available)
+                // F.CONTEXT.5 — empuja al ContextHome del ancestro (reset del
+                // path). Si no hay navigate inyectado, cae al switch lógico
+                // legacy (previews / hosts fuera del shell).
+                if let navigate {
+                    navigate(available)
+                } else {
+                    contextStore.switchTo(available)
+                }
             } label: {
                 Text(ancestor.name)
                     .font(.caption)

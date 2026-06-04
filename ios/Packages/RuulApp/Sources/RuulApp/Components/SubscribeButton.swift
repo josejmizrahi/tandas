@@ -67,6 +67,19 @@ public struct SubscribeSection: View {
                 }
                 .disabled(runner.isRunning)
             }
+            // R.3A.2 — atajo dedicado a "Soy parte interesada" (RPC
+            // mark_as_stakeholder). Aparece cuando el caller no es ya
+            // stakeholder/owner_interest; tap eleva la sub a stakeholder.
+            if shouldShowStakeholderShortcut {
+                Button {
+                    Task { await markStakeholder() }
+                } label: {
+                    Label("Soy parte interesada", systemImage: "star.fill")
+                        .font(.callout)
+                        .foregroundStyle(.yellow)
+                }
+                .disabled(runner.isRunning)
+            }
         } header: {
             Text("Mi señal")
         } footer: {
@@ -77,6 +90,20 @@ public struct SubscribeSection: View {
             }
         }
         .actionErrorAlert(runner)
+    }
+
+    private var shouldShowStakeholderShortcut: Bool {
+        // Si ya es stakeholder o owner_interest, no tiene sentido el shortcut.
+        switch current?.subscriptionType {
+        case .stakeholder, .ownerInterest: return false
+        default:                           return true
+        }
+    }
+
+    private func markStakeholder() async {
+        await runner.run {
+            try await store.markAsStakeholder(targetType: targetType, targetId: targetId)
+        }
     }
 
     private func change(to type: SubscriptionType) async {

@@ -162,6 +162,7 @@ public struct ResourceDetailView: View {
             VStack(spacing: 24) {
                 heroSection(detail)
                 primaryMetricSection(detail)
+                reservationsSection(detail)
                 locationSection(detail)
                 peopleSection(detail)
                 relationshipsSection(detail)
@@ -527,7 +528,10 @@ public struct ResourceDetailView: View {
                 isShowingGrantRight = true
             })
         }
-        if detail.can("attach_document") || canAttachDocuments(detail) {
+        // F.RESOURCE.5 — attach_document ahora vive en resource_action_catalog.
+        // El fallback canAttachDocuments(rights) era una F.2X violation
+        // (infería UI desde derechos). El backend es la fuente de verdad.
+        if detail.can("attach_document") {
             items.append(MoreMenuItem(symbol: "paperclip", label: "Adjuntar documento") {
                 isShowingAttachDocument = true
             })
@@ -551,6 +555,77 @@ public struct ResourceDetailView: View {
             })
         }
         return items
+    }
+
+    // MARK: - 2.5 Reservaciones (visible cuando el recurso es reservable)
+
+    /// Sección prominente con CTA "Hacer reservación" + acceso a la lista
+    /// de reservaciones del recurso. Aparece sólo cuando el backend habilita
+    /// `reserve_resource` para este actor (F.2X). La acción también vive en
+    /// el menú `+` del toolbar, pero acá queda visible upfront por ser core.
+    @ViewBuilder
+    private func reservationsSection(_ detail: ResourceDetail) -> some View {
+        let canReserve = detail.can("reserve_resource")
+        let reservation = detail.availableActions.first { $0.actionKey == "reserve_resource" }
+        if canReserve {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Reservaciones")
+                    .font(.title3.weight(.semibold))
+                VStack(spacing: 0) {
+                    Button {
+                        openReserveSheet()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(.orange)
+                                .frame(width: 28, height: 28)
+                                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+                            Text(reservation?.label ?? "Hacer reservación")
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    Divider().padding(.leading, 56)
+                    NavigationLink {
+                        ReservationsListView(
+                            resource: detail.resource,
+                            context: context,
+                            reservationContextId: governingContextId(detail),
+                            container: container
+                        )
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "calendar")
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(.tint)
+                                .frame(width: 28, height: 28)
+                                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+                            Text("Ver reservaciones")
+                                .font(.callout)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            }
+        }
     }
 
     // MARK: - 3.5 Ubicación (F.RESOURCE.4)
@@ -868,12 +943,6 @@ public struct ResourceDetailView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-    }
-
-    private func canAttachDocuments(_ detail: ResourceDetail) -> Bool {
-        guard let actorId = myActorId else { return false }
-        let rights = detail.reasons(for: actorId).map(\.rightKind)
-        return rights.contains(where: { ["OWN", "MANAGE", "USE"].contains($0) })
     }
 
     private func openDocument(_ doc: Document) async {

@@ -33,12 +33,16 @@ public struct CreateIntentSheet: View {
                 Section {
                     intentRow(.event,     icon: "calendar.badge.plus",     tint: .orange, label: "Programar algo",
                               detail: "Crear un evento del contexto.")
+                    intentRow(.reservation, icon: "calendar.badge.clock",  tint: .orange, label: "Hacer reservación",
+                              detail: "Reservar un recurso para unas fechas.")
                     intentRow(.expense,   icon: "dollarsign.circle.fill",  tint: .green,  label: "Registrar movimiento",
                               detail: "Anotar un gasto o ingreso.")
                     intentRow(.decision,  icon: "checkmark.bubble.fill",   tint: .purple, label: "Crear propuesta",
                               detail: "Abrir una decisión para votar.")
                     intentRow(.document,  icon: "paperclip",               tint: .secondary, label: "Subir documento",
                               detail: "Adjuntar un archivo a un recurso.")
+                    intentRow(.resource,  icon: "shippingbox.fill",        tint: .orange, label: "Agregar recurso",
+                              detail: "Una casa, cuenta, vehículo o activo.")
                 } header: {
                     Text("¿Qué quieres hacer?")
                         .font(.subheadline.weight(.semibold))
@@ -143,7 +147,7 @@ public struct CreateIntentSheet: View {
     // MARK: - Tipos
 
     enum Intent: Hashable {
-        case event, expense, decision, document
+        case event, expense, decision, document, resource, reservation
     }
 
     enum Route: Hashable {
@@ -244,6 +248,7 @@ private struct FormDestination: View {
 
     @State private var eventsStore: EventsStore
     @State private var moneyStore: MoneyStore
+    @State private var resourcesStore: ResourcesStore
 
     init(intent: CreateIntentSheet.Intent, context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void) {
         self.intent = intent
@@ -258,6 +263,7 @@ private struct FormDestination: View {
             rpc: container.rpc,
             myActorId: container.currentActorStore.actorId
         ))
+        _resourcesStore = State(initialValue: ResourcesStore(rpc: container.rpc))
     }
 
     var body: some View {
@@ -284,6 +290,18 @@ private struct FormDestination: View {
         case .document:
             NavigationStack {
                 DocumentIntentLanding(context: context, container: container, onClose: onClose)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            DismissButton()
+                        }
+                    }
+            }
+        case .resource:
+            // CreateResourceView trae su propio NavigationStack interno.
+            CreateResourceView(context: context, store: resourcesStore, container: container)
+        case .reservation:
+            NavigationStack {
+                ReservationIntentLanding(context: context, container: container, onClose: onClose)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
                             DismissButton()
@@ -384,6 +402,123 @@ private struct DocumentIntentLanding: View {
                 context: context,
                 container: container,
                 store: documentsStore
+            )
+        }
+    }
+
+    private func load() async {
+        if resources.isEmpty { phase = .loading }
+        do {
+            resources = try await container.rpc.listContextResources(contextId: context.id)
+            phase = .loaded
+        } catch {
+            phase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+}
+
+/// Resource picker para el intent "Hacer reservación". Lista los recursos
+/// reservables del contexto seleccionado. Tap → sheet con `RequestReservationView`.
+private struct ReservationIntentLanding: View {
+    let context: AppContext
+    let container: DependencyContainer
+    let onClose: () -> Void
+
+    @State private var resources: [ContextResource] = []
+    @State private var phase: StorePhase = .idle
+    @State private var reservationsStore: ReservationsStore
+    @State private var pickedResource: Resource?
+
+    init(context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void) {
+        self.context = context
+        self.container = container
+        self.onClose = onClose
+        _reservationsStore = State(initialValue: ReservationsStore(
+            rpc: container.rpc,
+            myActorId: container.currentActorStore.actorId
+        ))
+    }
+
+    /// Recursos reservables — el backend marca tipos como `house`, `vehicle`,
+    /// `equipment`, `property` como reservables vía capabilities. Filtramos
+    /// client-side por tipo conocido como reservable; el backend rechazará si
+    /// no aplica.
+    private var reservableResources: [ContextResource] {
+        let reservableTypes: Set<String> = [
+            "house", "property", "vehicle", "equipment", "reservation", "trip_booking"
+        ]
+        return resources.filter { reservableTypes.contains($0.resourceType) }
+    }
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .idle, .loading:
+                LoadingStateView()
+            case .failed(let message):
+                ErrorStateView(message: message) {
+                    Task { await load() }
+                }
+            case .loaded:
+                if reservableResources.isEmpty {
+                    ContentUnavailableView(
+                        "Sin recursos reservables",
+                        systemImage: "calendar.badge.exclamationmark",
+                        description: Text("\(context.displayName) no tiene casas, vehículos, equipos u otros activos reservables.")
+                    )
+                } else {
+                    List {
+                        Section {
+                            ForEach(reservableResources) { r in
+                                Button {
+                                    let resource = Resource(
+                                        id: r.resourceId,
+                                        resourceType: r.resourceType,
+                                        displayName: r.displayName,
+                                        status: r.status,
+                                        estimatedValue: r.estimatedValue,
+                                        currency: r.currency,
+                                        canonicalOwnerActorId: r.canonicalOwnerActorId
+                                    )
+                                    Task {
+                                        await reservationsStore.load(resourceId: r.resourceId, context: context)
+                                        pickedResource = resource
+                                    }
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: r.type.symbolName)
+                                            .foregroundStyle(.tint)
+                                            .frame(width: 28)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(r.displayName).font(.callout.weight(.medium))
+                                            Text(r.type.label).font(.caption).foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        } header: {
+                            Text("Reservar en \(context.displayName)")
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Hacer reservación")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await load()
+        }
+        .sheet(item: $pickedResource) { resource in
+            RequestReservationView(
+                resource: resource,
+                context: context,
+                store: reservationsStore,
+                container: container
             )
         }
     }
