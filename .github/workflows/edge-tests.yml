@@ -13,6 +13,7 @@ on:
   pull_request:
     paths:
       - "supabase/**"
+      - "scripts/check_migration_drift.sh"
       - ".github/workflows/edge-tests.yml"
 
 jobs:
@@ -22,6 +23,15 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check migration drift (live vs disk)
+        # Catches the failure mode where a migration shipped to live via MCP
+        # `apply_migration` but never landed in supabase/migrations/. That
+        # silently breaks the replay below (missing functions/tables).
+        # Skips with exit 0 if the secret is absent (e.g., fork PRs).
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: ./scripts/check_migration_drift.sh
 
       - uses: supabase/setup-cli@v1
         with:
