@@ -10,8 +10,11 @@ public struct ResourceDetailView: View {
     let container: DependencyContainer
 
     @State private var store: ResourceDetailStore
+    @State private var documentsStore: DocumentsStore
     @State private var isShowingGrantRight = false
     @State private var isShowingSettings = false
+    @State private var isShowingAttachDocument = false
+    @State private var openingDocumentId: UUID?
     @State private var runner = ActionRunner()
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
@@ -19,6 +22,7 @@ public struct ResourceDetailView: View {
         self.context = context
         self.container = container
         _store = State(initialValue: ResourceDetailStore(rpc: container.rpc))
+        _documentsStore = State(initialValue: DocumentsStore(rpc: container.rpc))
     }
 
     private var myActorId: UUID? { container.currentActorStore.actorId }
@@ -62,18 +66,31 @@ public struct ResourceDetailView: View {
         }
         .task {
             await store.load(resourceId: resourceId)
+            await documentsStore.loadResourceDocuments(resourceId: resourceId)
         }
         .refreshable {
             await store.load(resourceId: resourceId)
+            await documentsStore.loadResourceDocuments(resourceId: resourceId)
         }
         .refreshOnReappear(if: store.phase.isLoaded) {
             await store.load(resourceId: resourceId)
+            await documentsStore.loadResourceDocuments(resourceId: resourceId)
         }
         .sheet(isPresented: $isShowingGrantRight) {
             if let detail = store.detail {
                 GrantRightSheet(resource: detail.resource, context: context, container: container) {
                     Task { await store.load(resourceId: resourceId) }
                 }
+            }
+        }
+        .sheet(isPresented: $isShowingAttachDocument) {
+            if let detail = store.detail {
+                AttachDocumentView(
+                    resource: detail.resource,
+                    context: context,
+                    container: container,
+                    store: documentsStore
+                )
             }
         }
         .actionErrorAlert(runner)
@@ -99,7 +116,8 @@ public struct ResourceDetailView: View {
             if !detail.actions(in: .ownership).isEmpty {
                 ownershipSection(detail)
             }
-            ForEach([ResourceActionSection.documents, .approvals, .maintenance, .audit], id: \.self) { section in
+            documentsSection(detail)
+            ForEach([ResourceActionSection.approvals, .maintenance, .audit], id: \.self) { section in
                 if !detail.actions(in: section).isEmpty {
                     actionSection(section, detail: detail)
                 }
@@ -221,6 +239,92 @@ public struct ResourceDetailView: View {
             ForEach(detail.actions(in: .ownership)) { action in
                 actionRow(action)
             }
+        }
+    }
+
+    /// Documentos adjuntos al recurso. Cualquiera que pueda VER el recurso ve
+    /// los documentos (el backend filtra por RLS); el botón "Adjuntar" gatea
+    /// con `documents.manage` del contexto (fallback: si el caller llegó hasta
+    /// aquí y tiene OWN/USE/MANAGE, le permitimos intentar — RLS server-side decide).
+    @ViewBuilder
+    private func documentsSection(_ detail: ResourceDetail) -> some View {
+        Section("Documentos") {
+            if documentsStore.documents.isEmpty {
+                Text(documentsStore.phase.isLoading
+                    ? "Cargando documentos…"
+                    : "Aún no hay documentos adjuntos.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(documentsStore.documents) { doc in
+                    Button {
+                        Task { await openDocument(doc) }
+                    } label: {
+                        documentRow(doc)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if canAttachDocuments(detail) {
+                Button {
+                    isShowingAttachDocument = true
+                } label: {
+                    Label("Adjuntar documento", systemImage: "paperclip")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func documentRow(_ doc: Document) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: doc.documentType.symbolName)
+                .foregroundStyle(.tint)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(doc.title)
+                    .font(.body)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(doc.documentType.label)
+                    if let size = doc.fileSizeLabel {
+                        Text("·")
+                        Text(size)
+                    }
+                    if let created = doc.createdAt {
+                        Text("·")
+                        Text(created.formatted(.relative(presentation: .named)))
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            Spacer()
+            if openingDocumentId == doc.id {
+                ProgressView()
+            } else if doc.storagePath != nil {
+                Image(systemName: "arrow.up.right.square")
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func canAttachDocuments(_ detail: ResourceDetail) -> Bool {
+        guard let actorId = myActorId else { return false }
+        let rights = detail.reasons(for: actorId).map(\.rightKind)
+        return rights.contains(where: { ["OWN", "MANAGE", "USE"].contains($0) })
+    }
+
+    private func openDocument(_ doc: Document) async {
+        guard doc.storagePath != nil else { return }
+        openingDocumentId = doc.id
+        defer { openingDocumentId = nil }
+        await runner.run {
+            guard let url = try await documentsStore.signedURL(for: doc) else { return }
+            await UIApplication.shared.open(url)
         }
     }
 

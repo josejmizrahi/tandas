@@ -193,6 +193,21 @@ public protocol RuulRPCClient: Sendable {
     /// `mark_settlement_paid(p_settlement_item_id)`
     func markSettlementPaid(itemId: UUID) async throws -> MarkPaidResult
 
+    // MARK: - Documents
+
+    /// `register_document(...)` — registra metadata; el binario se sube antes
+    /// con `uploadDocumentFile`. Devuelve `{document_id}`.
+    func registerDocument(_ input: RegisterDocumentInput) async throws -> DocumentRegistered
+    /// Lectura PostgREST: `documents` asociados a un recurso.
+    func listResourceDocuments(resourceId: UUID) async throws -> [Document]
+    /// Sube el binario al bucket `documents` de Supabase Storage. iOS NO calcula
+    /// el path — el caller decide la convención (ver `DocumentsStore.makeStoragePath`).
+    /// El mock guarda el blob in-memory.
+    func uploadDocumentFile(path: String, data: Data, contentType: String) async throws
+    /// Devuelve una URL firmada para descargar/visualizar el archivo. `expiresIn`
+    /// en segundos. El mock devuelve un placeholder.
+    func documentSignedURL(path: String, expiresIn: Int) async throws -> URL
+
     // MARK: - Explanation engine (R.2S.10)
 
     /// `why_can_view_resource(p_actor_id, p_resource_id)`.

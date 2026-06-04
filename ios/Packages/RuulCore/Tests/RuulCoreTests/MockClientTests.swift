@@ -103,6 +103,44 @@ struct MockClientTests {
         #expect(pending.contains { $0.contextActorId == MockRuulRPCClient.DemoIds.familia })
     }
 
+    @Test("el mundo demo siembra una escritura adjunta a Casa Valle")
+    func demoSeedsCasaValleDocument() async throws {
+        let mock = await makeDemoClient()
+        let docs = try await mock.listResourceDocuments(resourceId: MockRuulRPCClient.DemoIds.casaValle)
+        #expect(docs.count == 1)
+        #expect(docs.first?.documentType == .contract)
+        #expect(docs.first?.title == "Escritura Casa Valle")
+    }
+
+    @Test("uploadDocumentFile + register_document crea fila y guarda blob")
+    func uploadAndRegisterDocument() async throws {
+        let mock = await makeDemoClient()
+        let path = "test/uuid-contrato.pdf"
+        let data = Data("PDF-1.4 stub".utf8)
+        try await mock.uploadDocumentFile(path: path, data: data, contentType: "application/pdf")
+
+        let result = try await mock.registerDocument(RegisterDocumentInput(
+            title: "Contrato de arrendamiento",
+            contextActorId: MockRuulRPCClient.DemoIds.familia,
+            documentType: .contract,
+            storagePath: path,
+            mimeType: "application/pdf",
+            fileSizeBytes: Int64(data.count),
+            resourceId: MockRuulRPCClient.DemoIds.casaValle
+        ))
+        #expect(result.documentId != UUID(uuidString: "00000000-0000-0000-0000-000000000000"))
+
+        let docs = try await mock.listResourceDocuments(resourceId: MockRuulRPCClient.DemoIds.casaValle)
+        #expect(docs.contains(where: { $0.title == "Contrato de arrendamiento" }))
+    }
+
+    @Test("documentSignedURL devuelve una URL para el path dado")
+    func documentSignedURL() async throws {
+        let mock = await makeDemoClient()
+        let url = try await mock.documentSignedURL(path: "test/path.pdf", expiresIn: 3600)
+        #expect(url.absoluteString.contains("test/path.pdf"))
+    }
+
     @Test("invite_member es no-op si el actor ya es miembro activo")
     func inviteMemberIdempotent() async throws {
         let mock = await makeDemoClient()

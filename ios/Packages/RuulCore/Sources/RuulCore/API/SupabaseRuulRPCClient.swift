@@ -292,6 +292,84 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
     }
 
+    // MARK: - Documents
+
+    public func registerDocument(_ input: RegisterDocumentInput) async throws -> DocumentRegistered {
+        struct Params: Encodable, Sendable {
+            let pTitle: String
+            let pContextActorId: UUID?
+            let pDocumentType: String
+            let pStoragePath: String?
+            let pMimeType: String?
+            let pFileSizeBytes: Int64?
+            let pResourceId: UUID?
+            let pEventId: UUID?
+            let pMetadata: JSONValue?
+            enum CodingKeys: String, CodingKey {
+                case pTitle = "p_title"
+                case pContextActorId = "p_context_actor_id"
+                case pDocumentType = "p_document_type"
+                case pStoragePath = "p_storage_path"
+                case pMimeType = "p_mime_type"
+                case pFileSizeBytes = "p_file_size_bytes"
+                case pResourceId = "p_resource_id"
+                case pEventId = "p_event_id"
+                case pMetadata = "p_metadata"
+            }
+        }
+        return try await call("register_document", params: Params(
+            pTitle: input.title,
+            pContextActorId: input.contextActorId,
+            pDocumentType: input.documentType.rawValue,
+            pStoragePath: input.storagePath,
+            pMimeType: input.mimeType,
+            pFileSizeBytes: input.fileSizeBytes,
+            pResourceId: input.resourceId,
+            pEventId: input.eventId,
+            pMetadata: input.metadata
+        ))
+    }
+
+    public func listResourceDocuments(resourceId: UUID) async throws -> [Document] {
+        do {
+            return try await client
+                .from("documents")
+                .select()
+                .eq("resource_id", value: resourceId.uuidString)
+                .is("archived_at", value: nil)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func uploadDocumentFile(path: String, data: Data, contentType: String) async throws {
+        do {
+            _ = try await client.storage
+                .from(SupabaseRuulRPCClient.documentsBucket)
+                .upload(path, data: data, options: FileOptions(contentType: contentType, upsert: false))
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func documentSignedURL(path: String, expiresIn: Int) async throws -> URL {
+        do {
+            return try await client.storage
+                .from(SupabaseRuulRPCClient.documentsBucket)
+                .createSignedURL(path: path, expiresIn: expiresIn)
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    /// Nombre del bucket de Storage donde residen los binarios de documentos.
+    /// Debe existir en el proyecto con policies que permitan upload/select al
+    /// `authenticated` role (ver migration `..._documents_storage_bucket.sql`).
+    static let documentsBucket = "documents"
+
     // MARK: - Resources & rights
 
     public func createResource(_ input: CreateResourceInput) async throws -> Resource {

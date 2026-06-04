@@ -22,6 +22,9 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var invites: [String: (id: UUID, contextId: UUID)] = [:] // code → invite
     /// Invitaciones pendientes por actor_id invitado → lista.
     var pendingInvitations: [UUID: [PendingInvitation]] = [:]
+    var documents: [UUID: Document] = [:]
+    /// Storage simulado: path → binary.
+    var documentBlobs: [String: Data] = [:]
     var resources: [UUID: Resource] = [:]
     var rights: [UUID: [ResourceRight]] = [:]                // resourceId → rights
     var resourceContext: [UUID: UUID] = [:]                  // resourceId → contextId
@@ -715,6 +718,52 @@ public actor MockRuulRPCClient: RuulRPCClient {
             roles: Array(Set(member.roles + [roleKey]))
         )
         memberships[contextId] = members
+    }
+
+    // MARK: - Documents
+
+    public func registerDocument(_ input: RegisterDocumentInput) async throws -> DocumentRegistered {
+        try throwIfNeeded()
+        let id = UUID()
+        let doc = Document(
+            id: id,
+            ownerActorId: me.id,
+            contextActorId: input.contextActorId,
+            title: input.title,
+            documentType: input.documentType,
+            storagePath: input.storagePath,
+            mimeType: input.mimeType,
+            fileSizeBytes: input.fileSizeBytes,
+            resourceId: input.resourceId,
+            eventId: input.eventId,
+            createdAt: Date()
+        )
+        documents[id] = doc
+        let contextId = input.contextActorId ?? input.resourceId.flatMap { resourceContext[$0] }
+        if let contextId {
+            emit(contextId, "document.created", payload: .object([
+                "title": .string(input.title),
+                "document_type": .string(input.documentType.rawValue)
+            ]))
+        }
+        return DocumentRegistered(documentId: id)
+    }
+
+    public func listResourceDocuments(resourceId: UUID) async throws -> [Document] {
+        try throwIfNeeded()
+        return documents.values
+            .filter { $0.resourceId == resourceId }
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+    }
+
+    public func uploadDocumentFile(path: String, data: Data, contentType: String) async throws {
+        try throwIfNeeded()
+        documentBlobs[path] = data
+    }
+
+    public func documentSignedURL(path: String, expiresIn: Int) async throws -> URL {
+        try throwIfNeeded()
+        return URL(string: "https://mock.ruul.test/documents/\(path)")!
     }
 
     // MARK: - Resources & rights
@@ -2674,6 +2723,21 @@ extension MockRuulRPCClient {
         ]))
         emit(familia.id, "context.created", actorId: DemoIds.jose)
         emit(familia.id, "resource.created", actorId: DemoIds.jose)
+
+        // Documento adjunto a Casa Valle (escritura).
+        let escritura = Document(
+            id: UUID(),
+            ownerActorId: DemoIds.jose,
+            contextActorId: familia.id,
+            title: "Escritura Casa Valle",
+            documentType: .contract,
+            storagePath: "\(familia.id)/escritura-casa-valle.pdf",
+            mimeType: "application/pdf",
+            fileSizeBytes: 482_136,
+            resourceId: casa.id,
+            createdAt: Date().addingTimeInterval(-86400 * 30)
+        )
+        documents[escritura.id] = escritura
 
         // Invitación pendiente: Isaac invitó a José a "Viaje a Japón 2026".
         let viaje = ActorRecord(
