@@ -133,7 +133,7 @@ public struct DecisionDetailView: View {
 
     @ViewBuilder
     private func detailScroll(_ decision: Decision) -> some View {
-        ScrollView {
+        ScrollView(.vertical) {
             VStack(spacing: 24) {
                 heroSection(decision)
                 statusSection(decision)
@@ -146,6 +146,7 @@ public struct DecisionDetailView: View {
                 adminSection(decision)
                 auditSection(decision)
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal)
             .padding(.bottom, 32)
         }
@@ -581,16 +582,9 @@ public struct DecisionDetailView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color(uiColor: .tertiarySystemFill))
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isWinner ? Color.accentColor : Color.accentColor.opacity(0.5))
-                        .frame(width: max(0, geo.size.width * entry.percent))
-                }
-            }
-            .frame(height: 10)
+            ProgressView(value: entry.percent)
+                .progressViewStyle(.linear)
+                .tint(isWinner ? Color.accentColor : Color.accentColor.opacity(0.5))
             Text("\(Int((entry.percent * 100).rounded()))%")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
