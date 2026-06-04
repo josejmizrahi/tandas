@@ -17,7 +17,7 @@ public struct RuleDetailView: View {
                         .font(.system(size: 28))
                         .foregroundStyle(.tint)
                         .frame(width: 52, height: 52)
-                        .background(Color.accentColor.opacity(0.12), in: Circle())
+                        .background(Color.accentColor.badgeFillSubtle, in: Circle())
                     VStack(alignment: .leading, spacing: 4) {
                         Text(rule.title)
                             .font(.headline)

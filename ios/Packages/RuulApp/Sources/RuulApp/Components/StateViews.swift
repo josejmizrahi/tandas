@@ -11,7 +11,7 @@ public struct LoadingStateView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Theme.Spacing.lg) {
             ProgressView()
                 .controlSize(.large)
             Text(title)
@@ -35,9 +35,9 @@ public struct ErrorStateView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Theme.Spacing.lg) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 36))
+                .font(.system(size: Theme.IconSize.lg))
                 .foregroundStyle(.secondary)
             Text(title)
                 .font(.headline)
@@ -45,7 +45,7 @@ public struct ErrorStateView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, Theme.Spacing.xl)
             if let retry {
                 Button("Reintentar", action: retry)
                     .buttonStyle(.glassProminent)
@@ -69,9 +69,9 @@ public struct EmptyStateView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Theme.Spacing.md) {
             Image(systemName: symbolName)
-                .font(.system(size: 44))
+                .font(.system(size: Theme.IconSize.lg))
                 .foregroundStyle(.tertiary)
             Text(title)
                 .font(.headline)
@@ -79,10 +79,10 @@ public struct EmptyStateView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                .padding(.horizontal, Theme.Spacing.xxl)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, Theme.Spacing.xxl + Theme.Spacing.sm)
     }
 }
 
@@ -163,12 +163,12 @@ public struct InfoRow: View {
     }
 
     public var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Spacing.md) {
             Image(systemName: symbolName)
                 .font(.body)
                 .foregroundStyle(tint)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
+                .frame(width: Theme.IconSize.sm)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                 Text(title)
                     .font(.body)
                     .lineLimit(1)
@@ -186,7 +186,7 @@ public struct InfoRow: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, Theme.Spacing.xxs)
     }
 }
 
@@ -203,9 +203,9 @@ public struct StatusBadge: View {
     public var body: some View {
         Text(text)
             .font(.caption.weight(.semibold))
-            .padding(.horizontal, 8)
+            .padding(.horizontal, Theme.Spacing.sm)
             .padding(.vertical, 3)
-            .background(color.opacity(0.15), in: Capsule())
+            .background(color.badgeFill, in: Capsule())
             .foregroundStyle(color)
     }
 }
@@ -229,7 +229,7 @@ public struct ActorInitialsView: View {
         Text(initials.isEmpty ? "?" : initials)
             .font(.system(size: size * 0.4, weight: .semibold))
             .frame(width: size, height: size)
-            .background(Color.accentColor.opacity(0.15), in: Circle())
+            .background(Color.accentColor.badgeFill, in: Circle())
             .foregroundStyle(Color.accentColor)
     }
 }

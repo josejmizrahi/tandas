@@ -217,7 +217,7 @@ public struct ContextHomeView: View {
                     .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(.tint)
                     .frame(width: 52, height: 52)
-                    .background(Color.accentColor.opacity(0.15), in: Circle())
+                    .background(Color.accentColor.badgeFill, in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(heroTitle(summary))
@@ -550,7 +550,7 @@ public struct ContextHomeView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.accentColor.opacity(0.15))
+                    .fill(Color.accentColor.badgeFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: proxy.symbolName)
                     .font(.callout)
@@ -683,7 +683,7 @@ public struct ContextHomeView: View {
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.secondary)
                             .frame(width: 32, height: 32)
-                            .background(Color(uiColor: .tertiarySystemGroupedBackground), in: Circle())
+                            .background(Theme.Surface.cardElevated, in: Circle())
                             .overlay(
                                 Circle().strokeBorder(Theme.Surface.card, lineWidth: 2)
                             )
@@ -847,7 +847,7 @@ public struct ContextHomeView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(item.tint.opacity(0.15))
+                    .fill(item.tint.badgeFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: item.symbol)
                     .font(.callout)
@@ -885,7 +885,7 @@ public struct ContextHomeView: View {
             HStack(spacing: 14) {
                 ZStack {
                     Circle()
-                        .fill(Color.green.opacity(0.15))
+                        .fill(Color.green.badgeFill)
                         .frame(width: 36, height: 36)
                     Image(systemName: "dollarsign.circle.fill")
                         .font(.body.weight(.semibold))
@@ -988,7 +988,7 @@ public struct ContextHomeView: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.tint)
                 .frame(width: 36, height: 36)
-                .background(Color.accentColor.opacity(0.15), in: Circle())
+                .background(Color.accentColor.badgeFill, in: Circle())
             Spacer(minLength: 0)
             Text(child.name)
                 .font(.callout.weight(.semibold))
@@ -1331,7 +1331,7 @@ public struct ContextHomeView: View {
                             HStack(spacing: 12) {
                                 ZStack {
                                     Circle()
-                                        .fill(signal.tint.opacity(0.15))
+                                        .fill(signal.tint.badgeFill)
                                         .frame(width: 32, height: 32)
                                     Image(systemName: signal.symbol)
                                         .font(.callout)
@@ -1617,7 +1617,7 @@ public struct ContextHomeView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(tint.opacity(0.15))
+                    .fill(tint.badgeFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: obligation.iOwe ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
                     .font(.callout)

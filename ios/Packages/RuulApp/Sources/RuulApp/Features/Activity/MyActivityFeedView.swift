@@ -75,7 +75,7 @@ public struct MyActivityFeedView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(sourceColor(item.source).opacity(0.15))
+                    .fill(sourceColor(item.source).badgeFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: item.asActivityEvent.symbolName)
                     .font(.callout)
@@ -145,11 +145,7 @@ public struct MyActivityFeedView: View {
     // MARK: - Helpers
 
     private func sourceColor(_ source: FeedSource) -> Color {
-        switch source {
-        case .subscription: return .blue
-        case .ownership:    return .orange
-        case .membership:   return .green
-        }
+        Theme.Source.tint(source)
     }
 
     private func contextName(for contextActorId: UUID?) -> String? {

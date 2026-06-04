@@ -137,7 +137,7 @@ public struct ContextSwitcherSheet: View {
                     .font(.title3)
                     .foregroundStyle(.tint)
                     .frame(width: 32, height: 32)
-                    .background(Color.accentColor.opacity(0.12), in: Circle())
+                    .background(Color.accentColor.badgeFillSubtle, in: Circle())
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.displayName).font(.callout.weight(.medium))
                     if !context.isPersonal {

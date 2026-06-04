@@ -28,14 +28,14 @@ public struct CreationGuardView: View {
                     Button {
                         onSelect(c)
                     } label: {
-                        HStack(spacing: 12) {
+                        HStack(spacing: Theme.Spacing.md) {
                             Image(systemName: c.symbolName)
                                 .foregroundStyle(c.isHighConfidence ? .orange : .secondary)
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                                 Text(c.displayName)
                                     .font(.callout.weight(.medium))
                                     .foregroundStyle(.primary)
-                                HStack(spacing: 6) {
+                                HStack(spacing: Theme.Spacing.xs + 2) {
                                     Text("\(Int((c.score * 100).rounded()))% parecido")
                                     if c.isHighConfidence {
                                         StatusBadge("Muy parecido", color: .orange)

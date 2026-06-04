@@ -219,7 +219,7 @@ private struct FlowingChips: View {
                         Text(item)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Color.secondary.opacity(0.15), in: Capsule())
+                            .background(Color.secondary.badgeFill, in: Capsule())
                     }
                     Spacer(minLength: 0)
                 }

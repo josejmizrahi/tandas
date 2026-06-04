@@ -109,14 +109,7 @@ public struct DecisionsListView: View {
     }
 
     private func statusColor(_ status: String) -> Color {
-        switch status {
-        case "open": return .blue
-        case "approved": return .green
-        case "rejected": return .red
-        case "executed": return .purple
-        case "cancelled": return .gray
-        default: return .secondary
-        }
+        Theme.Status.decision(status)
     }
 }
 

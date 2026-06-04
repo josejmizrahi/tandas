@@ -60,12 +60,12 @@ private struct QuickActionRow: View {
         Button {
             router.open(ActionRouter.destination(for: action, in: scope))
         } label: {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: Theme.Spacing.md) {
                 Image(systemName: presentation.symbolName)
                     .font(.body.weight(.medium))
                     .foregroundStyle(action.enabled ? presentation.tint : Color.secondary)
-                    .frame(width: 24, alignment: .center)
-                VStack(alignment: .leading, spacing: 2) {
+                    .frame(width: Theme.IconSize.xs, alignment: .center)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                     Text(action.label)
                         .font(.body)
                         .foregroundStyle(action.enabled ? Color.primary : Color.secondary)

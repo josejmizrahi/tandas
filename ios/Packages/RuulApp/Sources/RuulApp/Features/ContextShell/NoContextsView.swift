@@ -81,7 +81,7 @@ public struct NoContextsView: View {
             .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(uiColor: .systemBackground))
+        .background(Theme.Surface.appBackground)
     }
 }
 

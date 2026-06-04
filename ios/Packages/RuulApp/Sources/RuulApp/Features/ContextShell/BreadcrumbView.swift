@@ -45,7 +45,7 @@ public struct BreadcrumbView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 6)
             }
-            .background(Color(uiColor: .secondarySystemBackground))
+            .background(Theme.Surface.secondaryBackground)
         }
     }
 

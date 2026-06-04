@@ -120,7 +120,7 @@ public struct HomeView: View {
                 Spacer()
             }
             .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         } else {
             Button {
                 if items.count == 1 {
@@ -173,7 +173,7 @@ public struct HomeView: View {
                     }
                     .padding(16)
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
             .buttonStyle(.plain)
         }
@@ -213,7 +213,7 @@ public struct HomeView: View {
                     .font(.system(size: 28, weight: .semibold))
                     .foregroundStyle(.tint)
                     .frame(width: 40, height: 40)
-                    .background(Color.accentColor.opacity(0.15), in: Circle())
+                    .background(Color.accentColor.badgeFill, in: Circle())
                 Spacer(minLength: 0)
                 Text(ctx.displayName)
                     .font(.callout.weight(.semibold))
@@ -232,9 +232,9 @@ public struct HomeView: View {
             }
             .frame(width: 160, height: 160, alignment: .topLeading)
             .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+            .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
             .overlay(
-                RoundedRectangle(cornerRadius: 18)
+                Theme.cardShape(Theme.Radius.cardHero)
                     .strokeBorder(Color.secondary.opacity(0.12), lineWidth: 0.5)
             )
         }
@@ -276,12 +276,12 @@ public struct HomeView: View {
                     ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                         activityRow(item)
                         if idx < items.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -290,7 +290,7 @@ public struct HomeView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(sourceColor(item.source).opacity(0.15))
+                    .fill(sourceColor(item.source).badgeFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: item.asActivityEvent.symbolName)
                     .font(.callout)
@@ -320,11 +320,7 @@ public struct HomeView: View {
     }
 
     private func sourceColor(_ source: FeedSource) -> Color {
-        switch source {
-        case .subscription: return .blue
-        case .ownership:    return .orange
-        case .membership:   return .green
-        }
+        Theme.Source.tint(source)
     }
 
     private func contextName(for contextActorId: UUID?) -> String? {
@@ -370,7 +366,7 @@ public struct HomeView: View {
         }
         .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
         .padding(14)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Theme.Surface.card, in: Theme.cardShape())
         .opacity(0.7)
     }
 

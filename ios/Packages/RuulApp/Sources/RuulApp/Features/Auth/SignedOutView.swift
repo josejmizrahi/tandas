@@ -277,7 +277,7 @@ public struct SessionLoadingView: View {
 
     public var body: some View {
         LoadingStateView(title: message)
-            .background(Color(uiColor: .systemBackground))
+            .background(Theme.Surface.appBackground)
     }
 }
 

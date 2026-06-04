@@ -318,13 +318,7 @@ public struct ObligationDetailView: View {
     }
 
     private func statusColor(_ status: String) -> Color {
-        switch status {
-        case "open", "accepted", "in_progress": return .orange
-        case "completed", "settled": return .green
-        case "expired", "forgiven", "cancelled": return .gray
-        case "disputed": return .red
-        default: return .secondary
-        }
+        Theme.Status.obligation(status)
     }
 
     private func actionSymbol(_ key: String) -> String {

@@ -161,7 +161,7 @@ public struct DecisionDetailView: View {
                 .font(.system(size: 44))
                 .foregroundStyle(.tint)
                 .frame(width: 80, height: 80)
-                .background(Color.accentColor.opacity(0.15), in: Circle())
+                .background(Color.accentColor.badgeFill, in: Circle())
 
             Text(decision.title)
                 .font(.title2.weight(.bold))
@@ -200,7 +200,7 @@ public struct DecisionDetailView: View {
         .foregroundStyle(tint)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(tint.opacity(0.12), in: Capsule())
+        .background(tint.badgeFillSubtle, in: Capsule())
     }
 
     private func heroHint(_ decision: Decision) -> (text: String, symbol: String, tint: Color)? {
@@ -241,7 +241,7 @@ public struct DecisionDetailView: View {
                         .font(.title2)
                         .foregroundStyle(statusColor(decision.status))
                         .frame(width: 44, height: 44)
-                        .background(statusColor(decision.status).opacity(0.12), in: Circle())
+                        .background(statusColor(decision.status).badgeFillSubtle, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text(decision.statusLabel)
                             .font(.title3.weight(.semibold))
@@ -291,7 +291,7 @@ public struct DecisionDetailView: View {
                 }
             }
             .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -425,7 +425,7 @@ public struct DecisionDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Theme.Surface.card, in: Theme.cardShape())
     }
 
     @ViewBuilder
@@ -455,14 +455,14 @@ public struct DecisionDetailView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(14)
+            .padding(Theme.Spacing.md + 2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                isCurrent ? Color.accentColor.opacity(0.18) : Color(uiColor: .secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 14)
+                isCurrent ? Color.accentColor.badgeFill : Theme.Surface.card,
+                in: Theme.cardShape()
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
+                Theme.cardShape()
                     .strokeBorder(isCurrent ? Color.accentColor : Color.clear, lineWidth: 1.5)
             )
         }
@@ -523,7 +523,7 @@ public struct DecisionDetailView: View {
                     }
                 }
                 .padding(16)
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -615,11 +615,11 @@ public struct DecisionDetailView: View {
                     ForEach(Array(preview.enumerated()), id: \.offset) { idx, member in
                         participantRow(member, decision: decision)
                         if idx < preview.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -691,11 +691,11 @@ public struct DecisionDetailView: View {
                     ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
                         consequenceRow(item)
                         if idx < items.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -736,7 +736,7 @@ public struct DecisionDetailView: View {
                 .font(.callout)
                 .foregroundStyle(.tint)
                 .frame(width: 32, height: 32)
-                .background(Color.accentColor.opacity(0.12), in: Circle())
+                .background(Color.accentColor.badgeFillSubtle, in: Circle())
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.callout.weight(.semibold))
@@ -775,11 +775,11 @@ public struct DecisionDetailView: View {
                     ForEach(Array(preview.enumerated()), id: \.offset) { idx, activity in
                         activityRow(activity)
                         if idx < preview.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -791,7 +791,7 @@ public struct DecisionDetailView: View {
                 .font(.callout)
                 .foregroundStyle(.tint)
                 .frame(width: 32, height: 32)
-                .background(Color.accentColor.opacity(0.12), in: Circle())
+                .background(Color.accentColor.badgeFillSubtle, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(humanActivityTitle(activity))
                     .font(.callout)
@@ -856,7 +856,7 @@ public struct DecisionDetailView: View {
                 }
                 .padding(16)
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -980,7 +980,7 @@ public struct DecisionDetailView: View {
                 }
                 .padding(16)
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -1037,14 +1037,7 @@ public struct DecisionDetailView: View {
     }
 
     private func statusColor(_ status: String) -> Color {
-        switch status {
-        case "open":      return .blue
-        case "approved":  return .green
-        case "rejected":  return .red
-        case "executed":  return .purple
-        case "cancelled": return .gray
-        default:          return .secondary
-        }
+        Theme.Status.decision(status)
     }
 
     private func statusSymbol(_ status: String) -> String {
@@ -1100,7 +1093,7 @@ private struct DecisionSubscribeCard: View {
                     .font(.title3)
                     .foregroundStyle(.tint)
                     .frame(width: 32, height: 32)
-                    .background(Color.accentColor.opacity(0.12), in: Circle())
+                    .background(Color.accentColor.badgeFillSubtle, in: Circle())
                 VStack(alignment: .leading, spacing: 2) {
                     Text(current?.subscriptionType.label ?? "No la estás siguiendo")
                         .font(.callout.weight(.semibold))
@@ -1138,7 +1131,7 @@ private struct DecisionSubscribeCard: View {
                 .accessibilityLabel("Cambiar tipo de seguimiento")
             }
             .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
         .actionErrorAlert(runner)
     }

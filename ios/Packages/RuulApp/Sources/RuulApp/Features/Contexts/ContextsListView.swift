@@ -145,7 +145,7 @@ public struct ContextsListView: View {
                         .font(.title2)
                         .foregroundStyle(.tint)
                         .frame(width: 48, height: 48)
-                        .background(Color.accentColor.opacity(0.15), in: Circle())
+                        .background(Color.accentColor.badgeFill, in: Circle())
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Mi espacio")
                             .font(.callout.weight(.semibold))
@@ -161,7 +161,7 @@ public struct ContextsListView: View {
                         .foregroundStyle(.tertiary)
                 }
                 .padding(16)
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
             .buttonStyle(.plain)
         }
@@ -240,11 +240,11 @@ public struct ContextsListView: View {
                         }
                         .buttonStyle(.plain)
                         if idx < allRoots.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -261,7 +261,7 @@ public struct ContextsListView: View {
             }
             .buttonStyle(.plain)
 
-            Divider().padding(.leading, 56)
+            Divider().padding(.leading, Theme.Spacing.dividerLeading)
 
             Button {
                 isShowingJoinByCode = true
@@ -270,7 +270,7 @@ public struct ContextsListView: View {
             }
             .buttonStyle(.plain)
         }
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Theme.Surface.card, in: Theme.cardShape())
     }
 
     @ViewBuilder
@@ -305,7 +305,7 @@ public struct ContextsListView: View {
                         .font(.system(size: 26, weight: .semibold))
                         .foregroundStyle(.tint)
                         .frame(width: 40, height: 40)
-                        .background(Color.accentColor.opacity(0.15), in: Circle())
+                        .background(Color.accentColor.badgeFill, in: Circle())
                     Spacer()
                     if isFavorite {
                         Image(systemName: "star.fill")
@@ -326,9 +326,9 @@ public struct ContextsListView: View {
             }
             .frame(width: 150, height: 150, alignment: .topLeading)
             .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+            .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
             .overlay(
-                RoundedRectangle(cornerRadius: 18)
+                Theme.cardShape(Theme.Radius.cardHero)
                     .strokeBorder(Color.secondary.opacity(0.12), lineWidth: 0.5)
             )
         }
@@ -352,7 +352,7 @@ public struct ContextsListView: View {
                 .font(.title3)
                 .foregroundStyle(.tint)
                 .frame(width: 32, height: 32)
-                .background(Color.accentColor.opacity(0.12), in: Circle())
+                .background(Color.accentColor.badgeFillSubtle, in: Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(ctx.displayName)

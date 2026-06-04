@@ -113,7 +113,7 @@ public struct CreateIntentSheet: View {
                 .font(.title3)
                 .foregroundStyle(tint)
                 .frame(width: 36, height: 36)
-                .background(tint.opacity(0.12), in: Circle())
+                .background(tint.badgeFillSubtle, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(.callout.weight(.medium))
                 Text(detail).font(.caption).foregroundStyle(.secondary)

@@ -68,9 +68,18 @@ public enum Theme {
     /// Capa de superficies. **NO** uses Liquid Glass aquí — HIG:
     /// "Don't use Liquid Glass in the content layer."
     public enum Surface {
-        public static let background:   Color = Color(uiColor: .systemGroupedBackground)
-        public static let card:         Color = Color(uiColor: .secondarySystemGroupedBackground)
-        public static let cardElevated: Color = Color(uiColor: .tertiarySystemGroupedBackground)
+        /// Background plano (`systemBackground`): para pantallas que no son
+        /// grouped lists — auth, modales custom, hero pages.
+        public static let appBackground:       Color = Color(uiColor: .systemBackground)
+        /// Background secundario plano — útil para sticky bars sobre `appBackground`.
+        public static let secondaryBackground: Color = Color(uiColor: .secondarySystemBackground)
+        /// Background grouped (`systemGroupedBackground`): para Forms y listas
+        /// agrupadas. Es el background detrás de `card`.
+        public static let background:          Color = Color(uiColor: .systemGroupedBackground)
+        /// Color canónico de tarjetas (`secondarySystemGroupedBackground`).
+        public static let card:                Color = Color(uiColor: .secondarySystemGroupedBackground)
+        /// Card elevated — para chips/badges dentro de una `card`.
+        public static let cardElevated:        Color = Color(uiColor: .tertiarySystemGroupedBackground)
         /// Opacidad estándar para fills tintados (badges, hero icons sobre Capsule/Circle).
         public static let badgeFill:       Double = 0.15
         public static let badgeFillSubtle: Double = 0.12

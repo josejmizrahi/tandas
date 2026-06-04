@@ -85,7 +85,7 @@ public struct PendingInvitationsView: View {
                 .font(.title3)
                 .foregroundStyle(.tint)
                 .frame(width: 36, height: 36)
-                .background(Color.accentColor.opacity(0.12), in: Circle())
+                .background(Color.accentColor.badgeFillSubtle, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(invitation.contextDisplayName)
                     .font(.body.weight(.medium))

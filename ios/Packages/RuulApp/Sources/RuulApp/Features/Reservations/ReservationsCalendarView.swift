@@ -135,12 +135,12 @@ struct ReservationsCalendarView: View {
                 .font(.callout.weight(isToday ? .bold : .regular))
                 .frame(maxWidth: .infinity, minHeight: 36)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    Theme.cardShape(Theme.Radius.chip)
                         .fill(color?.opacity(isSelected ? 0.45 : 0.2) ?? (isSelected ? Color.accentColor.opacity(0.2) : .clear))
                 )
                 .overlay {
                     if isToday {
-                        RoundedRectangle(cornerRadius: 8)
+                        Theme.cardShape(Theme.Radius.chip)
                             .strokeBorder(Color.accentColor, lineWidth: 1.5)
                     }
                 }
@@ -220,14 +220,7 @@ struct ReservationsCalendarView: View {
     }
 
     private func statusColor(_ status: String) -> Color {
-        switch status {
-        case "requested": return .orange
-        case "approved": return .blue
-        case "confirmed": return .green
-        case "rejected", "cancelled": return .red
-        case "completed": return .gray
-        default: return .secondary
-        }
+        Theme.Status.reservation(status)
     }
 }
 

@@ -223,14 +223,7 @@ public struct ReservationsListView: View {
     }
 
     private func statusColor(_ status: String) -> Color {
-        switch status {
-        case "requested": return .orange
-        case "approved": return .blue
-        case "confirmed": return .green
-        case "rejected", "cancelled": return .red
-        case "completed": return .gray
-        default: return .secondary
-        }
+        Theme.Status.reservation(status)
     }
 }
 
