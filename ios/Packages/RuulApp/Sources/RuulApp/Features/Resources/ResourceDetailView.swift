@@ -162,8 +162,7 @@ public struct ResourceDetailView: View {
             VStack(spacing: 24) {
                 heroSection(detail)
                 primaryMetricSection(detail)
-                // WIP paralelo: reservationsSection(detail) referenciada pero
-                // no definida todavía — comentada para destrabar build.
+                reservationsSection(detail)
                 locationSection(detail)
                 peopleSection(detail)
                 relationshipsSection(detail)
