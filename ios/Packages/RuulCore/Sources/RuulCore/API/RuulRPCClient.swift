@@ -271,6 +271,35 @@ public protocol RuulRPCClient: Sendable {
     /// `list_activity(p_context_actor_id, p_limit, p_before)`
     func listActivity(contextId: UUID, limit: Int, before: Date?) async throws -> [ActivityEvent]
 
+    // MARK: - Similarity & duplicates (R.2V)
+
+    /// `context_similarity(p_context_id)` — top 20 contextos similares al dado.
+    func contextSimilarity(contextId: UUID) async throws -> [ContextSimilarityCandidate]
+    /// `resource_similarity(p_resource_id)` — top 20 recursos similares al dado.
+    func resourceSimilarity(resourceId: UUID) async throws -> [ResourceSimilarityCandidate]
+    /// `duplicate_candidates(p_min_score?, p_max_pairs?)` — pares deduped de
+    /// contextos/recursos del caller con score >= threshold (default 0.50).
+    func duplicateCandidates(minScore: Double?, maxPairs: Int?) async throws -> DuplicateCandidates
+    /// `merge_candidates()` — wrapper de duplicate_candidates con threshold 0.85.
+    func mergeCandidates() async throws -> DuplicateCandidates
+    /// `relationship_suggestions(p_actor_id?)` — pares cross-context con name trgm >= 0.40
+    /// y sin contains activo. Default actor = caller.
+    func relationshipSuggestions(actorId: UUID?) async throws -> [RelationshipSuggestion]
+    /// `merge_contexts(p_source, p_target)` — soft merge. Marca `metadata.r2v`.
+    /// Requiere `context.manage` en source.
+    func mergeContexts(sourceId: UUID, targetId: UUID) async throws -> MergeContextResult
+    /// `unmerge_context(p_source)` — revierte el soft merge. Idempotente.
+    func unmergeContext(sourceId: UUID) async throws -> UnmergeContextResult
+    /// `context_creation_candidates(p_display_name)` — creation guard: top 10
+    /// contextos del caller con similarity(name) >= 0.60.
+    func contextCreationCandidates(displayName: String) async throws -> [ContextCreationCandidate]
+    /// `resource_creation_candidates(p_display_name, p_context_id)` — creation
+    /// guard para recursos dentro del contexto (requiere is_context_member).
+    func resourceCreationCandidates(displayName: String, contextId: UUID) async throws -> [ResourceCreationCandidate]
+    /// `dismiss_suggestion(p_subject_a, p_subject_b, p_suggestion_type)` — emite
+    /// `suggestion.dismissed` para que la UI filtre la sugerencia.
+    func dismissSuggestion(subjectA: UUID, subjectB: UUID, suggestionType: SuggestionType) async throws -> DismissSuggestionResult
+
     // MARK: - Subscriptions & Trust (R.3A)
 
     /// `subscribe(p_target_type, p_target_id, p_subscription_type, p_notes?)` —

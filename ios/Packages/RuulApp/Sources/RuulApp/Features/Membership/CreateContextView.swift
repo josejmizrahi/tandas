@@ -9,6 +9,8 @@ public struct CreateContextView: View {
     @State private var displayName = ""
     @State private var subtype: Subtype = .friendGroup
     @State private var runner = ActionRunner()
+    /// R.2V.4 — creation guard: candidatos similares al nombre que el usuario teclea.
+    @State private var guardCandidates: [ContextCreationCandidate] = []
 
     private enum Subtype: String, CaseIterable, Identifiable {
         case friendGroup = "friend_group"
@@ -76,6 +78,16 @@ public struct CreateContextView: View {
                     TextField("Cena Semanal, Familia, Viaje Japón…", text: $displayName)
                 }
 
+                CreationGuardView(
+                    candidates: guardCandidates.map(CreationGuardCandidate.from)
+                ) { selected in
+                    // Tap en un candidato → switch + cerrar el sheet (evita duplicado).
+                    if let target = container.contextStore.availableContexts.first(where: { $0.id == selected.id }) {
+                        container.contextStore.switchTo(target)
+                    }
+                    dismiss()
+                }
+
                 Section {
                     ForEach(availableSubtypes) { option in
                         Button {
@@ -116,6 +128,20 @@ public struct CreateContextView: View {
             .actionErrorAlert(runner)
             .task {
                 await capStore.loadCatalogIfNeeded()
+            }
+            // R.2V.4 — debounce creation guard al teclear el nombre.
+            .task(id: displayName) {
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                let trimmed = displayName.trimmingCharacters(in: .whitespaces)
+                guard !Task.isCancelled, trimmed.count >= 3 else {
+                    if trimmed.count < 3 { guardCandidates = [] }
+                    return
+                }
+                do {
+                    guardCandidates = try await container.rpc.contextCreationCandidates(displayName: trimmed)
+                } catch {
+                    guardCandidates = []
+                }
             }
         }
     }

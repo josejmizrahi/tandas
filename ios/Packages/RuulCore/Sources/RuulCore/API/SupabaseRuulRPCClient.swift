@@ -1424,6 +1424,104 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return page.activity
     }
 
+    // MARK: - Similarity & duplicates (R.2V)
+
+    public func contextSimilarity(contextId: UUID) async throws -> [ContextSimilarityCandidate] {
+        try await call("context_similarity", params: ContextIdParams(contextId: contextId))
+    }
+
+    public func resourceSimilarity(resourceId: UUID) async throws -> [ResourceSimilarityCandidate] {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
+        }
+        return try await call("resource_similarity", params: Params(pResourceId: resourceId))
+    }
+
+    public func duplicateCandidates(minScore: Double?, maxPairs: Int?) async throws -> DuplicateCandidates {
+        struct Params: Encodable, Sendable {
+            let pMinScore: Double?
+            let pMaxPairs: Int?
+            enum CodingKeys: String, CodingKey {
+                case pMinScore = "p_min_score"
+                case pMaxPairs = "p_max_pairs"
+            }
+        }
+        return try await call("duplicate_candidates", params: Params(pMinScore: minScore, pMaxPairs: maxPairs))
+    }
+
+    public func mergeCandidates() async throws -> DuplicateCandidates {
+        try await call("merge_candidates")
+    }
+
+    public func relationshipSuggestions(actorId: UUID?) async throws -> [RelationshipSuggestion] {
+        struct Params: Encodable, Sendable {
+            let pActorId: UUID?
+            enum CodingKeys: String, CodingKey { case pActorId = "p_actor_id" }
+        }
+        return try await call("relationship_suggestions", params: Params(pActorId: actorId))
+    }
+
+    public func mergeContexts(sourceId: UUID, targetId: UUID) async throws -> MergeContextResult {
+        struct Params: Encodable, Sendable {
+            let pSourceContextId: UUID
+            let pTargetContextId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pSourceContextId = "p_source_context_id"
+                case pTargetContextId = "p_target_context_id"
+            }
+        }
+        return try await call("merge_contexts", params: Params(
+            pSourceContextId: sourceId, pTargetContextId: targetId
+        ))
+    }
+
+    public func unmergeContext(sourceId: UUID) async throws -> UnmergeContextResult {
+        struct Params: Encodable, Sendable {
+            let pSourceContextId: UUID
+            enum CodingKeys: String, CodingKey { case pSourceContextId = "p_source_context_id" }
+        }
+        return try await call("unmerge_context", params: Params(pSourceContextId: sourceId))
+    }
+
+    public func contextCreationCandidates(displayName: String) async throws -> [ContextCreationCandidate] {
+        struct Params: Encodable, Sendable {
+            let pDisplayName: String
+            enum CodingKeys: String, CodingKey { case pDisplayName = "p_display_name" }
+        }
+        return try await call("context_creation_candidates", params: Params(pDisplayName: displayName))
+    }
+
+    public func resourceCreationCandidates(displayName: String, contextId: UUID) async throws -> [ResourceCreationCandidate] {
+        struct Params: Encodable, Sendable {
+            let pDisplayName: String
+            let pContextId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pDisplayName = "p_display_name"
+                case pContextId = "p_context_id"
+            }
+        }
+        return try await call("resource_creation_candidates", params: Params(
+            pDisplayName: displayName, pContextId: contextId
+        ))
+    }
+
+    public func dismissSuggestion(subjectA: UUID, subjectB: UUID, suggestionType: SuggestionType) async throws -> DismissSuggestionResult {
+        struct Params: Encodable, Sendable {
+            let pSubjectA: UUID
+            let pSubjectB: UUID
+            let pSuggestionType: String
+            enum CodingKeys: String, CodingKey {
+                case pSubjectA = "p_subject_a"
+                case pSubjectB = "p_subject_b"
+                case pSuggestionType = "p_suggestion_type"
+            }
+        }
+        return try await call("dismiss_suggestion", params: Params(
+            pSubjectA: subjectA, pSubjectB: subjectB, pSuggestionType: suggestionType.rawValue
+        ))
+    }
+
     // MARK: - Subscriptions & Trust (R.3A)
 
     public func subscribe(

@@ -21,12 +21,15 @@ public struct ContextHomeView: View {
     /// R.2U.3 — jerarquía padre/hijos del contexto (breadcrumb + section).
     @State private var hierarchyStore: ContextHierarchyStore
     @State private var isShowingCreateChild = false
+    /// R.2V.4 — sugerencias de duplicados/relaciones cross-context.
+    @State private var similarityStore: SimilarityStore
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
         self.container = container
         _store = State(initialValue: ContextHomeStore(rpc: container.rpc))
         _hierarchyStore = State(initialValue: ContextHierarchyStore(rpc: container.rpc))
+        _similarityStore = State(initialValue: SimilarityStore(rpc: container.rpc))
     }
 
     private var rpc: any RuulRPCClient { container.rpc }
@@ -66,6 +69,7 @@ public struct ContextHomeView: View {
             await loadActionObligations()
             if !context.isPersonal {
                 await hierarchyStore.load(contextId: context.id)
+                await similarityStore.load(contextId: context.id, myActorId: myActorId)
             }
         }
         .refreshable {
@@ -131,6 +135,7 @@ public struct ContextHomeView: View {
                 }
             } else {
                 childContextsSection(summary)
+                similarContextsSection(summary)
                 membersSection(summary)
                 resourcesSection(summary)
                 eventsSection(summary)
@@ -142,6 +147,97 @@ public struct ContextHomeView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    // MARK: Posibles relacionados (R.2V.4)
+
+    @ViewBuilder
+    private func similarContextsSection(_ summary: ContextSummary) -> some View {
+        if similarityStore.phase.isLoaded
+            && (!similarityStore.similar.isEmpty || !similarityStore.suggestions.isEmpty) {
+            Section {
+                ForEach(similarityStore.similar) { candidate in
+                    similarContextRow(candidate)
+                }
+                ForEach(similarityStore.suggestions) { suggestion in
+                    relationshipSuggestionRow(suggestion)
+                }
+            } header: {
+                Text("Posibles relacionados")
+            } footer: {
+                Text("Ruul detecta contextos parecidos por nombre, miembros y recursos. \"Ignorar\" oculta la sugerencia.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func similarContextRow(_ candidate: ContextSimilarityCandidate) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: "doc.on.doc")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(candidate.displayName)
+                        .font(.callout.weight(.medium))
+                    Text("\(Int((candidate.score * 100).rounded()))% parecido")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            if !candidate.reasons.isEmpty {
+                Text(candidate.reasons.map(\.label).joined(separator: " · "))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            Button("Ignorar") {
+                Task {
+                    await similarityStore.dismiss(
+                        subjectA: context.id,
+                        subjectB: candidate.contextId,
+                        type: .contextDuplicate
+                    )
+                }
+            }
+            .tint(.gray)
+        }
+    }
+
+    @ViewBuilder
+    private func relationshipSuggestionRow(_ suggestion: RelationshipSuggestion) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: "link")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(suggestion.aDisplayName) ↔ \(suggestion.bDisplayName)")
+                        .font(.callout.weight(.medium))
+                    Text("Posible \(suggestion.suggestedRelationship)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            if !suggestion.reasons.isEmpty {
+                Text(suggestion.reasons.map(\.label).joined(separator: " · "))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            Button("Ignorar") {
+                Task {
+                    await similarityStore.dismiss(
+                        subjectA: suggestion.aContextId,
+                        subjectB: suggestion.bContextId,
+                        type: .relationshipContains
+                    )
+                }
+            }
+            .tint(.gray)
+        }
     }
 
     // MARK: Subcontextos (R.2U.3)
@@ -194,6 +290,129 @@ public struct ContextHomeView: View {
                 Text("Subcontextos (\(hierarchyStore.children.count))")
             }
         }
+    }
+
+    // MARK: Posibles relacionados (R.2V.4)
+
+    @ViewBuilder
+    private func similarContextsSection(_ summary: ContextSummary) -> some View {
+        if similarityStore.phase.isLoaded
+            && (!similarityStore.similar.isEmpty || !similarityStore.suggestions.isEmpty) {
+            Section {
+                ForEach(similarityStore.similar) { candidate in
+                    similarContextRow(candidate)
+                }
+                ForEach(similarityStore.suggestions) { suggestion in
+                    relationshipSuggestionRow(suggestion)
+                }
+            } header: {
+                Text("Posibles relacionados")
+            } footer: {
+                Text("Ruul detecta contextos parecidos por nombre, miembros y recursos. \"Ignorar\" oculta la sugerencia.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func similarContextRow(_ candidate: ContextSimilarityCandidate) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: "doc.on.doc")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(candidate.displayName)
+                        .font(.callout.weight(.medium))
+                    Text("\(Int((candidate.score * 100).rounded()))% parecido")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            if !candidate.reasons.isEmpty {
+                Text(candidate.reasons.map(\.label).joined(separator: " · "))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 12) {
+                Button {
+                    if let target = container.contextStore.availableContexts.first(where: { $0.id == candidate.contextId }) {
+                        container.contextStore.switchTo(target)
+                    }
+                } label: {
+                    Label("Abrir", systemImage: "arrow.up.right.square")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                Button {
+                    Task {
+                        await similarityStore.dismiss(
+                            subjectA: context.id,
+                            subjectB: candidate.contextId,
+                            type: .contextDuplicate
+                        )
+                    }
+                } label: {
+                    Label("Ignorar", systemImage: "xmark.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func relationshipSuggestionRow(_ suggestion: RelationshipSuggestion) -> some View {
+        let otherId = suggestion.aContextId == context.id ? suggestion.bContextId : suggestion.aContextId
+        let otherName = suggestion.aContextId == context.id ? suggestion.bDisplayName : suggestion.aDisplayName
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: "link")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(otherName)
+                        .font(.callout.weight(.medium))
+                    Text("Sugerencia: vincular como contenedor/contenido")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            if !suggestion.reasons.isEmpty {
+                Text(suggestion.reasons.map(\.label).joined(separator: " · "))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 12) {
+                Button {
+                    if let target = container.contextStore.availableContexts.first(where: { $0.id == otherId }) {
+                        container.contextStore.switchTo(target)
+                    }
+                } label: {
+                    Label("Abrir", systemImage: "arrow.up.right.square")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                Button {
+                    Task {
+                        await similarityStore.dismiss(
+                            subjectA: suggestion.aContextId,
+                            subjectB: suggestion.bContextId,
+                            type: .relationshipContains
+                        )
+                    }
+                } label: {
+                    Label("Ignorar", systemImage: "xmark.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
     }
 
     /// Para el tree: si hay ancestores, usar la raíz; si no, el contexto actual.

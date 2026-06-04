@@ -42,6 +42,10 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var activity: [UUID: [ActivityEvent]] = [:]              // contextId → events
     /// R.2U — Context Hierarchy: parent → children directos activos.
     var contextChildrenById: [UUID: [UUID]] = [:]
+    /// R.2V — soft merge: source context_id → target context_id.
+    var mergedInto: [UUID: UUID] = [:]
+    /// R.2V — sugerencias descartadas (la UI las filtra al cargar).
+    var dismissedSuggestions: Set<MockDismissedKey> = []
 
     /// Error a lanzar en la siguiente llamada (para probar manejo de errores).
     public var nextError: RuulError?
@@ -2842,6 +2846,212 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return Array(list.prefix(min(limit, 100)))
     }
 
+    // MARK: - Similarity & duplicates (R.2V)
+
+    /// Name similarity sencillo: Jaccard de palabras normalizadas (sin pg_trgm).
+    /// Suficiente para previews; el live backend usa scoring real (pg_trgm).
+    private func mockNameSimilarity(_ a: String, _ b: String) -> Double {
+        let normalize: (String) -> Set<String> = { s in
+            Set(s.lowercased()
+                .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .filter { !$0.isEmpty })
+        }
+        let setA = normalize(a)
+        let setB = normalize(b)
+        if setA.isEmpty || setB.isEmpty { return 0 }
+        let intersect = Double(setA.intersection(setB).count)
+        let union = Double(setA.union(setB).count)
+        return intersect / union
+    }
+
+    private func myContextActors() -> [ActorRecord] {
+        memberships
+            .filter { $0.value.contains(where: { $0.actorId == me.id }) }
+            .compactMap { actors[$0.key] }
+            .filter { $0.actorKind != .person }
+    }
+
+    public func contextSimilarity(contextId: UUID) async throws -> [ContextSimilarityCandidate] {
+        try throwIfNeeded()
+        guard let source = actors[contextId] else { return [] }
+        return myContextActors().compactMap { other -> ContextSimilarityCandidate? in
+            if other.id == contextId { return nil }
+            let score = mockNameSimilarity(source.displayName, other.displayName)
+            guard score >= 0.30 else { return nil }
+            var raw: [String] = []
+            if score >= 0.85 { raw.append("same_name") }
+            else if score >= 0.5 { raw.append("similar_name") }
+            return ContextSimilarityCandidate(
+                contextId: other.id,
+                displayName: other.displayName,
+                score: score,
+                reasons: raw.compactMap(ContextSimilarityReason.init(rawValue:)),
+                rawReasons: raw
+            )
+        }.sorted(by: { $0.score > $1.score })
+    }
+
+    public func resourceSimilarity(resourceId: UUID) async throws -> [ResourceSimilarityCandidate] {
+        try throwIfNeeded()
+        guard let source = resources[resourceId] else { return [] }
+        return resources.values.compactMap { other -> ResourceSimilarityCandidate? in
+            if other.id == resourceId { return nil }
+            let nameScore = mockNameSimilarity(source.displayName, other.displayName)
+            let typeScore: Double = (other.resourceType == source.resourceType) ? 1.0 : 0.0
+            let contextScore: Double = (other.canonicalOwnerActorId == source.canonicalOwnerActorId) ? 1.0 : 0.0
+            let score = nameScore * 0.40 + typeScore * 0.15 + contextScore * 0.15
+            guard score >= 0.30 else { return nil }
+            var raw: [String] = []
+            if nameScore >= 0.85 { raw.append("same_name") }
+            else if nameScore >= 0.5 { raw.append("similar_name") }
+            if typeScore >= 0.99 { raw.append("same_type") }
+            if contextScore >= 0.99 { raw.append("same_context") }
+            return ResourceSimilarityCandidate(
+                resourceId: other.id,
+                displayName: other.displayName,
+                resourceType: other.resourceType,
+                contextActorId: other.canonicalOwnerActorId,
+                score: score,
+                reasons: raw.compactMap(ResourceSimilarityReason.init(rawValue:)),
+                rawReasons: raw
+            )
+        }.sorted(by: { $0.score > $1.score })
+    }
+
+    public func duplicateCandidates(minScore: Double?, maxPairs: Int?) async throws -> DuplicateCandidates {
+        try throwIfNeeded()
+        let threshold = minScore ?? 0.50
+        let ctxs = myContextActors()
+        var pairs: [DuplicateContextPair] = []
+        for i in ctxs.indices {
+            for j in (i+1)..<ctxs.count {
+                let aId = min(ctxs[i].id, ctxs[j].id)
+                let bId = max(ctxs[i].id, ctxs[j].id)
+                guard let aA = actors[aId], let aB = actors[bId] else { continue }
+                let score = mockNameSimilarity(aA.displayName, aB.displayName)
+                guard score >= threshold else { continue }
+                var raw: [String] = []
+                if score >= 0.85 { raw.append("same_name") }
+                else if score >= 0.5 { raw.append("similar_name") }
+                pairs.append(DuplicateContextPair(
+                    aContextId: aId, aDisplayName: aA.displayName,
+                    bContextId: bId, bDisplayName: aB.displayName,
+                    score: score,
+                    reasons: raw.compactMap(ContextSimilarityReason.init(rawValue:)),
+                    rawReasons: raw
+                ))
+            }
+        }
+        pairs.sort(by: { $0.score > $1.score })
+        return DuplicateCandidates(
+            contexts: Array(pairs.prefix(maxPairs ?? 50)),
+            resources: [],
+            threshold: threshold
+        )
+    }
+
+    public func mergeCandidates() async throws -> DuplicateCandidates {
+        try await duplicateCandidates(minScore: 0.85, maxPairs: 50)
+    }
+
+    public func relationshipSuggestions(actorId: UUID?) async throws -> [RelationshipSuggestion] {
+        try throwIfNeeded()
+        guard actorId == nil || actorId == me.id else {
+            throw RuulError.backend(.missingPermission(key: nil))
+        }
+        let ctxs = myContextActors()
+        var out: [RelationshipSuggestion] = []
+        for i in ctxs.indices {
+            for j in (i+1)..<ctxs.count {
+                let aId = min(ctxs[i].id, ctxs[j].id)
+                let bId = max(ctxs[i].id, ctxs[j].id)
+                guard let aA = actors[aId], let aB = actors[bId] else { continue }
+                let score = mockNameSimilarity(aA.displayName, aB.displayName)
+                guard score >= 0.40 else { continue }
+                let alreadyContains = (contextChildrenById[aId]?.contains(bId) ?? false)
+                    || (contextChildrenById[bId]?.contains(aId) ?? false)
+                if alreadyContains { continue }
+                let raw: [String] = score >= 0.70 ? ["name_strong_match"] : ["name_partial_match"]
+                out.append(RelationshipSuggestion(
+                    suggestedRelationship: "contains",
+                    aContextId: aId, aDisplayName: aA.displayName,
+                    bContextId: bId, bDisplayName: aB.displayName,
+                    confidence: score,
+                    reasons: raw.compactMap(RelationshipSuggestionReason.init(rawValue:)),
+                    rawReasons: raw
+                ))
+            }
+        }
+        return out.sorted(by: { $0.confidence > $1.confidence })
+    }
+
+    public func mergeContexts(sourceId: UUID, targetId: UUID) async throws -> MergeContextResult {
+        try throwIfNeeded()
+        guard actors[sourceId] != nil, actors[targetId] != nil else { throw RuulError.backend(.validation(message: "context not found")) }
+        if mergedInto[sourceId] == targetId {
+            return MergeContextResult(sourceContextId: sourceId, targetContextId: targetId,
+                                       status: "soft_merged", alreadyMerged: true)
+        }
+        mergedInto[sourceId] = targetId
+        return MergeContextResult(sourceContextId: sourceId, targetContextId: targetId,
+                                   status: "soft_merged", alreadyMerged: false)
+    }
+
+    public func unmergeContext(sourceId: UUID) async throws -> UnmergeContextResult {
+        try throwIfNeeded()
+        let previous = mergedInto.removeValue(forKey: sourceId)
+        return UnmergeContextResult(sourceContextId: sourceId,
+                                     previousTargetContextId: previous,
+                                     unmerged: previous != nil)
+    }
+
+    public func contextCreationCandidates(displayName: String) async throws -> [ContextCreationCandidate] {
+        try throwIfNeeded()
+        let trimmed = displayName.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return [] }
+        return myContextActors().compactMap { ctx -> ContextCreationCandidate? in
+            let score = mockNameSimilarity(trimmed, ctx.displayName)
+            guard score >= 0.60 else { return nil }
+            let raw: [String] = score >= 0.85 ? ["name_strong_match"] : ["name_partial_match"]
+            return ContextCreationCandidate(
+                contextId: ctx.id, displayName: ctx.displayName,
+                actorKind: ctx.actorKind, actorSubtype: ctx.actorSubtype,
+                score: score, highConfidence: score >= 0.85, rawReasons: raw
+            )
+        }.sorted(by: { $0.score > $1.score })
+    }
+
+    public func resourceCreationCandidates(displayName: String, contextId: UUID) async throws -> [ResourceCreationCandidate] {
+        try throwIfNeeded()
+        let trimmed = displayName.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return [] }
+        guard memberships[contextId]?.contains(where: { $0.actorId == me.id }) == true else {
+            throw RuulError.backend(.missingPermission(key: nil))
+        }
+        return resources.values
+            .filter { $0.canonicalOwnerActorId == contextId }
+            .compactMap { r -> ResourceCreationCandidate? in
+                let score = mockNameSimilarity(trimmed, r.displayName)
+                guard score >= 0.60 else { return nil }
+                let raw: [String] = score >= 0.85 ? ["name_strong_match"] : ["name_partial_match"]
+                return ResourceCreationCandidate(
+                    resourceId: r.id, displayName: r.displayName,
+                    resourceType: r.resourceType,
+                    score: score, highConfidence: score >= 0.85, rawReasons: raw
+                )
+            }.sorted(by: { $0.score > $1.score })
+    }
+
+    public func dismissSuggestion(subjectA: UUID, subjectB: UUID, suggestionType: SuggestionType) async throws -> DismissSuggestionResult {
+        try throwIfNeeded()
+        let a = min(subjectA, subjectB)
+        let b = max(subjectA, subjectB)
+        dismissedSuggestions.insert(MockDismissedKey(a: a, b: b, type: suggestionType))
+        return DismissSuggestionResult(subjectA: a, subjectB: b,
+                                        suggestionType: suggestionType,
+                                        dismissedAt: Date())
+    }
+
     // MARK: - Subscriptions & Trust (R.3A)
 
     var subscriptionsBySubscriber: [UUID: [Subscription]] = [:]
@@ -3093,6 +3303,21 @@ public actor MockRuulRPCClient: RuulRPCClient {
         "decisions.view", "decisions.create", "decisions.vote",
         "money.view", "money.record", "documents.view"
     ]
+}
+
+// MARK: - R.2V helpers
+
+/// Clave compuesta para dismiss tracking. Ordena los UUIDs por valor ascendente
+/// para que `(a,b)` y `(b,a)` colapsen en la misma key.
+public struct MockDismissedKey: Hashable, Sendable {
+    public let a: UUID
+    public let b: UUID
+    public let type: SuggestionType
+    public init(a: UUID, b: UUID, type: SuggestionType) {
+        self.a = a
+        self.b = b
+        self.type = type
+    }
 }
 
 // MARK: - Demo world (escenario canónico del founder)
