@@ -124,7 +124,14 @@ public struct ContextsListView: View {
             ContextHomeContainer(
                 context: context,
                 container: container,
-                onOpenSettings: { isShowingContextSettings = true }
+                onOpenSettings: { isShowingContextSettings = true },
+                onSwitchContext: { newCtx in
+                    container.contextStore.switchTo(newCtx)
+                    Task { await container.contextPreferencesStore.recordVisit(newCtx.id) }
+                    // Reemplazar destino: pop el actual y push el nuevo.
+                    path.removeAll()
+                    path.append(newCtx)
+                }
             )
         }
     }
@@ -252,19 +259,40 @@ public struct ContextsListView: View {
     }
 }
 
-// MARK: - Wrapper que envuelve ContextHomeView con su toolbar de settings
+// MARK: - Wrapper que envuelve ContextHomeView con su toolbar de settings + switcher sheet
 
-/// F.NAV.3 — Wrapper que apila ContextHomeView con el toolbar de settings y
-/// breadcrumb. Replica las responsabilidades de ContextShell.contextRoot sin
-/// la NavigationStack (la dueña es ContextsListView).
+/// F.NAV.3+F.NAV.4 — Wrapper que apila ContextHomeView con:
+///   - Título tap → sheet `ContextSwitcherSheet` (F.NAV.4).
+///   - Gear de settings en toolbar (sólo no-personales).
 private struct ContextHomeContainer: View {
     let context: AppContext
     let container: DependencyContainer
     let onOpenSettings: () -> Void
+    let onSwitchContext: (AppContext) -> Void
+
+    @State private var isShowingSwitcher = false
 
     var body: some View {
         ContextHomeView(context: context, container: container)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Button {
+                        isShowingSwitcher = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(context.displayName)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.down")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cambiar contexto. Actual: \(context.displayName)")
+                }
                 if !context.isPersonal {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
@@ -275,6 +303,13 @@ private struct ContextHomeContainer: View {
                         .accessibilityLabel("Configuración del contexto")
                     }
                 }
+            }
+            .sheet(isPresented: $isShowingSwitcher) {
+                ContextSwitcherSheet(
+                    container: container,
+                    currentContextId: context.id,
+                    onSwitch: onSwitchContext
+                )
             }
             // Rebuild en cambio de contexto.
             .id(context.id)
