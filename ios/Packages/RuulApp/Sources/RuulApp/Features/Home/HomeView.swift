@@ -1,25 +1,21 @@
 import SwiftUI
 import RuulCore
 
-/// F.NAV.2 — Pantalla global Home. Doctrina:
+/// F.NAV.9 — Home rebuild con Apple HIG en mente.
 ///
-/// - Sección 1: **Requiere tu atención** — items canónicos de
-///   `attention_inbox()` con CTA directa (tap → sheet/jump al detail).
-/// - Sección 2: **Continuar** — contextos visitados recientemente.
-/// - Sección 3: **Acciones globales** — Crear / Buscar / Preguntar a Ruul
-///   (placeholders hasta F.NAV.5).
-/// - Sección 4: **Lo que me importa** — feed personalizado (R.3A).
+/// Doctrina F.NAV:
+/// - Sección 1: hero greeting + atención (card destacada).
+/// - Sección 2: Continuar (carrusel horizontal de contextos recientes).
+/// - Sección 3: Acciones globales (grid 2x2).
+/// - Sección 4: Mi actividad (link).
 public struct HomeView: View {
     let container: DependencyContainer
-    /// Callback para cambiar al tab Contextos con un contexto específico
-    /// (usado para `reservation_conflict` y "Continuar").
     let jumpToContext: (AppContext) -> Void
-    /// F.NAV.8+: dispara la sheet intent-first ("¿Qué quieres hacer?") sin
-    /// pasar por el tab Crear. Le delega al MainTabShell.
     let onTriggerCreate: () -> Void
 
     @State private var presentedAttention: AttentionItem?
     @State private var isShowingPendingInvitations = false
+    @State private var isShowingAllAttention = false
 
     public init(container: DependencyContainer, jumpToContext: @escaping (AppContext) -> Void, onTriggerCreate: @escaping () -> Void) {
         self.container = container
@@ -29,13 +25,19 @@ public struct HomeView: View {
 
     public var body: some View {
         NavigationStack {
-            List {
-                attentionSection
-                continueSection
-                globalActionsSection
-                relevantActivitySection
+            ScrollView {
+                VStack(spacing: 24) {
+                    heroSection
+                    attentionSection
+                    continueSection
+                    quickActionsGrid
+                    activitySection
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 32)
             }
-            .navigationTitle("Home")
+            .navigationTitle("Ruul")
+            .navigationBarTitleDisplayMode(.inline)
             .task {
                 await container.attentionInboxStore.load()
                 await container.contextPreferencesStore.load()
@@ -52,35 +54,254 @@ public struct HomeView: View {
             .sheet(isPresented: $isShowingPendingInvitations) {
                 PendingInvitationsView(container: container)
             }
+            .sheet(isPresented: $isShowingAllAttention) {
+                NavigationStack {
+                    AllAttentionView(container: container) { item in
+                        isShowingAllAttention = false
+                        handleTap(item)
+                    }
+                }
+            }
         }
+    }
+
+    // MARK: - Sección 1: hero greeting
+
+    @ViewBuilder
+    private var heroSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(greeting + ",")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text(container.currentActorStore.actor?.displayName ?? "Hola")
+                .font(.largeTitle.weight(.bold))
+            Text(attentionSubtitle)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12:  return "Buenos días"
+        case 12..<19: return "Buenas tardes"
+        default:      return "Buenas noches"
+        }
+    }
+
+    private var attentionSubtitle: String {
+        let count = container.attentionInboxStore.items.count
+        switch count {
+        case 0: return "Todo está al día 🎉"
+        case 1: return "1 cosa requiere tu atención"
+        default: return "\(count) cosas requieren tu atención"
+        }
+    }
+
+    // MARK: - Sección 2: Atención (card hero)
+
+    @ViewBuilder
+    private var attentionSection: some View {
+        let items = container.attentionInboxStore.items
+        if !items.isEmpty {
+            Button {
+                if items.count == 1 {
+                    handleTap(items[0])
+                } else {
+                    isShowingAllAttention = true
+                }
+            } label: {
+                VStack(spacing: 0) {
+                    HStack {
+                        Label("Requiere tu atención", systemImage: "exclamationmark.circle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Text(items.count == 1 ? "Ver →" : "Ver \(items.count) →")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12)
+
+                    Divider().padding(.leading, 16)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(items.prefix(3)) { item in
+                            HStack(spacing: 10) {
+                                Image(systemName: attentionSymbol(for: item.kind))
+                                    .font(.callout)
+                                    .foregroundStyle(attentionTint(for: item.kind))
+                                    .frame(width: 22)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(item.title)
+                                        .font(.callout)
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                    Text(item.contextDisplayName)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                        }
+                        if items.count > 3 {
+                            Text("+ \(items.count - 3) más")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 32)
+                        }
+                    }
+                    .padding(16)
+                }
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Sección 3: Continuar (carrusel horizontal)
+
+    @ViewBuilder
+    private var continueSection: some View {
+        let recents = container.contextPreferencesStore.recents
+        let resolved = recents.compactMap { pref in
+            container.contextStore.availableContexts.first { $0.id == pref.contextActorId }
+        }
+        if !resolved.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Continuar")
+                    .font(.headline)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(resolved) { ctx in
+                            continueCard(ctx)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func continueCard(_ ctx: AppContext) -> some View {
+        Button {
+            jumpToContext(ctx)
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: ctx.symbolName)
+                    .font(.title)
+                    .foregroundStyle(.tint)
+                Text(ctx.displayName)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                if !ctx.isPersonal {
+                    Text("\(ctx.memberCount) miembros")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 160, height: 140, alignment: .topLeading)
+            .padding(14)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Sección 4: Acciones globales (grid 2x2)
+
+    @ViewBuilder
+    private var quickActionsGrid: some View {
+        let columns = [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ]
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Acciones rápidas")
+                .font(.headline)
+            LazyVGrid(columns: columns, spacing: 12) {
+                actionTile(label: "Crear", icon: "plus.circle.fill", tint: .accentColor, enabled: true) {
+                    onTriggerCreate()
+                }
+                actionTile(label: "Buscar", icon: "magnifyingglass", tint: .gray, enabled: false, action: {})
+                actionTile(label: "Preguntar a Ruul", icon: "sparkles", tint: .gray, enabled: false, action: {})
+                actionTile(label: "Escanear", icon: "qrcode.viewfinder", tint: .gray, enabled: false, action: {})
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func actionTile(label: String, icon: String, tint: Color, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundStyle(enabled ? tint : Color.secondary)
+                Text(label)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(enabled ? Color.primary : Color.secondary)
+                    .lineLimit(1)
+                if !enabled {
+                    Text("Próximamente")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
+            .padding(14)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+
+    // MARK: - Sección 5: Mi actividad
+
+    @ViewBuilder
+    private var activitySection: some View {
+        NavigationLink {
+            MyActivityFeedView(container: container)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .foregroundStyle(.tint)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Mi actividad").font(.callout.weight(.semibold)).foregroundStyle(.primary)
+                    Text("Lo que está pasando en los contextos que sigues")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+            }
+            .padding(16)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Routing de atención
 
-    /// Resuelve el `AppContext` para un attention item desde el ContextStore.
     private func appContext(for contextActorId: UUID) -> AppContext? {
         container.contextStore.availableContexts.first { $0.id == contextActorId }
     }
 
-    /// Dispara la acción del attention item. Para conflictos cambiamos a la
-    /// tab Contextos con el contexto correcto; el resto abren un sheet con
-    /// el detail apropiado.
     private func handleTap(_ item: AttentionItem) {
         switch item.kind {
         case "invitation":
-            // Las invitaciones tienen sheet propia (lista global).
             isShowingPendingInvitations = true
-
         case "reservation_conflict":
-            // No tenemos el conflict object aquí — saltamos al contexto.
             if let ctx = appContext(for: item.contextActorId) {
                 jumpToContext(ctx)
             }
-
         case "decision_vote", "obligation_pay", "obligation_complete":
-            // Sheet con detail view (NavigationStack interno).
             presentedAttention = item
-
         default:
             break
         }
@@ -107,68 +328,7 @@ public struct HomeView: View {
                     EmptyView()
                 }
             }
-        } else {
-            ContextNotAvailableView(contextName: item.contextDisplayName)
         }
-    }
-
-    // MARK: - Sección 1: ⚠ Requiere tu atención
-
-    @ViewBuilder
-    private var attentionSection: some View {
-        Section {
-            let items = container.attentionInboxStore.items
-            if items.isEmpty {
-                Text("Sin asuntos pendientes 🎉")
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
-            } else {
-                ForEach(items) { item in
-                    Button {
-                        handleTap(item)
-                    } label: {
-                        attentionRow(item)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        } header: {
-            Label("Requiere tu atención", systemImage: "exclamationmark.circle.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
-        }
-    }
-
-    @ViewBuilder
-    private func attentionRow(_ item: AttentionItem) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: attentionSymbol(for: item.kind))
-                .foregroundStyle(attentionTint(for: item.kind))
-                .frame(width: 24)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(.primary)
-                HStack(spacing: 6) {
-                    Text(item.contextDisplayName)
-                        .font(.caption.weight(.medium))
-                    Text("·")
-                    Text(item.reason)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                Text(ctaLabel(for: item.ctaActionKey))
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(attentionTint(for: item.kind))
-                    .padding(.top, 2)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.vertical, 2)
     }
 
     private func attentionSymbol(for kind: String) -> String {
@@ -192,133 +352,71 @@ public struct HomeView: View {
         default:                     return .secondary
         }
     }
-
-    /// El backend manda `cta_action_key`; iOS traduce a label corto para el
-    /// affordance ("Resolver / Votar / Pagar / Aceptar / Marcar"). No es
-    /// inferencia doctrinal: es presentation translation, mismo espíritu que
-    /// `ActionPresentationCatalog`.
-    private func ctaLabel(for actionKey: String) -> String {
-        switch actionKey {
-        case "resolve_conflict":    return "Resolver →"
-        case "vote":                return "Votar →"
-        case "pay":                 return "Pagar →"
-        case "mark_completed":      return "Marcar como cumplida →"
-        case "accept_invitation":   return "Aceptar →"
-        default:                    return "Ver →"
-        }
-    }
-
-    // MARK: - Sección 2: Continuar (contextos recientes)
-
-    @ViewBuilder
-    private var continueSection: some View {
-        let recents = container.contextPreferencesStore.recents
-        if !recents.isEmpty {
-            Section("Continuar") {
-                ForEach(recents) { ctx in
-                    Button {
-                        if let appCtx = appContext(for: ctx.contextActorId) {
-                            jumpToContext(appCtx)
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: ctx.isFavorite ? "star.fill" : "circle.dotted")
-                                .foregroundStyle(ctx.isFavorite ? Color.yellow : Color.accentColor)
-                                .frame(width: 24)
-                            VStack(alignment: .leading) {
-                                Text(ctx.displayName).font(.callout).foregroundStyle(.primary)
-                                if let visited = ctx.lastVisitedAt {
-                                    Text(visited.formatted(.relative(presentation: .named)))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    // MARK: - Sección 3: Acciones globales mínimas
-
-    @ViewBuilder
-    private var globalActionsSection: some View {
-        Section {
-            Button {
-                onTriggerCreate()
-            } label: {
-                HStack {
-                    Label("Crear", systemImage: "plus.circle.fill")
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .buttonStyle(.plain)
-            // Buscar y Preguntar a Ruul: aún no implementados.
-            Label("Buscar", systemImage: "magnifyingglass")
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Buscar. Próximamente.")
-            Label("Preguntar a Ruul", systemImage: "sparkles")
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Preguntar a Ruul. Próximamente.")
-        } header: {
-            Label("Acciones rápidas", systemImage: "bolt.fill")
-                .font(.subheadline)
-        } footer: {
-            Text("Buscar global y \"Preguntar a Ruul\" llegarán en un slice futuro.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    // MARK: - Sección 4: Actividad relevante
-
-    @ViewBuilder
-    private var relevantActivitySection: some View {
-        Section {
-            NavigationLink {
-                MyActivityFeedView(container: container)
-            } label: {
-                Label("Ver actividad relevante", systemImage: "antenna.radiowaves.left.and.right")
-            }
-        } header: {
-            Text("Lo que me importa")
-        } footer: {
-            Text("Señales personalizadas de contextos, recursos y decisiones que te interesan.")
-        }
-    }
 }
 
-// MARK: - Fallback view cuando el contexto no está disponible
+// MARK: - Sheet "Todos los pendientes"
 
-private struct ContextNotAvailableView: View {
-    let contextName: String
+/// F.NAV.9 — Lista expandida de los items de atención. Se invoca cuando hay
+/// más de uno y el founder tapea el hero "Ver N →".
+private struct AllAttentionView: View {
+    let container: DependencyContainer
+    let onTap: (AttentionItem) -> Void
+
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-            Text("Contexto no disponible")
-                .font(.title3.weight(.semibold))
-            Text("Ya no puedes acceder a \(contextName).")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("Cerrar") { dismiss() }
-                .buttonStyle(.bordered)
+        List {
+            ForEach(container.attentionInboxStore.items) { item in
+                Button {
+                    onTap(item)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: attentionSymbol(for: item.kind))
+                            .foregroundStyle(attentionTint(for: item.kind))
+                            .frame(width: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title).font(.callout.weight(.medium))
+                            Text("\(item.contextDisplayName) · \(item.reason)")
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .padding()
+        .navigationTitle("Pendientes")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Cerrar") { dismiss() }
+            }
+        }
+    }
+
+    private func attentionSymbol(for kind: String) -> String {
+        switch kind {
+        case "reservation_conflict": return "exclamationmark.triangle.fill"
+        case "decision_vote":        return "hand.thumbsup.fill"
+        case "obligation_pay":       return "creditcard.fill"
+        case "obligation_complete":  return "checkmark.circle"
+        case "invitation":           return "envelope.fill"
+        default:                     return "circle.fill"
+        }
+    }
+
+    private func attentionTint(for kind: String) -> Color {
+        switch kind {
+        case "reservation_conflict": return .red
+        case "decision_vote":        return .purple
+        case "obligation_pay",
+             "obligation_complete":  return .green
+        case "invitation":           return .blue
+        default:                     return .secondary
+        }
     }
 }
 

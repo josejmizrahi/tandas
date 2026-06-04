@@ -65,43 +65,89 @@ public struct ActivityEvent: Codable, Sendable, Equatable, Identifiable {
     public var typeLabel: String {
         switch eventType {
         case "context.created": return "Contexto creado"
+        case "context.updated": return "Contexto actualizado"
         case "invite.created": return "Invitación creada"
+        case "invite.revoked": return "Invitación cancelada"
         case "membership.joined", "member.joined": return "Se unió al contexto"
         case "membership.invited", "member.invited": return "Miembro invitado"
         case "membership.removed", "member.removed": return "Miembro removido"
         case "membership.left", "member.left": return "Salió del contexto"
-        case "resource.created": return "Recurso creado"
+        case "resource.created": return "Nuevo recurso"
         case "resource.updated": return "Recurso actualizado"
+        case "resource.transferred": return "Recurso transferido"
         case "right.granted": return "Derecho otorgado"
         case "right.revoked": return "Derecho revocado"
-        case "event.created", "calendar_event.created": return "Evento creado"
+        case "event.created", "calendar_event.created": return "Nuevo evento"
         case "event.rsvp", "event.rsvp_updated": return "RSVP actualizado"
         case "event.checked_in": return "Check-in"
         case "event.participation_cancelled": return "Asistencia cancelada"
         case "event.closed", "calendar_event.closed": return "Evento cerrado"
-        case "reservation.requested": return "Reservación solicitada"
+        case "reservation.requested": return "Nueva reservación"
         case "reservation.approved": return "Reservación aprobada"
         case "reservation.confirmed": return "Reservación confirmada"
         case "reservation.cancelled": return "Reservación cancelada"
-        case "reservation.conflict_detected": return "Conflicto de reservación detectado"
-        case "reservation.conflict_resolved": return "Conflicto de reservación resuelto"
-        case "decision.created": return "Decisión propuesta"
+        case "reservation.conflict_detected": return "Conflicto de reservación"
+        case "reservation.conflict_resolved": return "Conflicto resuelto"
+        case "decision.created": return "Nueva decisión"
+        case "decision.vote_cast", "vote.cast": return "Nuevo voto"
+        case "decision.option_added", "decision.option_created": return "Opción agregada"
+        case "decision.closed": return "Decisión cerrada"
         case "decision.approved": return "Decisión aprobada"
         case "decision.rejected": return "Decisión rechazada"
         case "decision.executed": return "Decisión ejecutada"
-        case "rule.created": return "Regla creada"
+        case "rule.created": return "Nueva regla"
         case "rule.evaluated": return "Regla evaluada"
-        case "obligation.created": return "Obligación creada"
-        case "obligation.settled": return "Obligación liquidada"
+        case "obligation.created": return "Nueva obligación"
+        case "obligation.completed", "obligation.fulfilled": return "Obligación cumplida"
+        case "obligation.settled", "obligation.paid": return "Obligación pagada"
+        case "obligation.cancelled": return "Obligación cancelada"
+        case "obligation.disputed": return "Obligación disputada"
+        case "obligation.forgiven": return "Obligación perdonada"
         case "fine.created": return "Multa generada"
-        case "expense.recorded": return "Gasto registrado"
+        case "expense.recorded": return "Nuevo gasto"
         case "split.generated": return "Reparto generado"
         case "game_result.recorded": return "Resultado de juego"
-        case "settlement.generated": return "Settlement generado"
-        case "settlement.paid": return "Pago de settlement"
-        case "document.created", "document.registered": return "Documento registrado"
-        default: return eventType
+        case "settlement.generated": return "Liquidación generada"
+        case "settlement.paid": return "Pago de liquidación"
+        case "document.created", "document.registered": return "Nuevo documento"
+        case "subscription.created", "subscription.activated": return "Nueva suscripción"
+        case "trust.added": return "Confianza declarada"
+        case "trust.removed": return "Confianza retirada"
+        default:
+            // Fallback humano: "expense.recorded" → "Expense recorded".
+            let cleaned = eventType
+                .replacingOccurrences(of: ".", with: " ")
+                .replacingOccurrences(of: "_", with: " ")
+            return cleaned.prefix(1).uppercased() + cleaned.dropFirst()
         }
+    }
+
+    /// F.NAV.9 — Título contextualizado que extrae datos del `payload` para
+    /// componer una línea natural ("Nuevo gasto · MXN 1,300"). Si no hay
+    /// payload útil, retorna `typeLabel` plano. NUNCA expone keys técnicos.
+    public func friendlyTitle(currentActorId: UUID? = nil) -> String {
+        let label = typeLabel
+        guard let payload else { return label }
+
+        // Subject title — sirve para decisiones / eventos / recursos / obligaciones.
+        if let title = payload["title"]?.stringValue, !title.isEmpty {
+            return "\(label) · \(title)"
+        }
+        // Monto + moneda — sirve para expense / fine / obligation / settlement.
+        if let amount = payload["amount"]?.numberValue {
+            let currency = payload["currency"]?.stringValue ?? ""
+            let formatted = formatAmount(amount, currency: currency)
+            return "\(label) · \(formatted)"
+        }
+        return label
+    }
+
+    private func formatAmount(_ amount: Double, currency: String) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency.isEmpty ? "MXN" : currency
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: amount)) ?? "\(currency) \(Int(amount))"
     }
 
     /// SF Symbol por dominio.

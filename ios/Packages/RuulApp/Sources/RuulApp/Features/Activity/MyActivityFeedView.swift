@@ -1,11 +1,15 @@
 import SwiftUI
 import RuulCore
 
-/// R.3A — "Mi Actividad" — feed personalizado del actor actual.
+/// R.3A / F.NAV.9 — "Mi Actividad" — feed personalizado del actor actual.
+/// Combina 3 fuentes (subscriptions + ownership + membership). El backend
+/// define `source`, `subscriptionType` y `score`; iOS sólo presenta.
 ///
-/// NO es un feed social. Combina 3 fuentes (subscriptions + ownership +
-/// membership) y muestra las últimas señales relevantes. El backend define
-/// `source`, `subscriptionType` y `score`; iOS sólo presenta.
+/// F.NAV.9 polish:
+/// - Agrupación por día (Hoy / Ayer / fecha).
+/// - Friendly title compuesto desde payload (no keys técnicos).
+/// - Drop del tag "Suscripción" repetido — la fuente queda como un dot de
+///   color en la izquierda.
 public struct MyActivityFeedView: View {
     let container: DependencyContainer
 
@@ -50,52 +54,107 @@ public struct MyActivityFeedView: View {
             )
         } else {
             List {
-                ForEach(store.items) { item in
-                    feedRow(item)
+                ForEach(groupedItems, id: \.label) { group in
+                    Section {
+                        ForEach(group.items) { item in
+                            feedRow(item)
+                        }
+                    } header: {
+                        Text(group.label)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                    }
                 }
             }
+            .listStyle(.insetGrouped)
         }
     }
 
     @ViewBuilder
     private func feedRow(_ item: FeedItem) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: item.asActivityEvent.symbolName)
-                .foregroundStyle(item.asActivityEvent.isSystemGenerated ? Color.indigo : Color.accentColor)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.asActivityEvent.typeLabel)
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(sourceColor(item.source).opacity(0.15))
+                    .frame(width: 32, height: 32)
+                Image(systemName: item.asActivityEvent.symbolName)
                     .font(.callout)
-                HStack(spacing: 6) {
-                    sourceBadge(item)
-                    if let subType = item.subscriptionType {
-                        Text(subType.label)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    .foregroundStyle(sourceColor(item.source))
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.asActivityEvent.friendlyTitle(currentActorId: container.currentActorStore.actorId))
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                HStack(spacing: 4) {
+                    if let ctxName = contextName(for: item.contextActorId) {
+                        Text(ctxName)
+                    }
+                    if let occurred = item.occurredAt {
+                        Text("·")
+                        Text(occurred.formatted(.relative(presentation: .named)))
                     }
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            Spacer()
-            if let occurred = item.occurredAt {
-                Text(occurred.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.trailing)
-            }
+            Spacer(minLength: 0)
         }
         .padding(.vertical, 2)
     }
 
-    @ViewBuilder
-    private func sourceBadge(_ item: FeedItem) -> some View {
-        switch item.source {
-        case .subscription:
-            StatusBadge(item.source.label, color: .blue)
-        case .ownership:
-            StatusBadge(item.source.label, color: .orange)
-        case .membership:
-            StatusBadge(item.source.label, color: .green)
+    // MARK: - Agrupación por día
+
+    private var groupedItems: [DayGroup] {
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+
+        let groups = Dictionary(grouping: store.items) { item -> Date in
+            guard let occurred = item.occurredAt else { return .distantPast }
+            return calendar.startOfDay(for: occurred)
         }
+
+        return groups.keys.sorted(by: >).map { day in
+            let label: String
+            if calendar.isDate(day, inSameDayAs: today) {
+                label = "Hoy"
+            } else if calendar.isDate(day, inSameDayAs: yesterday) {
+                label = "Ayer"
+            } else if day == .distantPast {
+                label = "Sin fecha"
+            } else {
+                label = day.formatted(.dateTime.day().month(.wide).year())
+            }
+            return DayGroup(
+                label: label,
+                items: (groups[day] ?? []).sorted {
+                    ($0.occurredAt ?? .distantPast) > ($1.occurredAt ?? .distantPast)
+                }
+            )
+        }
+    }
+
+    private struct DayGroup {
+        let label: String
+        let items: [FeedItem]
+    }
+
+    // MARK: - Helpers
+
+    private func sourceColor(_ source: FeedSource) -> Color {
+        switch source {
+        case .subscription: return .blue
+        case .ownership:    return .orange
+        case .membership:   return .green
+        }
+    }
+
+    private func contextName(for contextActorId: UUID?) -> String? {
+        guard let id = contextActorId else { return nil }
+        return container.contextStore.availableContexts.first { $0.id == id }?.displayName
     }
 }
 
