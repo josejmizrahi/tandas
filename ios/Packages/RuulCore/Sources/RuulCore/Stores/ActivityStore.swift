@@ -10,6 +10,11 @@ public final class ActivityStore {
     public private(set) var phase: StorePhase = .idle
     public private(set) var isLoadingMore = false
     public private(set) var hasMore = true
+    /// R.2U.2: cuando true, las cargas piden `p_include_descendants=true`.
+    public var includeDescendants: Bool
+    /// True si el contexto tiene al menos un subcontexto activo (control de visibilidad
+    /// del toggle en la UI).
+    public private(set) var hasDescendants = false
 
     private let rpc: any RuulRPCClient
     private let pageSize: Int
@@ -17,10 +22,16 @@ public final class ActivityStore {
     /// (contexto personal o un actor que ya salió del contexto).
     private var myActorId: UUID?
 
-    public init(rpc: any RuulRPCClient, pageSize: Int = 50, myActorId: UUID? = nil) {
+    public init(
+        rpc: any RuulRPCClient,
+        pageSize: Int = 50,
+        myActorId: UUID? = nil,
+        includeDescendants: Bool = false
+    ) {
         self.rpc = rpc
         self.pageSize = pageSize
         self.myActorId = myActorId
+        self.includeDescendants = includeDescendants
     }
 
     public init(rpc: any RuulRPCClient, previewEvents: [ActivityEvent], members: [ContextMember] = []) {
@@ -29,17 +40,25 @@ public final class ActivityStore {
         self.events = previewEvents
         self.members = members
         self.phase = .loaded
+        self.includeDescendants = false
     }
 
     public func load(context: AppContext) async {
         if events.isEmpty { phase = .loading }
         do {
-            async let activityTask = rpc.listActivity(contextId: context.id, limit: pageSize, before: nil)
+            async let activityTask = rpc.listActivity(
+                contextId: context.id,
+                limit: pageSize,
+                before: nil,
+                includeDescendants: includeDescendants
+            )
             async let summaryTask = rpc.contextSummary(contextId: context.id)
-            let (loaded, summary) = try await (activityTask, summaryTask)
+            async let childrenTask = rpc.contextChildren(contextId: context.id)
+            let (loaded, summary, children) = try await (activityTask, summaryTask, childrenTask)
             events = loaded
             members = summary.members
             hasMore = loaded.count >= pageSize
+            hasDescendants = !children.isEmpty
             phase = .loaded
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
@@ -52,13 +71,27 @@ public final class ActivityStore {
         isLoadingMore = true
         defer { isLoadingMore = false }
         do {
-            let more = try await rpc.listActivity(contextId: context.id, limit: pageSize, before: oldest)
+            let more = try await rpc.listActivity(
+                contextId: context.id,
+                limit: pageSize,
+                before: oldest,
+                includeDescendants: includeDescendants
+            )
             events.append(contentsOf: more)
             hasMore = more.count >= pageSize
         } catch {
             // Silencioso: la siguiente interacción reintenta.
             hasMore = false
         }
+    }
+
+    /// Cambia el flag y recarga desde 0 (se invalidan los eventos previos).
+    public func setIncludeDescendants(_ value: Bool, context: AppContext) async {
+        guard includeDescendants != value else { return }
+        includeDescendants = value
+        events = []
+        hasMore = true
+        await load(context: context)
     }
 
     public func displayName(for actorId: UUID?, contextId: UUID, contextName: String) -> String {

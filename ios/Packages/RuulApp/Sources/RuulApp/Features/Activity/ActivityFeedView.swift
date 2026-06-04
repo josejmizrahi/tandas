@@ -38,6 +38,21 @@ public struct ActivityFeedView: View {
         .refreshable {
             await store.load(context: context)
         }
+        .toolbar {
+            if store.hasDescendants {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Toggle(isOn: Binding(
+                        get: { store.includeDescendants },
+                        set: { newValue in
+                            Task { await store.setIncludeDescendants(newValue, context: context) }
+                        }
+                    )) {
+                        Label("Incluir subcontextos", systemImage: "list.bullet.indent")
+                    }
+                    .toggleStyle(.button)
+                }
+            }
+        }
         .sheet(item: $selectedEvent) { event in
             ActivityDetailView(event: event, context: context, store: store)
         }

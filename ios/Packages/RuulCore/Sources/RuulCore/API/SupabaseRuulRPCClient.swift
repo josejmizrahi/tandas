@@ -1407,19 +1407,29 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
 
     // MARK: - Activity
 
-    public func listActivity(contextId: UUID, limit: Int, before: Date?) async throws -> [ActivityEvent] {
+    public func listActivity(
+        contextId: UUID,
+        limit: Int,
+        before: Date?,
+        includeDescendants: Bool
+    ) async throws -> [ActivityEvent] {
         struct Params: Encodable, Sendable {
             let pContextActorId: UUID
             let pLimit: Int
             let pBefore: Date?
+            let pIncludeDescendants: Bool
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pLimit = "p_limit"
                 case pBefore = "p_before"
+                case pIncludeDescendants = "p_include_descendants"
             }
         }
         let page: ActivityPage = try await call("list_activity", params: Params(
-            pContextActorId: contextId, pLimit: limit, pBefore: before
+            pContextActorId: contextId,
+            pLimit: limit,
+            pBefore: before,
+            pIncludeDescendants: includeDescendants
         ))
         return page.activity
     }

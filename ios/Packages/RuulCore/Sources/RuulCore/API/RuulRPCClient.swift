@@ -268,8 +268,10 @@ public protocol RuulRPCClient: Sendable {
 
     // MARK: - Activity
 
-    /// `list_activity(p_context_actor_id, p_limit, p_before)`
-    func listActivity(contextId: UUID, limit: Int, before: Date?) async throws -> [ActivityEvent]
+    /// `list_activity(p_context_actor_id, p_limit, p_before, p_include_descendants)` — R.2U.2
+    /// agregó `p_include_descendants`; cuando `true` une eventos de subcontextos
+    /// (vía `actor_relationships.contains` + filtro `is_context_member`).
+    func listActivity(contextId: UUID, limit: Int, before: Date?, includeDescendants: Bool) async throws -> [ActivityEvent]
 
     // MARK: - Similarity & duplicates (R.2V)
 
@@ -321,6 +323,13 @@ public protocol RuulRPCClient: Sendable {
     func removeTrust(trustEdgeId: UUID) async throws -> Bool
     /// `list_trust_network(p_actor_id?)` — outgoing/incoming del caller (RLS gatea).
     func listTrustNetwork(actorId: UUID?) async throws -> TrustNetwork
+}
+
+extension RuulRPCClient {
+    /// Back-compat: por default no agrega eventos de subcontextos.
+    public func listActivity(contextId: UUID, limit: Int, before: Date?) async throws -> [ActivityEvent] {
+        try await listActivity(contextId: contextId, limit: limit, before: before, includeDescendants: false)
+    }
 }
 
 // MARK: - Inputs

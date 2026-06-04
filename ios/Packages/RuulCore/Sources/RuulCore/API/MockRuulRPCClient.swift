@@ -2837,11 +2837,33 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     // MARK: - Activity
 
-    public func listActivity(contextId: UUID, limit: Int, before: Date?) async throws -> [ActivityEvent] {
+    public func listActivity(
+        contextId: UUID,
+        limit: Int,
+        before: Date?,
+        includeDescendants: Bool
+    ) async throws -> [ActivityEvent] {
         try throwIfNeeded()
-        var list = activity[contextId] ?? []
+        var ids: [UUID] = [contextId]
+        if includeDescendants {
+            var queue: [UUID] = contextChildrenById[contextId, default: []]
+            while let next = queue.first {
+                queue.removeFirst()
+                ids.append(next)
+                queue.append(contentsOf: contextChildrenById[next, default: []])
+                if ids.count > 256 { break }
+            }
+        }
+        var list = ids.flatMap { activity[$0] ?? [] }
         if let before {
             list = list.filter { ($0.occurredAt ?? .distantPast) < before }
+        }
+        // Mismo orden del backend: `occurred_at` desc + tie-break por id desc.
+        list.sort { lhs, rhs in
+            let l = lhs.occurredAt ?? .distantPast
+            let r = rhs.occurredAt ?? .distantPast
+            if l != r { return l > r }
+            return lhs.id.uuidString > rhs.id.uuidString
         }
         return Array(list.prefix(min(limit, 100)))
     }

@@ -651,6 +651,26 @@ struct MockClientTests {
         #expect(familiaActivity.contains { $0.eventType == "resource.created" })
     }
 
+    @Test("R.2U.2: listActivity con includeDescendants une eventos de subcontextos")
+    func activityIncludesDescendants() async throws {
+        let mock = await makeDemoClient()
+        let familia = MockRuulRPCClient.DemoIds.familia
+        // baseline: sólo eventos del propio Familia Mizrahi
+        let onlyFamilia = try await mock.listActivity(
+            contextId: familia, limit: 100, before: nil, includeDescendants: false
+        )
+        // con descendientes: une los 3 hijos directos + nieto (Fideicomiso)
+        let withChildren = try await mock.listActivity(
+            contextId: familia, limit: 100, before: nil, includeDescendants: true
+        )
+        #expect(withChildren.count >= onlyFamilia.count,
+                "incluir subcontextos no debería reducir el total")
+        // el set descendiente debe contener todos los eventos del padre
+        let baselineIds = Set(onlyFamilia.map(\.id))
+        let unionIds = Set(withChildren.map(\.id))
+        #expect(baselineIds.isSubset(of: unionIds))
+    }
+
     // MARK: - Actor capabilities (R.2S.1)
 
     @Test("actor_capabilities devuelve la matriz del subtype")
