@@ -136,8 +136,19 @@ public protocol RuulRPCClient: Sendable {
     func confirmReservation(reservationId: UUID) async throws
     /// `cancel_reservation(p_reservation_id)`
     func cancelReservation(reservationId: UUID) async throws
-    /// `resolve_reservation_conflict(p_conflict_id, p_winner_reservation_id)`
+    /// `resolve_reservation_conflict(p_conflict_id, p_winner_reservation_id)` —
+    /// overload de 2 args (atajo equivalente a `resolutionModel=.winner`).
     func resolveReservationConflict(conflictId: UUID, winnerReservationId: UUID) async throws
+    /// R.2S.7 — `resolve_reservation_conflict(p_conflict_id, p_resolution_model,
+    /// p_winner_reservation_id?, p_metadata?)`. Modelos: winner / priority_based /
+    /// admin_override / lottery / waitlisted / split_dates / partial_approval /
+    /// requires_decision. Devuelve la forma resuelta (winner/loser/split_at/decision_id).
+    func resolveReservationConflictWith(
+        conflictId: UUID,
+        resolutionModel: ResolutionModel,
+        winnerReservationId: UUID?,
+        metadata: JSONValue?
+    ) async throws -> ResolveConflictResult
 
     // MARK: - Decisions
 
@@ -506,6 +517,9 @@ public struct RequestReservationInput: Sendable, Equatable {
     public var endsAt: Date
     public var reservedForActorId: UUID?
     public var clientId: String?
+    /// R.2T — link opcional al evento que motiva la reservación (doctrina
+    /// `doctrine_r2t_reservation_vs_event`). Reservation NO requiere Event.
+    public var sourceEventId: UUID?
 
     public init(
         resourceId: UUID,
@@ -513,7 +527,8 @@ public struct RequestReservationInput: Sendable, Equatable {
         startsAt: Date,
         endsAt: Date,
         reservedForActorId: UUID? = nil,
-        clientId: String? = nil
+        clientId: String? = nil,
+        sourceEventId: UUID? = nil
     ) {
         self.resourceId = resourceId
         self.contextId = contextId
@@ -521,6 +536,7 @@ public struct RequestReservationInput: Sendable, Equatable {
         self.endsAt = endsAt
         self.reservedForActorId = reservedForActorId
         self.clientId = clientId
+        self.sourceEventId = sourceEventId
     }
 }
 

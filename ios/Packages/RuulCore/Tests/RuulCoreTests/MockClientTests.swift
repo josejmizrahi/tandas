@@ -329,6 +329,94 @@ struct MockClientTests {
         #expect(reservations.first { $0.id == first.reservationId }?.status == "rejected")
     }
 
+    @Test("R.2S.7: resolveReservationConflictWith waitlisted aprueba uno y pone al otro en waitlist")
+    func resolveConflictWaitlisted() async throws {
+        let mock = await makeDemoClient()
+        let (casa, familia) = (MockRuulRPCClient.DemoIds.casaValle, MockRuulRPCClient.DemoIds.familia)
+        let weekend = Date().addingTimeInterval(7 * 86400)
+        let first = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa, contextId: familia,
+            startsAt: weekend, endsAt: weekend.addingTimeInterval(2 * 86400),
+            reservedForActorId: MockRuulRPCClient.DemoIds.david
+        ))
+        let second = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa, contextId: familia,
+            startsAt: weekend.addingTimeInterval(86400), endsAt: weekend.addingTimeInterval(3 * 86400),
+            reservedForActorId: MockRuulRPCClient.DemoIds.isaac
+        ))
+        let conflict = try await mock.listConflicts(resourceId: casa).first!
+        let result = try await mock.resolveReservationConflictWith(
+            conflictId: conflict.id,
+            resolutionModel: .waitlisted,
+            winnerReservationId: second.reservationId,
+            metadata: nil
+        )
+        #expect(result.resolutionModel == "waitlisted")
+        #expect(result.winnerReservationId == second.reservationId)
+        let reservations = try await mock.listReservations(resourceId: casa)
+        #expect(reservations.first { $0.id == second.reservationId }?.status == "approved")
+        #expect(reservations.first { $0.id == first.reservationId }?.status == "waitlisted")
+    }
+
+    @Test("R.2S.7: resolveReservationConflictWith splitDates aprueba ambas y devuelve splitAt")
+    func resolveConflictSplitDates() async throws {
+        let mock = await makeDemoClient()
+        let (casa, familia) = (MockRuulRPCClient.DemoIds.casaValle, MockRuulRPCClient.DemoIds.familia)
+        let weekend = Date().addingTimeInterval(7 * 86400)
+        let first = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa, contextId: familia,
+            startsAt: weekend, endsAt: weekend.addingTimeInterval(2 * 86400),
+            reservedForActorId: MockRuulRPCClient.DemoIds.david
+        ))
+        let second = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa, contextId: familia,
+            startsAt: weekend.addingTimeInterval(86400), endsAt: weekend.addingTimeInterval(3 * 86400),
+            reservedForActorId: MockRuulRPCClient.DemoIds.isaac
+        ))
+        let conflict = try await mock.listConflicts(resourceId: casa).first!
+        let result = try await mock.resolveReservationConflictWith(
+            conflictId: conflict.id,
+            resolutionModel: .splitDates,
+            winnerReservationId: nil,
+            metadata: nil
+        )
+        #expect(result.resolutionModel == "split_dates")
+        #expect(result.splitAt != nil)
+        let reservations = try await mock.listReservations(resourceId: casa)
+        #expect(reservations.first { $0.id == first.reservationId }?.status == "approved")
+        #expect(reservations.first { $0.id == second.reservationId }?.status == "approved")
+    }
+
+    @Test("R.2S.7: resolveReservationConflictWith lottery elige un ganador random")
+    func resolveConflictLottery() async throws {
+        let mock = await makeDemoClient()
+        let (casa, familia) = (MockRuulRPCClient.DemoIds.casaValle, MockRuulRPCClient.DemoIds.familia)
+        let weekend = Date().addingTimeInterval(7 * 86400)
+        _ = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa, contextId: familia,
+            startsAt: weekend, endsAt: weekend.addingTimeInterval(2 * 86400),
+            reservedForActorId: MockRuulRPCClient.DemoIds.david
+        ))
+        _ = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa, contextId: familia,
+            startsAt: weekend.addingTimeInterval(86400), endsAt: weekend.addingTimeInterval(3 * 86400),
+            reservedForActorId: MockRuulRPCClient.DemoIds.isaac
+        ))
+        let conflict = try await mock.listConflicts(resourceId: casa).first!
+        let result = try await mock.resolveReservationConflictWith(
+            conflictId: conflict.id,
+            resolutionModel: .lottery,
+            winnerReservationId: nil,
+            metadata: nil
+        )
+        #expect(result.resolutionModel == "lottery")
+        #expect(result.winnerReservationId != nil)
+        #expect(result.loserReservationId != nil)
+        let reservations = try await mock.listReservations(resourceId: casa)
+        #expect(reservations.first { $0.id == result.winnerReservationId }?.status == "approved")
+        #expect(reservations.first { $0.id == result.loserReservationId }?.status == "rejected")
+    }
+
     @Test("decisión: votar con mayoría aprueba y ejecutar cierra")
     func decisionLifecycle() async throws {
         let mock = await makeDemoClient()

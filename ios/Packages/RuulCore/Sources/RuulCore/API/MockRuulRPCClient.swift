@@ -1345,6 +1345,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
             startsAt: input.startsAt,
             endsAt: input.endsAt,
             status: "requested",
+            sourceEventId: input.sourceEventId,
             createdAt: Date()
         )
         reservations[id] = reservation
@@ -1487,25 +1488,107 @@ public actor MockRuulRPCClient: RuulRPCClient {
     }
 
     public func resolveReservationConflict(conflictId: UUID, winnerReservationId: UUID) async throws {
-        try throwIfNeeded()
-        guard let conflict = conflicts[conflictId] else { return }
-        let loserId = conflict.reservationAId == winnerReservationId ? conflict.reservationBId : conflict.reservationAId
-        setReservationStatus(loserId, "rejected")
-        setReservationStatus(winnerReservationId, "approved")
-        conflicts[conflictId] = ReservationConflict(
-            id: conflict.id,
-            resourceId: conflict.resourceId,
-            reservationAId: conflict.reservationAId,
-            reservationBId: conflict.reservationBId,
-            conflictType: conflict.conflictType,
-            resolutionStatus: "resolved",
-            recommendedWinnerActorId: conflict.recommendedWinnerActorId,
-            createdAt: conflict.createdAt,
-            resolvedAt: Date()
+        _ = try await resolveReservationConflictWith(
+            conflictId: conflictId,
+            resolutionModel: .winner,
+            winnerReservationId: winnerReservationId,
+            metadata: nil
         )
-        if let contextId = reservations[winnerReservationId]?.contextActorId {
-            emit(contextId, "reservation.conflict_resolved")
+    }
+
+    public func resolveReservationConflictWith(
+        conflictId: UUID,
+        resolutionModel: ResolutionModel,
+        winnerReservationId: UUID?,
+        metadata: JSONValue?
+    ) async throws -> ResolveConflictResult {
+        try throwIfNeeded()
+        guard let conflict = conflicts[conflictId] else {
+            throw RuulError.backend(.unknown(message: "conflict not found"))
         }
+        let aId = conflict.reservationAId
+        let bId = conflict.reservationBId
+        let contextId = reservations[aId]?.contextActorId ?? reservations[bId]?.contextActorId
+
+        var winner: UUID?
+        var loser: UUID?
+        var splitAt: Date?
+        var decisionId: UUID?
+        var newStatus = "resolved"
+
+        switch resolutionModel {
+        case .winner, .priorityBased, .adminOverride:
+            guard let w = winnerReservationId else {
+                throw RuulError.backend(.validation(message: "winner required for \(resolutionModel.rawValue)"))
+            }
+            winner = w
+            loser = (aId == w) ? bId : aId
+            setReservationStatus(w, "approved")
+            setReservationStatus(loser!, "rejected")
+
+        case .lottery:
+            let pick = Bool.random() ? aId : bId
+            winner = pick
+            loser = (aId == pick) ? bId : aId
+            setReservationStatus(pick, "approved")
+            setReservationStatus(loser!, "rejected")
+
+        case .waitlisted:
+            guard let w = winnerReservationId else {
+                throw RuulError.backend(.validation(message: "winner required for waitlisted"))
+            }
+            winner = w
+            loser = (aId == w) ? bId : aId
+            setReservationStatus(w, "approved")
+            setReservationStatus(loser!, "waitlisted")
+
+        case .splitDates, .partialApproval:
+            guard let resA = reservations[aId], let resB = reservations[bId] else {
+                throw RuulError.backend(.unknown(message: "reservations missing"))
+            }
+            let overlapStart = max(resA.startsAt, resB.startsAt)
+            let overlapEnd = min(resA.endsAt, resB.endsAt)
+            let mid = Date(timeIntervalSince1970: (overlapStart.timeIntervalSince1970 + overlapEnd.timeIntervalSince1970) / 2)
+            splitAt = mid
+            setReservationStatus(aId, "approved")
+            setReservationStatus(bId, "approved")
+
+        case .requiresDecision:
+            let id = UUID()
+            decisionId = id
+            // El conflicto queda abierto hasta que se ejecute la decisión.
+            newStatus = "open"
+        }
+
+        if newStatus == "resolved" {
+            conflicts[conflictId] = ReservationConflict(
+                id: conflict.id,
+                resourceId: conflict.resourceId,
+                reservationAId: conflict.reservationAId,
+                reservationBId: conflict.reservationBId,
+                conflictType: conflict.conflictType,
+                resolutionStatus: newStatus,
+                recommendedWinnerActorId: conflict.recommendedWinnerActorId,
+                createdAt: conflict.createdAt,
+                resolvedAt: Date()
+            )
+        }
+
+        if let contextId {
+            emit(contextId, "reservation.conflict_resolved", payload: .object([
+                "resolution_model": .string(resolutionModel.rawValue)
+            ]))
+        }
+
+        return ResolveConflictResult(
+            conflictId: conflictId,
+            resolutionModel: resolutionModel.rawValue,
+            resolutionStatus: newStatus,
+            winnerReservationId: winner,
+            loserReservationId: loser,
+            splitAt: splitAt,
+            decisionId: decisionId
+        )
     }
 
     private func setReservationStatus(_ id: UUID, _ status: String) {

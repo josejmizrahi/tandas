@@ -707,6 +707,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pEndsAt: Date
             let pReservedForActorId: UUID?
             let pClientId: String?
+            let pSourceEventId: UUID?
             enum CodingKeys: String, CodingKey {
                 case pResourceId = "p_resource_id"
                 case pContextActorId = "p_context_actor_id"
@@ -714,6 +715,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pEndsAt = "p_ends_at"
                 case pReservedForActorId = "p_reserved_for_actor_id"
                 case pClientId = "p_client_id"
+                case pSourceEventId = "p_source_event_id"
             }
         }
         return try await call("request_resource_reservation", params: Params(
@@ -722,7 +724,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pStartsAt: input.startsAt,
             pEndsAt: input.endsAt,
             pReservedForActorId: input.reservedForActorId,
-            pClientId: input.clientId
+            pClientId: input.clientId,
+            pSourceEventId: input.sourceEventId
         ))
     }
 
@@ -798,6 +801,32 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
         try await callVoid("resolve_reservation_conflict", params: Params(
             pConflictId: conflictId, pWinnerReservationId: winnerReservationId
+        ))
+    }
+
+    public func resolveReservationConflictWith(
+        conflictId: UUID,
+        resolutionModel: ResolutionModel,
+        winnerReservationId: UUID?,
+        metadata: JSONValue?
+    ) async throws -> ResolveConflictResult {
+        struct Params: Encodable, Sendable {
+            let pConflictId: UUID
+            let pResolutionModel: String
+            let pWinnerReservationId: UUID?
+            let pMetadata: JSONValue?
+            enum CodingKeys: String, CodingKey {
+                case pConflictId = "p_conflict_id"
+                case pResolutionModel = "p_resolution_model"
+                case pWinnerReservationId = "p_winner_reservation_id"
+                case pMetadata = "p_metadata"
+            }
+        }
+        return try await call("resolve_reservation_conflict", params: Params(
+            pConflictId: conflictId,
+            pResolutionModel: resolutionModel.rawValue,
+            pWinnerReservationId: winnerReservationId,
+            pMetadata: metadata
         ))
     }
 

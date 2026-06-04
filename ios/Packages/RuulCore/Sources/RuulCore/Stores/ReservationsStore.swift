@@ -124,4 +124,25 @@ public final class ReservationsStore {
         try await rpc.resolveReservationConflict(conflictId: conflictId, winnerReservationId: winnerReservationId)
         await load(resourceId: resourceId, context: context)
     }
+
+    /// R.2S.7 — resuelve un conflicto usando uno de los 8 modelos. Devuelve el
+    /// `ResolveConflictResult` para que la UI pueda explicar lo que pasó
+    /// (sorteo ganado por X, split en hora Y, etc.).
+    @discardableResult
+    public func resolveConflict(
+        conflictId: UUID,
+        resolutionModel: ResolutionModel,
+        winnerReservationId: UUID?,
+        resourceId: UUID,
+        context: AppContext
+    ) async throws -> ResolveConflictResult {
+        let result = try await rpc.resolveReservationConflictWith(
+            conflictId: conflictId,
+            resolutionModel: resolutionModel,
+            winnerReservationId: winnerReservationId,
+            metadata: nil
+        )
+        await load(resourceId: resourceId, context: context)
+        return result
+    }
 }
