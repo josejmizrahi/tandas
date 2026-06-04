@@ -1,31 +1,31 @@
 import SwiftUI
 import RuulCore
 
-/// F.EVENT.2 — Event Detail Apple-native (Calendar / Reminders / Invites style).
+/// F.EVENT.3 — Event Detail Apple/Luma-native.
 ///
 /// El evento es algo a lo que asistes, no algo que administras. La pantalla
 /// se optimiza para responder asistencia, ver quién va y entender qué pasa.
-/// Todo lo administrativo (cerrar, registrar gasto, abrir decisión, adjuntar
-/// documento, cancelar mi asistencia) vive detrás de `•••` en el toolbar.
+///
+/// Cambios vs F.EVENT.2 (Luma-inspired):
+/// - **Título es el hero**, no el icono — desaparece el SF Symbol grande
+///   junto al título. El título crece a `.title.weight(.bold)`.
+/// - **Host badge inline** debajo del título (avatar 22px + "Organiza X").
+/// - **Action strip único** estilo Luma: 3 chips RSVP + `•••` Menu como
+///   cuarto botón equi-distribuido. La sección "Tu respuesta" como heading
+///   desaparece — el strip habla por sí solo. Toolbar queda sin `•••`.
+/// - **Información** ya no lista Organizador (vive en el badge).
 ///
 /// Scroll order founder-locked:
-/// 1. Header compacto (icon inline + título + fecha + resumen)
-/// 2. Tu respuesta (chips grandes Voy / Tal vez / No voy)
-/// 3. Participantes (avatares horizontales + summary)
-/// 4. Información (Organizador / Ubicación / Repetición / Contexto)
-/// 5. Check-in (sólo si aplica y no se ha hecho)
+/// 1. Header (título hero + host badge + fecha + summary)
+/// 2. Action strip (Voy / Tal vez / No voy / ••• Más)
+/// 3. Participantes (avatares horizontales + breakdown)
+/// 4. Información (Ubicación / Repetición / Contexto)
+/// 5. Check-in (sólo si aplica)
 /// 6. Recursos relacionados (sólo si hay)
 /// 7. Decisiones relacionadas (sólo si hay)
 ///
-/// Eliminado vs F.EVENT.1:
-/// - Hero icon enorme
-/// - Sección Actividad reciente
-/// - Sección Administración
-/// - Sección Auditoría
-/// - Sección Relacionado con counts/buckets
-///
 /// Toda acción visible sale de `event_detail.available_actions`. Las
-/// administrativas se filtran al menú `•••`.
+/// administrativas se filtran al menú `•••` dentro del strip.
 public struct EventDetailView: View {
     let eventId: UUID
     let context: AppContext
@@ -79,13 +79,6 @@ public struct EventDetailView: View {
         }
         .navigationTitle(store.event?.title ?? "Evento")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let event = store.event, !moreActions(event).isEmpty {
-                ToolbarItem(placement: .topBarTrailing) {
-                    moreMenu(event)
-                }
-            }
-        }
         .task {
             await store.load(eventId: eventId, context: context)
             await loadEventActivity()
@@ -157,8 +150,8 @@ public struct EventDetailView: View {
     private func detailScroll(_ event: CalendarEvent) -> some View {
         ScrollView {
             VStack(spacing: 20) {
-                headerCompact(event)
-                responseSection(event)
+                headerSection(event)
+                actionStripSection(event)
                 participantsSection(event)
                 infoSection(event)
                 checkInSection(event)
@@ -170,33 +163,31 @@ public struct EventDetailView: View {
         }
     }
 
-    // MARK: - 1. Header compacto
+    // MARK: - 1. Header (title hero + host badge + fecha + summary)
 
     @ViewBuilder
-    private func headerCompact(_ event: CalendarEvent) -> some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 10) {
-                Image(systemName: event.type.symbolName)
-                    .font(.title2)
-                    .foregroundStyle(.tint)
-                Text(event.title)
-                    .font(.title2.weight(.bold))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+    private func headerSection(_ event: CalendarEvent) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Título HERO — sin icono al lado. La tipografía manda.
+            Text(event.title)
+                .font(.title.weight(.bold))
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
+            // Host badge inline estilo Luma.
+            hostBadge(event)
+
+            // Fecha y summary en líneas separadas, secondary.
             if let starts = event.startsAt {
                 Text(headerDateLine(starts))
                     .font(.callout)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Text(participantSummary())
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.tint)
-                .frame(maxWidth: .infinity, alignment: .leading)
 
             if !event.isScheduled {
                 HStack(spacing: 6) {
@@ -205,11 +196,25 @@ public struct EventDetailView: View {
                 }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(event.isCompleted ? Color.gray : Color.red)
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 4)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
+    }
+
+    /// Badge inline con avatar del host (iniciales) + "Organiza X". Luma style.
+    /// Non-tappable v1 — F.EVENT.4 puede sumarle navegación al perfil del host.
+    @ViewBuilder
+    private func hostBadge(_ event: CalendarEvent) -> some View {
+        let name = store.displayName(for: event.hostActorId)
+        HStack(spacing: 8) {
+            ActorInitialsView(name: name, size: 22)
+            Text(isHost ? "Organizas tú" : "Organiza \(name)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
     }
 
     private func headerDateLine(_ date: Date) -> String {
@@ -228,35 +233,42 @@ public struct EventDetailView: View {
         return "\(total) \(total == 1 ? "invitado" : "invitados")"
     }
 
-    // MARK: - 2. Tu respuesta
+    // MARK: - 2. Action strip (RSVP chips + ••• Menu — Luma style)
 
-    private func responseSection(_ event: CalendarEvent) -> some View {
+    /// Strip único con las acciones primarias: 3 chips RSVP + `•••` Menu como
+    /// cuarto botón equi-distribuido. Cuando el usuario ya no puede responder
+    /// (checked_in / cancelled / event closed), las RSVP se ocultan y queda
+    /// sólo el `•••` cuando hay admin actions.
+    @ViewBuilder
+    private func actionStripSection(_ event: CalendarEvent) -> some View {
         let mine = store.myParticipation(myActorId: myActorId)
         let canRespond = event.isScheduled && mine?.checkedIn != true && mine?.status != "cancelled"
-        guard canRespond else { return AnyView(EmptyView()) }
+        let moreItems = moreActions(event)
+        let hasMore = !moreItems.isEmpty
 
-        return AnyView(
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Tu respuesta")
-                    .font(.title3.weight(.semibold))
-
-                HStack(spacing: 10) {
-                    responseChip("Voy", icon: "checkmark.circle.fill", status: .going, current: mine?.status)
-                    responseChip("Tal vez", icon: "questionmark.circle.fill", status: .maybe, current: mine?.status)
-                    responseChip("No voy", icon: "xmark.circle.fill", status: .declined, current: mine?.status)
+        if canRespond || hasMore {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    if canRespond {
+                        rsvpChip("Voy", icon: "checkmark", status: .going, current: mine?.status)
+                        rsvpChip("Tal vez", icon: "questionmark", status: .maybe, current: mine?.status)
+                        rsvpChip("No voy", icon: "xmark", status: .declined, current: mine?.status)
+                    }
+                    if hasMore {
+                        moreChip(moreItems)
+                    }
                 }
-
-                if let confirmation = responseConfirmation(mine?.status) {
+                if canRespond, let confirmation = responseConfirmation(mine?.status) {
                     Text(confirmation)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
-        )
+        }
     }
 
     @ViewBuilder
-    private func responseChip(_ label: String, icon: String, status: RSVPStatus, current: String?) -> some View {
+    private func rsvpChip(_ label: String, icon: String, status: RSVPStatus, current: String?) -> some View {
         let isCurrent = current == status.rawValue
         Button {
             Task {
@@ -267,11 +279,12 @@ public struct EventDetailView: View {
         } label: {
             VStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.title3)
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
                 Text(label)
                     .font(.callout.weight(isCurrent ? .bold : .semibold))
                     .foregroundStyle(isCurrent ? Color.accentColor : Color.primary)
+                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
@@ -287,6 +300,38 @@ public struct EventDetailView: View {
         .buttonStyle(.plain)
         .disabled(runner.isRunning)
         .animation(.easeInOut(duration: 0.2), value: isCurrent)
+    }
+
+    /// El cuarto botón del strip: abre Menu con acciones administrativas.
+    /// Visual idéntico a los chips RSVP — mismo height + corner radius.
+    @ViewBuilder
+    private func moreChip(_ items: [MoreActionItem]) -> some View {
+        Menu {
+            ForEach(items) { item in
+                Button(role: item.isDestructive ? .destructive : nil) {
+                    handleMoreAction(item.kind)
+                } label: {
+                    Label(item.label, systemImage: item.symbol)
+                }
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: "ellipsis")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("Más")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                Color(uiColor: .secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 16)
+            )
+        }
+        .accessibilityLabel("Más acciones")
     }
 
     private func responseConfirmation(_ status: String?) -> String? {
@@ -399,8 +444,9 @@ public struct EventDetailView: View {
     }
 
     private func infoRows(_ event: CalendarEvent) -> [InfoRow] {
+        // F.EVENT.3 — Organizador vive en el host badge del header; ya no se
+        // lista acá para evitar redundancia.
         var rows: [InfoRow] = []
-        rows.append(InfoRow(label: "Organizador", value: store.displayName(for: event.hostActorId) + (isHost ? " (tú)" : "")))
         if let location = event.locationText, !location.isEmpty {
             rows.append(InfoRow(label: "Ubicación", value: location))
         }
@@ -584,23 +630,7 @@ public struct EventDetailView: View {
         return out
     }
 
-    // MARK: - Más acciones (•••)
-
-    @ViewBuilder
-    private func moreMenu(_ event: CalendarEvent) -> some View {
-        Menu {
-            ForEach(moreActions(event)) { item in
-                Button(role: item.isDestructive ? .destructive : nil) {
-                    handleMoreAction(item.kind)
-                } label: {
-                    Label(item.label, systemImage: item.symbol)
-                }
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .accessibilityLabel("Más acciones")
-        }
-    }
+    // MARK: - Más acciones (•••) — el botón vive en el action strip arriba.
 
     private enum MoreActionKind {
         case recordExpense
