@@ -11,9 +11,17 @@ public struct PersonalSettingsView: View {
     let container: DependencyContainer
 
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(AppearancePreference.storageKey) private var appearanceRaw: String = AppearancePreference.system.rawValue
     @State private var store: PersonalSettingsStore
     @State private var isShowingEditProfile = false
     @State private var runner = ActionRunner()
+
+    private var appearance: Binding<AppearancePreference> {
+        Binding(
+            get: { AppearancePreference(rawValue: appearanceRaw) ?? .system },
+            set: { appearanceRaw = $0.rawValue }
+        )
+    }
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -60,6 +68,7 @@ public struct PersonalSettingsView: View {
     private func settingsList(_ settings: PersonalSettings) -> some View {
         List {
             profileSection(settings.profile)
+            appearanceSection
             notificationsSection(settings.notifications)
             privacySection(settings.privacy)
             calendarSection(settings.calendar)
@@ -110,6 +119,24 @@ public struct PersonalSettingsView: View {
             if let email = profile.email, !email.isEmpty {
                 InfoRow(symbolName: "envelope", title: "Email", value: email)
             }
+        }
+    }
+
+    // MARK: - Apariencia
+
+    @ViewBuilder
+    private var appearanceSection: some View {
+        Section {
+            Picker(selection: appearance) {
+                ForEach(AppearancePreference.allCases) { option in
+                    Label(option.label, systemImage: option.systemImageName).tag(option)
+                }
+            } label: {
+                Label("Apariencia", systemImage: "circle.lefthalf.filled")
+            }
+            .pickerStyle(.menu)
+        } footer: {
+            Text("Sistema sigue la configuración del dispositivo.")
         }
     }
 

@@ -175,8 +175,9 @@ public struct MoneyHomeView: View {
     private var heroAllClear: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text("🎉 Todo está al día")
+                Label("Todo está al día", systemImage: "checkmark.circle.fill")
                     .font(.title2.weight(.bold))
+                    .foregroundStyle(.green)
                 Text("No debes dinero. Nadie te debe dinero.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

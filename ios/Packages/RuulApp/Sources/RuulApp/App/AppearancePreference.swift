@@ -27,5 +27,13 @@ public enum AppearancePreference: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    public var label: String {
+        switch self {
+        case .system: return "Sistema"
+        case .light:  return "Claro"
+        case .dark:   return "Oscuro"
+        }
+    }
+
     public static let storageKey = "appearance_preference"
 }

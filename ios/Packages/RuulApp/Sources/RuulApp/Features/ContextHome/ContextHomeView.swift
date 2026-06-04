@@ -253,7 +253,7 @@ public struct ContextHomeView: View {
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Text("Todo al día 🎉")
+                Text("Todo al día")
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.primary)
             }
@@ -324,7 +324,7 @@ public struct ContextHomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Atención")
                         .font(.subheadline.weight(.semibold))
-                    Text("Todo está al día 🎉")
+                    Text("Todo está al día")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -346,7 +346,7 @@ public struct ContextHomeView: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.orange)
                         Spacer()
-                        Text(items.count == 1 ? "Ver →" : "Ver \(items.count) →")
+                        Text(items.count == 1 ? "Ver \(Image(systemName: "chevron.right"))" : "Ver \(items.count) \(Image(systemName: "chevron.right"))")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
@@ -368,9 +368,13 @@ public struct ContextHomeView: View {
                                         .font(.callout)
                                         .foregroundStyle(.primary)
                                         .lineLimit(1)
-                                    Text(attentionCTALabel(for: item.kind))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 3) {
+                                        Text(attentionCTALabel(for: item.kind))
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2.weight(.bold))
+                                    }
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                                 }
                                 Spacer()
                             }
@@ -414,12 +418,12 @@ public struct ContextHomeView: View {
 
     private func attentionCTALabel(for kind: String) -> String {
         switch kind {
-        case "reservation_conflict": return "Resolver →"
-        case "decision_vote":        return "Votar →"
-        case "obligation_pay":       return "Pagar →"
-        case "obligation_complete":  return "Marcar como hecho →"
-        case "invitation":           return "Aceptar →"
-        default:                     return "Ver →"
+        case "reservation_conflict": return "Resolver"
+        case "decision_vote":        return "Votar"
+        case "obligation_pay":       return "Pagar"
+        case "obligation_complete":  return "Marcar como hecho"
+        case "invitation":           return "Aceptar"
+        default:                     return "Ver"
         }
     }
 
@@ -512,7 +516,7 @@ public struct ContextHomeView: View {
                 NavigationLink {
                     ActivityFeedView(context: context, container: container)
                 } label: {
-                    Text("Ver toda →")
+                    Text("Ver toda \(Image(systemName: "chevron.right"))")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
@@ -587,7 +591,7 @@ public struct ContextHomeView: View {
                     NavigationLink {
                         ResourcesListView(context: context, container: container)
                     } label: {
-                        Text("Ver todos →")
+                        Text("Ver todos \(Image(systemName: "chevron.right"))")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
@@ -1311,7 +1315,7 @@ public struct ContextHomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Hoy")
                         .font(.subheadline.weight(.semibold))
-                    Text("Nada pendiente 🎉")
+                    Text("Nada pendiente")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -1588,7 +1592,7 @@ public struct ContextHomeView: View {
                 .font(.title3.weight(.semibold))
             VStack(spacing: 0) {
                 if world.openObligations.isEmpty {
-                    Text("No debes nada y nadie te debe 🎉")
+                    Text("No debes nada y nadie te debe")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)

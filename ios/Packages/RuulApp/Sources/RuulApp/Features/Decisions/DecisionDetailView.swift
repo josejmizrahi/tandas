@@ -603,8 +603,10 @@ public struct DecisionDetailView: View {
                         .font(.title3.weight(.semibold))
                     Spacer()
                     if store.members.count > 5 {
-                        Button("Ver todos →") {
+                        Button {
                             isShowingAllParticipants = true
+                        } label: {
+                            Text("Ver todos \(Image(systemName: "chevron.right"))")
                         }
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
@@ -763,8 +765,10 @@ public struct DecisionDetailView: View {
                         .font(.title3.weight(.semibold))
                     Spacer()
                     if decisionActivity.count > 5 {
-                        Button("Ver todo →") {
+                        Button {
                             isShowingFullActivity = true
+                        } label: {
+                            Text("Ver todo \(Image(systemName: "chevron.right"))")
                         }
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)

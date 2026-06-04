@@ -18,6 +18,7 @@ public struct ContextSwitcherSheet: View {
     let onSwitch: (AppContext) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var switchTrigger: Int = 0
     @State private var isShowingCreateContext = false
 
     public init(
@@ -61,6 +62,7 @@ public struct ContextSwitcherSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .sensoryFeedback(.selection, trigger: switchTrigger)
         .sheet(isPresented: $isShowingCreateContext) {
             CreateContextView(container: container)
         }
@@ -164,6 +166,7 @@ public struct ContextSwitcherSheet: View {
             dismiss()
             return
         }
+        switchTrigger += 1
         onSwitch(context)
         dismiss()
     }

@@ -1053,6 +1053,7 @@ private struct ParticipacionDetailSheet: View {
                 Button("Cerrar") { dismiss() }
             }
         }
+        .ruulSheet()
     }
 }
 
@@ -1096,6 +1097,7 @@ private struct AccessInfoSheet: View {
                 Button("Cerrar") { dismiss() }
             }
         }
+        .ruulSheet()
     }
 
     private func rightSymbol(_ kind: String) -> String {
@@ -1150,6 +1152,7 @@ private struct ResourceActivityFullView: View {
                 Button("Cerrar") { dismiss() }
             }
         }
+        .ruulSheet()
     }
 }
 

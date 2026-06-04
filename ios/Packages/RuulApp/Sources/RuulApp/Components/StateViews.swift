@@ -96,6 +96,12 @@ public struct EmptyStateView: View {
 public final class ActionRunner {
     public var isRunning = false
     public var error: UserFacingError?
+    /// Cuenta éxitos completados. Sirve como trigger de `sensoryFeedback(.success)`
+    /// — cualquier vista que use `.actionErrorAlert(runner)` recibe el haptic
+    /// automáticamente, sin tocar el call site.
+    public private(set) var successCount: Int = 0
+    /// Cuenta fallos. Trigger del haptic de error en `actionErrorAlert`.
+    public private(set) var failureCount: Int = 0
 
     public init() {}
 
@@ -108,18 +114,25 @@ public final class ActionRunner {
         defer { isRunning = false }
         do {
             try await action()
+            successCount += 1
             return true
         } catch {
             self.error = UserFacingError.from(error)
+            failureCount += 1
             return false
         }
     }
 }
 
 public extension View {
-    /// Alert estándar para errores de `ActionRunner`.
+    /// Alert estándar para errores de `ActionRunner`. Incluye haptics
+    /// automáticos: `.success` al completarse cada acción async sin error,
+    /// `.error` al fallar. Cero call sites tocados — Apple-native feel.
     func actionErrorAlert(_ runner: ActionRunner) -> some View {
-        alert(
+        self
+            .sensoryFeedback(.success, trigger: runner.successCount)
+            .sensoryFeedback(.error, trigger: runner.failureCount)
+            .alert(
             runner.error?.title ?? "Error",
             isPresented: Binding(
                 get: { runner.error != nil },

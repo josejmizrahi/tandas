@@ -113,7 +113,7 @@ public struct HomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Atención")
                         .font(.subheadline.weight(.semibold))
-                    Text("Todo está al día 🎉")
+                    Text("Todo está al día")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -135,7 +135,7 @@ public struct HomeView: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.orange)
                         Spacer()
-                        Text(items.count == 1 ? "Ver →" : "Ver \(items.count) →")
+                        Text(items.count == 1 ? "Ver \(Image(systemName: "chevron.right"))" : "Ver \(items.count) \(Image(systemName: "chevron.right"))")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
@@ -254,7 +254,7 @@ public struct HomeView: View {
                 NavigationLink {
                     MyActivityFeedView(container: container)
                 } label: {
-                    Text("Ver todo →")
+                    Text("Ver todo \(Image(systemName: "chevron.right"))")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
