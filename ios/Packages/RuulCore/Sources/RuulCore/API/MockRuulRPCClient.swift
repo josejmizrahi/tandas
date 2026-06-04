@@ -534,8 +534,50 @@ public actor MockRuulRPCClient: RuulRPCClient {
             },
             recentActivity: recentActivity.map {
                 SummaryActivity(eventType: $0.eventType, actorId: $0.actorId, payload: $0.payload, occurredAt: $0.occurredAt)
-            }
+            },
+            availableActions: Self.buildContextAvailableActions(
+                contextKind: context.actorKind,
+                permissions: Set(permissions[contextId] ?? [])
+            )
         )
+    }
+
+    /// F.2X.0 — Replica de `context_available_actions(ctx, actor)` del backend
+    /// para el mundo demo. Mantiene la doctrina intent-first: cada acción
+    /// aparece SIEMPRE; sólo `enabled` cambia con los permisos del caller.
+    private static func buildContextAvailableActions(
+        contextKind: ActorKind,
+        permissions: Set<String>
+    ) -> [AvailableAction] {
+        func entry(
+            _ key: String, _ label: String, _ section: String, _ perm: String
+        ) -> AvailableAction {
+            let granted = permissions.contains(perm)
+            return AvailableAction(
+                actionKey: key,
+                label: label,
+                section: section,
+                enabled: granted,
+                reason: granted
+                    ? "Tienes permiso para \(label.lowercased())"
+                    : "Requiere permiso \(perm)"
+            )
+        }
+
+        var actions: [AvailableAction] = [
+            entry("create_resource", "Crear recurso", "resources", "resources.create"),
+            entry("create_event",    "Crear evento", "calendar", "events.create"),
+            entry("create_decision", "Crear decisión", "decisions", "decisions.create"),
+            entry("record_expense",  "Registrar gasto", "money", "money.record"),
+            entry("invite_member",   "Invitar miembro", "members", "context.invite"),
+            entry("create_rule",     "Crear regla", "rules", "rules.manage"),
+        ]
+        if contextKind != .person {
+            actions.append(entry(
+                "create_child_context", "Crear sub-contexto", "hierarchy", "context.manage"
+            ))
+        }
+        return actions
     }
 
     public func myWorld() async throws -> MyWorld {

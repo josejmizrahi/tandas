@@ -23,6 +23,19 @@ public struct ContextHomeView: View {
     @State private var isShowingCreateChild = false
     /// R.2V.4 — sugerencias de duplicados/relaciones cross-context.
     @State private var similarityStore: SimilarityStore
+    /// F.2X.2 — Quick Actions intent-first. Router observable + state de
+    /// navegación push para los `action_key` que abren un feature completo.
+    @State private var quickActionsRouter = NoopActionRouter()
+    @State private var pushedActionDestination: QuickActionPush?
+
+    /// F.2X.2 — Destinos push que las Quick Actions a nivel contexto pueden
+    /// abrir. Hoy aterrizan en la lista del feature; el botón "+" de cada
+    /// lista cierra el intent de crear. F.2X.3/F.2X.4 pueden refinar a sheet
+    /// directa cuando los stores estén disponibles aquí.
+    private enum QuickActionPush: Hashable, Identifiable {
+        case resources, events, decisions, money, members, rules
+        var id: String { String(describing: self) }
+    }
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -102,6 +115,40 @@ public struct ContextHomeView: View {
                 container.contextStore.switchTo(newCtx)
             }
         }
+        // F.2X.2 — Quick Actions del contexto. El router observable expone el
+        // último destino abierto; aquí se traduce a push o sheet según el key.
+        .onChange(of: quickActionsRouter.lastOpened) { _, destination in
+            guard let destination else { return }
+            handleQuickAction(destination)
+            quickActionsRouter.lastOpened = nil
+        }
+        .navigationDestination(item: $pushedActionDestination) { destination in
+            switch destination {
+            case .resources: ResourcesListView(context: context, container: container)
+            case .events:    EventsListView(context: context, container: container)
+            case .decisions: DecisionsListView(context: context, container: container)
+            case .money:     MoneyHomeView(context: context, container: container)
+            case .members:   MembersListView(context: context, container: container)
+            case .rules:     RulesListView(context: context, container: container)
+            }
+        }
+    }
+
+    /// F.2X.2 — Traduce `(action_key, scope)` del router a la acción local.
+    /// Las acciones desconocidas se ignoran silenciosamente — la doctrina dice
+    /// que el catálogo de iOS se actualiza cuando el backend agrega un key,
+    /// pero la UI no debe romper si llega antes.
+    private func handleQuickAction(_ destination: ActionDestination) {
+        switch destination.actionKey {
+        case "create_resource":      pushedActionDestination = .resources
+        case "create_event":         pushedActionDestination = .events
+        case "create_decision":      pushedActionDestination = .decisions
+        case "record_expense":       pushedActionDestination = .money
+        case "invite_member":        pushedActionDestination = .members
+        case "create_rule":          pushedActionDestination = .rules
+        case "create_child_context": isShowingCreateChild = true
+        default: break
+        }
     }
 
     private func loadActionObligations() async {
@@ -124,6 +171,14 @@ public struct ContextHomeView: View {
     private func homeList(_ summary: ContextSummary) -> some View {
         List {
             headerSection(summary)
+
+            // F.2X.2 — Acciones intent-first del backend. La lista, el label,
+            // el enabled y la razón son verbatim. iOS sólo presenta + enruta.
+            QuickActionsSection(
+                actions: summary.availableActions,
+                scope: .context(context.id),
+                router: quickActionsRouter
+            )
 
             if context.isPersonal {
                 // Mundo personal: solo lo que my_world() agrega. Las secciones de

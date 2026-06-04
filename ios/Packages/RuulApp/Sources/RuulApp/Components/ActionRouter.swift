@@ -99,11 +99,15 @@ public protocol ActionRouting: AnyObject {
     func open(_ destination: ActionDestination)
 }
 
-/// F.2X.1 — Router no-op para previews / mocks. Persiste el último destino
-/// abierto para que las pruebas y previews puedan inspeccionarlo.
+/// F.2X.1 — Router no-op observable. Persiste el último destino abierto en
+/// `lastOpened`; las vistas que lo consumen pueden reaccionar con
+/// `.onChange(of: router.lastOpened)` y disparar sheets / navegación.
+///
+/// Para previews/tests basta con leer `lastOpened` directamente.
 @MainActor
+@Observable
 public final class NoopActionRouter: ActionRouting {
-    public private(set) var lastOpened: ActionDestination?
+    public var lastOpened: ActionDestination?
 
     public init() {}
 

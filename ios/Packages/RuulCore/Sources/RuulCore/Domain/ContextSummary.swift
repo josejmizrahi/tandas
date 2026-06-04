@@ -17,6 +17,9 @@ public struct ContextSummary: Sendable, Equatable {
     public let money: SummaryMoney
     public let activeRules: [SummaryRule]
     public let recentActivity: [SummaryActivity]
+    /// F.2X.0 — Acciones canónicas a nivel contexto. El frontend renderiza la
+    /// sección "⚡ Acciones rápidas" exclusivamente desde aquí (intent-first).
+    public let availableActions: [AvailableAction]
 
     public init(
         context: ActorRecord,
@@ -32,7 +35,8 @@ public struct ContextSummary: Sendable, Equatable {
         openDecisions: [SummaryDecision] = [],
         money: SummaryMoney = SummaryMoney(openObligations: [], myBalance: 0),
         activeRules: [SummaryRule] = [],
-        recentActivity: [SummaryActivity] = []
+        recentActivity: [SummaryActivity] = [],
+        availableActions: [AvailableAction] = []
     ) {
         self.context = context
         self.asOf = asOf
@@ -48,6 +52,7 @@ public struct ContextSummary: Sendable, Equatable {
         self.money = money
         self.activeRules = activeRules
         self.recentActivity = recentActivity
+        self.availableActions = availableActions
     }
 
     /// Resuelve el display name de un actor usando los miembros del contexto.
@@ -83,6 +88,7 @@ extension ContextSummary: Decodable {
         case money
         case activeRules = "active_rules"
         case recentActivity = "recent_activity"
+        case availableActions = "available_actions"
     }
 
     public init(from decoder: Decoder) throws {
@@ -102,6 +108,7 @@ extension ContextSummary: Decodable {
             ?? SummaryMoney(openObligations: [], myBalance: 0)
         self.activeRules = try c.decodeIfPresent([SummaryRule].self, forKey: .activeRules) ?? []
         self.recentActivity = try c.decodeIfPresent([SummaryActivity].self, forKey: .recentActivity) ?? []
+        self.availableActions = try c.decodeIfPresent([AvailableAction].self, forKey: .availableActions) ?? []
     }
 }
 
