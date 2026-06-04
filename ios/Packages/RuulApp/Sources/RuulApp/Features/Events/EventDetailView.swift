@@ -263,6 +263,7 @@ public struct EventDetailView: View {
                 headerSection(event)
                 primaryActionSection(event)
                 nextHostCard(event)
+                locationCard(event)
                 participantsSection(event)
                 relatedResourcesSection(event)
                 relatedDecisionsSection(event)
@@ -362,6 +363,52 @@ public struct EventDetailView: View {
             return true
         }
         return false
+    }
+
+    // MARK: - F.EVENT.11 Ubicación card (tap → Apple Maps)
+
+    /// Card de ubicación física. Sólo aparece para eventos no-virtuales con
+    /// location_text seteado. Tap → abre Apple Maps con la dirección como
+    /// query (mismo patrón que ResourceDetailView).
+    @ViewBuilder
+    private func locationCard(_ event: CalendarEvent) -> some View {
+        if !event.isVirtual,
+           let location = event.locationText,
+           !location.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Ubicación")
+                    .font(.title3.weight(.semibold))
+                Button {
+                    openLocationInMaps(location)
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.title3)
+                            .foregroundStyle(.tint)
+                            .frame(width: 32, height: 32)
+                            .background(Color.accentColor.opacity(0.15), in: Circle())
+                        Text(location)
+                            .font(.callout)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(14)
+                    .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func openLocationInMaps(_ location: String) {
+        let encoded = location.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        if let url = URL(string: "http://maps.apple.com/?q=\(encoded)") {
+            UIApplication.shared.open(url)
+        }
     }
 
     /// Calcula la fecha de la próxima ocurrencia client-side a partir del
