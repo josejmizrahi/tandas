@@ -162,6 +162,7 @@ public struct ResourceDetailView: View {
             VStack(spacing: 24) {
                 heroSection(detail)
                 primaryMetricSection(detail)
+                locationSection(detail)
                 peopleSection(detail)
                 relationshipsSection(detail)
                 documentsSection(detail)
@@ -550,6 +551,49 @@ public struct ResourceDetailView: View {
             })
         }
         return items
+    }
+
+    // MARK: - 3.5 Ubicación (F.RESOURCE.4)
+
+    /// Card simple de ubicación. Sólo aparece cuando `location_text` está
+    /// seteado. Tap → abre Apple Maps con la dirección como query.
+    @ViewBuilder
+    private func locationSection(_ detail: ResourceDetail) -> some View {
+        if let location = detail.resource.locationText, !location.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Ubicación")
+                    .font(.title3.weight(.semibold))
+                Button {
+                    openInMaps(location)
+                } label: {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.title3)
+                            .foregroundStyle(.tint)
+                            .frame(width: 32, height: 32)
+                            .background(Color.accentColor.opacity(0.15), in: Circle())
+                        Text(location)
+                            .font(.callout)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(14)
+                    .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func openInMaps(_ location: String) {
+        let encoded = location.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        if let url = URL(string: "http://maps.apple.com/?q=\(encoded)") {
+            UIApplication.shared.open(url)
+        }
     }
 
     // MARK: - 4. Personas relacionadas

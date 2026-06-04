@@ -1043,6 +1043,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
     public func createResource(_ input: CreateResourceInput) async throws -> Resource {
         try throwIfNeeded()
         let id = UUID()
+        let trimmedLocation = input.locationText?.trimmingCharacters(in: .whitespaces)
         let resource = Resource(
             id: id,
             resourceType: input.resourceType,
@@ -1051,7 +1052,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
             estimatedValue: input.estimatedValue,
             currency: input.currency,
             canonicalOwnerActorId: input.contextId,
-            createdAt: Date()
+            createdAt: Date(),
+            locationText: (trimmedLocation?.isEmpty == false) ? trimmedLocation : nil
         )
         resources[id] = resource
         resourceContext[id] = input.contextId
@@ -1307,6 +1309,12 @@ public actor MockRuulRPCClient: RuulRPCClient {
         guard myEffective.contains("OWN") || myEffective.contains("MANAGE") else {
             throw RuulError.unexpected(message: "Necesitas OWN o MANAGE para editar el recurso")
         }
+        // F.RESOURCE.4 — semántica especial: nil = no cambiar, "" = limpiar, otro = setear.
+        let newLocation: String? = {
+            guard let raw = input.locationText else { return existing.locationText }
+            let trimmed = raw.trimmingCharacters(in: .whitespaces)
+            return trimmed.isEmpty ? nil : trimmed
+        }()
         let updated = Resource(
             id: existing.id,
             resourceType: existing.resourceType,
@@ -1315,7 +1323,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
             estimatedValue: input.estimatedValue ?? existing.estimatedValue,
             currency: input.currency ?? existing.currency,
             canonicalOwnerActorId: existing.canonicalOwnerActorId,
-            createdAt: existing.createdAt
+            createdAt: existing.createdAt,
+            locationText: newLocation
         )
         resources[input.resourceId] = updated
         if let ctxId = resourceContext[input.resourceId] {

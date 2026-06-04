@@ -1,9 +1,10 @@
 import SwiftUI
 import RuulCore
+import MapKit
 
 /// F.RESOURCE.3 — editar campos generales del recurso (nombre / descripción /
-/// valor estimado / moneda) sin pasar por Settings. Action canónica
-/// `update_resource` gateada por OWN/MANAGE en backend.
+/// valor estimado / moneda / ubicación) sin pasar por Settings. Action
+/// canónica `update_resource` gateada por OWN/MANAGE en backend.
 public struct EditResourceView: View {
     let resource: Resource
     let container: DependencyContainer
@@ -14,6 +15,9 @@ public struct EditResourceView: View {
     @State private var description: String
     @State private var estimatedValue: String
     @State private var currency: String
+    @State private var locationText: String
+    @State private var locationCompleter = LocationCompleter()
+    @State private var suppressNextQueryUpdate = false
     @State private var runner = ActionRunner()
 
     private let currencyOptions = ["MXN", "USD", "EUR"]
@@ -31,6 +35,7 @@ public struct EditResourceView: View {
         let value = resource.estimatedValue ?? 0
         _estimatedValue = State(initialValue: value > 0 ? String(format: "%.2f", value) : "")
         _currency = State(initialValue: resource.currency ?? "MXN")
+        _locationText = State(initialValue: resource.locationText ?? "")
     }
 
     private var canSubmit: Bool {
@@ -45,6 +50,48 @@ public struct EditResourceView: View {
                         .textInputAutocapitalization(.words)
                     TextField("Descripción (opcional)", text: $description, axis: .vertical)
                         .lineLimit(2...5)
+                }
+
+                Section {
+                    TextField("Dirección o lugar", text: $locationText)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .onChange(of: locationText) { _, new in
+                            if suppressNextQueryUpdate {
+                                suppressNextQueryUpdate = false
+                                return
+                            }
+                            locationCompleter.setQuery(new)
+                        }
+                    ForEach(locationCompleter.suggestions) { suggestion in
+                        Button {
+                            pickLocation(suggestion)
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .foregroundStyle(.tint)
+                                    .padding(.top, 2)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(suggestion.title)
+                                        .font(.callout)
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.leading)
+                                    if !suggestion.subtitle.isEmpty {
+                                        Text(suggestion.subtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                }
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Ubicación")
+                } footer: {
+                    Text("Opcional. Borra el campo para limpiar la ubicación.")
                 }
 
                 Section {
@@ -82,14 +129,19 @@ public struct EditResourceView: View {
     private func save() async {
         let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
         let trimmedDescription = description.trimmingCharacters(in: .whitespaces)
+        let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
         let parsedValue = Double(estimatedValue.replacingOccurrences(of: ",", with: "."))
-        // Sólo mandamos campos que cambiaron — NULL = "no cambiar" en backend.
+        // F.RESOURCE.4 — mismo patrón que EditEventView: mandamos valores del
+        // form siempre; el backend usa coalesce + sentinela "" para limpiar
+        // location_text.
         let input = UpdateResourceInput(
             resourceId: resource.id,
-            displayName: trimmedName == resource.displayName ? nil : trimmedName,
-            description: trimmedDescription == (resource.description ?? "") ? nil : trimmedDescription,
-            estimatedValue: parsedValue == resource.estimatedValue ? nil : parsedValue,
-            currency: currency == (resource.currency ?? "MXN") ? nil : currency
+            displayName: trimmedName,
+            description: trimmedDescription,
+            estimatedValue: parsedValue,
+            currency: currency,
+            // "" explícito limpia el campo en backend; nil = no cambiar.
+            locationText: trimmedLocation
         )
         let success = await runner.run {
             _ = try await container.rpc.updateResource(input)
@@ -98,6 +150,15 @@ public struct EditResourceView: View {
             onSaved()
             dismiss()
         }
+    }
+
+    private func pickLocation(_ suggestion: LocationSuggestion) {
+        let composed = suggestion.subtitle.isEmpty
+            ? suggestion.title
+            : "\(suggestion.title), \(suggestion.subtitle)"
+        suppressNextQueryUpdate = true
+        locationText = composed
+        locationCompleter.clear()
     }
 }
 

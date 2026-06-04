@@ -481,6 +481,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pEstimatedValue: Double?
             let pCurrency: String?
             let pClientId: String?
+            let pLocationText: String?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pResourceType = "p_resource_type"
@@ -489,6 +490,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pEstimatedValue = "p_estimated_value"
                 case pCurrency = "p_currency"
                 case pClientId = "p_client_id"
+                case pLocationText = "p_location_text"
             }
         }
         let created: ResourceCreated = try await call("create_resource", params: Params(
@@ -498,7 +500,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pDescription: input.description,
             pEstimatedValue: input.estimatedValue,
             pCurrency: input.currency,
-            pClientId: input.clientId
+            pClientId: input.clientId,
+            pLocationText: input.locationText
         ))
         return created.resource
     }
@@ -566,6 +569,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pEstimatedValue: Double?
             let pCurrency: String?
             let pMetadata: JSONValue?
+            let pLocationText: String?
             enum CodingKeys: String, CodingKey {
                 case pResourceId = "p_resource_id"
                 case pDisplayName = "p_display_name"
@@ -573,6 +577,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pEstimatedValue = "p_estimated_value"
                 case pCurrency = "p_currency"
                 case pMetadata = "p_metadata"
+                case pLocationText = "p_location_text"
             }
         }
         struct Updated: Decodable {
@@ -584,7 +589,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pDescription: input.description,
             pEstimatedValue: input.estimatedValue,
             pCurrency: input.currency,
-            pMetadata: input.metadata
+            pMetadata: input.metadata,
+            pLocationText: input.locationText
         ))
         return result.resource
     }
