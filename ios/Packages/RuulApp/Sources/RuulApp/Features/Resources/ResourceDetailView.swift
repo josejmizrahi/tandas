@@ -19,9 +19,10 @@ public struct ResourceDetailView: View {
     @State private var whyCanView: WhyCanViewResource?
     @State private var runner = ActionRunner()
     /// F.2X.3 — Quick Actions intent-first del recurso. Router observable +
-    /// push state para `reserve_resource` (que necesita el governing context).
+    /// state para sheets/push de cada action_key.
     @State private var quickActionsRouter = NoopActionRouter()
-    @State private var pushedReservations = false
+    @State private var isShowingRequestReservation = false
+    @State private var reservationsStore: ReservationsStore?
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -103,23 +104,41 @@ public struct ResourceDetailView: View {
             }
         }
         // F.2X.3 — Quick Actions: router observable → handler local que abre
-        // sheets existentes o pushea ReservationsListView.
+        // sheets directos. "Reservar" presenta RequestReservationView (form
+        // de creación), no la lista — eso es intent-first puro.
         .onChange(of: quickActionsRouter.lastOpened) { _, destination in
             guard let destination else { return }
             handleResourceAction(destination)
             quickActionsRouter.lastOpened = nil
         }
-        .navigationDestination(isPresented: $pushedReservations) {
-            if let detail = store.detail {
-                ReservationsListView(
+        .sheet(isPresented: $isShowingRequestReservation) {
+            if let detail = store.detail, let resStore = reservationsStore {
+                RequestReservationView(
                     resource: detail.resource,
                     context: context,
                     reservationContextId: governingContextId(detail),
+                    store: resStore,
                     container: container
                 )
             }
         }
         .actionErrorAlert(runner)
+    }
+
+    /// F.NAV.7 — Carga lazy del ReservationsStore antes de abrir el sheet de
+    /// "Reservar". RequestReservationView lee `store.members` así que el store
+    /// debe haber corrido `.load()` antes de presentarse.
+    private func openReserveSheet() {
+        Task {
+            if reservationsStore == nil {
+                reservationsStore = ReservationsStore(
+                    rpc: container.rpc,
+                    myActorId: container.currentActorStore.actorId
+                )
+            }
+            await reservationsStore?.load(resourceId: resourceId, context: context)
+            isShowingRequestReservation = true
+        }
     }
 
     /// F.2X.3 — Mapea `action_key` de recurso a la acción local. Doctrina:
@@ -128,7 +147,7 @@ public struct ResourceDetailView: View {
     /// muestran la información (beneficiarios / participaciones / etc).
     private func handleResourceAction(_ destination: ActionDestination) {
         switch destination.actionKey {
-        case "reserve_resource":  pushedReservations = true
+        case "reserve_resource":  openReserveSheet()
         case "attach_document":   isShowingAttachDocument = true
         case "grant_right":       isShowingGrantRight = true
         case "view_beneficiaries", "view_ownership":
