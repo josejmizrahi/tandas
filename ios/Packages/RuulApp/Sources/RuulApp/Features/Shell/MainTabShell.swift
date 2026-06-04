@@ -35,9 +35,8 @@ public struct MainTabShell: View {
             }
 
             Tab("Contextos", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
-                NavigationStack {
-                    ContextsListView(container: container)
-                }
+                // ContextsListView trae su propio NavigationStack con path bindeado.
+                ContextsListView(container: container)
             }
 
             Tab("Crear", systemImage: "plus.circle.fill", value: AppTab.create, role: nil) {

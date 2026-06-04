@@ -26,39 +26,44 @@ public struct ContextsListView: View {
     private var preferencesStore: ContextPreferencesStore { container.contextPreferencesStore }
 
     public var body: some View {
-        Group {
-            switch contextStore.phase {
-            case .idle, .loading:
-                SessionLoadingView(message: "Cargando tus contextos…")
+        // F.NAV.3 fix: NavigationStack dueño del path local — antes el path
+        // estaba @State aquí pero el NavigationStack vivía en MainTabShell,
+        // por lo que `path.append` no hacía nada.
+        NavigationStack(path: $path) {
+            Group {
+                switch contextStore.phase {
+                case .idle, .loading:
+                    SessionLoadingView(message: "Cargando tus contextos…")
 
-            case .failed(let message):
-                ErrorStateView(title: "No pudimos cargar tus contextos", message: message) {
-                    Task { await contextStore.load() }
-                }
+                case .failed(let message):
+                    ErrorStateView(title: "No pudimos cargar tus contextos", message: message) {
+                        Task { await contextStore.load() }
+                    }
 
-            case .loaded:
-                if contextStore.availableContexts.isEmpty {
-                    NoContextsView(
-                        onCreate: { isShowingCreateContext = true },
-                        onJoin: { isShowingJoinByCode = true },
-                        onSignOut: { Task { await container.signOut() } },
-                        pendingInvitationsCount: container.invitationsStore.invitations.count,
-                        onOpenInvitations: { isShowingInvitations = true }
-                    )
-                } else {
-                    contextsList
+                case .loaded:
+                    if contextStore.availableContexts.isEmpty {
+                        NoContextsView(
+                            onCreate: { isShowingCreateContext = true },
+                            onJoin: { isShowingJoinByCode = true },
+                            onSignOut: { Task { await container.signOut() } },
+                            pendingInvitationsCount: container.invitationsStore.invitations.count,
+                            onOpenInvitations: { isShowingInvitations = true }
+                        )
+                    } else {
+                        contextsList
+                    }
                 }
             }
-        }
-        .task {
-            await contextStore.load()
-            await preferencesStore.load()
-            await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
-        }
-        .refreshable {
-            await contextStore.load()
-            await preferencesStore.load()
-            await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+            .task {
+                await contextStore.load()
+                await preferencesStore.load()
+                await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+            }
+            .refreshable {
+                await contextStore.load()
+                await preferencesStore.load()
+                await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+            }
         }
         .sheet(isPresented: $isShowingCreateContext) {
             CreateContextView(container: container)
