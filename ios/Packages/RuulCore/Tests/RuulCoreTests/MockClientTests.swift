@@ -329,6 +329,37 @@ struct MockClientTests {
         #expect(reservations.first { $0.id == first.reservationId }?.status == "rejected")
     }
 
+    @Test("R.2M: resource_type_catalog devuelve entries con capabilities razonables")
+    func resourceTypeCatalogReturnsEntries() async throws {
+        let mock = await makeDemoClient()
+        let catalog = try await mock.resourceTypeCatalog()
+        #expect(!catalog.entries.isEmpty)
+        let house = catalog.entry(for: "house")
+        #expect(house != nil)
+        #expect(house?.has("reservable") == true)
+        #expect(house?.has("ownership_trackable") == true)
+        // bankAccount no debe ser reservable.
+        let bank = catalog.entry(for: "bank_account")
+        #expect(bank?.has("reservable") == false)
+        #expect(bank?.has("monetary") == true)
+    }
+
+    @Test("R.2M: CreateResourceInput con resourceTypeKey acepta tipos dinámicos")
+    func createResourceInputDynamicTypeKey() async throws {
+        let mock = await makeDemoClient()
+        let input = CreateResourceInput(
+            contextId: MockRuulRPCClient.DemoIds.familia,
+            resourceTypeKey: "yacht", // tipo hipotético que no existe en el enum
+            displayName: "Yate familiar"
+        )
+        // El campo subyacente es String, no enum.
+        #expect(input.resourceType == "yacht")
+        // El mock acepta el tipo aunque no esté en el enum — backend live haría
+        // su propia validación.
+        let resource = try await mock.createResource(input)
+        #expect(resource.resourceType == "yacht")
+    }
+
     @Test("R.2S.5: createRule con targetScope=reservation persiste scope y filter")
     func createRuleR2S5ReservationScope() async throws {
         let mock = await makeDemoClient()

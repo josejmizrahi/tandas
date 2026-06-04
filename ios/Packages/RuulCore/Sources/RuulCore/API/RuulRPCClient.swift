@@ -75,6 +75,10 @@ public protocol RuulRPCClient: Sendable {
 
     /// `create_resource(...)`
     func createResource(_ input: CreateResourceInput) async throws -> Resource
+    /// `resource_type_catalog()` — catálogo global de tipos (labels, iconos,
+    /// capabilities, metadata esperada). El frontend NO hardcodea: el catálogo
+    /// es la fuente de verdad para qué tipos existen y cómo presentarlos.
+    func resourceTypeCatalog() async throws -> ResourceTypeCatalog
     /// `list_context_resources(p_context_actor_id)`
     func listContextResources(contextId: UUID) async throws -> [ContextResource]
     /// `resource_detail(p_resource_id)`
@@ -265,13 +269,35 @@ public struct CreateContextInput: Sendable, Equatable {
 /// Input de `create_resource`.
 public struct CreateResourceInput: Sendable, Equatable {
     public var contextId: UUID
-    public var resourceType: ResourceType
+    /// type_key del catálogo. Aceptamos `String` (no enum) para soportar tipos
+    /// dinámicos del backend (R.2M `resource_type_catalog()`).
+    public var resourceType: String
     public var displayName: String
     public var description: String?
     public var estimatedValue: Double?
     public var currency: String?
     public var clientId: String?
 
+    /// Init con type_key arbitrario (preferido para usar el catálogo dinámico).
+    public init(
+        contextId: UUID,
+        resourceTypeKey: String,
+        displayName: String,
+        description: String? = nil,
+        estimatedValue: Double? = nil,
+        currency: String? = nil,
+        clientId: String? = nil
+    ) {
+        self.contextId = contextId
+        self.resourceType = resourceTypeKey
+        self.displayName = displayName
+        self.description = description
+        self.estimatedValue = estimatedValue
+        self.currency = currency
+        self.clientId = clientId
+    }
+
+    /// Init con `ResourceType` enum — conveniencia para call sites legacy.
     public init(
         contextId: UUID,
         resourceType: ResourceType,
@@ -281,13 +307,15 @@ public struct CreateResourceInput: Sendable, Equatable {
         currency: String? = nil,
         clientId: String? = nil
     ) {
-        self.contextId = contextId
-        self.resourceType = resourceType
-        self.displayName = displayName
-        self.description = description
-        self.estimatedValue = estimatedValue
-        self.currency = currency
-        self.clientId = clientId
+        self.init(
+            contextId: contextId,
+            resourceTypeKey: resourceType.rawValue,
+            displayName: displayName,
+            description: description,
+            estimatedValue: estimatedValue,
+            currency: currency,
+            clientId: clientId
+        )
     }
 }
 

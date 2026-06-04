@@ -768,12 +768,50 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     // MARK: - Resources & rights
 
+    public func resourceTypeCatalog() async throws -> ResourceTypeCatalog {
+        try throwIfNeeded()
+        // Cat catálogo mock — espejea los tipos del enum con capabilities razonables
+        // (no es identico al backend live; el live lo provee resource_type_catalog).
+        let entries: [ResourceTypeCatalogEntry] = ResourceType.allCases.map { type in
+            ResourceTypeCatalogEntry(
+                typeKey: type.rawValue,
+                displayName: type.label,
+                description: nil,
+                icon: type.symbolName,
+                capabilities: MockRuulRPCClient.mockCapabilities(for: type)
+            )
+        }
+        return ResourceTypeCatalog(entries: entries)
+    }
+
+    /// Capabilities razonables para previews — NO es la verdad del backend.
+    private static func mockCapabilities(for type: ResourceType) -> [String] {
+        switch type {
+        case .house, .property:
+            return ["reservable", "ownership_trackable", "documentable", "maintainable", "auditable"]
+        case .vehicle:
+            return ["reservable", "ownership_trackable", "documentable", "maintainable", "depreciable"]
+        case .security, .trustAsset, .digitalAsset:
+            return ["ownership_trackable", "beneficiary_supported", "transferable", "auditable"]
+        case .bankAccount, .cashPool:
+            return ["monetary", "auditable", "ownership_trackable"]
+        case .contract, .document:
+            return ["documentable", "expirable", "approval_required"]
+        case .reservation, .tripBooking, .game:
+            return ["reservable"]
+        case .equipment:
+            return ["reservable", "shareable", "maintainable", "documentable"]
+        case .other:
+            return []
+        }
+    }
+
     public func createResource(_ input: CreateResourceInput) async throws -> Resource {
         try throwIfNeeded()
         let id = UUID()
         let resource = Resource(
             id: id,
-            resourceType: input.resourceType.rawValue,
+            resourceType: input.resourceType,
             displayName: input.displayName,
             description: input.description,
             estimatedValue: input.estimatedValue,

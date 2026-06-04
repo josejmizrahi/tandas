@@ -372,6 +372,10 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
 
     // MARK: - Resources & rights
 
+    public func resourceTypeCatalog() async throws -> ResourceTypeCatalog {
+        try await call("resource_type_catalog")
+    }
+
     public func createResource(_ input: CreateResourceInput) async throws -> Resource {
         struct Params: Encodable, Sendable {
             let pContextActorId: UUID
@@ -393,7 +397,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
         let created: ResourceCreated = try await call("create_resource", params: Params(
             pContextActorId: input.contextId,
-            pResourceType: input.resourceType.rawValue,
+            pResourceType: input.resourceType,
             pDisplayName: input.displayName,
             pDescription: input.description,
             pEstimatedValue: input.estimatedValue,

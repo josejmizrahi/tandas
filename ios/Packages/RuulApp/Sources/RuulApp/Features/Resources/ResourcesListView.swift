@@ -52,7 +52,7 @@ public struct ResourcesListView: View {
             }
         }
         .sheet(isPresented: $isShowingCreate) {
-            CreateResourceView(context: context, store: store)
+            CreateResourceView(context: context, store: store, container: container)
         }
     }
 
