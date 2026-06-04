@@ -1339,6 +1339,11 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     public func createCalendarEvent(_ input: CreateEventInput) async throws -> CalendarEvent {
         try throwIfNeeded()
+        // F.EVENT.5 — espejea el backend: location required unless virtual.
+        let trimmedLocation = input.locationText?.trimmingCharacters(in: .whitespaces) ?? ""
+        if !input.isVirtual && trimmedLocation.isEmpty {
+            throw RuulError.unexpected(message: "El evento necesita una ubicación o marcarse como virtual.")
+        }
         let id = UUID()
         let event = CalendarEvent(
             id: id,
@@ -1348,7 +1353,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
             eventType: input.eventType.rawValue,
             startsAt: input.startsAt,
             endsAt: input.endsAt,
-            locationText: input.locationText,
+            locationText: trimmedLocation.isEmpty ? nil : trimmedLocation,
+            isVirtual: input.isVirtual,
             recurrenceRule: input.recurrenceRule,
             hostActorId: input.hostActorId ?? me.id,
             status: "scheduled",

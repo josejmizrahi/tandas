@@ -628,6 +628,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pHostActorId: UUID?
             let pInviteAllMembers: Bool
             let pClientId: String?
+            let pIsVirtual: Bool
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pTitle = "p_title"
@@ -640,6 +641,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pHostActorId = "p_host_actor_id"
                 case pInviteAllMembers = "p_invite_all_members"
                 case pClientId = "p_client_id"
+                case pIsVirtual = "p_is_virtual"
             }
         }
         let created: EventCreated = try await call("create_calendar_event", params: Params(
@@ -653,7 +655,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pRecurrenceRule: input.recurrenceRule,
             pHostActorId: input.hostActorId,
             pInviteAllMembers: input.inviteAllMembers,
-            pClientId: input.clientId
+            pClientId: input.clientId,
+            pIsVirtual: input.isVirtual
         ))
         return created.event
     }

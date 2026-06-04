@@ -580,6 +580,9 @@ public struct CreateEventInput: Sendable, Equatable {
     public var endsAt: Date?
     public var description: String?
     public var locationText: String?
+    /// F.EVENT.5 — `true` para eventos sin ubicación física (Zoom, Meet…).
+    /// Si `false`, el backend exige `locationText` no vacío.
+    public var isVirtual: Bool
     /// `weekly` para cenas recurrentes con host rotativo.
     public var recurrenceRule: String?
     public var hostActorId: UUID?
@@ -594,6 +597,7 @@ public struct CreateEventInput: Sendable, Equatable {
         endsAt: Date? = nil,
         description: String? = nil,
         locationText: String? = nil,
+        isVirtual: Bool = false,
         recurrenceRule: String? = nil,
         hostActorId: UUID? = nil,
         inviteAllMembers: Bool = true,
@@ -606,6 +610,7 @@ public struct CreateEventInput: Sendable, Equatable {
         self.endsAt = endsAt
         self.description = description
         self.locationText = locationText
+        self.isVirtual = isVirtual
         self.recurrenceRule = recurrenceRule
         self.hostActorId = hostActorId
         self.inviteAllMembers = inviteAllMembers

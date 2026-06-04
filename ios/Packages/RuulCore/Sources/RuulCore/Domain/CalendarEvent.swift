@@ -69,6 +69,11 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
     public let endsAt: Date?
     public let timezone: String?
     public let locationText: String?
+    /// F.EVENT.5 — el evento es virtual (Zoom, Meet, etc.) y por eso NO
+    /// requiere ubicación física. Por default `false`. El backend enforza:
+    /// si `is_virtual = false` entonces `location_text` es obligatorio
+    /// (CHECK constraint + RPC validation).
+    public let isVirtual: Bool
     public let recurrenceRule: String?
     public let hostActorId: UUID?
     public let status: String
@@ -85,6 +90,7 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         case endsAt = "ends_at"
         case timezone
         case locationText = "location_text"
+        case isVirtual = "is_virtual"
         case recurrenceRule = "recurrence_rule"
         case hostActorId = "host_actor_id"
         case status
@@ -102,6 +108,7 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         endsAt: Date? = nil,
         timezone: String? = nil,
         locationText: String? = nil,
+        isVirtual: Bool = false,
         recurrenceRule: String? = nil,
         hostActorId: UUID? = nil,
         status: String = "scheduled",
@@ -117,11 +124,32 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.endsAt = endsAt
         self.timezone = timezone
         self.locationText = locationText
+        self.isVirtual = isVirtual
         self.recurrenceRule = recurrenceRule
         self.hostActorId = hostActorId
         self.status = status
         self.createdByActorId = createdByActorId
         self.createdAt = createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.contextActorId = try c.decode(UUID.self, forKey: .contextActorId)
+        self.title = try c.decode(String.self, forKey: .title)
+        self.description = try c.decodeIfPresent(String.self, forKey: .description)
+        self.eventType = try c.decode(String.self, forKey: .eventType)
+        self.startsAt = try c.decodeIfPresent(Date.self, forKey: .startsAt)
+        self.endsAt = try c.decodeIfPresent(Date.self, forKey: .endsAt)
+        self.timezone = try c.decodeIfPresent(String.self, forKey: .timezone)
+        self.locationText = try c.decodeIfPresent(String.self, forKey: .locationText)
+        // F.EVENT.5 — viejos shapes pueden no traer is_virtual, default false.
+        self.isVirtual = try c.decodeIfPresent(Bool.self, forKey: .isVirtual) ?? false
+        self.recurrenceRule = try c.decodeIfPresent(String.self, forKey: .recurrenceRule)
+        self.hostActorId = try c.decodeIfPresent(UUID.self, forKey: .hostActorId)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "scheduled"
+        self.createdByActorId = try c.decodeIfPresent(UUID.self, forKey: .createdByActorId)
+        self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
     }
 
     public var type: EventType { EventType(rawValue: eventType) ?? .other }

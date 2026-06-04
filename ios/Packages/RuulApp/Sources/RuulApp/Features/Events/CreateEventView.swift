@@ -12,6 +12,7 @@ public struct CreateEventView: View {
     @State private var eventType: EventType = .dinner
     @State private var startsAt = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
     @State private var locationText = ""
+    @State private var isVirtual = false
     @State private var isWeekly = false
     @State private var inviteAllMembers = true
     @State private var runner = ActionRunner()
@@ -20,6 +21,17 @@ public struct CreateEventView: View {
         self.context = context
         self.store = store
         self.container = container
+    }
+
+    /// F.EVENT.5 — un evento siempre debe tener ubicación, salvo que sea virtual.
+    private var locationIsValid: Bool {
+        isVirtual || !locationText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var canSubmit: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+            && locationIsValid
+            && !runner.isRunning
     }
 
     public var body: some View {
@@ -33,7 +45,23 @@ public struct CreateEventView: View {
                         }
                     }
                     DatePicker("Cuándo", selection: $startsAt)
-                    TextField("Dónde (opcional)", text: $locationText)
+                }
+
+                Section {
+                    Toggle(isOn: $isVirtual) {
+                        Label("Evento virtual", systemImage: "video.fill")
+                    }
+                    if !isVirtual {
+                        TextField("Dónde", text: $locationText)
+                    }
+                } header: {
+                    Text("Ubicación")
+                } footer: {
+                    if isVirtual {
+                        Text("Sin ubicación física. Después puedes compartir el link del Zoom o Meet.")
+                    } else {
+                        Text("La ubicación es obligatoria. Si el evento es por videollamada, activa \"Evento virtual\".")
+                    }
                 }
 
                 Section {
@@ -62,7 +90,7 @@ public struct CreateEventView: View {
                             Text("Crear evento").frame(maxWidth: .infinity)
                         }
                     }
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || runner.isRunning)
+                    .disabled(!canSubmit)
                 }
             }
             .navigationTitle("Nuevo evento")
@@ -77,6 +105,7 @@ public struct CreateEventView: View {
     }
 
     private func create() async {
+        let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
         let success = await runner.run {
             _ = try await store.createEvent(
                 CreateEventInput(
@@ -84,7 +113,8 @@ public struct CreateEventView: View {
                     title: title.trimmingCharacters(in: .whitespaces),
                     eventType: eventType,
                     startsAt: startsAt,
-                    locationText: locationText.isEmpty ? nil : locationText,
+                    locationText: isVirtual || trimmedLocation.isEmpty ? nil : trimmedLocation,
+                    isVirtual: isVirtual,
                     recurrenceRule: isWeekly ? "weekly" : nil,
                     inviteAllMembers: inviteAllMembers,
                     clientId: UUID().uuidString

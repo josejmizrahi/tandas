@@ -225,7 +225,7 @@ public struct EventDetailView: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color(uiColor: .secondarySystemGroupedBackground), in: Capsule())
+                        .background(Theme.Surface.card, in: Capsule())
                     }
                 }
             }
@@ -242,7 +242,10 @@ public struct EventDetailView: View {
 
     private func headerChips(_ event: CalendarEvent) -> [HeaderChip] {
         var out: [HeaderChip] = []
-        if let location = event.locationText, !location.isEmpty {
+        // F.EVENT.5 — virtual gana sobre location_text en el chip.
+        if event.isVirtual {
+            out.append(HeaderChip(symbol: "video.fill", text: "Virtual"))
+        } else if let location = event.locationText, !location.isEmpty {
             out.append(HeaderChip(symbol: "mappin.and.ellipse", text: location))
         }
         if event.isRecurring {
@@ -339,7 +342,7 @@ public struct EventDetailView: View {
             Spacer()
         }
         .padding(16)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Theme.Surface.card, in: Theme.cardShape())
     }
 
     @ViewBuilder
@@ -360,7 +363,7 @@ public struct EventDetailView: View {
             Spacer()
         }
         .padding(16)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(Theme.Surface.card, in: Theme.cardShape())
     }
 
     @ViewBuilder
@@ -462,7 +465,7 @@ public struct EventDetailView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                    .background(Theme.Surface.card, in: Theme.cardShape())
                 }
                 .buttonStyle(.plain)
             }
@@ -481,7 +484,7 @@ public struct EventDetailView: View {
                     size: 40
                 )
                 .overlay(
-                    Circle().strokeBorder(Color(uiColor: .secondarySystemGroupedBackground), lineWidth: 3)
+                    Circle().strokeBorder(Theme.Surface.card, lineWidth: 3)
                 )
             }
             if extra > 0 {
@@ -491,7 +494,7 @@ public struct EventDetailView: View {
                     .frame(width: 40, height: 40)
                     .background(Color.secondary.opacity(0.15), in: Circle())
                     .overlay(
-                        Circle().strokeBorder(Color(uiColor: .secondarySystemGroupedBackground), lineWidth: 3)
+                        Circle().strokeBorder(Theme.Surface.card, lineWidth: 3)
                     )
             }
             Spacer(minLength: 0)
@@ -597,11 +600,11 @@ public struct EventDetailView: View {
                     }
                     .buttonStyle(.plain)
                     if idx < items.count - 1 {
-                        Divider().padding(.leading, 56)
+                        Divider().padding(.leading, Theme.Spacing.dividerLeading)
                     }
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -649,7 +652,7 @@ public struct EventDetailView: View {
                     }
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -667,7 +670,12 @@ public struct EventDetailView: View {
         if let starts = event.startsAt {
             rows.append(InfoRow(label: "Fecha", value: headerDateLine(starts)))
         }
-        if let location = event.locationText, !location.isEmpty {
+        // F.EVENT.5 — Ubicación siempre se muestra. "Virtual" cuando aplica;
+        // si no, location_text. Como el backend enforza la regla, no debería
+        // haber casos sin ninguna de las dos.
+        if event.isVirtual {
+            rows.append(InfoRow(label: "Ubicación", value: "Virtual"))
+        } else if let location = event.locationText, !location.isEmpty {
             rows.append(InfoRow(label: "Ubicación", value: location))
         }
         if event.isRecurring {
