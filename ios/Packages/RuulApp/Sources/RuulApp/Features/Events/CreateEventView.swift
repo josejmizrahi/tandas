@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulCore
+import MapKit
 
 /// F.7 — crear un evento (cena, reunión, viaje, noche de juegos…).
 public struct CreateEventView: View {
@@ -16,6 +17,9 @@ public struct CreateEventView: View {
     @State private var recurrence: Recurrence = .none
     @State private var inviteAllMembers = true
     @State private var runner = ActionRunner()
+    /// F.EVENT.7 — Apple Maps autocomplete vía MKLocalSearchCompleter.
+    @State private var locationCompleter = LocationCompleter()
+    @State private var suppressNextQueryUpdate = false
 
     /// F.EVENT.6 — frecuencias soportadas. El backend `close_event` interpreta
     /// el `rawValue` para auto-crear la siguiente instancia (weekly rota host;
@@ -72,7 +76,41 @@ public struct CreateEventView: View {
                         Label("Evento virtual", systemImage: "video.fill")
                     }
                     if !isVirtual {
-                        TextField("Dónde", text: $locationText)
+                        TextField("Dónde (dirección o lugar)", text: $locationText)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .onChange(of: locationText) { _, new in
+                                if suppressNextQueryUpdate {
+                                    suppressNextQueryUpdate = false
+                                    return
+                                }
+                                locationCompleter.setQuery(new)
+                            }
+                        ForEach(locationCompleter.suggestions) { suggestion in
+                            Button {
+                                pickLocation(suggestion)
+                            } label: {
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .foregroundStyle(.tint)
+                                        .padding(.top, 2)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(suggestion.title)
+                                            .font(.callout)
+                                            .foregroundStyle(.primary)
+                                            .multilineTextAlignment(.leading)
+                                        if !suggestion.subtitle.isEmpty {
+                                            Text(suggestion.subtitle)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .multilineTextAlignment(.leading)
+                                        }
+                                    }
+                                    Spacer()
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 } header: {
                     Text("Ubicación")
@@ -158,6 +196,75 @@ public struct CreateEventView: View {
         }
         if success { dismiss() }
     }
+
+    /// El usuario tappea una sugerencia → componemos `title, subtitle` y
+    /// limpiamos las sugerencias. La bandera `suppressNextQueryUpdate` evita
+    /// que el `.onChange(of:)` re-dispare el completer con el texto que
+    /// acabamos de fijar.
+    private func pickLocation(_ suggestion: LocationSuggestion) {
+        let composed = suggestion.subtitle.isEmpty
+            ? suggestion.title
+            : "\(suggestion.title), \(suggestion.subtitle)"
+        suppressNextQueryUpdate = true
+        locationText = composed
+        locationCompleter.clear()
+    }
+}
+
+// MARK: - F.EVENT.7 — MKLocalSearchCompleter wrapper
+
+/// F.EVENT.7 — wrapper observable de `MKLocalSearchCompleter`. La instancia
+/// vive en un `@State` y empuja `suggestions` a la vista cuando MapKit
+/// resuelve coincidencias para la dirección parcial.
+///
+/// `@unchecked Sendable` bypasses la verificación estática porque MapKit
+/// garantiza que los delegate methods corren en el main thread (donde el
+/// `@State` los lee), así que en la práctica no hay race.
+@Observable
+final class LocationCompleter: NSObject, MKLocalSearchCompleterDelegate, @unchecked Sendable {
+    /// Hasta 5 sugerencias formateadas listas para mostrar.
+    var suggestions: [LocationSuggestion] = []
+
+    private let completer = MKLocalSearchCompleter()
+
+    override init() {
+        super.init()
+        completer.resultTypes = [.address, .pointOfInterest]
+        completer.delegate = self
+    }
+
+    /// Actualiza el query parcial. Texto vacío limpia las sugerencias.
+    func setQuery(_ query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty {
+            completer.queryFragment = ""
+            suggestions = []
+        } else {
+            completer.queryFragment = trimmed
+        }
+    }
+
+    func clear() {
+        completer.queryFragment = ""
+        suggestions = []
+    }
+
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        suggestions = completer.results.prefix(5).map {
+            LocationSuggestion(title: $0.title, subtitle: $0.subtitle)
+        }
+    }
+
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        suggestions = []
+    }
+}
+
+/// Una sugerencia de dirección renderizable por la lista.
+struct LocationSuggestion: Identifiable, Hashable, Sendable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
 }
 
 #Preview("Crear evento") {
