@@ -123,7 +123,11 @@ public struct ObligationDetailView: View {
                         value: dueAt.formatted(date: .abbreviated, time: .shortened)
                     )
                 }
-                if detail.kind == "money", let amount = detail.amount {
+                // F.2X.5 — sin branch por `detail.kind == "money"`. La invariante
+                // backend es que `amount` sólo existe en obligaciones monetarias;
+                // mostrar el row si está presente es equivalente y respeta doctrina
+                // intent-first (no decidir UI por tipo de primitiva).
+                if let amount = detail.amount {
                     InfoRow(
                         symbolName: "banknote",
                         title: "Monto",

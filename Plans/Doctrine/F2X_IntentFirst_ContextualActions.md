@@ -203,3 +203,69 @@ Ruul deja de comportarse como un ERP basado en pantallas y tipos.
 Se convierte en un sistema guiado por intención: cada objeto expone exactamente
 las acciones relevantes para el usuario según sus permisos, capacidades y
 contexto.
+
+---
+
+## 13. Doctrina lock (F.2X.5, 2026-06-04)
+
+Founder-signed tras `bedf9cb9` → `888ab59f` → `8e9ecbc9` → `14885ad1` instalados
+en iPhone JJ y validados en uso.
+
+**Status doctrinal**: PRODUCTION. Aplicar en TODA vista nueva del shell sin excepción.
+
+### Auditoría F.2X.5
+
+Grep exhaustivo en `RuulApp/Sources/RuulApp` confirmó:
+
+- **Cero** patrones `if resource.type == ...` / `if event.type == ...` /
+  `if decision.type == ...` / `if obligation.type == ...` que gateen acciones
+  o visibilidad.
+- **Cero** branches por `actorKind` que gateen acciones (sólo presentación
+  visual permitida vía `AppContext.symbolName`).
+- **Una violación encontrada y fix'd**: `ObligationDetailView` mostraba el row
+  "Monto" condicionado a `detail.kind == "money"`. Sustituido por
+  `if let amount = detail.amount` (equivalente porque backend sólo setea
+  amount en obligaciones monetarias).
+
+### Patrones explícitamente PERMITIDOS
+
+Estos NO son violaciones doctrinales — son traducciones de presentación o
+elecciones explícitas del usuario:
+
+1. **Translation tables key → ícono/label** (mismo espíritu que `ActionPresentationCatalog`):
+   - `AppContext.symbolName` (icono del contexto por kind/subtype)
+   - `ResourceType.symbolName/.label`
+   - `EventType.symbolName/.label`
+   - `RightKind.label` / `rightSymbol(_:)`
+   - `ObligationKind.kindLabel` / `kindSymbol(_:)`
+   - `ActivityEvent.typeLabel`
+
+2. **Switch sobre user-chosen mode**:
+   - `VotingModel` (single_choice / multiple_choice / yes_no_abstain) — el founder
+     elige el modelo al crear la decisión; la UI cambia en consecuencia.
+   - `ResolutionModel` (lottery / waitlisted / split_dates / requires_decision) —
+     el admin elige el modo de resolución de un conflicto.
+   - InviteMode (.direct / .code), ReservationsListView mode (.list / .calendar) —
+     toggles internos de UI.
+
+3. **State machines**:
+   - `case .loaded / .loading / .failed / .idle` (StorePhase).
+   - `case .signedIn / .signedOut` (auth state).
+
+4. **`isPersonal` (`actor_kind == 'person'`)**:
+   - Permitido para distinguir el mundo personal de un contexto compartido
+     (estructural, no es branch por type).
+
+### Cómo añadir una vista nueva sin violar doctrina
+
+1. ¿La vista renderiza acciones? → SIEMPRE desde `available_actions[]` del backend.
+2. ¿Necesitas un nuevo `action_key`? → primero al backend (`*_available_actions`),
+   después `ActionPresentationCatalog`. La vista no se modifica.
+3. ¿Necesitas un nuevo ícono/label para un tipo? → translation table local.
+   NUNCA un `if/switch` que gatee visibilidad o habilitación por type.
+4. ¿Una sección sólo aplica a cierto tipo? → exponer el dato como capability
+   en el detail RPC; condicionar la sección por presencia del dato, no por type.
+
+### Smoke
+
+Build verde 11s tras el fix; 0 diagnostics en RuulApp; suite Tandas no afectada.
