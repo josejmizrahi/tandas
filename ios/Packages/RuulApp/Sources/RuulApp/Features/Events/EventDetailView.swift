@@ -80,6 +80,27 @@ public struct EventDetailView: View {
         }
         .navigationTitle(store.event?.title ?? "Evento")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let event = store.event {
+                let items = moreActions(event)
+                if !items.isEmpty {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Menu {
+                            ForEach(items) { item in
+                                Button(role: item.isDestructive ? .destructive : nil) {
+                                    handleMoreAction(item.kind)
+                                } label: {
+                                    Label(item.label, systemImage: item.symbol)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .accessibilityLabel("Más acciones")
+                        }
+                    }
+                }
+            }
+        }
         .task {
             await store.load(eventId: eventId, context: context)
             await loadEventActivity()
@@ -157,7 +178,6 @@ public struct EventDetailView: View {
                 relatedResourcesSection(event)
                 relatedDecisionsSection(event)
                 infoSection(event)
-                moreActionsButton(event)
             }
             .padding(.horizontal)
             .padding(.bottom, 32)
@@ -374,43 +394,28 @@ public struct EventDetailView: View {
         }
     }
 
-    /// Segmented control iOS-native: track tinted gray, segmento seleccionado
-    /// como card blanco que pop-out. Match visual con UISegmentedControl.
+    /// Picker nativo iOS `.segmented` (UISegmentedControl). El binding es
+    /// `RSVPStatus?` — cuando `current` es nil no hay segmento seleccionado.
     @ViewBuilder
     private func rsvpSegmented(current: String?) -> some View {
-        HStack(spacing: 0) {
-            rsvpSegment("Voy", status: .going, current: current)
-            rsvpSegment("Tal vez", status: .maybe, current: current)
-            rsvpSegment("No voy", status: .declined, current: current)
-        }
-        .padding(3)
-        .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    @ViewBuilder
-    private func rsvpSegment(_ label: String, status: RSVPStatus, current: String?) -> some View {
-        let isCurrent = current == status.rawValue
-        Button {
-            Task {
-                await runner.run {
-                    try await store.rsvp(status, eventId: eventId, context: context)
+        let currentEnum: RSVPStatus? = current.flatMap { RSVPStatus(rawValue: $0) }
+        Picker("Respuesta", selection: Binding<RSVPStatus?>(
+            get: { currentEnum },
+            set: { newValue in
+                guard let newValue else { return }
+                Task {
+                    await runner.run {
+                        try await store.rsvp(newValue, eventId: eventId, context: context)
+                    }
                 }
             }
-        } label: {
-            Text(label)
-                .font(.subheadline.weight(isCurrent ? .semibold : .regular))
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 7)
-                .background(
-                    isCurrent ? Color(uiColor: .systemBackground) : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 7)
-                )
-                .shadow(color: isCurrent ? Color.black.opacity(0.08) : Color.clear, radius: 2, y: 1)
+        )) {
+            Text("Voy").tag(RSVPStatus?.some(.going))
+            Text("Tal vez").tag(RSVPStatus?.some(.maybe))
+            Text("No voy").tag(RSVPStatus?.some(.declined))
         }
-        .buttonStyle(.plain)
+        .pickerStyle(.segmented)
         .disabled(runner.isRunning)
-        .animation(.easeInOut(duration: 0.18), value: isCurrent)
     }
 
     private func respondedHeading(_ status: String) -> String {
@@ -687,35 +692,7 @@ public struct EventDetailView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - 7. Más acciones (••• botón único al final)
-
-    @ViewBuilder
-    private func moreActionsButton(_ event: CalendarEvent) -> some View {
-        let items = moreActions(event)
-        if items.isEmpty { EmptyView() } else {
-            Menu {
-                ForEach(items) { item in
-                    Button(role: item.isDestructive ? .destructive : nil) {
-                        handleMoreAction(item.kind)
-                    } label: {
-                        Label(item.label, systemImage: item.symbol)
-                    }
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "ellipsis")
-                        .font(.callout.weight(.semibold))
-                    Text("Más acciones")
-                        .font(.callout.weight(.semibold))
-                }
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            }
-            .accessibilityLabel("Más acciones")
-        }
-    }
+    // MARK: - Más acciones (toolbar `+` top-right — ver `.toolbar` arriba)
 
     private enum MoreActionKind {
         case recordExpense
