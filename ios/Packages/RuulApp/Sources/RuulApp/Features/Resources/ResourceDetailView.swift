@@ -34,6 +34,7 @@ public struct ResourceDetailView: View {
     /// F.RESOURCE.1 — actividad reciente del recurso (filtrada client-side).
     @State private var resourceActivity: [ActivityEvent] = []
     @State private var isShowingFullActivity = false
+    @State private var selectedParticipation: ResourceRight?
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -144,17 +145,23 @@ public struct ResourceDetailView: View {
         ScrollView {
             VStack(spacing: 24) {
                 heroSection(detail)
+                resumenCard(detail)               // NUEVO F.RESOURCE.2
                 quickActionsGrid(detail)
                 activityCard(detail)
                 participacionesCard(detail)
                 beneficiariosCard(detail)
-                documentsCard(detail)
                 rightsCard(detail)
+                documentsCard(detail)
                 accessInfoCard(detail)
                 followToggleCard(detail)
             }
             .padding(.horizontal)
             .padding(.bottom, 32)
+        }
+        .sheet(item: $selectedParticipation) { right in
+            NavigationStack {
+                ParticipacionDetailSheet(right: right, resource: detail.resource)
+            }
         }
     }
 
@@ -163,7 +170,6 @@ public struct ResourceDetailView: View {
     @ViewBuilder
     private func heroSection(_ detail: ResourceDetail) -> some View {
         VStack(spacing: 16) {
-            // Icono + nombre + tipo + role
             VStack(spacing: 8) {
                 Image(systemName: detail.resource.type.symbolName)
                     .font(.system(size: 44))
@@ -176,10 +182,12 @@ public struct ResourceDetailView: View {
                 Text(detail.resource.type.label)
                     .font(.callout)
                     .foregroundStyle(.secondary)
-                if let role = primaryRoleLabel(detail) {
-                    Text(role)
+                // F.RESOURCE.2 — role + relación (Beneficiario · Participación indirecta)
+                if let storyLine = heroStoryLine(detail) {
+                    Text(storyLine)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.tint)
+                        .multilineTextAlignment(.center)
                 }
                 if let description = detail.resource.description, !description.isEmpty {
                     Text(description)
@@ -206,6 +214,44 @@ public struct ResourceDetailView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// F.RESOURCE.2 — Story line: combina role + relación.
+    /// "Beneficiario", "Beneficiario · Participación indirecta",
+    /// "Dueño · 50%", "Administrador", etc.
+    private func heroStoryLine(_ detail: ResourceDetail) -> String? {
+        guard let actorId = myActorId else { return nil }
+        let myRights = detail.rights.filter { $0.holderActorId == actorId }
+        if myRights.isEmpty { return nil }
+
+        // Primary: el right más fuerte que el caller tenga.
+        let priority: [String] = ["OWN", "GOVERN", "MANAGE", "BENEFICIARY", "USE", "VIEW"]
+        let primary = priority.compactMap { kind in
+            myRights.first { $0.rightKind == kind }
+        }.first
+        guard let primary else { return myRights.first?.kindLabel }
+
+        switch primary.rightKind {
+        case "OWN":
+            if let pct = primary.percent {
+                return "Dueño · \(pct.formatted(.number.precision(.fractionLength(0...1))))%"
+            }
+            return "Propietario"
+        case "GOVERN":
+            return "Administrador del recurso"
+        case "MANAGE":
+            return "Administrador"
+        case "BENEFICIARY":
+            // Si NO tiene OWN, su participación es indirecta.
+            let hasOwn = myRights.contains { $0.rightKind == "OWN" }
+            return hasOwn ? "Beneficiario" : "Beneficiario · Participación indirecta"
+        case "USE":
+            return "Puedes usar"
+        case "VIEW":
+            return "Puedes ver"
+        default:
+            return primary.kindLabel
         }
     }
 
@@ -248,7 +294,50 @@ public struct ResourceDetailView: View {
         return primary.kindLabel
     }
 
-    // MARK: - 2. Quick Actions grid
+    // MARK: - Resumen (NUEVO F.RESOURCE.2)
+
+    @ViewBuilder
+    private func resumenCard(_ detail: ResourceDetail) -> some View {
+        let owners = detail.rights.filter { $0.rightKind == "OWN" }.count
+        let beneficiaries = detail.rights.filter { $0.rightKind == "BENEFICIARY" }.count
+        let documents = documentsStore.documents.count
+        let recentChanges = countRecentActivity()
+
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Resumen")
+                .font(.title3.weight(.semibold))
+            HStack(spacing: 12) {
+                resumenStat(value: "\(owners)", label: owners == 1 ? "Propietario" : "Propietarios")
+                resumenStat(value: "\(beneficiaries)", label: beneficiaries == 1 ? "Beneficiario" : "Beneficiarios")
+                resumenStat(value: "\(documents)", label: documents == 1 ? "Documento" : "Documentos")
+                resumenStat(value: "\(recentChanges)", label: "Cambios", caption: "30 días")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func resumenStat(value: String, label: String, caption: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value).font(.title2.weight(.bold)).foregroundStyle(.tint)
+            Text(label).font(.caption.weight(.medium)).foregroundStyle(.primary).lineLimit(1)
+            if let caption {
+                Text(caption).font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Cambios en los últimos 30 días.
+    private func countRecentActivity() -> Int {
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -30, to: Date()) else {
+            return resourceActivity.count
+        }
+        return resourceActivity.filter { ($0.occurredAt ?? .distantPast) > cutoff }.count
+    }
+
+    // MARK: - 2. Quick Actions COMPACTAS (chips style)
 
     @ViewBuilder
     private func quickActionsGrid(_ detail: ResourceDetail) -> some View {
@@ -257,13 +346,14 @@ public struct ResourceDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Acciones rápidas")
                     .font(.title3.weight(.semibold))
+                // F.RESOURCE.2 — más compactas: 2 cols pero mucho menos altura.
                 let columns = [
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12)
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10)
                 ]
-                LazyVGrid(columns: columns, spacing: 12) {
+                LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(actions) { action in
-                        actionTile(action)
+                        actionChip(action)
                     }
                 }
             }
@@ -271,29 +361,28 @@ public struct ResourceDetailView: View {
     }
 
     @ViewBuilder
-    private func actionTile(_ action: AvailableAction) -> some View {
+    private func actionChip(_ action: AvailableAction) -> some View {
         let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
         Button {
             quickActionsRouter.open(ActionRouter.destination(for: action, in: .resource(resourceId)))
         } label: {
-            VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
                 Image(systemName: presentation.symbolName)
-                    .font(.title2)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(action.enabled ? presentation.tint : Color.secondary)
-                    .frame(width: 36, height: 36)
-                    .background(
-                        (action.enabled ? presentation.tint : Color.secondary).opacity(0.12),
-                        in: Circle()
-                    )
+                    .frame(width: 22)
                 Text(action.label)
-                    .font(.callout.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(action.enabled ? Color.primary : Color.secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
-            .frame(maxWidth: .infinity, minHeight: 90, alignment: .topLeading)
-            .padding(14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
         .disabled(!action.enabled)
@@ -360,14 +449,18 @@ public struct ResourceDetailView: View {
 
     private func loadResourceActivity() async {
         do {
-            // Carga la actividad del contexto y filtra por este recurso.
             let all = try await container.rpc.listActivity(
                 contextId: context.id,
-                limit: 50,
+                limit: 100,
                 before: nil,
                 includeDescendants: false
             )
-            resourceActivity = all.filter { $0.resourceId == resourceId }
+            // F.RESOURCE.2 — el resource puede aparecer en resource_id O en
+            // subject_id (cuando subject_type=="resource"). Ambas filtran.
+            resourceActivity = all.filter { event in
+                event.resourceId == resourceId
+                    || (event.subjectType == "resource" && event.subjectId == resourceId)
+            }
         } catch {
             resourceActivity = []
         }
@@ -396,26 +489,35 @@ public struct ResourceDetailView: View {
     @ViewBuilder
     private func participacionRow(_ right: ResourceRight) -> some View {
         let percent = right.percent ?? 0
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(right.holderDisplayName ?? "Propietario")
-                    .font(.callout.weight(.medium))
-                Spacer()
-                Text("\(percent.formatted(.number.precision(.fractionLength(0...1))))%")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.tint)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.secondary.opacity(0.15))
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.accentColor)
-                        .frame(width: max(0, geo.size.width * percent / 100.0))
+        Button {
+            selectedParticipation = right
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(right.holderDisplayName ?? "Propietario")
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text("\(percent.formatted(.number.precision(.fractionLength(0...1))))%")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.tint)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
                 }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.15))
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.accentColor)
+                            .frame(width: max(0, geo.size.width * percent / 100.0))
+                    }
+                }
+                .frame(height: 10)
             }
-            .frame(height: 10)
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - 5. Beneficiarios
@@ -424,45 +526,43 @@ public struct ResourceDetailView: View {
     private func beneficiariosCard(_ detail: ResourceDetail) -> some View {
         let beneficiaries = detail.rights.filter { $0.rightKind == "BENEFICIARY" }
         if !beneficiaries.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("Beneficiarios")
+                    Text("Beneficiarios (\(beneficiaries.count))")
                         .font(.title3.weight(.semibold))
                     Spacer()
-                    Text("\(beneficiaries.count)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
                 }
                 VStack(spacing: 0) {
                     let preview = Array(beneficiaries.prefix(3))
                     ForEach(Array(preview.enumerated()), id: \.offset) { idx, right in
-                        HStack(spacing: 12) {
+                        HStack(spacing: 10) {
                             Image(systemName: "gift.fill")
+                                .font(.subheadline)
                                 .foregroundStyle(.pink)
-                                .frame(width: 28)
+                                .frame(width: 22)
                             Text(right.holderDisplayName ?? "Beneficiario")
                                 .font(.callout)
                             Spacer()
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                         if idx < preview.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, 46)
                         }
                     }
                     if beneficiaries.count > 3 {
-                        Divider().padding(.leading, 56)
+                        Divider().padding(.leading, 46)
                         HStack {
-                            Text("Ver todos (\(beneficiaries.count)) →")
+                            Text("Ver todos →")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.secondary)
                             Spacer()
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
             }
         }
     }
@@ -788,6 +888,85 @@ public struct ResourceDetailView: View {
         case .approve: return "checkmark.circle.fill"
         case .audit: return "doc.text.magnifyingglass"
         case .none: return "questionmark.circle"
+        }
+    }
+}
+
+// MARK: - Sheet: detalle de una participación (F.RESOURCE.2)
+
+/// Detalle simple de una participación (OWN right). F.RESOURCE.2 muestra
+/// holder + porcentaje + ventana de tiempo. F.RESOURCE.3+ puede sumar
+/// "cómo obtuvo" (history) y "qué controla" (cross-resource).
+private struct ParticipacionDetailSheet: View {
+    let right: ResourceRight
+    let resource: Resource
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Form {
+            Section {
+                HStack(spacing: 12) {
+                    ActorInitialsView(name: right.holderDisplayName ?? "Actor", size: 48)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(right.holderDisplayName ?? "Propietario")
+                            .font(.title3.weight(.semibold))
+                        Text(right.kindLabel)
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            Section("Participación") {
+                if let pct = right.percent {
+                    HStack {
+                        Text("Porcentaje")
+                        Spacer()
+                        Text("\(pct.formatted(.number.precision(.fractionLength(0...2))))%")
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(.tint)
+                    }
+                }
+                if let scope = right.scope {
+                    HStack {
+                        Text("Alcance")
+                        Spacer()
+                        Text(scope).foregroundStyle(.secondary)
+                    }
+                }
+                if let start = right.startsAt {
+                    HStack {
+                        Text("Vigente desde")
+                        Spacer()
+                        Text(start.formatted(date: .abbreviated, time: .omitted))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if let end = right.endsAt {
+                    HStack {
+                        Text("Vence")
+                        Spacer()
+                        Text(end.formatted(date: .abbreviated, time: .omitted))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Section {
+                HStack {
+                    Text("En")
+                    Spacer()
+                    Text(resource.displayName)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .navigationTitle("Participación")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Cerrar") { dismiss() }
+            }
         }
     }
 }
