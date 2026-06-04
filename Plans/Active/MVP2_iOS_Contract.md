@@ -143,11 +143,43 @@ Listas: lectura PostgREST de `resource_reservations` + `reservation_conflicts`.
 |---|---|---|
 | `create_decision(p_context_actor_id, p_decision_type, p_title, p_description?, p_closes_at?, p_payload?, p_client_id?)` | requiere `decisions.create` | `{decision_id, decision: {row}}` |
 | `vote_decision(p_decision_id, p_vote, p_option?)` | vote ∈ approve\|reject\|abstain; auto-finaliza con mayoría | `{decision_id, my_vote, my_option, status, tally: {approve, reject, members, option_tally?}}` |
-| `close_decision(p_decision_id)` | cierre manual | `{decision_id, status, winning_option?, tally?, already_closed?}` |
+| `close_decision(p_decision_id)` | cierre manual; aplica quórum / umbral / consent si el contexto tiene `governance_policies` (R.5.4) | `{decision_id, status, winning_option?, tally: {…, total_weight, governance?: {quorum, approval_threshold, consent, quorum_met}}, already_closed?}` |
 | `execute_decision(p_decision_id, p_result?)` | requiere `decisions.execute`; status debe ser approved | `{decision_id, status, effects?, already_executed?}` |
 
 Listas/votos: lectura PostgREST de `decisions` + `decision_votes`.
-`decision_type` ∈ expense_approval, rule_change, member_admission, resource_purchase, reservation_dispute, generic
+`decision_type` ∈ expense_approval, rule_change, member_admission, resource_purchase, reservation_dispute, generic, governance, money, resources, reservations
+
+## 8b. Governance Engine (R.5)
+
+Additive y opt-in: un contexto **sin** `governance_policies` se comporta igual que
+antes (peso de voto = 1, sin gates, sin quórum). Doctrina completa en
+`Plans/Active/R5_Governance_Engine.md`.
+
+| RPC | Firma | Devuelve |
+|---|---|---|
+| `create_governance_policy(p_context_actor_id, p_policy_key, p_policy_value)` | requiere `decisions.execute`; upsert (value `null` borra) | `{policy_id, context_actor_id, policy_key, policy_value}` o `{…, removed:true}` |
+| `update_governance_policy(p_context_actor_id, p_policy_key, p_policy_value)` | alias de upsert | igual que create |
+| `list_governance_policies(p_context_actor_id)` | requiere ser miembro | `[{policy_key, policy_value, updated_at}]` |
+| `delegate_vote(p_context_actor_id, p_delegate_actor_id, p_ends_at?)` | el caller delega su voto (5.2) | `{delegation_id, context_actor_id, delegate_actor_id, ends_at}` |
+| `revoke_vote_delegation(p_context_actor_id)` | revoca la delegación activa del caller | `{revoked, count}` |
+| `request_governed_action(p_context_actor_id, p_action_key, p_target_type?, p_target_id?, p_payload?, p_title?, p_closes_at?)` | requiere `decisions.create`; abre decisión `governance` si la política lo exige (5.6) | `{requires_decision, governance_action_id, decision_id?, action_key}` |
+
+**Policy keys canónicos**: `expense_threshold` (num), `member_ban_requires_vote` ·
+`resource_transfer_requires_vote` · `rule_change_requires_vote` ·
+`ownership_change_requires_vote` · `large_expense_requires_vote` (bool),
+`quorum` (0..1), `approval_threshold` (0..1), `consent_voting` (bool),
+`vote_weight_source` (`{"source":"equal|shares|ownership|participation", …}`).
+
+**Weighted voting (5.3)**: el peso del voto se calcula en un trigger sobre
+`decision_votes` (propio + delegado). `vote_decision` no cambia su firma; su
+auto-finalize por mayoría ahora respeta el peso.
+
+**Mandatory governance (5.6)**: `remove_member` exige una decisión aprobada vía
+`request_governed_action('member_ban', 'actor', member_id)` **sólo** si el contexto
+fijó `member_ban_requires_vote=true`. Sin la política, conducta histórica intacta.
+
+Lectura PostgREST: `governance_policies`, `vote_delegations`, `governance_actions`
+(RLS: miembros del contexto).
 
 ## 9. Money & Settlement
 
