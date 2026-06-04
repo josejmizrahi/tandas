@@ -19,6 +19,9 @@ public struct CreateIntentSheet: View {
     /// de la sheet crashea SwiftUI iOS 16+. Por eso presentamos el form como
     /// sheet anidado sobre la sheet de intent, no como push.
     @State private var pendingForm: PendingForm?
+    /// F.NAV.8 — mismo problema con CreateContextView (NavigationStack
+    /// interno). Sheet anidada también.
+    @State private var isShowingCreateContext = false
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -43,7 +46,7 @@ public struct CreateIntentSheet: View {
 
                 Section {
                     Button {
-                        path.append(.createContext)
+                        isShowingCreateContext = true
                     } label: {
                         intentLabel(icon: "rectangle.split.2x1.fill", tint: .blue,
                                     label: "Crear contexto",
@@ -84,6 +87,10 @@ public struct CreateIntentSheet: View {
                     dismiss()
                 }
             )
+        }
+        // F.NAV.8 — CreateContextView también trae NavigationStack interno.
+        .sheet(isPresented: $isShowingCreateContext) {
+            CreateContextView(container: container)
         }
     }
 
@@ -130,9 +137,6 @@ public struct CreateIntentSheet: View {
                 // sheet anidada sobre la sheet actual.
                 pendingForm = PendingForm(intent: intent, context: ctx)
             }
-        case .createContext:
-            // CreateContextView trae su propia UI/navegación.
-            CreateContextView(container: container)
         }
     }
 
@@ -144,7 +148,6 @@ public struct CreateIntentSheet: View {
 
     enum Route: Hashable {
         case pickContext(intent: Intent)
-        case createContext
     }
 
     /// Sheet anidada pendiente. `Identifiable` para `.sheet(item:)`.
