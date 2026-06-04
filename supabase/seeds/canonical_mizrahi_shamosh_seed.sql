@@ -447,9 +447,26 @@ begin
   perform public.register_document('Propuesta Boaz',         c_proyecto, 'other');
 
   -- ───────────────────────────────────────────────────────────────────────────
+  -- 13. HIERARCHY (R.2U) — Familia Mizrahi es el contexto raíz
+  -- ───────────────────────────────────────────────────────────────────────────
+  --   Familia Mizrahi
+  --    ├─ Comidas Miércoles Mizrahi
+  --    ├─ Palco Mundial 2026
+  --    └─ Proyecto Nave Industrial Toluca
+  --        └─ Fideicomiso Nave Industrial
+  --
+  -- José es founder/admin de los 5 contextos, por lo que cumple la doble autoridad
+  -- requerida por link_child_context (context.children.link en padre + context.manage en hijo).
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_jose_auth::text)::text, true);
+  perform public.link_child_context(c_fam_miz,  c_comidas);
+  perform public.link_child_context(c_fam_miz,  c_palco);
+  perform public.link_child_context(c_fam_miz,  c_proyecto);
+  perform public.link_child_context(c_proyecto, c_trust);
+
+  -- ───────────────────────────────────────────────────────────────────────────
   -- Listo
   -- ───────────────────────────────────────────────────────────────────────────
   perform set_config('request.jwt.claims', null, true);
 
-  raise notice 'R.SEED.2 CANONICAL: OK — José=% · 7 contextos (incl. Palco Mundial 2026) · 5 recursos · 5 partidos reales con roster + 4 comidas · 4 decisiones · obligaciones (acción+capital) · renta Quimibond · 2 reglas · 4 documentos · trust sin beneficiarios.', a_jose;
+  raise notice 'R.SEED.2 CANONICAL: OK — José=% · 7 contextos (incl. Palco Mundial 2026) · 5 recursos · 5 partidos reales con roster + 4 comidas · 4 decisiones · obligaciones (acción+capital) · renta Quimibond · 2 reglas · 4 documentos · trust sin beneficiarios · jerarquía R.2U Familia Mizrahi → 3 hijos → Fideicomiso.', a_jose;
 end; $$;
