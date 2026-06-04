@@ -1,16 +1,20 @@
 import SwiftUI
 import RuulCore
 
-/// F.NAV.1 — Shell global con 5 tabs.
+/// F.NAV.1+ — Shell global con 5 tabs.
 ///
 /// Doctrina F.NAV (Plans/Doctrine/FNAV_AppShellNavigation.md):
 /// Home / Contextos / Crear / Actividad / Yo. ContextHome ya no es la raíz;
-/// vive dentro de la tab Contextos. Los tabs Home/Crear/Yo son stubs F.NAV.1
-/// que se completan en F.NAV.2/F.NAV.5/F.NAV.6.
+/// vive dentro de la tab Contextos como destination push. F.NAV.3 sustituyó
+/// el ContextShell preexistente por `ContextsListView` con NavigationStack
+/// propia. El switcher pasa a sheet (F.NAV.4 lo enchufa).
 public struct MainTabShell: View {
     let container: DependencyContainer
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .home
     @State private var isShowingCreateSheet = false
+    @State private var isShowingJoinByCode = false
+    @State private var prefilledInviteCode: String?
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -31,11 +35,9 @@ public struct MainTabShell: View {
             }
 
             Tab("Contextos", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
-                // F.NAV.3 reemplaza esto con una ContextsView dedicada
-                // (favoritos / recientes / todos). Mientras tanto, el
-                // ContextShell preexistente sigue siendo el fallback
-                // funcional: ahí vive toda la navegación operativa.
-                ContextShell(container: container)
+                NavigationStack {
+                    ContextsListView(container: container)
+                }
             }
 
             Tab("Crear", systemImage: "plus.circle.fill", value: AppTab.create, role: nil) {
@@ -55,6 +57,25 @@ public struct MainTabShell: View {
         }
         .sheet(isPresented: $isShowingCreateSheet) {
             CreateIntentSheet()
+        }
+        .sheet(isPresented: $isShowingJoinByCode, onDismiss: { prefilledInviteCode = nil }) {
+            JoinByCodeView(container: container, prefilledCode: prefilledInviteCode)
+        }
+        // F.NAV.1 — refrescar contextos + invitaciones al regresar del background.
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task {
+                await container.contextStore.load()
+                await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+                await container.contextPreferencesStore.load()
+                await container.attentionInboxStore.load()
+            }
+        }
+        // F.NAV.1 — universal links / ruul:// abren JoinByCode globalmente.
+        .onChange(of: container.deepLinks.pendingInviteCode, initial: true) { _, code in
+            guard code != nil else { return }
+            prefilledInviteCode = container.deepLinks.consumePendingInviteCode()
+            isShowingJoinByCode = true
         }
     }
 }
