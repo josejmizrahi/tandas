@@ -1,31 +1,33 @@
 import SwiftUI
 import RuulCore
 
-/// F.EVENT.3 — Event Detail Apple/Luma-native.
+/// F.EVENT.4 — Event Detail canonical (founder doctrine, Apple-native).
 ///
-/// El evento es algo a lo que asistes, no algo que administras. La pantalla
-/// se optimiza para responder asistencia, ver quién va y entender qué pasa.
-///
-/// Cambios vs F.EVENT.2 (Luma-inspired):
-/// - **Título es el hero**, no el icono — desaparece el SF Symbol grande
-///   junto al título. El título crece a `.title.weight(.bold)`.
-/// - **Host badge inline** debajo del título (avatar 22px + "Organiza X").
-/// - **Action strip único** estilo Luma: 3 chips RSVP + `•••` Menu como
-///   cuarto botón equi-distribuido. La sección "Tu respuesta" como heading
-///   desaparece — el strip habla por sí solo. Toolbar queda sin `•••`.
-/// - **Información** ya no lista Organizador (vive en el badge).
+/// La pantalla representa una **realidad humana**, no un objeto técnico.
+/// El usuario debe entender en <3 segundos: qué es, por qué le importa,
+/// qué tiene que hacer, quién más participa.
 ///
 /// Scroll order founder-locked:
-/// 1. Header (título hero + host badge + fecha + summary)
-/// 2. Action strip (Voy / Tal vez / No voy / ••• Más)
-/// 3. Participantes (avatares horizontales + breakdown)
-/// 4. Información (Ubicación / Repetición / Contexto)
-/// 5. Check-in (sólo si aplica)
-/// 6. Recursos relacionados (sólo si hay)
-/// 7. Decisiones relacionadas (sólo si hay)
+/// 1. **Header** — icon inline + título + contexto tappable + fecha + chips
+///    de ubicación/recurrencia + summary "N asistentes"
+/// 2. **Acción principal** — zona dinámica por estado:
+///    - Evento finalizado / cancelado → row gris informativo
+///    - Llegada registrada → confirmación + tiempo
+///    - Evento en curso → botón prominente "Llegué"
+///    - Sin responder → heading "Responde tu asistencia" + segmented RSVP
+///    - Ya respondí → heading "Vas a asistir" + segmented RSVP para cambiar
+/// 3. **Participantes** — avatar strip + breakdown
+/// 4. **Recursos relacionados** (oculta si vacío)
+/// 5. **Decisiones relacionadas** (oculta si vacío)
+/// 6. **Información** — Organizador / Fecha / Ubicación / Repetición / Contexto
+/// 7. **Más acciones** — botón único `••• Más acciones` con Menu
 ///
-/// Toda acción visible sale de `event_detail.available_actions`. Las
-/// administrativas se filtran al menú `•••` dentro del strip.
+/// Eliminado: hero icon enorme, sección Actividad reciente, sección
+/// Administración visible, sección Auditoría, action strip con `•••` arriba.
+///
+/// Toda acción del menú sale de `event_detail.available_actions` — cero
+/// hardcodes. Cuando el backend marque acciones type-specific (reservar
+/// asiento para partidos, etc.), se rendereán naturalmente en el menú.
 public struct EventDetailView: View {
     let eventId: UUID
     let context: AppContext
@@ -36,9 +38,8 @@ public struct EventDetailView: View {
     @State private var checkInNotice: String?
     @State private var isConfirmingCancel = false
     @State private var isConfirmingClose = false
-    /// Actividad del contexto, filtrada a entradas que tocan este evento.
-    /// Sólo se usa para derivar recursos/decisiones relacionados — la sección
-    /// "Actividad reciente" fue eliminada en F.EVENT.2.
+    /// Actividad del contexto filtrada a entradas que tocan este evento.
+    /// Sólo se usa para derivar recursos / decisiones relacionados.
     @State private var eventActivity: [ActivityEvent] = []
     @State private var isShowingAllParticipants = false
     @State private var pushedResource: UUID?
@@ -149,72 +150,85 @@ public struct EventDetailView: View {
     @ViewBuilder
     private func detailScroll(_ event: CalendarEvent) -> some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: 22) {
                 headerSection(event)
-                actionStripSection(event)
+                primaryActionSection(event)
                 participantsSection(event)
-                infoSection(event)
-                checkInSection(event)
                 relatedResourcesSection(event)
                 relatedDecisionsSection(event)
+                infoSection(event)
+                moreActionsButton(event)
             }
             .padding(.horizontal)
             .padding(.bottom, 32)
         }
     }
 
-    // MARK: - 1. Header (title hero + host badge + fecha + summary)
+    // MARK: - 1. Header
 
     @ViewBuilder
     private func headerSection(_ event: CalendarEvent) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Título HERO — sin icono al lado. La tipografía manda.
-            Text(event.title)
-                .font(.title.weight(.bold))
-                .lineLimit(3)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: event.type.symbolName)
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                Text(event.title)
+                    .font(.title.weight(.bold))
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+            }
 
-            // Host badge inline estilo Luma.
-            hostBadge(event)
+            // Contexto debajo del título — no escondido en Información.
+            Text(context.displayName)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
 
-            // Fecha y summary en líneas separadas, secondary.
             if let starts = event.startsAt {
                 Text(headerDateLine(starts))
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
+            // Chips inline para ubicación + recurrencia (sólo cuando existen).
+            let chips = headerChips(event)
+            if !chips.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(chips, id: \.text) { chip in
+                        HStack(spacing: 5) {
+                            Image(systemName: chip.symbol)
+                                .font(.caption.weight(.semibold))
+                            Text(chip.text)
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground), in: Capsule())
+                    }
+                }
+            }
+
             Text(participantSummary())
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.tint)
-
-            if !event.isScheduled {
-                HStack(spacing: 6) {
-                    Image(systemName: event.isCompleted ? "checkmark.seal" : "xmark.circle")
-                    Text(event.isCompleted ? "Cerrado" : "Cancelado")
-                }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(event.isCompleted ? Color.gray : Color.red)
-                .padding(.top, 4)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
     }
 
-    /// Badge inline con avatar del host (iniciales) + "Organiza X". Luma style.
-    /// Non-tappable v1 — F.EVENT.4 puede sumarle navegación al perfil del host.
-    @ViewBuilder
-    private func hostBadge(_ event: CalendarEvent) -> some View {
-        let name = store.displayName(for: event.hostActorId)
-        HStack(spacing: 8) {
-            ActorInitialsView(name: name, size: 22)
-            Text(isHost ? "Organizas tú" : "Organiza \(name)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+    private struct HeaderChip { let symbol: String; let text: String }
+
+    private func headerChips(_ event: CalendarEvent) -> [HeaderChip] {
+        var out: [HeaderChip] = []
+        if let location = event.locationText, !location.isEmpty {
+            out.append(HeaderChip(symbol: "mappin.and.ellipse", text: location))
         }
+        if event.isRecurring {
+            out.append(HeaderChip(symbol: "arrow.triangle.2.circlepath", text: recurrenceLabel(event)))
+        }
+        return out
     }
 
     private func headerDateLine(_ date: Date) -> String {
@@ -223,52 +237,158 @@ public struct EventDetailView: View {
         return "\(dayMonth.capitalizedFirstLetter) · \(time)"
     }
 
+    /// "12 asistentes" — total de invitados al evento. Si el contexto es
+    /// personal o aún no hay invitados, se ajusta.
     private func participantSummary() -> String {
         let total = store.participants.count
-        let confirmed = store.participants.filter {
-            $0.status == "going" || $0.status == "attended" || $0.checkedIn
-        }.count
         if total == 0 { return "Aún sin invitados" }
-        if confirmed > 0 { return "\(confirmed) \(confirmed == 1 ? "confirmado" : "confirmados")" }
-        return "\(total) \(total == 1 ? "invitado" : "invitados")"
+        return "\(total) \(total == 1 ? "asistente" : "asistentes")"
     }
 
-    // MARK: - 2. Action strip (RSVP chips + ••• Menu — Luma style)
+    private func recurrenceLabel(_ event: CalendarEvent) -> String {
+        guard let rule = event.recurrenceRule?.uppercased() else { return "Recurrente" }
+        if rule.contains("FREQ=WEEKLY") { return "Semanal" }
+        if rule.contains("FREQ=DAILY")  { return "Diario" }
+        if rule.contains("FREQ=MONTHLY") { return "Mensual" }
+        if rule.contains("FREQ=YEARLY") { return "Anual" }
+        return "Recurrente"
+    }
 
-    /// Strip único con las acciones primarias: 3 chips RSVP + `•••` Menu como
-    /// cuarto botón equi-distribuido. Cuando el usuario ya no puede responder
-    /// (checked_in / cancelled / event closed), las RSVP se ocultan y queda
-    /// sólo el `•••` cuando hay admin actions.
-    @ViewBuilder
-    private func actionStripSection(_ event: CalendarEvent) -> some View {
+    // MARK: - 2. Acción principal (zona dinámica)
+
+    private enum PrimaryState {
+        /// Evento ya no está activo (closed / cancelled).
+        case ended(label: String, symbol: String, tint: Color)
+        /// Hice check-in.
+        case checkedIn(at: Date?)
+        /// Evento en curso o por iniciar — puedo registrar llegada.
+        case canCheckIn
+        /// Ya respondí (going/maybe/declined) — sigue activo.
+        case responded(status: String)
+        /// Aún no he respondido.
+        case needsResponse
+    }
+
+    private func primaryState(_ event: CalendarEvent) -> PrimaryState {
+        if event.isCompleted {
+            return .ended(label: "Evento finalizado", symbol: "checkmark.seal.fill", tint: .gray)
+        }
+        if !event.isScheduled {
+            return .ended(label: "Evento cancelado", symbol: "xmark.circle.fill", tint: .red)
+        }
         let mine = store.myParticipation(myActorId: myActorId)
-        let canRespond = event.isScheduled && mine?.checkedIn != true && mine?.status != "cancelled"
-        let moreItems = moreActions(event)
-        let hasMore = !moreItems.isEmpty
+        if mine?.checkedIn == true {
+            return .checkedIn(at: mine?.checkedInAt)
+        }
+        if mine?.status == "cancelled" {
+            return .ended(label: "Cancelaste asistencia", symbol: "xmark.circle.fill", tint: .red)
+        }
+        if shouldShowCheckIn(event) && mine?.status != "declined" {
+            return .canCheckIn
+        }
+        if let status = mine?.status, ["going", "maybe", "declined"].contains(status) {
+            return .responded(status: status)
+        }
+        return .needsResponse
+    }
 
-        if canRespond || hasMore {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    if canRespond {
-                        rsvpChip("Voy", icon: "checkmark", status: .going, current: mine?.status)
-                        rsvpChip("Tal vez", icon: "questionmark", status: .maybe, current: mine?.status)
-                        rsvpChip("No voy", icon: "xmark", status: .declined, current: mine?.status)
-                    }
-                    if hasMore {
-                        moreChip(moreItems)
-                    }
-                }
-                if canRespond, let confirmation = responseConfirmation(mine?.status) {
-                    Text(confirmation)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
+    @ViewBuilder
+    private func primaryActionSection(_ event: CalendarEvent) -> some View {
+        switch primaryState(event) {
+        case .ended(let label, let symbol, let tint):
+            endedRow(label: label, symbol: symbol, tint: tint)
+        case .checkedIn(let when):
+            checkedInRow(when)
+        case .canCheckIn:
+            checkInButton()
+        case .needsResponse:
+            rsvpZone(heading: "Responde tu asistencia", current: nil)
+        case .responded(let status):
+            rsvpZone(heading: respondedHeading(status), current: status)
         }
     }
 
     @ViewBuilder
-    private func rsvpChip(_ label: String, icon: String, status: RSVPStatus, current: String?) -> some View {
+    private func endedRow(label: String, symbol: String, tint: Color) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(tint)
+            Text(label)
+                .font(.callout.weight(.semibold))
+            Spacer()
+        }
+        .padding(16)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    @ViewBuilder
+    private func checkedInRow(_ when: Date?) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Registraste tu llegada")
+                    .font(.callout.weight(.semibold))
+                if let when {
+                    Text(when.formatted(.relative(presentation: .named)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    @ViewBuilder
+    private func checkInButton() -> some View {
+        Button {
+            Task { await selfCheckIn() }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                Text("Llegué")
+                    .fontWeight(.semibold)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+        }
+        .buttonStyle(.glassProminent)
+        .disabled(runner.isRunning)
+    }
+
+    @ViewBuilder
+    private func rsvpZone(heading: String, current: String?) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(heading)
+                .font(.title3.weight(.semibold))
+            rsvpSegmented(current: current)
+            if let confirmation = responseConfirmation(current) {
+                Text(confirmation)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Segmented control iOS-native: track tinted gray, segmento seleccionado
+    /// como card blanco que pop-out. Match visual con UISegmentedControl.
+    @ViewBuilder
+    private func rsvpSegmented(current: String?) -> some View {
+        HStack(spacing: 0) {
+            rsvpSegment("Voy", status: .going, current: current)
+            rsvpSegment("Tal vez", status: .maybe, current: current)
+            rsvpSegment("No voy", status: .declined, current: current)
+        }
+        .padding(3)
+        .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private func rsvpSegment(_ label: String, status: RSVPStatus, current: String?) -> some View {
         let isCurrent = current == status.rawValue
         Button {
             Task {
@@ -277,73 +397,47 @@ public struct EventDetailView: View {
                 }
             }
         } label: {
-            VStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
-                Text(label)
-                    .font(.callout.weight(isCurrent ? .bold : .semibold))
-                    .foregroundStyle(isCurrent ? Color.accentColor : Color.primary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(
-                isCurrent ? Color.accentColor.opacity(0.15) : Color(uiColor: .secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 16)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(isCurrent ? Color.accentColor : Color.clear, lineWidth: 1.5)
-            )
+            Text(label)
+                .font(.subheadline.weight(isCurrent ? .semibold : .regular))
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(
+                    isCurrent ? Color(uiColor: .systemBackground) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 7)
+                )
+                .shadow(color: isCurrent ? Color.black.opacity(0.08) : Color.clear, radius: 2, y: 1)
         }
         .buttonStyle(.plain)
         .disabled(runner.isRunning)
-        .animation(.easeInOut(duration: 0.2), value: isCurrent)
+        .animation(.easeInOut(duration: 0.18), value: isCurrent)
     }
 
-    /// El cuarto botón del strip: abre Menu con acciones administrativas.
-    /// Visual idéntico a los chips RSVP — mismo height + corner radius.
-    @ViewBuilder
-    private func moreChip(_ items: [MoreActionItem]) -> some View {
-        Menu {
-            ForEach(items) { item in
-                Button(role: item.isDestructive ? .destructive : nil) {
-                    handleMoreAction(item.kind)
-                } label: {
-                    Label(item.label, systemImage: item.symbol)
-                }
-            }
-        } label: {
-            VStack(spacing: 6) {
-                Image(systemName: "ellipsis")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Text("Más")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(
-                Color(uiColor: .secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 16)
-            )
+    private func respondedHeading(_ status: String) -> String {
+        switch status {
+        case "going":    return "Vas a asistir"
+        case "maybe":    return "Tal vez asistas"
+        case "declined": return "No asistirás"
+        default:         return "Tu respuesta"
         }
-        .accessibilityLabel("Más acciones")
     }
 
     private func responseConfirmation(_ status: String?) -> String? {
         switch status {
         case "going":    return "Confirmaste tu asistencia."
         case "maybe":    return "Marcaste \"Tal vez\"."
-        case "declined": return "No asistirás."
+        case "declined": return "No vas a este evento."
         default:         return nil
         }
     }
 
-    // MARK: - 3. Participantes (horizontal avatars + summary)
+    /// El evento ya inició (o está por iniciar en breve).
+    private func shouldShowCheckIn(_ event: CalendarEvent) -> Bool {
+        guard let starts = event.startsAt else { return false }
+        return Date() >= starts.addingTimeInterval(-30 * 60)
+    }
+
+    // MARK: - 3. Participantes (avatar strip + breakdown)
 
     @ViewBuilder
     private func participantsSection(_ event: CalendarEvent) -> some View {
@@ -399,7 +493,7 @@ public struct EventDetailView: View {
         }
     }
 
-    /// "5 confirmados · 2 tal vez · 1 no va". Sólo lista buckets con count > 0.
+    /// "8 confirmados · 2 tal vez · 1 no asistirá".
     private func participantBreakdown() -> String {
         let confirmed = store.participants.filter {
             $0.status == "going" || $0.status == "attended" || $0.checkedIn
@@ -411,14 +505,130 @@ public struct EventDetailView: View {
         var parts: [String] = []
         if confirmed > 0 { parts.append("\(confirmed) \(confirmed == 1 ? "confirmado" : "confirmados")") }
         if maybe > 0     { parts.append("\(maybe) tal vez") }
-        if declined > 0  { parts.append("\(declined) no \(declined == 1 ? "va" : "van")") }
+        if declined > 0  { parts.append("\(declined) no \(declined == 1 ? "asistirá" : "asistirán")") }
         if pending > 0 && parts.isEmpty {
             parts.append("\(pending) sin respuesta")
         }
         return parts.isEmpty ? "Sin respuestas todavía" : parts.joined(separator: " · ")
     }
 
-    // MARK: - 4. Información (Apple Settings style)
+    // MARK: - 4. Recursos relacionados
+
+    @ViewBuilder
+    private func relatedResourcesSection(_ event: CalendarEvent) -> some View {
+        let items = relatedResources
+        if items.isEmpty { EmptyView() } else {
+            relatedList(
+                title: "Recursos",
+                items: items,
+                symbol: "shippingbox.fill",
+                tint: .accentColor,
+                onTap: { pushedResource = $0.id }
+            )
+        }
+    }
+
+    // MARK: - 5. Decisiones relacionadas
+
+    @ViewBuilder
+    private func relatedDecisionsSection(_ event: CalendarEvent) -> some View {
+        let items = relatedDecisions
+        if items.isEmpty { EmptyView() } else {
+            relatedList(
+                title: "Decisiones",
+                items: items,
+                symbol: "checkmark.seal.fill",
+                tint: .indigo,
+                onTap: { pushedDecision = $0.id }
+            )
+        }
+    }
+
+    private struct RelatedItem: Identifiable {
+        let id: UUID
+        let title: String
+        let trailing: String?
+    }
+
+    @ViewBuilder
+    private func relatedList(
+        title: String,
+        items: [RelatedItem],
+        symbol: String,
+        tint: Color,
+        onTap: @escaping (RelatedItem) -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.title3.weight(.semibold))
+            VStack(spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
+                    Button {
+                        onTap(item)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: symbol)
+                                .foregroundStyle(tint)
+                                .frame(width: 32, height: 32)
+                                .background(tint.opacity(0.12), in: Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                    .font(.callout)
+                                    .foregroundStyle(.primary)
+                                if let trailing = item.trailing {
+                                    Text(trailing)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if idx < items.count - 1 {
+                        Divider().padding(.leading, 56)
+                    }
+                }
+            }
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    /// Recursos únicos referenciados en la actividad del evento.
+    private var relatedResources: [RelatedItem] {
+        var seen: Set<UUID> = []
+        var out: [RelatedItem] = []
+        for activity in eventActivity {
+            guard let id = activity.resourceId, !seen.contains(id) else { continue }
+            seen.insert(id)
+            let title = activity.payload?["title"]?.stringValue ?? "Recurso"
+            out.append(RelatedItem(id: id, title: title, trailing: nil))
+        }
+        return out
+    }
+
+    /// Decisiones únicas referenciadas en la actividad del evento.
+    private var relatedDecisions: [RelatedItem] {
+        var seen: Set<UUID> = []
+        var out: [RelatedItem] = []
+        for activity in eventActivity {
+            guard let id = activity.decisionId, !seen.contains(id) else { continue }
+            seen.insert(id)
+            let title = activity.payload?["title"]?.stringValue ?? "Decisión"
+            // El status no está fácilmente disponible sin un fetch extra —
+            // F.EVENT.5 puede resolverlo via decision_detail batch.
+            out.append(RelatedItem(id: id, title: title, trailing: nil))
+        }
+        return out
+    }
+
+    // MARK: - 6. Información (Apple Settings rows — compacta)
 
     @ViewBuilder
     private func infoSection(_ event: CalendarEvent) -> some View {
@@ -444,9 +654,14 @@ public struct EventDetailView: View {
     }
 
     private func infoRows(_ event: CalendarEvent) -> [InfoRow] {
-        // F.EVENT.3 — Organizador vive en el host badge del header; ya no se
-        // lista acá para evitar redundancia.
         var rows: [InfoRow] = []
+        rows.append(InfoRow(
+            label: "Organizador",
+            value: store.displayName(for: event.hostActorId) + (isHost ? " (tú)" : "")
+        ))
+        if let starts = event.startsAt {
+            rows.append(InfoRow(label: "Fecha", value: headerDateLine(starts)))
+        }
         if let location = event.locationText, !location.isEmpty {
             rows.append(InfoRow(label: "Ubicación", value: location))
         }
@@ -472,165 +687,35 @@ public struct EventDetailView: View {
         .padding(.vertical, 12)
     }
 
-    private func recurrenceLabel(_ event: CalendarEvent) -> String {
-        guard let rule = event.recurrenceRule?.uppercased() else { return "Recurrente" }
-        if rule.contains("FREQ=WEEKLY") { return "Semanal" }
-        if rule.contains("FREQ=DAILY")  { return "Diario" }
-        if rule.contains("FREQ=MONTHLY") { return "Mensual" }
-        if rule.contains("FREQ=YEARLY") { return "Anual" }
-        return "Recurrente"
-    }
-
-    // MARK: - 5. Check-in
+    // MARK: - 7. Más acciones (••• botón único al final)
 
     @ViewBuilder
-    private func checkInSection(_ event: CalendarEvent) -> some View {
-        let mine = store.myParticipation(myActorId: myActorId)
-        let shouldShow = event.isScheduled
-            && shouldShowCheckIn(event)
-            && mine?.checkedIn != true
-            && mine?.status != "declined"
-            && mine?.status != "cancelled"
-
-        if shouldShow {
-            Button {
-                Task { await selfCheckIn() }
+    private func moreActionsButton(_ event: CalendarEvent) -> some View {
+        let items = moreActions(event)
+        if items.isEmpty { EmptyView() } else {
+            Menu {
+                ForEach(items) { item in
+                    Button(role: item.isDestructive ? .destructive : nil) {
+                        handleMoreAction(item.kind)
+                    } label: {
+                        Label(item.label, systemImage: item.symbol)
+                    }
+                }
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("Llegué")
-                        .fontWeight(.semibold)
+                    Image(systemName: "ellipsis")
+                        .font(.callout.weight(.semibold))
+                    Text("Más acciones")
+                        .font(.callout.weight(.semibold))
                 }
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-            }
-            .buttonStyle(.glassProminent)
-            .disabled(runner.isRunning)
-        }
-    }
-
-    /// El evento ya inició (o está por iniciar en breve).
-    private func shouldShowCheckIn(_ event: CalendarEvent) -> Bool {
-        guard let starts = event.startsAt else { return false }
-        return Date() >= starts.addingTimeInterval(-30 * 60)
-    }
-
-    // MARK: - 6. Recursos relacionados
-
-    @ViewBuilder
-    private func relatedResourcesSection(_ event: CalendarEvent) -> some View {
-        let resources = relatedResources
-        if resources.isEmpty { EmptyView() } else {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Recursos")
-                    .font(.title3.weight(.semibold))
-                VStack(spacing: 0) {
-                    ForEach(Array(resources.enumerated()), id: \.offset) { idx, item in
-                        Button {
-                            pushedResource = item.id
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "shippingbox.fill")
-                                    .foregroundStyle(.tint)
-                                    .frame(width: 32, height: 32)
-                                    .background(Color.accentColor.opacity(0.12), in: Circle())
-                                Text(item.title)
-                                    .font(.callout)
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        if idx < resources.count - 1 {
-                            Divider().padding(.leading, 56)
-                        }
-                    }
-                }
                 .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             }
+            .accessibilityLabel("Más acciones")
         }
     }
-
-    private struct RelatedItem: Identifiable {
-        let id: UUID
-        let title: String
-    }
-
-    /// Recursos únicos referenciados en la actividad de este evento.
-    /// El título viene del `payload.title` cuando existe.
-    private var relatedResources: [RelatedItem] {
-        var seen: Set<UUID> = []
-        var out: [RelatedItem] = []
-        for activity in eventActivity {
-            guard let id = activity.resourceId, !seen.contains(id) else { continue }
-            seen.insert(id)
-            let title = activity.payload?["title"]?.stringValue ?? "Recurso"
-            out.append(RelatedItem(id: id, title: title))
-        }
-        return out
-    }
-
-    // MARK: - 7. Decisiones relacionadas
-
-    @ViewBuilder
-    private func relatedDecisionsSection(_ event: CalendarEvent) -> some View {
-        let decisions = relatedDecisions
-        if decisions.isEmpty { EmptyView() } else {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Decisiones")
-                    .font(.title3.weight(.semibold))
-                VStack(spacing: 0) {
-                    ForEach(Array(decisions.enumerated()), id: \.offset) { idx, item in
-                        Button {
-                            pushedDecision = item.id
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .foregroundStyle(.indigo)
-                                    .frame(width: 32, height: 32)
-                                    .background(Color.indigo.opacity(0.12), in: Circle())
-                                Text(item.title)
-                                    .font(.callout)
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        if idx < decisions.count - 1 {
-                            Divider().padding(.leading, 56)
-                        }
-                    }
-                }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            }
-        }
-    }
-
-    private var relatedDecisions: [RelatedItem] {
-        var seen: Set<UUID> = []
-        var out: [RelatedItem] = []
-        for activity in eventActivity {
-            guard let id = activity.decisionId, !seen.contains(id) else { continue }
-            seen.insert(id)
-            let title = activity.payload?["title"]?.stringValue ?? "Decisión"
-            out.append(RelatedItem(id: id, title: title))
-        }
-        return out
-    }
-
-    // MARK: - Más acciones (•••) — el botón vive en el action strip arriba.
 
     private enum MoreActionKind {
         case recordExpense
@@ -647,12 +732,11 @@ public struct EventDetailView: View {
         let isDestructive: Bool
     }
 
-    /// Sólo aparecen las acciones que el backend marca como `enabled` en
-    /// `event_detail.available_actions`. Las acciones de participación
-    /// (rsvp/check-in) NO van acá — viven en sus propias secciones arriba.
+    /// Las acciones del menú salen verbatim de `event_detail.available_actions`
+    /// — el frontend no infiere ni hardcodea. Las acciones de participación
+    /// (rsvp, check-in) NO van acá porque viven en la zona primaria arriba.
     private func moreActions(_ event: CalendarEvent) -> [MoreActionItem] {
         var out: [MoreActionItem] = []
-
         for action in store.availableActions where action.enabled {
             switch action.actionKey {
             case "record_expense":
@@ -777,7 +861,7 @@ public struct EventDetailView: View {
     }
 }
 
-// MARK: - Sheet: ver todos los participantes
+// MARK: - Sheet: ver todos los participantes (agrupados por estado)
 
 private struct ParticipantsFullView: View {
     let participants: [EventParticipant]
@@ -789,26 +873,31 @@ private struct ParticipantsFullView: View {
 
     var body: some View {
         List {
-            ForEach(participants) { participant in
-                HStack(spacing: 12) {
-                    ActorInitialsView(name: store.displayName(for: participant.participantActorId), size: 40)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(store.displayName(for: participant.participantActorId))
-                        Text(humanStatus(participant))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if canCheckInOthers && !participant.checkedIn
-                        && participant.status != "cancelled"
-                        && participant.status != "declined" {
-                        Button {
-                            onCheckIn(participant)
-                        } label: {
-                            Image(systemName: "checkmark.circle")
-                                .font(.title3)
+            // Agrupar por estado humano (founder doctrine).
+            ForEach(groups(), id: \.title) { group in
+                Section(group.title) {
+                    ForEach(group.participants) { participant in
+                        HStack(spacing: 12) {
+                            ActorInitialsView(name: store.displayName(for: participant.participantActorId), size: 40)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(store.displayName(for: participant.participantActorId))
+                                Text(humanStatus(participant))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if canCheckInOthers && !participant.checkedIn
+                                && participant.status != "cancelled"
+                                && participant.status != "declined" {
+                                Button {
+                                    onCheckIn(participant)
+                                } label: {
+                                    Image(systemName: "checkmark.circle")
+                                        .font(.title3)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -820,6 +909,27 @@ private struct ParticipantsFullView: View {
                 Button("Cerrar") { dismiss() }
             }
         }
+    }
+
+    private struct ParticipantGroup {
+        let title: String
+        let participants: [EventParticipant]
+    }
+
+    private func groups() -> [ParticipantGroup] {
+        let confirmed = participants.filter { $0.status == "going" || $0.status == "attended" || $0.checkedIn }
+        let maybe = participants.filter { $0.status == "maybe" }
+        let declined = participants.filter { $0.status == "declined" || $0.status == "cancelled" }
+        let pending = participants.filter { $0.status == "invited" }
+        let other = participants.filter { ["no_show", "late"].contains($0.status) }
+
+        var out: [ParticipantGroup] = []
+        if !confirmed.isEmpty { out.append(ParticipantGroup(title: "Confirmados", participants: confirmed)) }
+        if !maybe.isEmpty     { out.append(ParticipantGroup(title: "Tal vez", participants: maybe)) }
+        if !pending.isEmpty   { out.append(ParticipantGroup(title: "Sin respuesta", participants: pending)) }
+        if !declined.isEmpty  { out.append(ParticipantGroup(title: "No asistirán", participants: declined)) }
+        if !other.isEmpty     { out.append(ParticipantGroup(title: "Otros", participants: other)) }
+        return out
     }
 
     private func humanStatus(_ p: EventParticipant) -> String {
