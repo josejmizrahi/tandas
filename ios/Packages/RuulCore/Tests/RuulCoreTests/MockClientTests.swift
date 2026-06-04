@@ -287,7 +287,8 @@ struct MockClientTests {
             contextId: cena,
             title: "Cena de prueba",
             eventType: .dinner,
-            startsAt: Date().addingTimeInterval(-30 * 60)
+            startsAt: Date().addingTimeInterval(-30 * 60),
+            locationText: "Casa de prueba"
         ))
         let result = try await mock.checkInParticipant(eventId: event.id, participantActorId: nil)
         #expect(result.isLate)
