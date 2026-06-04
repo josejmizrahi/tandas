@@ -1,13 +1,17 @@
 import SwiftUI
 import RuulCore
 
-/// F.NAV.3 — pantalla dedicada de Contextos. Reemplaza el dropdown del
-/// switcher como navegación primaria. Header: "Mis Contextos" · Favoritos ·
-/// Todos. Tap → mark_context_visited + switchTo + push `ContextHomeView`.
+/// F.CONTEXT.2 — pantalla de Contextos escalable. Reemplaza la List monolítica
+/// por un dashboard que escala a cientos de contextos:
 ///
-/// Doctrina: la lista la da el backend (`contextStore.availableContexts`,
-/// `contextPreferencesStore.favorites`). iOS NO infiere "tipo" — usa
-/// `actor_subtype` directo del backend traducido vía table local.
+///   Mi espacio       (hero card único, atajo al contexto personal)
+///   ⭐ Favoritos     (cards horizontales, scrollable)
+///   ⏱ Recientes     (cards horizontales, scrollable)
+///   Todos            (lista inline, sólo raíces no-personales)
+///   Crear / Unirse   (card de acciones)
+///
+/// El botón "+" del toolbar desaparece — la tab central "Crear" + esta card
+/// inline cubren la intención. F.2X intent-first.
 public struct ContextsListView: View {
     let container: DependencyContainer
 
@@ -26,9 +30,6 @@ public struct ContextsListView: View {
     private var preferencesStore: ContextPreferencesStore { container.contextPreferencesStore }
 
     public var body: some View {
-        // F.NAV.3 fix: NavigationStack dueño del path local — antes el path
-        // estaba @State aquí pero el NavigationStack vivía en MainTabShell,
-        // por lo que `path.append` no hacía nada.
         NavigationStack(path: $path) {
             Group {
                 switch contextStore.phase {
@@ -50,7 +51,7 @@ public struct ContextsListView: View {
                             onOpenInvitations: { isShowingInvitations = true }
                         )
                     } else {
-                        contextsList
+                        dashboard
                     }
                 }
             }
@@ -81,16 +82,21 @@ public struct ContextsListView: View {
         }
     }
 
-    // MARK: - Lista principal con secciones
+    // MARK: - Dashboard
 
     @ViewBuilder
-    private var contextsList: some View {
-        List {
-            if !preferencesStore.favorites.isEmpty {
+    private var dashboard: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                miEspacioCard
                 favoritesSection
+                recentsSection
+                allContextsSection
+                actionsCard
             }
-            allContextsSection
-            actionsSection
+            .padding(.horizontal)
+            .padding(.top, 4)
+            .padding(.bottom, 32)
         }
         .navigationTitle("Mis contextos")
         .toolbar {
@@ -108,22 +114,8 @@ public struct ContextsListView: View {
                     .accessibilityLabel("Invitaciones pendientes")
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        isShowingCreateContext = true
-                    } label: {
-                        Label("Crear contexto", systemImage: "rectangle.split.2x1.fill")
-                    }
-                    Button {
-                        isShowingJoinByCode = true
-                    } label: {
-                        Label("Unirse con código", systemImage: "key.fill")
-                    }
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                }
-            }
+            // F.CONTEXT.2 — "+" del toolbar eliminado. La tab central "Crear"
+            // + la card "Crear contexto / Unirse" cubren la intención.
         }
         .navigationDestination(for: AppContext.self) { context in
             ContextHomeContainer(
@@ -133,7 +125,6 @@ public struct ContextsListView: View {
                 onSwitchContext: { newCtx in
                     container.contextStore.switchTo(newCtx)
                     Task { await container.contextPreferencesStore.recordVisit(newCtx.id) }
-                    // Reemplazar destino: pop el actual y push el nuevo.
                     path.removeAll()
                     path.append(newCtx)
                 }
@@ -141,122 +132,285 @@ public struct ContextsListView: View {
         }
     }
 
-    // MARK: - Favoritos
+    // MARK: - Mi espacio (hero card único)
+
+    @ViewBuilder
+    private var miEspacioCard: some View {
+        if let personal = contextStore.availableContexts.first(where: { $0.isPersonal }) {
+            Button {
+                openContext(personal)
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: personal.symbolName)
+                        .font(.title2)
+                        .foregroundStyle(.tint)
+                        .frame(width: 48, height: 48)
+                        .background(Color.accentColor.opacity(0.15), in: Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Mi espacio")
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text("Tu actividad, recursos y compromisos")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(16)
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Favoritos (cards horizontales)
 
     @ViewBuilder
     private var favoritesSection: some View {
-        // F.NAV.3 — Sólo contextos raíz; los hijos viven dentro del parent.
-        Section {
-            ForEach(preferencesStore.favorites) { pref in
-                if let ctx = contextStore.availableContexts.first(where: { $0.id == pref.contextActorId }),
-                   ctx.isRoot {
-                    contextRow(ctx, isFavorite: true)
+        let favorites = resolveContexts(ids: preferencesStore.favorites.map(\.contextActorId))
+            .filter { $0.isRoot && !$0.isPersonal }
+        if !favorites.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Favoritos", systemImage: "star.fill")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.yellow)
+                    Spacer()
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(favorites) { ctx in
+                            contextCard(ctx, isFavorite: true)
+                        }
+                    }
+                    .padding(.bottom, 4)
                 }
             }
-        } header: {
-            Label("Favoritos", systemImage: "star.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.yellow)
         }
     }
 
-    // MARK: - Todos
+    // MARK: - Recientes (cards horizontales)
+
+    @ViewBuilder
+    private var recentsSection: some View {
+        let favoriteIds = Set(preferencesStore.favorites.map(\.contextActorId))
+        let recents = resolveContexts(ids: preferencesStore.recents.map(\.contextActorId))
+            .filter { $0.isRoot && !$0.isPersonal && !favoriteIds.contains($0.id) }
+            .prefix(8)
+        if !recents.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Recientes", systemImage: "clock")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(Array(recents)) { ctx in
+                            contextCard(ctx, isFavorite: false)
+                        }
+                    }
+                    .padding(.bottom, 4)
+                }
+            }
+        }
+    }
+
+    // MARK: - Todos (lista inline)
 
     @ViewBuilder
     private var allContextsSection: some View {
-        // F.NAV.3 — Sólo raíces. Los hijos se ven dentro del ContextHome del padre
-        // (en su sección "Subcontextos" + ContextTreeView).
         let favoriteIds = Set(preferencesStore.favorites.map(\.contextActorId))
-        let rootNonFavorites = contextStore.availableContexts.filter {
-            $0.isRoot && !favoriteIds.contains($0.id)
-        }
-        Section("Todos") {
-            ForEach(rootNonFavorites) { ctx in
-                contextRow(ctx, isFavorite: false)
+        let allRoots = contextStore.availableContexts.filter { $0.isRoot && !$0.isPersonal }
+        if !allRoots.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Todos")
+                    .font(.title3.weight(.semibold))
+                VStack(spacing: 0) {
+                    ForEach(Array(allRoots.enumerated()), id: \.element.id) { idx, ctx in
+                        Button {
+                            openContext(ctx)
+                        } label: {
+                            contextRowContent(ctx, isFavorite: favoriteIds.contains(ctx.id))
+                        }
+                        .buttonStyle(.plain)
+                        if idx < allRoots.count - 1 {
+                            Divider().padding(.leading, 56)
+                        }
+                    }
+                }
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             }
         }
     }
 
-    // MARK: - Acciones
+    // MARK: - Acciones (card al final)
 
     @ViewBuilder
-    private var actionsSection: some View {
-        Section {
+    private var actionsCard: some View {
+        VStack(spacing: 0) {
             Button {
                 isShowingCreateContext = true
             } label: {
-                Label("Crear contexto", systemImage: "rectangle.split.2x1.fill")
+                actionRow(symbol: "rectangle.split.2x1.fill", title: "Crear contexto")
             }
+            .buttonStyle(.plain)
+
+            Divider().padding(.leading, 56)
+
             Button {
                 isShowingJoinByCode = true
             } label: {
-                Label("Unirse con código", systemImage: "key.fill")
+                actionRow(symbol: "key.fill", title: "Unirse con código")
             }
+            .buttonStyle(.plain)
         }
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Row
+    @ViewBuilder
+    private func actionRow(symbol: String, title: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.callout)
+                .foregroundStyle(.tint)
+                .frame(width: 32)
+            Text(title)
+                .font(.callout.weight(.medium))
+                .foregroundStyle(.primary)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    // MARK: - Cards / rows
 
     @ViewBuilder
-    private func contextRow(_ context: AppContext, isFavorite: Bool) -> some View {
+    private func contextCard(_ ctx: AppContext, isFavorite: Bool) -> some View {
         Button {
-            openContext(context)
+            openContext(ctx)
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: context.symbolName)
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-                    .frame(width: 32, height: 32)
-                    .background(Color.accentColor.opacity(0.12), in: Circle())
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(context.displayName)
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(.primary)
-                    HStack(spacing: 4) {
-                        if let subtitle = subtypeLabel(context) {
-                            Text(subtitle)
-                        }
-                        if !context.isPersonal {
-                            Text("·")
-                            Text("\(context.memberCount) miembros")
-                        }
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Image(systemName: ctx.symbolName)
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(.tint)
+                        .frame(width: 40, height: 40)
+                        .background(Color.accentColor.opacity(0.15), in: Circle())
+                    Spacer()
+                    if isFavorite {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
                     }
-                    .font(.caption)
+                }
+                Spacer(minLength: 0)
+                Text(ctx.displayName)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Text(cardCaption(ctx))
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                }
-                Spacer()
-                if !context.isPersonal {
-                    Button {
-                        Task {
-                            try? await preferencesStore.setFavorite(context.id, isFavorite: !isFavorite)
-                        }
-                    } label: {
-                        Image(systemName: isFavorite ? "star.fill" : "star")
-                            .foregroundStyle(isFavorite ? Color.yellow : Color.secondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel(isFavorite ? "Quitar de favoritos" : "Agregar a favoritos")
-                }
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
             }
+            .frame(width: 150, height: 150, alignment: .topLeading)
+            .padding(16)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(Color.secondary.opacity(0.12), lineWidth: 0.5)
+            )
         }
         .buttonStyle(.plain)
     }
 
-    /// Abre el contexto: registra visita (best-effort) + switch al store +
-    /// push a ContextHomeView.
+    private func cardCaption(_ ctx: AppContext) -> String {
+        let kind = subtypeLabel(ctx) ?? ""
+        if ctx.memberCount > 0 {
+            return kind.isEmpty
+                ? "\(ctx.memberCount) miembros"
+                : "\(kind) · \(ctx.memberCount)"
+        }
+        return kind
+    }
+
+    @ViewBuilder
+    private func contextRowContent(_ ctx: AppContext, isFavorite: Bool) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: ctx.symbolName)
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .frame(width: 32, height: 32)
+                .background(Color.accentColor.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ctx.displayName)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.primary)
+                HStack(spacing: 4) {
+                    if let subtitle = subtypeLabel(ctx) {
+                        Text(subtitle)
+                    }
+                    Text("·")
+                    Text("\(ctx.memberCount) miembros")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            Spacer()
+            Button {
+                Task {
+                    try? await preferencesStore.setFavorite(ctx.id, isFavorite: !isFavorite)
+                }
+            } label: {
+                Image(systemName: isFavorite ? "star.fill" : "star")
+                    .foregroundStyle(isFavorite ? Color.yellow : Color.secondary)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(isFavorite ? "Quitar de favoritos" : "Agregar a favoritos")
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    // MARK: - Helpers
+
     private func openContext(_ context: AppContext) {
         contextStore.switchTo(context)
         Task { await preferencesStore.recordVisit(context.id) }
         path.append(context)
     }
 
+    /// Resuelve UUIDs a `AppContext`s en orden de entrada, preservando duplicados eliminados.
+    private func resolveContexts(ids: [UUID]) -> [AppContext] {
+        var seen = Set<UUID>()
+        var out: [AppContext] = []
+        for id in ids {
+            guard !seen.contains(id),
+                  let ctx = contextStore.availableContexts.first(where: { $0.id == id }) else { continue }
+            seen.insert(id)
+            out.append(ctx)
+        }
+        return out
+    }
+
     private func subtypeLabel(_ context: AppContext) -> String? {
-        if context.isPersonal { return "Tu contexto personal" }
+        if context.isPersonal { return nil }
         switch context.subtype {
         case "family":       return "Familia"
         case "friend_group": return "Grupo"
@@ -292,7 +446,7 @@ private struct ContextHomeContainer: View {
                         isShowingSwitcher = true
                     } label: {
                         HStack(spacing: 4) {
-                            Text(context.displayName)
+                            Text(context.isPersonal ? "Mi espacio" : context.displayName)
                                 .font(.headline)
                                 .foregroundStyle(.primary)
                                 .lineLimit(1)
@@ -322,7 +476,6 @@ private struct ContextHomeContainer: View {
                     onSwitch: onSwitchContext
                 )
             }
-            // Rebuild en cambio de contexto.
             .id(context.id)
     }
 }

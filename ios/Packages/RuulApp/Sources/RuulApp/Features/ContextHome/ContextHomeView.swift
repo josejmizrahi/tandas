@@ -133,7 +133,7 @@ public struct ContextHomeView: View {
         }
         .sheet(isPresented: $isShowingAllAttention) {
             NavigationStack {
-                AllContextAttentionView(items: contextAttentionItems) { item in
+                AllContextAttentionView(items: attentionItemsForSheet) { item in
                     isShowingAllAttention = false
                     handleAttentionTap(item)
                 }
@@ -166,9 +166,9 @@ public struct ContextHomeView: View {
                 heroCard(summary)
 
                 if context.isPersonal {
-                    // Contexto personal: hero + mi mundo. No tiene sentido
-                    // "miembros (1)" ni "cuentas abiertas del contexto".
-                    personalMyWorldCard
+                    // F.CONTEXT.2 — "Mi espacio". Lo que está vivo hoy (cross-context):
+                    // saldos + atención + invitaciones, antes que recursos.
+                    personalTodayCard
                     if let world = store.world {
                         personalResourcesCard(world)
                         personalObligationsCard(world)
@@ -210,7 +210,7 @@ public struct ContextHomeView: View {
                     .background(Color.accentColor.opacity(0.15), in: Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(summary.context.displayName)
+                    Text(heroTitle(summary))
                         .font(.title2.weight(.bold))
                         .lineLimit(2)
                     Text(contextTypeLabel)
@@ -230,8 +230,12 @@ public struct ContextHomeView: View {
         .padding(.top, 4)
     }
 
+    private func heroTitle(_ summary: ContextSummary) -> String {
+        context.isPersonal ? "Mi espacio" : summary.context.displayName
+    }
+
     private var contextTypeLabel: String {
-        if context.isPersonal { return "Contexto personal" }
+        if context.isPersonal { return "Lo que ves, administras y te deben" }
         switch context.subtype {
         case "family":       return "Familia"
         case "trip":         return "Viaje"
@@ -268,6 +272,11 @@ public struct ContextHomeView: View {
 
     private var contextAttentionItems: [AttentionItem] {
         container.attentionInboxStore.items.filter { $0.contextActorId == context.id }
+    }
+
+    /// Para el sheet "Pendientes": en contexto personal mostramos cross-context.
+    private var attentionItemsForSheet: [AttentionItem] {
+        context.isPersonal ? container.attentionInboxStore.items : contextAttentionItems
     }
 
     @ViewBuilder
@@ -1338,52 +1347,194 @@ public struct ContextHomeView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Personal mode (mi mundo)
+    // MARK: - Personal mode (Mi espacio)
 
+    /// F.CONTEXT.2 — "Hoy": señales agregadas cross-context (saldos + atención).
+    /// Convierte el contexto personal en algo vivo y útil hoy mismo, no una
+    /// lista de objetos a los que tienes acceso.
     @ViewBuilder
-    private var personalMyWorldCard: some View {
-        NavigationLink {
-            MyActivityFeedView(container: container)
-        } label: {
+    private var personalTodayCard: some View {
+        let signals = todaySignals()
+        if signals.isEmpty {
             HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color.blue.opacity(0.15))
-                        .frame(width: 40, height: 40)
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                        .font(.callout)
-                        .foregroundStyle(.blue)
-                }
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.green)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Lo que me importa")
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text("Últimas señales de lo que sigues")
-                        .font(.caption)
+                    Text("Hoy")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Nada pendiente 🎉")
+                        .font(.callout)
                         .foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                Spacer()
             }
             .padding(16)
             .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Hoy")
+                    .font(.title3.weight(.semibold))
+                VStack(spacing: 0) {
+                    ForEach(Array(signals.enumerated()), id: \.element.id) { idx, signal in
+                        Button {
+                            handleTodayCTA(signal.cta)
+                        } label: {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(signal.tint.opacity(0.15))
+                                        .frame(width: 32, height: 32)
+                                    Image(systemName: signal.symbol)
+                                        .font(.callout)
+                                        .foregroundStyle(signal.tint)
+                                }
+                                Text(signal.label)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if signal.cta != nil {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(signal.cta == nil)
+                        if idx < signals.count - 1 {
+                            Divider().padding(.leading, 56)
+                        }
+                    }
+                }
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            }
         }
-        .buttonStyle(.plain)
+    }
+
+    private struct TodaySignal: Identifiable {
+        let id: String
+        let symbol: String
+        let tint: Color
+        let label: String
+        let cta: TodayCTA?
+    }
+
+    private enum TodayCTA: Equatable {
+        case openAllAttention
+        case openInvitations
+    }
+
+    private func todaySignals() -> [TodaySignal] {
+        var out: [TodaySignal] = []
+
+        // Saldos agregados (sólo si hay world cargado)
+        if let world = store.world {
+            let owedToMe = world.openObligations.filter { !$0.iOwe }.reduce(0.0) { $0 + ($1.amount ?? 0) }
+            let iOweTotal = world.openObligations.filter { $0.iOwe }.reduce(0.0) { $0 + ($1.amount ?? 0) }
+            let currencyOwed = world.openObligations.first { !$0.iOwe }?.currency
+            let currencyOwe  = world.openObligations.first {  $0.iOwe }?.currency
+
+            if owedToMe > 0 {
+                out.append(TodaySignal(
+                    id: "money-owed",
+                    symbol: "arrow.down.circle.fill",
+                    tint: .green,
+                    label: "Te deben \(owedToMe.currencyLabel(currencyOwed))",
+                    cta: nil
+                ))
+            }
+            if iOweTotal > 0 {
+                out.append(TodaySignal(
+                    id: "money-mine",
+                    symbol: "arrow.up.circle.fill",
+                    tint: .red,
+                    label: "Debes \(iOweTotal.currencyLabel(currencyOwe))",
+                    cta: nil
+                ))
+            }
+        }
+
+        // Atención agrupada (cross-context)
+        let items = container.attentionInboxStore.items
+        let votes = items.filter { $0.kind == "decision_vote" }.count
+        if votes > 0 {
+            out.append(TodaySignal(
+                id: "votes",
+                symbol: "hand.thumbsup.fill",
+                tint: .purple,
+                label: votes == 1 ? "1 voto pendiente" : "\(votes) votos pendientes",
+                cta: .openAllAttention
+            ))
+        }
+        let conflicts = items.filter { $0.kind == "reservation_conflict" }.count
+        if conflicts > 0 {
+            out.append(TodaySignal(
+                id: "conflicts",
+                symbol: "exclamationmark.triangle.fill",
+                tint: .red,
+                label: conflicts == 1 ? "1 conflicto por resolver" : "\(conflicts) conflictos por resolver",
+                cta: .openAllAttention
+            ))
+        }
+        let pays = items.filter { $0.kind == "obligation_pay" }.count
+        if pays > 0 {
+            out.append(TodaySignal(
+                id: "pays",
+                symbol: "creditcard.fill",
+                tint: .green,
+                label: pays == 1 ? "1 pago pendiente" : "\(pays) pagos pendientes",
+                cta: .openAllAttention
+            ))
+        }
+        let completes = items.filter { $0.kind == "obligation_complete" }.count
+        if completes > 0 {
+            out.append(TodaySignal(
+                id: "completes",
+                symbol: "checkmark.circle",
+                tint: .green,
+                label: completes == 1 ? "1 compromiso por marcar" : "\(completes) compromisos por marcar",
+                cta: .openAllAttention
+            ))
+        }
+        let invites = items.filter { $0.kind == "invitation" }.count
+        if invites > 0 {
+            out.append(TodaySignal(
+                id: "invites",
+                symbol: "envelope.fill",
+                tint: .blue,
+                label: invites == 1 ? "1 invitación" : "\(invites) invitaciones",
+                cta: .openInvitations
+            ))
+        }
+
+        return out
+    }
+
+    private func handleTodayCTA(_ cta: TodayCTA?) {
+        switch cta {
+        case .openAllAttention:
+            isShowingAllAttention = true
+        case .openInvitations:
+            isShowingPendingInvitations = true
+        case .none:
+            break
+        }
     }
 
     @ViewBuilder
     private func personalResourcesCard(_ world: MyWorld) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Recursos que puedes ver (\(world.resources.count))")
+                Text("Lo que ves (\(world.resources.count))")
                     .font(.title3.weight(.semibold))
                 Spacer()
                 NavigationLink {
                     ResourcesListView(context: context, container: container)
                 } label: {
-                    Text("Ver todos →")
+                    Text("Ver todo →")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
@@ -1429,8 +1580,8 @@ public struct ContextHomeView: View {
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-                if !resource.reasons.isEmpty {
-                    Text(resource.reasons.joined(separator: " · "))
+                if let human = humanizedReason(resource.reasons) {
+                    Text(human)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1442,6 +1593,44 @@ public struct ContextHomeView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    /// F.CONTEXT.2 — Humaniza `MyWorldResource.reasons` (tokens del backend
+    /// como `OWN`, `MANAGE`, `GOVERN`, `USE`, `BENEFICIARY`, opcionalmente
+    /// `... via {context}`). Elige el rol más alto en jerarquía y devuelve UNA
+    /// frase humana. Cero tokens técnicos en la UI.
+    private func humanizedReason(_ reasons: [String]) -> String? {
+        enum Role: Int, Comparable {
+            case beneficiary = 0, use, govern, manage, own
+            static func < (lhs: Role, rhs: Role) -> Bool { lhs.rawValue < rhs.rawValue }
+            init?(token: String) {
+                switch token.uppercased() {
+                case "OWN":         self = .own
+                case "MANAGE":      self = .manage
+                case "GOVERN":      self = .govern
+                case "USE":         self = .use
+                case "BENEFICIARY": self = .beneficiary
+                default: return nil
+                }
+            }
+            var human: String {
+                switch self {
+                case .own:         return "Es tuyo"
+                case .manage:      return "Tú lo administras"
+                case .govern:      return "Tú lo gobiernas"
+                case .use:         return "Puedes usarlo"
+                case .beneficiary: return "Recibes beneficios"
+                }
+            }
+        }
+        var best: Role?
+        for raw in reasons {
+            let head = raw.split(separator: " ", maxSplits: 1).first.map(String.init) ?? raw
+            if let role = Role(token: head) {
+                if best == nil || role > best! { best = role }
+            }
+        }
+        return best?.human
     }
 
     @ViewBuilder
