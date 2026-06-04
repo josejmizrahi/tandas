@@ -15,6 +15,8 @@ public struct ResourceDetailView: View {
     @State private var isShowingSettings = false
     @State private var isShowingAttachDocument = false
     @State private var openingDocumentId: UUID?
+    /// R.2S.10 — `why_can_view_resource` cacheado para la sección "Por qué lo ves".
+    @State private var whyCanView: WhyCanViewResource?
     @State private var runner = ActionRunner()
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
@@ -67,6 +69,7 @@ public struct ResourceDetailView: View {
         .task {
             await store.load(resourceId: resourceId)
             await documentsStore.loadResourceDocuments(resourceId: resourceId)
+            await loadWhyCanView()
         }
         .refreshable {
             await store.load(resourceId: resourceId)
@@ -162,11 +165,18 @@ public struct ResourceDetailView: View {
         }
     }
 
-    /// "Por qué lo ves" — desde why_visible (backend); fallback a los rights del actor.
+    /// "Por qué lo ves" — preferimos las reasons del RPC dedicado
+    /// `why_can_view_resource` (R.2S.10). Fallback: `whyVisible` del detail,
+    /// luego los rights locales. Doctrina: iOS NUNCA infiere razones.
     @ViewBuilder
     private func whySection(_ detail: ResourceDetail) -> some View {
-        Section("Por qué lo ves") {
-            if !detail.whyVisible.isEmpty {
+        Section {
+            if let why = whyCanView, !why.reasons.isEmpty {
+                ForEach(why.reasons, id: \.self) { reason in
+                    Label(reason, systemImage: "checkmark.shield")
+                        .font(.callout)
+                }
+            } else if !detail.whyVisible.isEmpty {
                 ForEach(detail.whyVisible, id: \.self) { reason in
                     Label(reason, systemImage: "checkmark.shield")
                         .font(.callout)
@@ -181,7 +191,21 @@ public struct ResourceDetailView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+        } header: {
+            Text("Por qué lo ves")
+        } footer: {
+            if whyCanView != nil {
+                Text("Las razones las da el backend (no la app).")
+            }
         }
+    }
+
+    private func loadWhyCanView() async {
+        guard let actorId = myActorId else { return }
+        whyCanView = try? await container.rpc.whyCanViewResource(
+            actorId: actorId,
+            resourceId: resourceId
+        )
     }
 
     /// Reservaciones — única sección con pantalla operativa propia (resource-scoped).

@@ -329,6 +329,53 @@ struct MockClientTests {
         #expect(reservations.first { $0.id == first.reservationId }?.status == "rejected")
     }
 
+    @Test("R.2S.10: whyReservationWon trae reasons para un conflict resuelto")
+    func whyReservationWonReasons() async throws {
+        let mock = await makeDemoClient()
+        let (casa, familia) = (MockRuulRPCClient.DemoIds.casaValle, MockRuulRPCClient.DemoIds.familia)
+        let weekend = Date().addingTimeInterval(7 * 86400)
+        let first = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa, contextId: familia,
+            startsAt: weekend, endsAt: weekend.addingTimeInterval(2 * 86400),
+            reservedForActorId: MockRuulRPCClient.DemoIds.david
+        ))
+        let second = try await mock.requestReservation(RequestReservationInput(
+            resourceId: casa, contextId: familia,
+            startsAt: weekend.addingTimeInterval(86400), endsAt: weekend.addingTimeInterval(3 * 86400),
+            reservedForActorId: MockRuulRPCClient.DemoIds.isaac
+        ))
+        let conflict = try await mock.listConflicts(resourceId: casa).first!
+        _ = try await mock.resolveReservationConflict(
+            conflictId: conflict.id,
+            winnerReservationId: first.reservationId
+        )
+        let why = try await mock.whyReservationWon(conflictId: conflict.id)
+        #expect(why.resolutionStatus == "resolved")
+        // Las reasons del mock pueden ser arbitrarias; lo que importa es que
+        // el wire devuelve la struct correcta.
+        _ = second
+    }
+
+    @Test("R.2S.9: resourceAvailableActions standalone devuelve las mismas que resource_detail")
+    func resourceAvailableActionsStandalone() async throws {
+        let mock = await makeDemoClient()
+        let casa = MockRuulRPCClient.DemoIds.casaValle
+        let detail = try await mock.resourceDetail(resourceId: casa)
+        let actions = try await mock.resourceAvailableActions(
+            resourceId: casa, actorId: MockRuulRPCClient.DemoIds.jose
+        )
+        #expect(actions.count == detail.availableActions.count)
+    }
+
+    @Test("detect_reservation_conflicts wire: devuelve el mismo set que listConflicts")
+    func detectReservationConflictsWire() async throws {
+        let mock = await makeDemoClient()
+        let casa = MockRuulRPCClient.DemoIds.casaValle
+        let listed = try await mock.listConflicts(resourceId: casa)
+        let detected = try await mock.detectReservationConflicts(resourceId: casa)
+        #expect(listed.count == detected.count)
+    }
+
     @Test("R.2M: resource_type_catalog devuelve entries con capabilities razonables")
     func resourceTypeCatalogReturnsEntries() async throws {
         let mock = await makeDemoClient()

@@ -21,6 +21,9 @@ public struct ReservationConflictView: View {
     @State private var detailA: ReservationDetail?
     @State private var detailB: ReservationDetail?
     @State private var lastResolution: ResolveConflictResult?
+    /// R.2S.10 — explicación del backend sobre por qué ganó X (carga cuando el
+    /// conflict está resuelto o tras `resolve`).
+    @State private var whyWon: WhyReservationWon?
 
     public init(
         conflict: ReservationConflict,
@@ -71,11 +74,18 @@ public struct ReservationConflictView: View {
             if let result = lastResolution {
                 resolutionResultSection(result)
             }
+
+            if let why = whyWon, !why.reasons.isEmpty {
+                whyReservationWonSection(why)
+            }
         }
         .navigationTitle("Conflicto")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await reloadDetails()
+            if !conflict.isOpen {
+                await loadWhyWon()
+            }
         }
         .actionErrorAlert(runner)
     }
@@ -204,6 +214,26 @@ public struct ReservationConflictView: View {
         }
     }
 
+    // MARK: - Why won (R.2S.10)
+
+    @ViewBuilder
+    private func whyReservationWonSection(_ why: WhyReservationWon) -> some View {
+        Section {
+            ForEach(why.reasons, id: \.self) { reason in
+                Label(reason, systemImage: "checkmark.shield")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Por qué se resolvió así")
+        } footer: {
+            Text("Las razones las da el backend (no la app).")
+        }
+    }
+
+    private func loadWhyWon() async {
+        whyWon = try? await container.rpc.whyReservationWon(conflictId: conflict.id)
+    }
+
     // MARK: - Actions
 
     private func reloadDetails() async {
@@ -226,7 +256,8 @@ public struct ReservationConflictView: View {
             lastResolution = result
         }
         if success {
-            // Para split_dates dejamos visible el resultado un momento antes de cerrar.
+            // Cargar el "por qué" del backend para mostrar antes de cerrar.
+            await loadWhyWon()
             try? await Task.sleep(for: .seconds(1))
             dismiss()
         }

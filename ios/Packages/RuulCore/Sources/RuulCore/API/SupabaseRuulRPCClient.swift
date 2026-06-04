@@ -376,6 +376,20 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await call("resource_type_catalog")
     }
 
+    public func resourceAvailableActions(resourceId: UUID, actorId: UUID) async throws -> [AvailableAction] {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            let pActorId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pResourceId = "p_resource_id"
+                case pActorId = "p_actor_id"
+            }
+        }
+        return try await call("resource_available_actions", params: Params(
+            pResourceId: resourceId, pActorId: actorId
+        ))
+    }
+
     public func createResource(_ input: CreateResourceInput) async throws -> Resource {
         struct Params: Encodable, Sendable {
             let pContextActorId: UUID
@@ -784,6 +798,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         } catch {
             throw RPCErrorMapper.map(error)
         }
+    }
+
+    public func detectReservationConflicts(resourceId: UUID) async throws -> [ReservationConflict] {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
+        }
+        return try await call("detect_reservation_conflicts", params: Params(pResourceId: resourceId))
     }
 
     public func reservationDetail(reservationId: UUID) async throws -> ReservationDetail {

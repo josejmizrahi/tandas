@@ -768,6 +768,13 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     // MARK: - Resources & rights
 
+    public func resourceAvailableActions(resourceId: UUID, actorId: UUID) async throws -> [AvailableAction] {
+        try throwIfNeeded()
+        // El mock devuelve las mismas actions que resource_detail derivaría.
+        let detail = try await resourceDetail(resourceId: resourceId)
+        return detail.availableActions
+    }
+
     public func resourceTypeCatalog() async throws -> ResourceTypeCatalog {
         try throwIfNeeded()
         // Cat catálogo mock — espejea los tipos del enum con capabilities razonables
@@ -1430,6 +1437,12 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return conflicts.values
             .filter { $0.resourceId == resourceId }
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+    }
+
+    public func detectReservationConflicts(resourceId: UUID) async throws -> [ReservationConflict] {
+        try throwIfNeeded()
+        // El mock devuelve el mismo set persistido (no detecta dinámicamente).
+        return try await listConflicts(resourceId: resourceId)
     }
 
     public func reservationDetail(reservationId: UUID) async throws -> ReservationDetail {

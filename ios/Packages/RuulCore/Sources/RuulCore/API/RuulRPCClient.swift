@@ -79,6 +79,10 @@ public protocol RuulRPCClient: Sendable {
     /// capabilities, metadata esperada). El frontend NO hardcodea: el catálogo
     /// es la fuente de verdad para qué tipos existen y cómo presentarlos.
     func resourceTypeCatalog() async throws -> ResourceTypeCatalog
+    /// `resource_available_actions(resource, actor)` — refresca solo las
+    /// available_actions sin pedir el `resource_detail` completo (útil tras
+    /// `grant_right` / `revoke_right` para actualizar botones).
+    func resourceAvailableActions(resourceId: UUID, actorId: UUID) async throws -> [AvailableAction]
     /// `list_context_resources(p_context_actor_id)`
     func listContextResources(contextId: UUID) async throws -> [ContextResource]
     /// `resource_detail(p_resource_id)`
@@ -132,6 +136,9 @@ public protocol RuulRPCClient: Sendable {
     func listContextReservations(contextId: UUID) async throws -> [Reservation]
     /// Lectura PostgREST: conflictos abiertos de un recurso.
     func listConflicts(resourceId: UUID) async throws -> [ReservationConflict]
+    /// `detect_reservation_conflicts(resource)` — equivalente RPC al list pero
+    /// invocado server-side (puede detectar conflictos no persistidos).
+    func detectReservationConflicts(resourceId: UUID) async throws -> [ReservationConflict]
     /// `reservation_detail(p_reservation_id)` — R.2S: detalle + `available_actions` canónicos.
     func reservationDetail(reservationId: UUID) async throws -> ReservationDetail
     /// `approve_reservation(p_reservation_id)`
