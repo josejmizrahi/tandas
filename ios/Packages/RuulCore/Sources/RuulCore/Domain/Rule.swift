@@ -12,6 +12,13 @@ public struct Rule: Codable, Sendable, Equatable, Identifiable {
     public let triggerEventType: String?
     public let conditionTree: JSONValue?
     public let consequences: JSONValue?
+    /// R.2S.5 — scope universal: `context` | `event_type` | `event` | `resource_type` |
+    /// `resource` | `decision` | `reservation` | `membership` | `money_transaction` |
+    /// `obligation` | `custom`. Nil = legacy (= 'context').
+    public let targetScope: String?
+    /// R.2S.5 — filtro jsonb `{key: value}` evaluado contra el payload del trigger.
+    /// `{}` o nil matchea cualquier payload.
+    public let targetFilter: JSONValue?
     public let createdAt: Date?
 
     enum CodingKeys: String, CodingKey {
@@ -25,6 +32,8 @@ public struct Rule: Codable, Sendable, Equatable, Identifiable {
         case triggerEventType = "trigger_event_type"
         case conditionTree = "condition_tree"
         case consequences
+        case targetScope = "target_scope"
+        case targetFilter = "target_filter"
         case createdAt = "created_at"
     }
 
@@ -39,6 +48,8 @@ public struct Rule: Codable, Sendable, Equatable, Identifiable {
         triggerEventType: String? = nil,
         conditionTree: JSONValue? = nil,
         consequences: JSONValue? = nil,
+        targetScope: String? = nil,
+        targetFilter: JSONValue? = nil,
         createdAt: Date? = nil
     ) {
         self.id = id
@@ -51,10 +62,15 @@ public struct Rule: Codable, Sendable, Equatable, Identifiable {
         self.triggerEventType = triggerEventType
         self.conditionTree = conditionTree
         self.consequences = consequences
+        self.targetScope = targetScope
+        self.targetFilter = targetFilter
         self.createdAt = createdAt
     }
 
     public var isActive: Bool { status == "active" }
+
+    /// Scope tipado si el backend lo conoce (con fallback a `context` si nil/legacy).
+    public var scope: RuleTargetScope { RuleTargetScope(rawValue: targetScope ?? "context") ?? .context }
 
     /// Descripción legible de la condición (sin mostrar JSON crudo).
     public var conditionDescription: String {
@@ -131,10 +147,13 @@ public struct RuleCreated: Decodable, Sendable, Equatable {
 
 // MARK: - Builders (CreateRuleWizard → backend jsonb)
 
-/// Triggers de reglas que el wizard de F.8 soporta.
+/// Triggers de reglas que el wizard de F.8 soporta. R.2S.5 expandió la lista
+/// con triggers de dominios no-evento (reservaciones, gastos).
 public enum RuleTrigger: String, Codable, Sendable, CaseIterable, Identifiable {
     case checkedIn = "event.checked_in"
     case participationCancelled = "event.participation_cancelled"
+    case reservationCancelled = "reservation.cancelled"
+    case moneyExpenseRecorded = "money.expense_recorded"
 
     public var id: String { rawValue }
 
@@ -142,6 +161,36 @@ public enum RuleTrigger: String, Codable, Sendable, CaseIterable, Identifiable {
         switch self {
         case .checkedIn: return "Al hacer check-in"
         case .participationCancelled: return "Al cancelar asistencia"
+        case .reservationCancelled: return "Al cancelar una reservación"
+        case .moneyExpenseRecorded: return "Al registrar un gasto"
+        }
+    }
+}
+
+/// R.2S.5 — scope de aplicación de una regla. El backend evalúa la regla solo
+/// cuando el trigger emite un evento del dominio matching del scope.
+public enum RuleTargetScope: String, Codable, Sendable, CaseIterable, Identifiable {
+    case context, eventType = "event_type", event
+    case resourceType = "resource_type", resource
+    case decision, reservation, membership
+    case moneyTransaction = "money_transaction"
+    case obligation, custom
+
+    public var id: String { rawValue }
+
+    public var label: String {
+        switch self {
+        case .context: return "Todo el contexto"
+        case .eventType: return "Tipo de evento"
+        case .event: return "Un evento puntual"
+        case .resourceType: return "Tipo de recurso"
+        case .resource: return "Un recurso puntual"
+        case .decision: return "Decisiones"
+        case .reservation: return "Reservaciones"
+        case .membership: return "Miembros"
+        case .moneyTransaction: return "Transacciones de dinero"
+        case .obligation: return "Obligaciones"
+        case .custom: return "Personalizado"
         }
     }
 }
@@ -176,5 +225,44 @@ public enum RuleConsequenceBuilder {
                 "currency": .string(currency)
             ])
         ])
+    }
+}
+
+/// R.2S.5 — builders para condition_tree de los nuevos triggers (reservación/gasto).
+public enum RuleConditionBuilderR2S5 {
+    /// `hours_before < threshold` — para `reservation.cancelled` (cancelación tardía).
+    public static func cancelledLessHoursBefore(_ hours: Double) -> JSONValue {
+        .object([
+            "op": .string("<"),
+            "field": .string("hours_before"),
+            "value": .number(hours)
+        ])
+    }
+
+    /// `amount > threshold` — para `money.expense_recorded` (alerta de gasto alto).
+    public static func amountGreaterThan(_ amount: Double) -> JSONValue {
+        .object([
+            "op": .string(">"),
+            "field": .string("amount"),
+            "value": .number(amount)
+        ])
+    }
+}
+
+/// R.2S.5 — builders de `target_filter` por scope.
+public enum RuleTargetFilterBuilder {
+    /// Filtra por un recurso específico (target_scope=resource).
+    public static func resource(_ id: UUID) -> JSONValue {
+        .object(["resource_id": .string(id.uuidString)])
+    }
+
+    /// Filtra por tipo de recurso (target_scope=resource_type).
+    public static func resourceType(_ rawType: String) -> JSONValue {
+        .object(["resource_type": .string(rawType)])
+    }
+
+    /// Filtra por currency (target_scope=money_transaction).
+    public static func currency(_ code: String) -> JSONValue {
+        .object(["currency": .string(code)])
     }
 }

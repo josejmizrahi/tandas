@@ -329,6 +329,41 @@ struct MockClientTests {
         #expect(reservations.first { $0.id == first.reservationId }?.status == "rejected")
     }
 
+    @Test("R.2S.5: createRule con targetScope=reservation persiste scope y filter")
+    func createRuleR2S5ReservationScope() async throws {
+        let mock = await makeDemoClient()
+        let familia = MockRuulRPCClient.DemoIds.familia
+        let casa = MockRuulRPCClient.DemoIds.casaValle
+        let rule = try await mock.createRule(CreateRuleInput(
+            contextId: familia,
+            title: "Multa cancelación tarde",
+            triggerEventType: RuleTrigger.reservationCancelled.rawValue,
+            conditionTree: RuleConditionBuilderR2S5.cancelledLessHoursBefore(48),
+            consequences: RuleConsequenceBuilder.fine(amount: 300, currency: "MXN"),
+            ruleType: "automation",
+            targetScope: RuleTargetScope.resource.rawValue,
+            targetFilter: RuleTargetFilterBuilder.resource(casa)
+        ))
+        #expect(rule.targetScope == "resource")
+        #expect(rule.scope == .resource)
+        #expect(rule.targetFilter?["resource_id"]?.stringValue == casa.uuidString)
+        #expect(rule.triggerEventType == "reservation.cancelled")
+    }
+
+    @Test("R.2S.5: createRule sin targetScope crea regla legacy (scope=context)")
+    func createRuleLegacyBackwardCompat() async throws {
+        let mock = await makeDemoClient()
+        let familia = MockRuulRPCClient.DemoIds.familia
+        let rule = try await mock.createRule(CreateRuleInput(
+            contextId: familia,
+            title: "Norma legacy",
+            ruleType: "norm"
+        ))
+        #expect(rule.targetScope == nil)
+        // Pero el helper computado expone .context como fallback.
+        #expect(rule.scope == .context)
+    }
+
     @Test("R.2S.7: resolveReservationConflictWith waitlisted aprueba uno y pone al otro en waitlist")
     func resolveConflictWaitlisted() async throws {
         let mock = await makeDemoClient()

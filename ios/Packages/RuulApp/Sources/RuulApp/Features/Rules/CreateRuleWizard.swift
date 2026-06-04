@@ -15,11 +15,17 @@ public struct CreateRuleWizard: View {
     @State private var currency = "MXN"
     @State private var customTitle = ""
     @State private var normText = ""
+    /// R.2S.5 — para `lateReservationCancel`: cancelar con menos de N horas → multa.
+    @State private var lateCancelHours = 48.0
+    /// R.2S.5 — para `expenseAlert`: monto a partir del cual la regla aplica.
+    @State private var expenseThreshold = 5000.0
     @State private var runner = ActionRunner()
 
     private enum Template: String, CaseIterable, Identifiable {
         case lateFee
         case sameDayCancellation
+        case lateReservationCancel
+        case expenseAlert
         case textNorm
 
         var id: String { rawValue }
@@ -28,6 +34,8 @@ public struct CreateRuleWizard: View {
             switch self {
             case .lateFee: return "Multa por llegar tarde"
             case .sameDayCancellation: return "Multa por cancelar el mismo día"
+            case .lateReservationCancel: return "Multa por cancelar reservación tarde"
+            case .expenseAlert: return "Alerta por gasto alto"
             case .textNorm: return "Norma de texto (sin automatización)"
             }
         }
@@ -36,6 +44,8 @@ public struct CreateRuleWizard: View {
             switch self {
             case .lateFee: return "clock.badge.exclamationmark"
             case .sameDayCancellation: return "xmark.circle"
+            case .lateReservationCancel: return "calendar.badge.exclamationmark"
+            case .expenseAlert: return "exclamationmark.triangle"
             case .textNorm: return "text.quote"
             }
         }
@@ -88,6 +98,36 @@ public struct CreateRuleWizard: View {
                     }
                     fineSection
 
+                case .lateReservationCancel:
+                    Section("Condición") {
+                        Stepper(
+                            "Cancelar con menos de \(Int(lateCancelHours)) h de anticipación",
+                            value: $lateCancelHours,
+                            in: 6...168,
+                            step: 6
+                        )
+                    }
+                    fineSection
+
+                case .expenseAlert:
+                    Section("Condición") {
+                        HStack {
+                            Text("Gasto mayor a")
+                            TextField("Monto", value: $expenseThreshold, format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                            Text(currency)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Section {
+                        Text("Por ahora la alerta queda como severidad alta sin consecuencia automática.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text("Consecuencia")
+                    }
+
                 case .textNorm:
                     Section("Norma") {
                         TextField("Título", text: $customTitle)
@@ -138,8 +178,10 @@ public struct CreateRuleWizard: View {
 
     private var isValid: Bool {
         switch template {
-        case .lateFee, .sameDayCancellation:
+        case .lateFee, .sameDayCancellation, .lateReservationCancel:
             return fineAmount > 0
+        case .expenseAlert:
+            return expenseThreshold > 0
         case .textNorm:
             return !customTitle.trimmingCharacters(in: .whitespaces).isEmpty
         }
@@ -151,6 +193,10 @@ public struct CreateRuleWizard: View {
             return "Cuando alguien haga check-in con más de \(Int(thresholdMinutes)) minutos de retraso, el backend le genera automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency) a favor del contexto."
         case .sameDayCancellation:
             return "Cuando alguien cancele su asistencia el mismo día del evento, se le genera automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency)."
+        case .lateReservationCancel:
+            return "Cuando alguien cancele una reservación con menos de \(Int(lateCancelHours)) h de anticipación, se le genera una multa de $\(fineAmount.formatted(.number)) \(currency)."
+        case .expenseAlert:
+            return "Cualquier gasto mayor a $\(expenseThreshold.formatted(.number)) \(currency) queda marcado con severidad alta para revisión."
         case .textNorm:
             return "Las normas de texto no generan consecuencias automáticas — son acuerdos visibles para todos."
         }
@@ -177,6 +223,28 @@ public struct CreateRuleWizard: View {
                     conditionTree: RuleConditionBuilder.sameDayCancellation(),
                     consequences: RuleConsequenceBuilder.fine(amount: fineAmount, currency: currency),
                     ruleType: "automation"
+                )
+            case .lateReservationCancel:
+                input = CreateRuleInput(
+                    contextId: context.id,
+                    title: "Multa por cancelar reservación con menos de \(Int(lateCancelHours)) h",
+                    triggerEventType: RuleTrigger.reservationCancelled.rawValue,
+                    conditionTree: RuleConditionBuilderR2S5.cancelledLessHoursBefore(lateCancelHours),
+                    consequences: RuleConsequenceBuilder.fine(amount: fineAmount, currency: currency),
+                    ruleType: "automation",
+                    targetScope: RuleTargetScope.reservation.rawValue
+                )
+            case .expenseAlert:
+                input = CreateRuleInput(
+                    contextId: context.id,
+                    title: "Alerta de gasto mayor a \(expenseThreshold.formatted(.number)) \(currency)",
+                    triggerEventType: RuleTrigger.moneyExpenseRecorded.rawValue,
+                    conditionTree: RuleConditionBuilderR2S5.amountGreaterThan(expenseThreshold),
+                    consequences: .array([]),
+                    ruleType: "automation",
+                    severity: 3,
+                    targetScope: RuleTargetScope.moneyTransaction.rawValue,
+                    targetFilter: RuleTargetFilterBuilder.currency(currency)
                 )
             case .textNorm:
                 input = CreateRuleInput(

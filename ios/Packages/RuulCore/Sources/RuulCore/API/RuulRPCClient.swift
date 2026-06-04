@@ -477,7 +477,8 @@ public struct CreateEventInput: Sendable, Equatable {
     }
 }
 
-/// Input de `create_rule`.
+/// Input de `create_rule`. R.2S.5 añade `targetScope` + `targetFilter`
+/// para reglas universales (más allá de eventos de calendario).
 public struct CreateRuleInput: Sendable, Equatable {
     public var contextId: UUID
     public var title: String
@@ -487,6 +488,10 @@ public struct CreateRuleInput: Sendable, Equatable {
     public var body: String?
     public var ruleType: String
     public var severity: Int
+    /// Scope del dominio donde aplica (default 'context' = legacy global).
+    public var targetScope: String?
+    /// Filtro jsonb sobre el payload del trigger (default `{}` = matchea todos).
+    public var targetFilter: JSONValue?
 
     public init(
         contextId: UUID,
@@ -496,7 +501,9 @@ public struct CreateRuleInput: Sendable, Equatable {
         consequences: JSONValue? = nil,
         body: String? = nil,
         ruleType: String = "automation",
-        severity: Int = 1
+        severity: Int = 1,
+        targetScope: String? = nil,
+        targetFilter: JSONValue? = nil
     ) {
         self.contextId = contextId
         self.title = title
@@ -506,6 +513,8 @@ public struct CreateRuleInput: Sendable, Equatable {
         self.body = body
         self.ruleType = ruleType
         self.severity = severity
+        self.targetScope = targetScope
+        self.targetFilter = targetFilter
     }
 }
 

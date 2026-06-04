@@ -1284,6 +1284,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
             triggerEventType: input.triggerEventType,
             conditionTree: input.conditionTree,
             consequences: input.consequences,
+            targetScope: input.targetScope,
+            targetFilter: input.targetFilter,
             createdAt: Date()
         )
         rules[input.contextId, default: []].append(rule)

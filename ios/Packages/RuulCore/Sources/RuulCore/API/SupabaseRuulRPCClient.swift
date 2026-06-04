@@ -649,12 +649,16 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
     // MARK: - Rules
 
     public func createRule(_ input: CreateRuleInput) async throws -> Rule {
+        // R.2S.5: siempre pasamos los 10 args. Si targetScope es nil,
+        // mandamos 'context' y filter `{}` (= comportamiento legacy).
         struct Params: Encodable, Sendable {
             let pContextActorId: UUID
             let pTitle: String
             let pTriggerEventType: String?
             let pConditionTree: JSONValue?
             let pConsequences: JSONValue?
+            let pTargetScope: String
+            let pTargetFilter: JSONValue
             let pBody: String?
             let pRuleType: String
             let pSeverity: Int
@@ -664,6 +668,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pTriggerEventType = "p_trigger_event_type"
                 case pConditionTree = "p_condition_tree"
                 case pConsequences = "p_consequences"
+                case pTargetScope = "p_target_scope"
+                case pTargetFilter = "p_target_filter"
                 case pBody = "p_body"
                 case pRuleType = "p_rule_type"
                 case pSeverity = "p_severity"
@@ -675,6 +681,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pTriggerEventType: input.triggerEventType,
             pConditionTree: input.conditionTree,
             pConsequences: input.consequences,
+            pTargetScope: input.targetScope ?? "context",
+            pTargetFilter: input.targetFilter ?? .object([:]),
             pBody: input.body,
             pRuleType: input.ruleType,
             pSeverity: input.severity
