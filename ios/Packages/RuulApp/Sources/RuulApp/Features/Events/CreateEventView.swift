@@ -13,9 +13,29 @@ public struct CreateEventView: View {
     @State private var startsAt = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
     @State private var locationText = ""
     @State private var isVirtual = false
-    @State private var isWeekly = false
+    @State private var recurrence: Recurrence = .none
     @State private var inviteAllMembers = true
     @State private var runner = ActionRunner()
+
+    /// F.EVENT.6 — frecuencias soportadas. El backend `close_event` interpreta
+    /// el `rawValue` para auto-crear la siguiente instancia (weekly rota host;
+    /// daily/monthly/yearly mantienen host).
+    private enum Recurrence: String, CaseIterable, Identifiable {
+        case none, daily, weekly, monthly, yearly
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .none:    return "No se repite"
+            case .daily:   return "Diaria"
+            case .weekly:  return "Semanal"
+            case .monthly: return "Mensual"
+            case .yearly:  return "Anual"
+            }
+        }
+        var ruleValue: String? {
+            self == .none ? nil : rawValue
+        }
+    }
 
     public init(context: AppContext, store: EventsStore, container: DependencyContainer) {
         self.context = context
@@ -65,12 +85,25 @@ public struct CreateEventView: View {
                 }
 
                 Section {
-                    Toggle("Se repite cada semana", isOn: $isWeekly)
+                    Picker("Frecuencia", selection: $recurrence) {
+                        ForEach(Recurrence.allCases) { freq in
+                            Text(freq.label).tag(freq)
+                        }
+                    }
                 } header: {
                     Text("Recurrencia")
                 } footer: {
-                    if isWeekly {
+                    switch recurrence {
+                    case .none:
+                        EmptyView()
+                    case .weekly:
                         Text("Al cerrar cada evento se crea automáticamente el de la siguiente semana y el host rota entre los miembros.")
+                    case .daily:
+                        Text("Al cerrar cada evento se crea el del día siguiente con el mismo host.")
+                    case .monthly:
+                        Text("Al cerrar cada evento se crea el del mes siguiente con el mismo host.")
+                    case .yearly:
+                        Text("Al cerrar cada evento se crea el del año siguiente con el mismo host.")
                     }
                 }
 
@@ -115,7 +148,7 @@ public struct CreateEventView: View {
                     startsAt: startsAt,
                     locationText: isVirtual || trimmedLocation.isEmpty ? nil : trimmedLocation,
                     isVirtual: isVirtual,
-                    recurrenceRule: isWeekly ? "weekly" : nil,
+                    recurrenceRule: recurrence.ruleValue,
                     inviteAllMembers: inviteAllMembers,
                     clientId: UUID().uuidString
                 ),

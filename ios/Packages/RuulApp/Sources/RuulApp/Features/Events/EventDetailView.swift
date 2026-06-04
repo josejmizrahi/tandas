@@ -44,7 +44,9 @@ public struct EventDetailView: View {
     @State private var isShowingAllParticipants = false
     @State private var pushedResource: UUID?
     @State private var pushedDecision: UUID?
-    @State private var pushedMoney = false
+    /// F.EVENT.6 — gasto scoped al evento.
+    @State private var expenseScope: EventScope?
+    @State private var moneyStoreForExpense: MoneyStore?
     @State private var pushedDecisions = false
 
     public init(eventId: UUID, context: AppContext, container: DependencyContainer) {
@@ -158,11 +160,19 @@ public struct EventDetailView: View {
         .navigationDestination(item: $pushedDecision) { decisionId in
             DecisionDetailView(decisionId: decisionId, context: context, container: container)
         }
-        .navigationDestination(isPresented: $pushedMoney) {
-            MoneyHomeView(context: context, container: container)
-        }
         .navigationDestination(isPresented: $pushedDecisions) {
             DecisionsListView(context: context, container: container)
+        }
+        // F.EVENT.6 — sheet de gasto scoped al evento.
+        .sheet(item: $expenseScope) { scope in
+            if let moneyStore = moneyStoreForExpense {
+                RecordExpenseView(
+                    context: context,
+                    store: moneyStore,
+                    container: container,
+                    eventScope: scope
+                )
+            }
         }
     }
 
@@ -269,11 +279,14 @@ public struct EventDetailView: View {
     }
 
     private func recurrenceLabel(_ event: CalendarEvent) -> String {
-        guard let rule = event.recurrenceRule?.uppercased() else { return "Recurrente" }
-        if rule.contains("FREQ=WEEKLY") { return "Semanal" }
-        if rule.contains("FREQ=DAILY")  { return "Diario" }
-        if rule.contains("FREQ=MONTHLY") { return "Mensual" }
-        if rule.contains("FREQ=YEARLY") { return "Anual" }
+        guard let raw = event.recurrenceRule?.trimmingCharacters(in: .whitespaces).lowercased(),
+              !raw.isEmpty else { return "Recurrente" }
+        // F.EVENT.6 — soporta tanto los simples "weekly"/"daily"/... como
+        // RRULE-style "freq=weekly"/...
+        if raw == "weekly"  || raw.contains("freq=weekly")  { return "Semanal" }
+        if raw == "daily"   || raw.contains("freq=daily")   { return "Diaria" }
+        if raw == "monthly" || raw.contains("freq=monthly") { return "Mensual" }
+        if raw == "yearly"  || raw.contains("freq=yearly")  { return "Anual" }
         return "Recurrente"
     }
 
@@ -492,7 +505,7 @@ public struct EventDetailView: View {
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .frame(width: 40, height: 40)
-                    .background(Color.secondary.opacity(0.15), in: Circle())
+                    .background(Color.secondary.badgeFill, in: Circle())
                     .overlay(
                         Circle().strokeBorder(Theme.Surface.card, lineWidth: 3)
                     )
@@ -578,7 +591,7 @@ public struct EventDetailView: View {
                             Image(systemName: symbol)
                                 .foregroundStyle(tint)
                                 .frame(width: 32, height: 32)
-                                .background(tint.opacity(0.12), in: Circle())
+                                .background(tint.badgeFillSubtle, in: Circle())
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.title)
                                     .font(.callout)
@@ -755,10 +768,30 @@ public struct EventDetailView: View {
 
     private func handleMoreAction(_ kind: MoreActionKind) {
         switch kind {
-        case .recordExpense:        pushedMoney = true
+        case .recordExpense:        openExpenseSheet()
         case .createDecision:       pushedDecisions = true
         case .closeEvent:           isConfirmingClose = true
         case .cancelParticipation:  isConfirmingCancel = true
+        }
+    }
+
+    /// F.EVENT.6 — el gasto desde un evento se scopea al roster del evento.
+    /// MoneyStore se instancia lazy y se carga antes de presentar la sheet.
+    private func openExpenseSheet() {
+        guard let event = store.event else { return }
+        let store = moneyStoreForExpense ?? MoneyStore(
+            rpc: container.rpc,
+            myActorId: container.currentActorStore.actorId
+        )
+        moneyStoreForExpense = store
+        let participantIds = Set(self.store.participants.map(\.participantActorId))
+        Task {
+            await store.load(context: context)
+            expenseScope = EventScope(
+                eventId: event.id,
+                eventTitle: event.title,
+                participantActorIds: participantIds
+            )
         }
     }
 

@@ -1,12 +1,33 @@
 import SwiftUI
 import RuulCore
 
+/// F.EVENT.6 — un gasto puede estar atado a un evento. Cuando llega un
+/// `EventScope`, la vista limita el universo de participantes (split + paid-by)
+/// a los invitados de ese evento y le pasa `eventId` al backend para que las
+/// obligations queden relacionadas (`obligations.source_event_id`).
+public struct EventScope: Sendable, Equatable, Identifiable {
+    public let eventId: UUID
+    public let eventTitle: String
+    public let participantActorIds: Set<UUID>
+
+    public var id: UUID { eventId }
+
+    public init(eventId: UUID, eventTitle: String, participantActorIds: Set<UUID>) {
+        self.eventId = eventId
+        self.eventTitle = eventTitle
+        self.participantActorIds = participantActorIds
+    }
+}
+
 /// F.11 — registrar un gasto con split equal o custom (SplitEditor).
 /// El backend crea las obligations de cada deudor hacia quien pagó.
 public struct RecordExpenseView: View {
     let context: AppContext
     let store: MoneyStore
     let container: DependencyContainer
+    /// F.EVENT.6 — cuando viene desde un EventDetail, restringe miembros al
+    /// roster del evento y manda `eventId` al backend.
+    let eventScope: EventScope?
 
     @Environment(\.dismiss) private var dismiss
     @State private var description = ""
@@ -25,18 +46,31 @@ public struct RecordExpenseView: View {
         var id: String { rawValue }
     }
 
-    public init(context: AppContext, store: MoneyStore, container: DependencyContainer) {
+    public init(
+        context: AppContext,
+        store: MoneyStore,
+        container: DependencyContainer,
+        eventScope: EventScope? = nil
+    ) {
         self.context = context
         self.store = store
         self.container = container
+        self.eventScope = eventScope
     }
 
     private var myActorId: UUID? { container.currentActorStore.actorId }
     private var amount: Double? { Double(amountText.replacingOccurrences(of: ",", with: "")) }
 
+    /// F.EVENT.6 — universo de miembros visibles. Cuando hay event scope,
+    /// se reduce a los invitados al evento.
+    private var visibleMembers: [ContextMember] {
+        guard let scope = eventScope else { return store.members }
+        return store.members.filter { scope.participantActorIds.contains($0.actorId) }
+    }
+
     /// Miembros que participan en el split (no excluidos).
     private var participants: [ContextMember] {
-        store.members.filter { !excludedActorIds.contains($0.actorId) }
+        visibleMembers.filter { !excludedActorIds.contains($0.actorId) }
     }
 
     public var body: some View {
@@ -55,10 +89,24 @@ public struct RecordExpenseView: View {
                     }
                 }
 
+                if let scope = eventScope {
+                    Section {
+                        HStack(spacing: 8) {
+                            Image(systemName: "calendar")
+                                .foregroundStyle(.tint)
+                            Text("Asociado a \(scope.eventTitle)")
+                                .font(.callout)
+                            Spacer()
+                        }
+                    } footer: {
+                        Text("El reparto se limita a los \(scope.participantActorIds.count) invitado(s) del evento.")
+                    }
+                }
+
                 Section("Quién pagó") {
                     Picker("Pagó", selection: $paidByActorId) {
                         Text("Yo").tag(nil as UUID?)
-                        ForEach(store.members) { member in
+                        ForEach(visibleMembers) { member in
                             Text(member.displayName).tag(member.actorId as UUID?)
                         }
                     }
@@ -73,7 +121,7 @@ public struct RecordExpenseView: View {
                     }
                     .pickerStyle(.segmented)
 
-                    ForEach(store.members) { member in
+                    ForEach(visibleMembers) { member in
                         splitRow(member)
                     }
                 }
@@ -227,6 +275,7 @@ public struct RecordExpenseView: View {
                     description: description.trimmingCharacters(in: .whitespaces),
                     splitMethod: "custom",
                     splits: splits,
+                    eventId: eventScope?.eventId,
                     paidByActorId: paidByActorId,
                     clientId: UUID().uuidString
                 )
@@ -239,6 +288,7 @@ public struct RecordExpenseView: View {
                     splitWith: participants.map(\.actorId),
                     excludedActorIds: excludedActorIds.isEmpty ? nil : Array(excludedActorIds),
                     splitMethod: "equal",
+                    eventId: eventScope?.eventId,
                     paidByActorId: paidByActorId,
                     clientId: UUID().uuidString
                 )
