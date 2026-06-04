@@ -327,6 +327,20 @@ public protocol RuulRPCClient: Sendable {
     func removeTrust(trustEdgeId: UUID) async throws -> Bool
     /// `list_trust_network(p_actor_id?)` — outgoing/incoming del caller (RLS gatea).
     func listTrustNetwork(actorId: UUID?) async throws -> TrustNetwork
+
+    // MARK: - Navigation shell (F.NAV.0)
+
+    /// `attention_inbox()` — items cross-context que requieren acción del caller
+    /// (conflictos / votos / pagos / invitaciones). Max 5, sort desc.
+    func attentionInbox() async throws -> [AttentionItem]
+    /// `mark_context_favorite(ctx, fav)` — toggle favorito (member-only).
+    func markContextFavorite(contextActorId: UUID, isFavorite: Bool) async throws
+    /// `mark_context_visited(ctx)` — registra visita para "Continuar" en Home.
+    func markContextVisited(contextActorId: UUID) async throws
+    /// `list_context_favorites()` — favoritos del caller.
+    func listContextFavorites() async throws -> [ContextPreference]
+    /// `list_recent_contexts(limit)` — contextos visitados recientemente.
+    func listRecentContexts(limit: Int) async throws -> [ContextPreference]
 }
 
 extension RuulRPCClient {

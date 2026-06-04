@@ -1,0 +1,173 @@
+import SwiftUI
+import RuulCore
+
+/// F.NAV.1 — Shell global con 5 tabs.
+///
+/// Doctrina F.NAV (Plans/Doctrine/FNAV_AppShellNavigation.md):
+/// Home / Contextos / Crear / Actividad / Yo. ContextHome ya no es la raíz;
+/// vive dentro de la tab Contextos. Los tabs Home/Crear/Yo son stubs F.NAV.1
+/// que se completan en F.NAV.2/F.NAV.5/F.NAV.6.
+public struct MainTabShell: View {
+    let container: DependencyContainer
+    @State private var selectedTab: AppTab = .home
+    @State private var isShowingCreateSheet = false
+
+    public init(container: DependencyContainer) {
+        self.container = container
+    }
+
+    public var body: some View {
+        TabView(selection: $selectedTab) {
+            Tab("Home", systemImage: "house.fill", value: AppTab.home) {
+                HomeView(container: container)
+            }
+
+            Tab("Contextos", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
+                // F.NAV.3 reemplaza esto con una ContextsView dedicada
+                // (favoritos / recientes / todos). Mientras tanto, el
+                // ContextShell preexistente sigue siendo el fallback
+                // funcional: ahí vive toda la navegación operativa.
+                ContextShell(container: container)
+            }
+
+            Tab("Crear", systemImage: "plus.circle.fill", value: AppTab.create, role: nil) {
+                CreateTabPlaceholderView(isShowingCreateSheet: $isShowingCreateSheet)
+            }
+
+            Tab("Actividad", systemImage: "bell.fill", value: AppTab.activity) {
+                NavigationStack {
+                    MyActivityFeedView(container: container)
+                        .navigationTitle("Actividad")
+                }
+            }
+
+            Tab("Yo", systemImage: "person.crop.circle.fill", value: AppTab.me) {
+                MeTabPlaceholderView(container: container)
+            }
+        }
+        .sheet(isPresented: $isShowingCreateSheet) {
+            CreateIntentSheet()
+        }
+    }
+}
+
+/// F.NAV.1 — enum identifier para las 5 tabs.
+public enum AppTab: Hashable {
+    case home, contexts, create, activity, me
+}
+
+// MARK: - Stubs F.NAV.1
+
+/// F.NAV.5 reemplaza este placeholder con la sheet intent-first real
+/// ("¿Qué quieres hacer?"). El tab Crear no tiene contenido propio — sólo
+/// abre la sheet al seleccionarse.
+private struct CreateTabPlaceholderView: View {
+    @Binding var isShowingCreateSheet: Bool
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(.tint)
+                Text("Crear")
+                    .font(.title2.weight(.semibold))
+                Text("F.NAV.5 abrirá la sheet intent-first desde aquí.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Abrir sheet") {
+                    isShowingCreateSheet = true
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.top, 8)
+            }
+            .padding()
+            .navigationTitle("Crear")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+/// F.NAV.5 stub de la sheet "¿Qué quieres hacer?".
+private struct CreateIntentSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Label("Programar algo", systemImage: "calendar.badge.plus")
+                    Label("Registrar movimiento", systemImage: "dollarsign.circle.fill")
+                    Label("Crear propuesta", systemImage: "checkmark.bubble.fill")
+                    Label("Subir documento", systemImage: "paperclip")
+                    Label("Crear contexto", systemImage: "rectangle.split.2x1.fill")
+                } header: {
+                    Text("¿Qué quieres hacer?")
+                } footer: {
+                    Text("F.NAV.5 wirea cada intención al flow correspondiente.")
+                }
+            }
+            .navigationTitle("Crear")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cerrar") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// F.NAV.6 reemplaza con la pantalla de perfil consolidada
+/// (mi actividad / mis contextos / mis recursos / mis suscripciones / mi red
+/// de confianza / configuración). F.NAV.1 stub: navega a PersonalSettingsView.
+private struct MeTabPlaceholderView: View {
+    let container: DependencyContainer
+    @State private var isShowingSettings = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        ActorInitialsView(
+                            name: container.currentActorStore.actor?.displayName ?? "—",
+                            size: 56
+                        )
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(container.currentActorStore.actor?.displayName ?? "—")
+                                .font(.title3.weight(.semibold))
+                            Text("Tu perfil")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                Section {
+                    Button {
+                        isShowingSettings = true
+                    } label: {
+                        Label("Configuración", systemImage: "gearshape")
+                    }
+                    Button {
+                        Task { await container.signOut() }
+                    } label: {
+                        Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Yo")
+            .sheet(isPresented: $isShowingSettings) {
+                PersonalSettingsView(container: container)
+            }
+        }
+    }
+}
+
+#Preview("Tab Shell (demo)") {
+    MainTabShell(container: .demo())
+}

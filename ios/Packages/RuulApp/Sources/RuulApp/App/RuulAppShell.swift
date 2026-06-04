@@ -7,8 +7,8 @@ import RuulCore
 ///    Usuarios anónimos NO entran (regla F.2).
 /// 2. **Actor** (`CurrentActorStore`): `ensure_person_actor()` debe resolver
 ///    antes de mostrar contenido.
-/// 3. **Contexto** (`ContextShell`): la app entera opera desde el contexto
-///    activo.
+/// 3. **Tab shell** (`MainTabShell`, F.NAV.1): tabs Home/Contextos/Crear/
+///    Actividad/Yo. ContextShell vive dentro de la tab Contextos.
 public struct RuulAppShell: View {
     @AppStorage(AppearancePreference.storageKey) private var appearanceRaw: String = AppearancePreference.system.rawValue
     @State private var container: DependencyContainer
@@ -67,7 +67,7 @@ public struct RuulAppShell: View {
             }
 
         case .loaded:
-            ContextShell(container: container)
+            MainTabShell(container: container)
         }
     }
 }

@@ -1642,6 +1642,46 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
         return try await call("list_trust_network", params: Params(pActorId: actorId))
     }
+
+    // MARK: - Navigation shell (F.NAV.0)
+
+    public func attentionInbox() async throws -> [AttentionItem] {
+        struct Empty: Encodable, Sendable {}
+        return try await call("attention_inbox", params: Empty())
+    }
+
+    public func markContextFavorite(contextActorId: UUID, isFavorite: Bool) async throws {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pIsFavorite: Bool
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pIsFavorite = "p_is_favorite"
+            }
+        }
+        try await callVoid("mark_context_favorite", params: Params(pContextActorId: contextActorId, pIsFavorite: isFavorite))
+    }
+
+    public func markContextVisited(contextActorId: UUID) async throws {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            enum CodingKeys: String, CodingKey { case pContextActorId = "p_context_actor_id" }
+        }
+        try await callVoid("mark_context_visited", params: Params(pContextActorId: contextActorId))
+    }
+
+    public func listContextFavorites() async throws -> [ContextPreference] {
+        struct Empty: Encodable, Sendable {}
+        return try await call("list_context_favorites", params: Empty())
+    }
+
+    public func listRecentContexts(limit: Int) async throws -> [ContextPreference] {
+        struct Params: Encodable, Sendable {
+            let pLimit: Int
+            enum CodingKeys: String, CodingKey { case pLimit = "p_limit" }
+        }
+        return try await call("list_recent_contexts", params: Params(pLimit: limit))
+    }
 }
 
 // MARK: - Params compartidos

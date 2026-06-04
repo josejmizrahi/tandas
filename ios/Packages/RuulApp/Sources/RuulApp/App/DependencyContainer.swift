@@ -23,6 +23,10 @@ public final class DependencyContainer {
     public let invitationsStore: InvitationsStore
     public let resourceTypeCatalogStore: ResourceTypeCatalogStore
     public let subscriptionsStore: SubscriptionsStore
+    /// F.NAV.0 — atención cross-context (Home).
+    public let attentionInboxStore: AttentionInboxStore
+    /// F.NAV.0 — favoritos + contextos recientes del caller.
+    public let contextPreferencesStore: ContextPreferencesStore
 
     /// Rutea universal links / ruul:// (hoy: invitaciones).
     public let deepLinks: DeepLinkRouter
@@ -43,6 +47,8 @@ public final class DependencyContainer {
         self.invitationsStore = InvitationsStore(rpc: rpcClient)
         self.resourceTypeCatalogStore = ResourceTypeCatalogStore(rpc: rpcClient)
         self.subscriptionsStore = SubscriptionsStore(rpc: rpcClient)
+        self.attentionInboxStore = AttentionInboxStore(rpc: rpcClient)
+        self.contextPreferencesStore = ContextPreferencesStore(rpc: rpcClient)
         self.deepLinks = DeepLinkRouter()
     }
 
@@ -58,6 +64,8 @@ public final class DependencyContainer {
         self.invitationsStore = InvitationsStore(rpc: rpc)
         self.resourceTypeCatalogStore = ResourceTypeCatalogStore(rpc: rpc)
         self.subscriptionsStore = SubscriptionsStore(rpc: rpc)
+        self.attentionInboxStore = AttentionInboxStore(rpc: rpc)
+        self.contextPreferencesStore = ContextPreferencesStore(rpc: rpc)
         self.deepLinks = DeepLinkRouter()
     }
 
@@ -88,5 +96,7 @@ public final class DependencyContainer {
         invitationsStore.reset()
         resourceTypeCatalogStore.reset()
         subscriptionsStore.reset()
+        attentionInboxStore.reset()
+        contextPreferencesStore.reset()
     }
 }

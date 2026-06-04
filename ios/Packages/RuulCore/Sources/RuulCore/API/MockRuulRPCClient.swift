@@ -46,6 +46,9 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var mergedInto: [UUID: UUID] = [:]
     /// R.2V — sugerencias descartadas (la UI las filtra al cargar).
     var dismissedSuggestions: Set<MockDismissedKey> = []
+    /// F.NAV.0 — preferencias del caller por contexto (favorito + última visita).
+    /// El Mock asume que el caller es siempre `me.id`.
+    var contextPreferences: [UUID: MockContextPreference] = [:]
 
     /// Error a lanzar en la siguiente llamada (para probar manejo de errores).
     public var nextError: RuulError?
@@ -3424,6 +3427,158 @@ public actor MockRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // MARK: - Navigation shell (F.NAV.0)
+
+    public func attentionInbox() async throws -> [AttentionItem] {
+        try throwIfNeeded()
+        var items: [AttentionItem] = []
+
+        // Decisions abiertas donde el caller puede votar y no votó
+        for decision in decisions.values where decision.isOpen {
+            let perms = permissions[decision.contextActorId] ?? []
+            guard perms.contains("decisions.vote") else { continue }
+            let hasVoted = (votes[decision.id] ?? []).contains { $0.voterActorId == me.id }
+            guard !hasVoted else { continue }
+            let ctxName = actors[decision.contextActorId]?.displayName ?? "—"
+            items.append(AttentionItem(
+                kind: "decision_vote",
+                subjectId: decision.id,
+                contextActorId: decision.contextActorId,
+                contextDisplayName: ctxName,
+                title: decision.title,
+                reason: "Decisión abierta donde puedes votar",
+                ctaActionKey: "vote",
+                ctaScopeKind: "decision",
+                ctaScopeId: decision.id,
+                occurredAt: decision.createdAt
+            ))
+        }
+
+        // Obligations abiertas donde caller es debtor
+        for obligation in obligations.values
+        where obligation.isOpen && obligation.debtorActorId == me.id {
+            let isMoney = obligation.obligationKind == "money"
+            let ctxName = obligation.contextActorId.flatMap { actors[$0]?.displayName } ?? "—"
+            items.append(AttentionItem(
+                kind: isMoney ? "obligation_pay" : "obligation_complete",
+                subjectId: obligation.id,
+                contextActorId: obligation.contextActorId ?? me.id,
+                contextDisplayName: ctxName,
+                title: obligation.title ?? "Compromiso pendiente",
+                reason: isMoney ? "Tienes un pago pendiente" : "Tienes un compromiso pendiente",
+                ctaActionKey: isMoney ? "pay" : "mark_completed",
+                ctaScopeKind: "obligation",
+                ctaScopeId: obligation.id,
+                occurredAt: obligation.createdAt
+            ))
+        }
+
+        // Invitations pending para el caller (`pendingInvitations[me.id]`)
+        for invitation in pendingInvitations[me.id] ?? [] {
+            items.append(AttentionItem(
+                kind: "invitation",
+                subjectId: invitation.membershipId,
+                contextActorId: invitation.contextActorId,
+                contextDisplayName: invitation.contextDisplayName,
+                title: "Invitación pendiente",
+                reason: "Te invitaron a un contexto",
+                ctaActionKey: "accept_invitation",
+                ctaScopeKind: "context",
+                ctaScopeId: invitation.contextActorId,
+                occurredAt: invitation.invitedAt
+            ))
+        }
+
+        // Reservation conflicts open donde caller es party de A o B
+        for conflict in conflicts.values where conflict.resolutionStatus == "open" {
+            let candidate = reservations.values.first { res in
+                (res.id == conflict.reservationAId || res.id == conflict.reservationBId)
+                    && (res.requestedByActorId == me.id || res.reservedForActorId == me.id)
+            }
+            guard let res = candidate else { continue }
+            let ctxName = actors[res.contextActorId]?.displayName ?? "—"
+            items.append(AttentionItem(
+                kind: "reservation_conflict",
+                subjectId: conflict.id,
+                contextActorId: res.contextActorId,
+                contextDisplayName: ctxName,
+                title: "Conflicto de reservación",
+                reason: "Hay reservaciones que se solapan en un recurso donde participas",
+                ctaActionKey: "resolve_conflict",
+                ctaScopeKind: "reservation",
+                ctaScopeId: res.id,
+                occurredAt: conflict.createdAt
+            ))
+        }
+
+        // Sort desc + limit 5
+        return Array(items
+            .sorted { ($0.occurredAt ?? .distantPast) > ($1.occurredAt ?? .distantPast) }
+            .prefix(5))
+    }
+
+    public func markContextFavorite(contextActorId: UUID, isFavorite: Bool) async throws {
+        try throwIfNeeded()
+        let isMember = (memberships[contextActorId] ?? []).contains { $0.actorId == me.id }
+        if !isMember && me.id != contextActorId {
+            throw RuulError.backend(.notAMember)
+        }
+        var pref = contextPreferences[contextActorId] ?? MockContextPreference()
+        pref.isFavorite = isFavorite
+        pref.favoritedAt = isFavorite ? Date() : nil
+        contextPreferences[contextActorId] = pref
+    }
+
+    public func markContextVisited(contextActorId: UUID) async throws {
+        try throwIfNeeded()
+        let isMember = (memberships[contextActorId] ?? []).contains { $0.actorId == me.id }
+        if !isMember && me.id != contextActorId {
+            throw RuulError.backend(.notAMember)
+        }
+        var pref = contextPreferences[contextActorId] ?? MockContextPreference()
+        pref.lastVisitedAt = Date()
+        contextPreferences[contextActorId] = pref
+    }
+
+    public func listContextFavorites() async throws -> [ContextPreference] {
+        try throwIfNeeded()
+        return contextPreferences
+            .compactMap { (ctxId, pref) -> ContextPreference? in
+                guard pref.isFavorite, let actor = actors[ctxId] else { return nil }
+                return ContextPreference(
+                    contextActorId: ctxId,
+                    displayName: actor.displayName,
+                    actorKind: actor.actorKind.rawValue,
+                    actorSubtype: actor.actorSubtype,
+                    isFavorite: true,
+                    favoritedAt: pref.favoritedAt,
+                    lastVisitedAt: pref.lastVisitedAt
+                )
+            }
+            .sorted { ($0.favoritedAt ?? .distantPast) > ($1.favoritedAt ?? .distantPast) }
+    }
+
+    public func listRecentContexts(limit: Int) async throws -> [ContextPreference] {
+        try throwIfNeeded()
+        let cap = max(1, min(limit, 50))
+        return contextPreferences
+            .compactMap { (ctxId, pref) -> ContextPreference? in
+                guard let visited = pref.lastVisitedAt, let actor = actors[ctxId] else { return nil }
+                return ContextPreference(
+                    contextActorId: ctxId,
+                    displayName: actor.displayName,
+                    actorKind: actor.actorKind.rawValue,
+                    actorSubtype: actor.actorSubtype,
+                    isFavorite: pref.isFavorite,
+                    favoritedAt: pref.favoritedAt,
+                    lastVisitedAt: visited
+                )
+            }
+            .sorted { ($0.lastVisitedAt ?? .distantPast) > ($1.lastVisitedAt ?? .distantPast) }
+            .prefix(cap)
+            .map { $0 }
+    }
+
     // MARK: - Catálogos
 
     public static let allPermissions: [String] = [
@@ -3447,6 +3602,14 @@ public actor MockRuulRPCClient: RuulRPCClient {
 }
 
 // MARK: - R.2V helpers
+
+/// F.NAV.0 — preferencia del caller sobre un contexto (in-memory Mock).
+public struct MockContextPreference: Sendable {
+    public var isFavorite: Bool = false
+    public var favoritedAt: Date?
+    public var lastVisitedAt: Date?
+    public init() {}
+}
 
 /// Clave compuesta para dismiss tracking. Ordena los UUIDs por valor ascendente
 /// para que `(a,b)` y `(b,a)` colapsen en la misma key.
