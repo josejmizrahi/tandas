@@ -1,13 +1,17 @@
 import SwiftUI
 import RuulCore
 
-/// F.NAV.9 — Home rebuild con Apple HIG en mente.
+/// F.NAV.10 — Home rebuild segundo pase con prioridad founder.
 ///
-/// Doctrina F.NAV:
-/// - Sección 1: hero greeting + atención (card destacada).
-/// - Sección 2: Continuar (carrusel horizontal de contextos recientes).
-/// - Sección 3: Acciones globales (grid 2x2).
-/// - Sección 4: Mi actividad (link).
+/// Cambios doctrinales vs F.NAV.9:
+/// - Sin nav title "Ruul" (el greeting es el único header).
+/// - Atención SIEMPRE visible (empty state ✓ dentro de la card) para que
+///   la estructura no cambie cuando llega un pendiente nuevo.
+/// - Orden: Greeting → Atención → Continuar → Actividad reciente → Herramientas.
+/// - Crear se elimina del grid: vive sólo en el tab central de la TabView.
+/// - Herramientas = sólo Buscar / Preguntar a Ruul / Escanear, todas con
+///   "Próximamente". Cero mezcla de enabled+disabled en el mismo grid.
+/// - Actividad inline (3 items recientes) + "Ver todo →".
 public struct HomeView: View {
     let container: DependencyContainer
     let jumpToContext: (AppContext) -> Void
@@ -16,37 +20,43 @@ public struct HomeView: View {
     @State private var presentedAttention: AttentionItem?
     @State private var isShowingPendingInvitations = false
     @State private var isShowingAllAttention = false
+    /// F.NAV.10 — preview inline de actividad reciente.
+    @State private var activityStore: ActivityFeedStore
 
     public init(container: DependencyContainer, jumpToContext: @escaping (AppContext) -> Void, onTriggerCreate: @escaping () -> Void) {
         self.container = container
         self.jumpToContext = jumpToContext
         self.onTriggerCreate = onTriggerCreate
+        _activityStore = State(initialValue: ActivityFeedStore(rpc: container.rpc))
     }
 
     public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: 28) {
                     heroSection
                     attentionSection
                     continueSection
-                    quickActionsGrid
                     activitySection
+                    toolsSection
                 }
                 .padding(.horizontal)
+                .padding(.top, 8)
                 .padding(.bottom, 32)
             }
-            .navigationTitle("Ruul")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .task {
                 await container.attentionInboxStore.load()
                 await container.contextPreferencesStore.load()
                 await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+                await activityStore.load()
             }
             .refreshable {
                 await container.attentionInboxStore.load()
                 await container.contextPreferencesStore.load()
                 await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+                await activityStore.reload()
             }
             .sheet(item: $presentedAttention) { item in
                 attentionDestination(for: item)
@@ -65,22 +75,19 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Sección 1: hero greeting
+    // MARK: - 1. Hero greeting (sin "Ruul")
 
     @ViewBuilder
     private var heroSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(greeting + ",")
                 .font(.title2)
                 .foregroundStyle(.secondary)
             Text(container.currentActorStore.actor?.displayName ?? "Hola")
                 .font(.largeTitle.weight(.bold))
-            Text(attentionSubtitle)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 8)
     }
 
     private var greeting: String {
@@ -92,21 +99,29 @@ public struct HomeView: View {
         }
     }
 
-    private var attentionSubtitle: String {
-        let count = container.attentionInboxStore.items.count
-        switch count {
-        case 0: return "Todo está al día 🎉"
-        case 1: return "1 cosa requiere tu atención"
-        default: return "\(count) cosas requieren tu atención"
-        }
-    }
-
-    // MARK: - Sección 2: Atención (card hero)
+    // MARK: - 2. Atención (SIEMPRE visible)
 
     @ViewBuilder
     private var attentionSection: some View {
         let items = container.attentionInboxStore.items
-        if !items.isEmpty {
+        if items.isEmpty {
+            // Empty state dentro de la misma card → estructura estable.
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Atención")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Todo está al día 🎉")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(16)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        } else {
             Button {
                 if items.count == 1 {
                     handleTap(items[0])
@@ -130,7 +145,7 @@ public struct HomeView: View {
 
                     Divider().padding(.leading, 16)
 
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         ForEach(items.prefix(3)) { item in
                             HStack(spacing: 10) {
                                 Image(systemName: attentionSymbol(for: item.kind))
@@ -164,7 +179,7 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - Sección 3: Continuar (carrusel horizontal)
+    // MARK: - 3. Continuar (carrusel horizontal)
 
     @ViewBuilder
     private var continueSection: some View {
@@ -175,13 +190,14 @@ public struct HomeView: View {
         if !resolved.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Continuar")
-                    .font(.headline)
+                    .font(.title3.weight(.semibold))
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(resolved) { ctx in
                             continueCard(ctx)
                         }
                     }
+                    .padding(.bottom, 4) // espacio para shadow
                 }
             }
         }
@@ -194,99 +210,171 @@ public struct HomeView: View {
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: ctx.symbolName)
-                    .font(.title)
+                    .font(.system(size: 28, weight: .semibold))
                     .foregroundStyle(.tint)
+                    .frame(width: 40, height: 40)
+                    .background(Color.accentColor.opacity(0.15), in: Circle())
+                Spacer(minLength: 0)
                 Text(ctx.displayName)
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                if !ctx.isPersonal {
+                if ctx.isPersonal {
+                    Text("Personal")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
                     Text("\(ctx.memberCount) miembros")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 160, height: 140, alignment: .topLeading)
-            .padding(14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .frame(width: 160, height: 160, alignment: .topLeading)
+            .padding(16)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(Color.secondary.opacity(0.12), lineWidth: 0.5)
+            )
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Sección 4: Acciones globales (grid 2x2)
+    // MARK: - 4. Actividad reciente (inline preview)
 
     @ViewBuilder
-    private var quickActionsGrid: some View {
+    private var activitySection: some View {
+        let items = activityStore.items.prefix(3)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Actividad reciente")
+                    .font(.title3.weight(.semibold))
+                Spacer()
+                NavigationLink {
+                    MyActivityFeedView(container: container)
+                } label: {
+                    Text("Ver todo →")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            VStack(spacing: 0) {
+                if activityStore.phase.isLoading && activityStore.items.isEmpty {
+                    HStack {
+                        ProgressView()
+                        Text("Cargando…").foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity).padding()
+                } else if items.isEmpty {
+                    Text("Sin actividad reciente.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                } else {
+                    ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
+                        activityRow(item)
+                        if idx < items.count - 1 {
+                            Divider().padding(.leading, 56)
+                        }
+                    }
+                }
+            }
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    @ViewBuilder
+    private func activityRow(_ item: FeedItem) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(sourceColor(item.source).opacity(0.15))
+                    .frame(width: 32, height: 32)
+                Image(systemName: item.asActivityEvent.symbolName)
+                    .font(.callout)
+                    .foregroundStyle(sourceColor(item.source))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.asActivityEvent.friendlyTitle(currentActorId: container.currentActorStore.actorId))
+                    .font(.callout)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                HStack(spacing: 4) {
+                    if let ctxName = contextName(for: item.contextActorId) {
+                        Text(ctxName)
+                    }
+                    if let occurred = item.occurredAt {
+                        Text("·")
+                        Text(occurred.formatted(.relative(presentation: .named)))
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private func sourceColor(_ source: FeedSource) -> Color {
+        switch source {
+        case .subscription: return .blue
+        case .ownership:    return .orange
+        case .membership:   return .green
+        }
+    }
+
+    private func contextName(for contextActorId: UUID?) -> String? {
+        guard let id = contextActorId else { return nil }
+        return container.contextStore.availableContexts.first { $0.id == id }?.displayName
+    }
+
+    // MARK: - 5. Herramientas (sólo Próximamente)
+
+    @ViewBuilder
+    private var toolsSection: some View {
         let columns = [
             GridItem(.flexible(), spacing: 12),
             GridItem(.flexible(), spacing: 12)
         ]
         VStack(alignment: .leading, spacing: 12) {
-            Text("Acciones rápidas")
-                .font(.headline)
-            LazyVGrid(columns: columns, spacing: 12) {
-                actionTile(label: "Crear", icon: "plus.circle.fill", tint: .accentColor, enabled: true) {
-                    onTriggerCreate()
-                }
-                actionTile(label: "Buscar", icon: "magnifyingglass", tint: .gray, enabled: false, action: {})
-                actionTile(label: "Preguntar a Ruul", icon: "sparkles", tint: .gray, enabled: false, action: {})
-                actionTile(label: "Escanear", icon: "qrcode.viewfinder", tint: .gray, enabled: false, action: {})
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func actionTile(label: String, icon: String, tint: Color, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                Image(systemName: icon)
-                    .font(.title2)
-                    .foregroundStyle(enabled ? tint : Color.secondary)
-                Text(label)
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(enabled ? Color.primary : Color.secondary)
-                    .lineLimit(1)
-                if !enabled {
-                    Text("Próximamente")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
-            .padding(14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-    }
-
-    // MARK: - Sección 5: Mi actividad
-
-    @ViewBuilder
-    private var activitySection: some View {
-        NavigationLink {
-            MyActivityFeedView(container: container)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "antenna.radiowaves.left.and.right")
-                    .foregroundStyle(.tint)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Mi actividad").font(.callout.weight(.semibold)).foregroundStyle(.primary)
-                    Text("Lo que está pasando en los contextos que sigues")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
+            HStack {
+                Text("Herramientas")
+                    .font(.title3.weight(.semibold))
                 Spacer()
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                Text("Próximamente")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
-            .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            LazyVGrid(columns: columns, spacing: 12) {
+                toolTile(label: "Buscar", icon: "magnifyingglass")
+                toolTile(label: "Preguntar a Ruul", icon: "sparkles")
+                toolTile(label: "Escanear", icon: "qrcode.viewfinder")
+            }
         }
-        .buttonStyle(.plain)
     }
 
-    // MARK: - Routing de atención
+    @ViewBuilder
+    private func toolTile(label: String, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text(label)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
+        .padding(14)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .opacity(0.7)
+    }
+
+    // MARK: - Routing de atención (inalterado)
 
     private func appContext(for contextActorId: UUID) -> AppContext? {
         container.contextStore.availableContexts.first { $0.id == contextActorId }
@@ -356,8 +444,6 @@ public struct HomeView: View {
 
 // MARK: - Sheet "Todos los pendientes"
 
-/// F.NAV.9 — Lista expandida de los items de atención. Se invoca cuando hay
-/// más de uno y el founder tapea el hero "Ver N →".
 private struct AllAttentionView: View {
     let container: DependencyContainer
     let onTap: (AttentionItem) -> Void
