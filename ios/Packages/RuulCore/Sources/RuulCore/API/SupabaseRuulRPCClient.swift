@@ -822,6 +822,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("set_next_host", params: Params(pEventId: eventId, pActorId: actorId))
     }
 
+    public func setHostRotationOrder(eventId: UUID, actorIds: [UUID]?) async throws {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pActorIds: [UUID]?
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pActorIds = "p_actor_ids"
+            }
+        }
+        try await callVoid("set_host_rotation_order", params: Params(pEventId: eventId, pActorIds: actorIds))
+    }
+
     // MARK: - Rules
 
     public func createRule(_ input: CreateRuleInput) async throws -> Rule {
@@ -864,6 +876,49 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pSeverity: input.severity
         ))
         return created.rule
+    }
+
+    public func updateRule(_ input: UpdateRuleInput) async throws -> Rule {
+        struct Params: Encodable, Sendable {
+            let pRuleId: UUID
+            let pTitle: String?
+            let pBody: String?
+            let pTriggerEventType: String?
+            let pConditionTree: JSONValue?
+            let pConsequences: JSONValue?
+            let pTargetScope: String?
+            let pTargetFilter: JSONValue?
+            let pSeverity: Int?
+            let pStatus: String?
+            enum CodingKeys: String, CodingKey {
+                case pRuleId = "p_rule_id"
+                case pTitle = "p_title"
+                case pBody = "p_body"
+                case pTriggerEventType = "p_trigger_event_type"
+                case pConditionTree = "p_condition_tree"
+                case pConsequences = "p_consequences"
+                case pTargetScope = "p_target_scope"
+                case pTargetFilter = "p_target_filter"
+                case pSeverity = "p_severity"
+                case pStatus = "p_status"
+            }
+        }
+        struct UpdateResult: Decodable, Sendable {
+            let rule: Rule
+        }
+        let result: UpdateResult = try await call("update_rule", params: Params(
+            pRuleId: input.ruleId,
+            pTitle: input.title,
+            pBody: input.body,
+            pTriggerEventType: input.triggerEventType,
+            pConditionTree: input.conditionTree,
+            pConsequences: input.consequences,
+            pTargetScope: input.targetScope,
+            pTargetFilter: input.targetFilter,
+            pSeverity: input.severity,
+            pStatus: input.status
+        ))
+        return result.rule
     }
 
     public func listRules(contextId: UUID) async throws -> [Rule] {

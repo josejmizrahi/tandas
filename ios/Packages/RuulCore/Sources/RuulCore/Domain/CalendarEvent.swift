@@ -90,6 +90,10 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
     public let recurrenceCount: Int?
     public let recurrenceUntil: Date?
     public let occurrenceNumber: Int
+    /// F.EVENT.10 — orden configurado de rotación de host. Si está nil, la
+    /// rotación usa la lógica natural (joined_at). Si tiene valores, los
+    /// recorre cíclicamente (sólo aplica para weekly).
+    public let hostRotationOrder: [UUID]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -113,6 +117,7 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         case recurrenceCount = "recurrence_count"
         case recurrenceUntil = "recurrence_until"
         case occurrenceNumber = "occurrence_number"
+        case hostRotationOrder = "host_rotation_order"
     }
 
     public init(
@@ -136,7 +141,8 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         nextEventId: UUID? = nil,
         recurrenceCount: Int? = nil,
         recurrenceUntil: Date? = nil,
-        occurrenceNumber: Int = 1
+        occurrenceNumber: Int = 1,
+        hostRotationOrder: [UUID]? = nil
     ) {
         self.id = id
         self.contextActorId = contextActorId
@@ -159,6 +165,7 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.recurrenceCount = recurrenceCount
         self.recurrenceUntil = recurrenceUntil
         self.occurrenceNumber = occurrenceNumber
+        self.hostRotationOrder = hostRotationOrder
     }
 
     public init(from decoder: Decoder) throws {
@@ -187,6 +194,8 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.recurrenceCount = try c.decodeIfPresent(Int.self, forKey: .recurrenceCount)
         self.recurrenceUntil = try c.decodeIfPresent(Date.self, forKey: .recurrenceUntil)
         self.occurrenceNumber = try c.decodeIfPresent(Int.self, forKey: .occurrenceNumber) ?? 1
+        // F.EVENT.10 — rotation order opcional, back-compat con nil.
+        self.hostRotationOrder = try c.decodeIfPresent([UUID].self, forKey: .hostRotationOrder)
     }
 
     public var type: EventType { EventType(rawValue: eventType) ?? .other }

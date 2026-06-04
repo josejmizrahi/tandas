@@ -53,6 +53,8 @@ public struct EventDetailView: View {
     /// F.EVENT.8 — sheet de cambiar próximo anfitrión.
     @State private var isShowingNextHostPicker = false
     @State private var nextHostNotice: String?
+    /// F.EVENT.10 — sheet de configurar el orden de rotación de host.
+    @State private var isShowingRotationOrder = false
 
     public init(eventId: UUID, context: AppContext, container: DependencyContainer) {
         self.eventId = eventId
@@ -201,6 +203,8 @@ public struct EventDetailView: View {
         .sheet(isPresented: $isShowingEdit) { editSheetContent() }
         // F.EVENT.8 — sheet picker próximo anfitrión.
         .sheet(isPresented: $isShowingNextHostPicker) { nextHostPickerSheetContent() }
+        // F.EVENT.10 — sheet de configurar el orden de rotación.
+        .sheet(isPresented: $isShowingRotationOrder) { hostRotationOrderSheetContent() }
         .alert("Próximo anfitrión", isPresented: Binding(
             get: { nextHostNotice != nil },
             set: { if !$0 { nextHostNotice = nil } }
@@ -232,6 +236,20 @@ public struct EventDetailView: View {
             currentNextHostId: store.nextHostPreview?.nextActorId,
             onPick: { actorId in
                 Task { await applyNextHost(actorId) }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func hostRotationOrderSheetContent() -> some View {
+        HostRotationOrderSheet(
+            members: store.members,
+            currentOrder: store.event?.hostRotationOrder,
+            onSave: { order in
+                await saveHostRotationOrder(order)
+            },
+            onClear: {
+                await clearHostRotationOrder()
             }
         )
     }
@@ -923,6 +941,8 @@ public struct EventDetailView: View {
         case editEvent
         /// F.EVENT.8 — override del próximo anfitrión.
         case changeNextHost
+        /// F.EVENT.10 — configurar el ciclo de rotación de host.
+        case configureHostRotation
     }
 
     private struct MoreActionItem: Identifiable {
@@ -982,18 +1002,44 @@ public struct EventDetailView: View {
                 kind: .changeNextHost, label: "Cambiar próximo anfitrión",
                 symbol: "person.crop.circle.badge.checkmark", isDestructive: false
             ))
+            // F.EVENT.10 — sólo tiene sentido cuando la rotación natural aplica
+            // (weekly). Para daily/monthly/yearly el host se mantiene, no rota.
+            if recurrenceLabel(event) == "Semanal" {
+                out.append(MoreActionItem(
+                    kind: .configureHostRotation, label: "Configurar rotación",
+                    symbol: "arrow.triangle.2.circlepath", isDestructive: false
+                ))
+            }
         }
         return out
     }
 
     private func handleMoreAction(_ kind: MoreActionKind) {
         switch kind {
-        case .recordExpense:        openExpenseSheet()
-        case .createDecision:       pushedDecisions = true
-        case .closeEvent:           isConfirmingClose = true
-        case .cancelParticipation:  isConfirmingCancel = true
-        case .editEvent:            isShowingEdit = true
-        case .changeNextHost:       isShowingNextHostPicker = true
+        case .recordExpense:           openExpenseSheet()
+        case .createDecision:          pushedDecisions = true
+        case .closeEvent:              isConfirmingClose = true
+        case .cancelParticipation:     isConfirmingCancel = true
+        case .editEvent:               isShowingEdit = true
+        case .changeNextHost:          isShowingNextHostPicker = true
+        case .configureHostRotation:   isShowingRotationOrder = true
+        }
+    }
+
+    /// F.EVENT.10 — guarda el orden de la rotación elegido en el sheet.
+    private func saveHostRotationOrder(_ order: [UUID]) async {
+        await runner.run {
+            try await store.setHostRotationOrder(
+                eventId: eventId, actorIds: order, context: context
+            )
+        }
+    }
+
+    private func clearHostRotationOrder() async {
+        await runner.run {
+            try await store.setHostRotationOrder(
+                eventId: eventId, actorIds: nil, context: context
+            )
         }
     }
 

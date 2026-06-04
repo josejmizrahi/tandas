@@ -1766,6 +1766,45 @@ public actor MockRuulRPCClient: RuulRPCClient {
         )
     }
 
+    public func setHostRotationOrder(eventId: UUID, actorIds: [UUID]?) async throws {
+        try throwIfNeeded()
+        guard let event = events[eventId] else {
+            throw RuulError.unexpected(message: "Evento no encontrado")
+        }
+        // Validar: nil limpia el orden.
+        if let actorIds {
+            let members = memberships[event.contextActorId] ?? []
+            let memberIds = Set(members.map(\.actorId))
+            // Sin duplicados.
+            guard actorIds.count == Set(actorIds).count else {
+                throw RuulError.unexpected(message: "El orden de rotación tiene actores duplicados")
+            }
+            // Todos miembros activos.
+            for actorId in actorIds where !memberIds.contains(actorId) {
+                throw RuulError.unexpected(message: "Un actor del orden no es miembro activo del contexto")
+            }
+        }
+        // Re-crear el evento con el nuevo hostRotationOrder.
+        let updated = CalendarEvent(
+            id: event.id, contextActorId: event.contextActorId, title: event.title,
+            description: event.description, eventType: event.eventType,
+            startsAt: event.startsAt, endsAt: event.endsAt, timezone: event.timezone,
+            locationText: event.locationText, isVirtual: event.isVirtual,
+            recurrenceRule: event.recurrenceRule, hostActorId: event.hostActorId,
+            status: event.status, createdByActorId: event.createdByActorId,
+            createdAt: event.createdAt, seriesId: event.seriesId,
+            previousEventId: event.previousEventId, nextEventId: event.nextEventId,
+            recurrenceCount: event.recurrenceCount, recurrenceUntil: event.recurrenceUntil,
+            occurrenceNumber: event.occurrenceNumber,
+            hostRotationOrder: actorIds
+        )
+        events[eventId] = updated
+        let activityType = actorIds == nil ? "event.host_rotation_cleared" : "event.host_rotation_set"
+        emit(event.contextActorId, activityType, payload: .object([
+            "title": .string(event.title)
+        ]))
+    }
+
     private func updateParticipant(eventId: UUID, actorId: UUID, transform: (EventParticipant) -> EventParticipant) {
         var list = participants[eventId] ?? []
         if let index = list.firstIndex(where: { $0.participantActorId == actorId }) {
@@ -1799,6 +1838,69 @@ public actor MockRuulRPCClient: RuulRPCClient {
         rules[input.contextId, default: []].append(rule)
         emit(input.contextId, "rule.created")
         return rule
+    }
+
+    public func updateRule(_ input: UpdateRuleInput) async throws -> Rule {
+        try throwIfNeeded()
+        guard let ctxIdAndIdx = locateRule(id: input.ruleId) else {
+            throw RuulError.unexpected(message: "Regla no encontrada")
+        }
+        let (ctxId, idx) = ctxIdAndIdx
+        let current = rules[ctxId]![idx]
+        let myPerms = Set(permissions[ctxId] ?? [])
+        guard myPerms.contains("rules.manage") else {
+            throw RuulError.backend(.missingPermission(key: "rules.manage"))
+        }
+
+        func trimmedOrNil(_ value: String?) -> String? {
+            guard let v = value?.trimmingCharacters(in: .whitespaces), !v.isEmpty else { return nil }
+            return v
+        }
+        let newTitle = trimmedOrNil(input.title) ?? current.title
+        let newBody = input.body ?? current.body
+        let newTrigger = trimmedOrNil(input.triggerEventType) ?? current.triggerEventType
+        let newCondition = input.conditionTree ?? current.conditionTree
+        let newConsequences = input.consequences ?? current.consequences
+        let newScope = trimmedOrNil(input.targetScope) ?? current.targetScope
+        let newFilter = input.targetFilter ?? current.targetFilter
+        let newSeverity = input.severity ?? current.severity
+        let newStatus = trimmedOrNil(input.status) ?? current.status
+
+        if newSeverity < 1 || newSeverity > 5 {
+            throw RuulError.backend(.validation(message: "severity must be between 1 and 5"))
+        }
+        if !["active", "paused"].contains(newStatus) {
+            throw RuulError.backend(.validation(message: "status must be active or paused"))
+        }
+
+        let updated = Rule(
+            id: current.id,
+            contextActorId: current.contextActorId,
+            title: newTitle,
+            body: newBody,
+            ruleType: current.ruleType,
+            severity: newSeverity,
+            status: newStatus,
+            triggerEventType: newTrigger,
+            conditionTree: newCondition,
+            consequences: newConsequences,
+            targetScope: newScope,
+            targetFilter: newFilter,
+            createdAt: current.createdAt
+        )
+        rules[ctxId]![idx] = updated
+        emit(ctxId, "rule.updated")
+        return updated
+    }
+
+    /// Helper: encuentra la regla por id devolviendo `(contextId, index)`.
+    private func locateRule(id: UUID) -> (UUID, Int)? {
+        for (ctxId, list) in rules {
+            if let idx = list.firstIndex(where: { $0.id == id }) {
+                return (ctxId, idx)
+            }
+        }
+        return nil
     }
 
     public func listRules(contextId: UUID) async throws -> [Rule] {

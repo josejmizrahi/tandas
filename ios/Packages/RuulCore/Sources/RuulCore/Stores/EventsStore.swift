@@ -177,4 +177,11 @@ public final class EventDetailStore {
         nextHostPreview = result
         return result
     }
+
+    /// F.EVENT.10 — admin configura el orden de la rotación. `nil` limpia el
+    /// orden y vuelve a la rotación natural (joined_at).
+    public func setHostRotationOrder(eventId: UUID, actorIds: [UUID]?, context: AppContext) async throws {
+        try await rpc.setHostRotationOrder(eventId: eventId, actorIds: actorIds)
+        await load(eventId: eventId, context: context)
+    }
 }

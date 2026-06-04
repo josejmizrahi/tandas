@@ -159,10 +159,20 @@ public protocol RuulRPCClient: Sendable {
     /// permiso `events.manage`.
     func setNextHost(eventId: UUID, actorId: UUID) async throws -> NextHostPreview
 
+    /// F.EVENT.10 — `set_host_rotation_order(p_event_id, p_actor_ids)`.
+    /// Configura el ciclo de rotación de host para esta serie. La lista se
+    /// recorre cíclicamente al cerrar cada evento weekly. `nil` limpia el
+    /// orden y vuelve a la rotación natural (joined_at). Requiere
+    /// `events.manage`.
+    func setHostRotationOrder(eventId: UUID, actorIds: [UUID]?) async throws
+
     // MARK: - Rules
 
     /// `create_rule(...)`
     func createRule(_ input: CreateRuleInput) async throws -> Rule
+    /// `update_rule(p_rule_id, p_title?, p_body?, p_trigger_event_type?, p_condition_tree?, p_consequences?, p_target_scope?, p_target_filter?, p_severity?, p_status?)` — F.RULE.2.
+    /// Permiso: `rules.manage`. Sólo reglas no archivadas. NULL = no cambiar.
+    func updateRule(_ input: UpdateRuleInput) async throws -> Rule
     /// Lectura PostgREST: `rules` activas/pausadas del contexto.
     func listRules(contextId: UUID) async throws -> [Rule]
 
@@ -719,6 +729,44 @@ public struct CreateRuleInput: Sendable, Equatable {
         self.severity = severity
         self.targetScope = targetScope
         self.targetFilter = targetFilter
+    }
+}
+
+/// Input de `update_rule` (F.RULE.2). NULL = no cambiar.
+public struct UpdateRuleInput: Sendable, Equatable {
+    public var ruleId: UUID
+    public var title: String?
+    public var body: String?
+    public var triggerEventType: String?
+    public var conditionTree: JSONValue?
+    public var consequences: JSONValue?
+    public var targetScope: String?
+    public var targetFilter: JSONValue?
+    public var severity: Int?
+    public var status: String?
+
+    public init(
+        ruleId: UUID,
+        title: String? = nil,
+        body: String? = nil,
+        triggerEventType: String? = nil,
+        conditionTree: JSONValue? = nil,
+        consequences: JSONValue? = nil,
+        targetScope: String? = nil,
+        targetFilter: JSONValue? = nil,
+        severity: Int? = nil,
+        status: String? = nil
+    ) {
+        self.ruleId = ruleId
+        self.title = title
+        self.body = body
+        self.triggerEventType = triggerEventType
+        self.conditionTree = conditionTree
+        self.consequences = consequences
+        self.targetScope = targetScope
+        self.targetFilter = targetFilter
+        self.severity = severity
+        self.status = status
     }
 }
 
