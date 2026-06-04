@@ -55,6 +55,7 @@ public enum ActionPresentationCatalog {
         "check_in_participant": .init(symbolName: "checkmark.circle.fill",  tint: .orange),
         "cancel_participation": .init(symbolName: "xmark.circle",           tint: .red),
         "close_event":          .init(symbolName: "flag.checkered",         tint: .orange),
+        "edit_event":           .init(symbolName: "pencil",                 tint: .orange),
         "attach_document":      .init(symbolName: "paperclip",              tint: .secondary),
 
         // ── Resource-level (R.2S.9 / R.2M.3) ────────────────────────────────
@@ -62,6 +63,7 @@ public enum ActionPresentationCatalog {
         "view_beneficiaries":   .init(symbolName: "gift.fill",              tint: .orange),
         "view_ownership":       .init(symbolName: "chart.pie.fill",         tint: .orange),
         "grant_right":          .init(symbolName: "key.fill",               tint: .blue),
+        "update_resource":      .init(symbolName: "pencil",                 tint: .orange),
 
         // ── Decision-level (R.2S.9) ────────────────────────────────────────
         "vote":                 .init(symbolName: "hand.thumbsup.fill",     tint: .purple),
@@ -69,6 +71,7 @@ public enum ActionPresentationCatalog {
         "close_decision":       .init(symbolName: "lock.fill",              tint: .purple),
         "cancel_decision":      .init(symbolName: "xmark.circle",           tint: .red),
         "execute_decision":     .init(symbolName: "play.circle.fill",       tint: .purple),
+        "edit_decision":        .init(symbolName: "pencil",                 tint: .purple),
 
         // ── Reservation-level (R.2S.9) ─────────────────────────────────────
         "approve":              .init(symbolName: "checkmark.seal.fill",    tint: .orange),
@@ -82,5 +85,6 @@ public enum ActionPresentationCatalog {
         "mark_completed":       .init(symbolName: "checkmark.circle.fill",  tint: .green),
         "dispute":              .init(symbolName: "exclamationmark.bubble.fill", tint: .red),
         "forgive":              .init(symbolName: "heart.fill",             tint: .pink),
+        "edit_obligation":      .init(symbolName: "pencil",                 tint: .green),
     ]
 }

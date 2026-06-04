@@ -105,13 +105,11 @@ public struct EditResourceView: View {
     EditResourceView(
         resource: Resource(
             id: UUID(),
-            canonicalOwnerActorId: UUID(),
-            displayName: "Casa Valle",
             resourceType: "house",
+            displayName: "Casa Valle",
             description: "Casa familiar",
             estimatedValue: 2_500_000,
-            currency: "MXN",
-            status: "active"
+            currency: "MXN"
         ),
         container: .demo(),
         onSaved: {}

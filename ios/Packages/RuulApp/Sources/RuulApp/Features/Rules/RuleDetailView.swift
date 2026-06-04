@@ -2,11 +2,38 @@ import SwiftUI
 import RuulCore
 
 /// F.8 — detalle de una regla: condición y consecuencia en lenguaje natural.
+/// F.RULE.2 — `context`/`container`/`onChanged` opcionales habilitan el botón
+/// "Editar" cuando el caller tiene `rules.manage`. Sin ellos la pantalla
+/// queda read-only (preview, deep-link genérico…).
 public struct RuleDetailView: View {
     let rule: Rule
+    let context: AppContext?
+    let container: DependencyContainer?
+    let canManage: Bool
+    let onChanged: (() -> Void)?
+
+    @State private var isShowingEdit = false
 
     public init(rule: Rule) {
         self.rule = rule
+        self.context = nil
+        self.container = nil
+        self.canManage = false
+        self.onChanged = nil
+    }
+
+    public init(
+        rule: Rule,
+        context: AppContext,
+        container: DependencyContainer,
+        canManage: Bool,
+        onChanged: @escaping () -> Void
+    ) {
+        self.rule = rule
+        self.context = context
+        self.container = container
+        self.canManage = canManage
+        self.onChanged = onChanged
     }
 
     public var body: some View {
@@ -69,6 +96,26 @@ public struct RuleDetailView: View {
         }
         .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if canManage, container != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        isShowingEdit = true
+                    } label: {
+                        Label("Editar", systemImage: "pencil")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $isShowingEdit) {
+            if let container {
+                EditRuleView(
+                    rule: rule,
+                    container: container,
+                    onSaved: { onChanged?() }
+                )
+            }
+        }
     }
 
     private var triggerLabel: String {

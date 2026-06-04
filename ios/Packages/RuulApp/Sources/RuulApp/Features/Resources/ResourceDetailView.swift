@@ -34,6 +34,8 @@ public struct ResourceDetailView: View {
     @State private var isShowingFullActivity = false
     @State private var selectedParticipation: ResourceRight?
     @State private var isShowingAccessInfo = false
+    /// F.RESOURCE.3 — sheet de edición de campos generales (no Settings).
+    @State private var isShowingEdit = false
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -101,6 +103,18 @@ public struct ResourceDetailView: View {
                     context: context,
                     container: container,
                     store: documentsStore
+                )
+            }
+        }
+        // F.RESOURCE.3 — edit inline (no Settings detour).
+        .sheet(isPresented: $isShowingEdit) {
+            if let detail = store.detail {
+                EditResourceView(
+                    resource: detail.resource,
+                    container: container,
+                    onSaved: {
+                        Task { await store.load(resourceId: resourceId) }
+                    }
                 )
             }
         }
@@ -966,6 +980,7 @@ public struct ResourceDetailView: View {
         case "reserve_resource":  openReserveSheet()
         case "attach_document":   isShowingAttachDocument = true
         case "grant_right":       isShowingGrantRight = true
+        case "update_resource":   isShowingEdit = true
         default:                  break
         }
     }

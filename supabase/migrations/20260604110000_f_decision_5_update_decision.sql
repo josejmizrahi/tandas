@@ -179,8 +179,13 @@ begin
   perform public.accept_invitation(v_ctx::uuid);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', u_jose::text)::text, true);
 
-  v_decision := (public.create_decision(v_ctx::uuid, 'Subir cuota', 'generic',
-                  'Propongo subir la cuota mensual.', null, v_future, 'yes_no_abstain'))->>'decision_id';
+  v_decision := (public.create_decision(
+                   p_context_actor_id => v_ctx::uuid,
+                   p_decision_type    => 'generic'::text,
+                   p_title            => 'Subir cuota'::text,
+                   p_description      => 'Propongo subir la cuota mensual.'::text,
+                   p_closes_at        => v_future,
+                   p_template_key     => null::text))->>'decision_id';
 
   -- 1. Autor edita título + descripción
   v_result := public.update_decision(v_decision::uuid, 'Subir cuota mensual', 'A 1500');

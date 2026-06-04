@@ -15,15 +15,18 @@ import RuulCore
 public struct ContextsListView: View {
     let container: DependencyContainer
 
-    @State private var path: [AppContext] = []
+    /// Path del NavigationStack. Owneado por `MainTabShell` para que
+    /// `jumpToContext` desde Home pueda empujar al ContextHome target.
+    @Binding var path: [AppContext]
     @State private var isShowingCreateContext = false
     @State private var isShowingJoinByCode = false
     @State private var isShowingInvitations = false
     @State private var isShowingContextSettings = false
     @State private var prefilledInviteCode: String?
 
-    public init(container: DependencyContainer) {
+    public init(container: DependencyContainer, path: Binding<[AppContext]>) {
         self.container = container
+        self._path = path
     }
 
     private var contextStore: ContextStore { container.contextStore }
@@ -481,7 +484,8 @@ private struct ContextHomeContainer: View {
 }
 
 #Preview("ContextsList (demo)") {
+    @Previewable @State var path: [AppContext] = []
     NavigationStack {
-        ContextsListView(container: .demo())
+        ContextsListView(container: .demo(), path: $path)
     }
 }

@@ -19,6 +19,8 @@ public struct ObligationDetailView: View {
     /// R.2S.10 — sheet "¿Por qué este compromiso?" con why_obligation_exists.
     @State private var why: WhyObligationExists?
     @State private var isLoadingWhy = false
+    /// F.MONEY.4 — sheet de edición de la obligación.
+    @State private var isShowingEdit = false
 
     public init(obligationId: UUID, context: AppContext, container: DependencyContainer) {
         self.obligationId = obligationId
@@ -49,6 +51,16 @@ public struct ObligationDetailView: View {
                 .sheet(item: Binding(get: { why.map { WhyObligationSheetItem(value: $0) } },
                                       set: { why = $0?.value })) { wrapper in
                     WhyObligationSheet(result: wrapper.value)
+                }
+                // F.MONEY.4 — sheet de edición.
+                .sheet(isPresented: $isShowingEdit) {
+                    if let detail {
+                        EditObligationView(
+                            detail: detail,
+                            container: container,
+                            onSaved: { Task { await load() } }
+                        )
+                    }
                 }
         }
     }
@@ -197,6 +209,13 @@ public struct ObligationDetailView: View {
                 isShowingCompleteSheet = true
             } label: {
                 Label(action.label, systemImage: "checkmark.circle.fill")
+            }
+            .disabled(!action.enabled || runner.isRunning)
+        case "edit_obligation":
+            Button {
+                isShowingEdit = true
+            } label: {
+                Label(action.label, systemImage: "pencil")
             }
             .disabled(!action.enabled || runner.isRunning)
         default:

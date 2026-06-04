@@ -65,7 +65,13 @@ public struct RulesListView: View {
             List {
                 ForEach(store.rules) { rule in
                     NavigationLink {
-                        RuleDetailView(rule: rule)
+                        RuleDetailView(
+                            rule: rule,
+                            context: context,
+                            container: container,
+                            canManage: store.canManage(in: context),
+                            onChanged: { Task { await store.load(context: context) } }
+                        )
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "ruler.fill")

@@ -36,6 +36,8 @@ public struct DecisionDetailView: View {
     @State private var decisionActivity: [ActivityEvent] = []
     @State private var isShowingAllParticipants = false
     @State private var isShowingFullActivity = false
+    /// F.DECISION.5 — sheet de edición de la decisión.
+    @State private var isShowingEdit = false
 
     public init(decisionId: UUID, context: AppContext, container: DependencyContainer) {
         self.decisionId = decisionId
@@ -47,7 +49,10 @@ public struct DecisionDetailView: View {
     private var myActorId: UUID? { container.currentActorStore.actorId }
 
     private var hasManageAuthority: Bool {
-        store.canDo("close_decision") || store.canDo("execute_decision") || store.canDo("cancel_decision")
+        store.canDo("close_decision")
+            || store.canDo("execute_decision")
+            || store.canDo("cancel_decision")
+            || store.canDo("edit_decision")
     }
 
     public var body: some View {
@@ -126,6 +131,18 @@ public struct DecisionDetailView: View {
                     events: decisionActivity,
                     store: store,
                     myActorId: myActorId
+                )
+            }
+        }
+        // F.DECISION.5 — sheet de edición.
+        .sheet(isPresented: $isShowingEdit) {
+            if let decision = store.decision {
+                EditDecisionView(
+                    decision: decision,
+                    container: container,
+                    onSaved: {
+                        Task { await store.load(decisionId: decisionId, context: context) }
+                    }
                 )
             }
         }
@@ -920,6 +937,12 @@ public struct DecisionDetailView: View {
                     label: action.label, reason: action.reason, enabled: action.enabled,
                     symbol: "xmark.circle", tint: .red, role: .destructive
                 ))
+            case "edit_decision":
+                out.append(AdminActionItem(
+                    kind: .editDecision,
+                    label: action.label, reason: action.reason, enabled: action.enabled,
+                    symbol: "pencil", tint: .purple
+                ))
             default:
                 break
             }
@@ -948,6 +971,7 @@ public struct DecisionDetailView: View {
         case .closeDecision:   isConfirmingClose = true
         case .executeDecision: isConfirmingExecute = true
         case .cancelDecision:  isConfirmingClose = true // Backend exposes cancel via close path for now.
+        case .editDecision:    isShowingEdit = true
         }
     }
 
@@ -1061,7 +1085,7 @@ public struct DecisionDetailView: View {
 // MARK: - Tipos de soporte
 
 private enum AdminActionKind {
-    case closeDecision, executeDecision, cancelDecision
+    case closeDecision, executeDecision, cancelDecision, editDecision
 }
 
 private struct AdminActionItem {

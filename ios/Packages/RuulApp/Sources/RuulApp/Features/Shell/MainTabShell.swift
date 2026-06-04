@@ -16,17 +16,22 @@ public struct MainTabShell: View {
     @State private var isShowingCreateSheet = false
     @State private var isShowingJoinByCode = false
     @State private var prefilledInviteCode: String?
+    /// NavigationStack path del tab Contextos, levantado al shell para que
+    /// `jumpToContext` desde Home/atención pueda empujar directo al
+    /// ContextHome del target en vez de dejar al usuario en la lista.
+    @State private var contextsPath: [AppContext] = []
 
     public init(container: DependencyContainer) {
         self.container = container
     }
 
-    /// F.NAV.2 — Cambia al tab Contextos y switchea el ContextStore al
-    /// contexto pedido. Llamado desde Home cuando el usuario tapea un item
-    /// de "Continuar" o un conflicto de reservación.
+    /// Cambia al tab Contextos y empuja el ContextHome del target.
+    /// Llamado desde Home (tarjetas Continuar, attention items).
     private func jumpToContext(_ context: AppContext) {
         container.contextStore.switchTo(context)
+        contextsPath = [context]
         selectedTab = .contexts
+        Task { await container.contextPreferencesStore.recordVisit(context.id) }
     }
 
     /// F.NAV.7 fix: Binding proxy intercepta la selección del tab antes de
@@ -59,7 +64,7 @@ public struct MainTabShell: View {
 
             Tab("Contextos", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
                 // ContextsListView trae su propio NavigationStack con path bindeado.
-                ContextsListView(container: container)
+                ContextsListView(container: container, path: $contextsPath)
             }
 
             Tab("Crear", systemImage: "plus.circle.fill", value: AppTab.create, role: nil) {

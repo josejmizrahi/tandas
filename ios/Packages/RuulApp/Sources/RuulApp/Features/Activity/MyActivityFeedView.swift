@@ -14,6 +14,9 @@ public struct MyActivityFeedView: View {
     let container: DependencyContainer
 
     @State private var store: ActivityFeedStore
+    /// Tap en un item con subject conocido (resource/event/decision/obligation)
+    /// empuja el detail correspondiente.
+    @State private var pushedSubject: ActivitySubjectDestination?
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -42,6 +45,23 @@ public struct MyActivityFeedView: View {
         .refreshable {
             await store.reload()
         }
+        .navigationDestination(item: $pushedSubject) { dest in
+            destinationView(for: dest)
+        }
+    }
+
+    @ViewBuilder
+    private func destinationView(for dest: ActivitySubjectDestination) -> some View {
+        switch dest {
+        case let .resource(id, ctx):
+            ResourceDetailView(resourceId: id, context: ctx, container: container)
+        case let .event(id, ctx):
+            EventDetailView(eventId: id, context: ctx, container: container)
+        case let .decision(id, ctx):
+            DecisionDetailView(decisionId: id, context: ctx, container: container)
+        case let .obligation(id, ctx):
+            ObligationDetailView(obligationId: id, context: ctx, container: container)
+        }
     }
 
     @ViewBuilder
@@ -57,7 +77,16 @@ public struct MyActivityFeedView: View {
                 ForEach(groupedItems, id: \.label) { group in
                     Section {
                         ForEach(group.items) { item in
-                            feedRow(item)
+                            if let destination = subjectDestination(for: item) {
+                                Button {
+                                    pushedSubject = destination
+                                } label: {
+                                    feedRow(item)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                feedRow(item)
+                            }
                         }
                     } header: {
                         Text(group.label)
@@ -152,6 +181,41 @@ public struct MyActivityFeedView: View {
         guard let id = contextActorId else { return nil }
         return container.contextStore.availableContexts.first { $0.id == id }?.displayName
     }
+
+    /// Deriva el destino de navegación a partir del subject del item.
+    /// Sólo enrutamos a primitivas con detail view real. Items sin subject
+    /// navegable (rules, settlement, expense suelto…) quedan no-tap.
+    private func subjectDestination(for item: FeedItem) -> ActivitySubjectDestination? {
+        guard let ctxId = item.contextActorId,
+              let ctx = container.contextStore.availableContexts.first(where: { $0.id == ctxId })
+        else { return nil }
+
+        if let resourceId = item.resourceId {
+            return .resource(resourceId, ctx)
+        }
+        if let decisionId = item.decisionId {
+            return .decision(decisionId, ctx)
+        }
+        if let obligationId = item.obligationId {
+            return .obligation(obligationId, ctx)
+        }
+        guard let subjectId = item.subjectId else { return nil }
+        switch item.subjectType {
+        case "resource":             return .resource(subjectId, ctx)
+        case "calendar_event":       return .event(subjectId, ctx)
+        case "decision":             return .decision(subjectId, ctx)
+        case "obligation":           return .obligation(subjectId, ctx)
+        default:                     return nil
+        }
+    }
+}
+
+/// Destino enrutable de un item del feed de actividad.
+private enum ActivitySubjectDestination: Hashable {
+    case resource(UUID, AppContext)
+    case event(UUID, AppContext)
+    case decision(UUID, AppContext)
+    case obligation(UUID, AppContext)
 }
 
 #Preview("Mi Actividad — demo") {

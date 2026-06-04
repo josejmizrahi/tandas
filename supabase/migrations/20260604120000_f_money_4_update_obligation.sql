@@ -210,7 +210,7 @@ begin
 
   -- Jose crea una multa para David (Jose creditor, David debtor).
   perform set_config('request.jwt.claims', jsonb_build_object('sub', u_jose::text)::text, true);
-  v_ob := (public.record_fine(v_ctx::uuid, a_david, 200, 'MXN', 'late_arrival', null))->>'obligation_id';
+  v_ob := (public.record_fine(v_ctx::uuid, a_david, 200, 'MXN', 'late_arrival'))->>'obligation_id';
 
   -- 1. Acreedor edita amount + description
   v_result := public.update_obligation(v_ob::uuid, null, 'Llegó 20 min tarde', null, 250);
@@ -251,8 +251,8 @@ begin
     raise exception 'F.M.4 FAIL 6: edit_obligation para deudor debería estar disabled';
   end if;
 
-  -- 7. Tras cancelar, edit_obligation desaparece y editar falla
-  perform public.cancel_obligation(v_ob::uuid);
+  -- 7. Tras cancelar (UPDATE directo — no hay cancel_obligation RPC), edit_obligation desaparece
+  update public.obligations set status = 'cancelled' where id = v_ob::uuid;
   v_aa := public.obligation_available_actions(v_ob::uuid, a_jose);
   if exists (select 1 from jsonb_array_elements(v_aa) e where e->>'action_key' = 'edit_obligation') then
     raise exception 'F.M.4 FAIL 7: edit_obligation aparece en obligación cancelada';
