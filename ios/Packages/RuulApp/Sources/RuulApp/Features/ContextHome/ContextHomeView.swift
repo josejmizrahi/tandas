@@ -72,6 +72,15 @@ public struct ContextHomeView: View {
             }
         }
         .navigationTitle(context.displayName)
+        .toolbar {
+            // F.CONTEXT.4 — "+" en la barra: única superficie de creación.
+            // Las acciones vienen verbatim de context_available_actions().
+            if !context.isPersonal {
+                ToolbarItem(placement: .topBarTrailing) {
+                    quickActionsToolbarMenu
+                }
+            }
+        }
         // R.2U.3 — breadcrumb sticky arriba (sólo si hay ancestros).
         .safeAreaInset(edge: .top, spacing: 0) {
             if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
@@ -172,16 +181,17 @@ public struct ContextHomeView: View {
                         personalObligationsCard(world)
                     }
                 } else {
+                    // F.CONTEXT.4 — orden por prioridad del usuario, no por tipos:
+                    //   atención → próximamente → actividad → espacios → recursos → dinero → miembros
                     attentionCard
-                    quickActionsCard(summary)
+                    upcomingCard(summary)
                     activityCard(summary)
+                    childContextsCard
                     resourcesCard(summary)
-                    membersCard(summary)
-                    upcomingPairCard(summary)
                     moneyCard(summary)
+                    membersCard(summary)
 
                     // Soportes — aparecen sólo si tienen contenido
-                    childContextsCard
                     similarContextsCard
                     actionObligationsCard
                     rulesCard(summary)
@@ -217,42 +227,57 @@ public struct ContextHomeView: View {
             }
 
             if !context.isPersonal {
-                heroStatsStrip(summary)
+                heroStatusLine(summary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 4)
     }
 
+    /// F.CONTEXT.4 — Status line en lugar de stats estructurales. Muestra lo
+    /// que importa: eventos próximos · decisiones pendientes · cuentas abiertas.
+    /// Si todo es 0 → "Todo al día 🎉".
     @ViewBuilder
-    private func heroStatsStrip(_ summary: ContextSummary) -> some View {
-        let stats: [(String, String)] = [
-            ("\(summary.membersCount)", "Miembros"),
-            ("\(summary.resourcesCount)", resourcesShort),
-            ("\(summary.upcomingEvents.count)", "Eventos"),
-            ("\(summary.pendingDecisions)", "Decisiones")
-        ]
-        HStack(alignment: .center, spacing: 0) {
-            ForEach(Array(stats.enumerated()), id: \.offset) { idx, stat in
-                VStack(spacing: 3) {
-                    Text(stat.0)
-                        .font(.title3.weight(.bold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                    Text(stat.1)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity)
-                if idx < stats.count - 1 {
-                    Divider().frame(height: 28)
-                }
+    private func heroStatusLine(_ summary: ContextSummary) -> some View {
+        let upcoming = summary.upcomingEvents.count
+        let pending = summary.pendingDecisions
+        let open = summary.openObligationsCount
+        let attention = contextAttentionItems.count
+        let parts = heroStatusParts(upcoming: upcoming, pending: pending, open: open, attention: attention)
+
+        if parts.isEmpty {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("Todo al día 🎉")
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(.primary)
             }
+        } else {
+            Text(parts.joined(separator: " · "))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
         }
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// Builders + `var` no conviven con `@ViewBuilder` — el array se compone
+    /// en una función plana y la vista sólo lo renderiza.
+    private func heroStatusParts(upcoming: Int, pending: Int, open: Int, attention: Int) -> [String] {
+        var parts: [String] = []
+        if upcoming > 0 {
+            parts.append(upcoming == 1 ? "1 evento próximo" : "\(upcoming) eventos próximos")
+        }
+        if pending > 0 {
+            parts.append(pending == 1 ? "1 decisión pendiente" : "\(pending) decisiones pendientes")
+        }
+        if open > 0 {
+            parts.append(open == 1 ? "1 cuenta abierta" : "\(open) cuentas abiertas")
+        }
+        if parts.isEmpty && attention > 0 {
+            parts.append(attention == 1 ? "1 pendiente" : "\(attention) pendientes")
+        }
+        return parts
     }
 
     private func heroTitle(_ summary: ContextSummary) -> String {
@@ -270,13 +295,6 @@ public struct ContextHomeView: View {
         case "company":      return "Empresa"
         case "trust":        return "Fideicomiso"
         default:             return context.kind == .legalEntity ? "Entidad" : "Contexto"
-        }
-    }
-
-    private var resourcesShort: String {
-        switch context.subtype {
-        case "company", "project", "trust": return "Activos"
-        default: return "Recursos"
         }
     }
 
@@ -438,54 +456,30 @@ public struct ContextHomeView: View {
         }
     }
 
-    // MARK: - 3. Qué quieres hacer (Quick Actions grid)
+    // MARK: - 3. Toolbar Menu (Quick Actions — F.CONTEXT.4)
 
+    /// F.CONTEXT.4 — Las acciones ya no son cards visibles, viven en un
+    /// Menu "+" en la barra superior. Mismo `context_available_actions()`,
+    /// mismo router; solo cambia la presentación.
     @ViewBuilder
-    private func quickActionsCard(_ summary: ContextSummary) -> some View {
-        let actions = summary.availableActions
-        if !actions.isEmpty {
-            let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Qué quieres hacer")
-                    .font(.title3.weight(.semibold))
-                LazyVGrid(columns: columns, spacing: 10) {
-                    ForEach(actions) { action in
-                        actionTile(action)
+    private var quickActionsToolbarMenu: some View {
+        if let summary = store.summary, !summary.availableActions.isEmpty {
+            Menu {
+                ForEach(summary.availableActions) { action in
+                    let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
+                    Button {
+                        quickActionsRouter.open(ActionRouter.destination(for: action, in: .context(context.id)))
+                    } label: {
+                        Label(action.label, systemImage: presentation.symbolName)
                     }
+                    .disabled(!action.enabled)
                 }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3)
             }
+            .accessibilityLabel("Acciones del contexto")
         }
-    }
-
-    @ViewBuilder
-    private func actionTile(_ action: AvailableAction) -> some View {
-        let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
-        Button {
-            quickActionsRouter.open(ActionRouter.destination(for: action, in: .context(context.id)))
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: presentation.symbolName)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(action.enabled ? presentation.tint : Color.secondary)
-                Spacer(minLength: 0)
-                Text(action.label)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(action.enabled ? .primary : .secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-            }
-            .frame(maxWidth: .infinity, minHeight: 68, alignment: .topLeading)
-            .padding(10)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
-            )
-            .opacity(action.enabled ? 1.0 : 0.7)
-        }
-        .buttonStyle(.plain)
-        .disabled(!action.enabled)
-        .accessibilityHint(action.reason ?? "")
     }
 
     private func handleQuickAction(_ destination: ActionDestination) {
@@ -615,18 +609,7 @@ public struct ContextHomeView: View {
         }
     }
 
-    private var resourcesCardTitle: String {
-        switch context.subtype {
-        case "family":          return "Patrimonio"
-        case "trust":           return "Activos"
-        case "company":         return "Activos"
-        case "project":         return "Activos del proyecto"
-        case "friend_group",
-             "trip",
-             "community":       return "Recursos compartidos"
-        default:                return "Recursos"
-        }
-    }
+    private var resourcesCardTitle: String { "Recursos importantes" }
 
     @ViewBuilder
     private func resourceCarouselCard(_ resource: SummaryResource) -> some View {
@@ -713,264 +696,168 @@ public struct ContextHomeView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - 8. Eventos
+    // MARK: - Próximamente (F.CONTEXT.4)
 
+    /// Combina cronológicamente eventos próximos + decisiones abiertas +
+    /// compromisos con due_at. La sección sólo aparece si tiene contenido.
     @ViewBuilder
-    private func upcomingPairCard(_ summary: ContextSummary) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            eventsMiniCard(summary)
-            decisionsMiniCard(summary)
-        }
-    }
-
-    @ViewBuilder
-    private func eventsMiniCard(_ summary: ContextSummary) -> some View {
-        let items = Array(summary.upcomingEvents.prefix(2))
-        NavigationLink {
-            EventsListView(context: context, container: container)
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "calendar")
-                        .font(.callout)
-                        .foregroundStyle(.orange)
-                    Text("Eventos")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                if items.isEmpty {
-                    Text("Sin próximos")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(items) { event in
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(event.title)
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                                if let starts = event.startsAt {
-                                    Text(starts.formatted(date: .abbreviated, time: .omitted))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-                            }
-                        }
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
-            .padding(14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func decisionsMiniCard(_ summary: ContextSummary) -> some View {
-        let items = Array(summary.openDecisions.prefix(2))
-        NavigationLink {
-            DecisionsListView(context: context, container: container)
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.bubble.fill")
-                        .font(.callout)
-                        .foregroundStyle(.purple)
-                    Text("Decisiones")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                if items.isEmpty {
-                    Text("Sin propuestas")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(items) { decision in
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(decision.title)
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                                Text((DecisionType(rawValue: decision.decisionType) ?? .generic).label)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                        }
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
-            .padding(14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - 10. Estado financiero
-
-    @ViewBuilder
-    private func moneyCard(_ summary: ContextSummary) -> some View {
-        let openCount = summary.openObligationsCount
-        let balance = summary.money.myBalance
-        let balanceTint: Color = balance < 0 ? .red : (balance > 0 ? .green : .secondary)
-        let openTint: Color = openCount > 0 ? .orange : .secondary
-
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Estado financiero")
+    private func upcomingCard(_ summary: ContextSummary) -> some View {
+        let items = upcomingItems(summary)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Próximamente")
                     .font(.title3.weight(.semibold))
-                Spacer()
-                NavigationLink {
-                    MoneyHomeView(context: context, container: container)
-                } label: {
-                    Text("Ver dinero →")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    moneyStat(label: "Tu balance",
-                              value: balance.currencyLabel(nil),
-                              tint: balanceTint)
-                    moneyStat(label: "Cuentas abiertas",
-                              value: "\(openCount)",
-                              tint: openTint)
-                }
-                if openCount == 0 && balance == 0 {
-                    Text("Nadie debe nada 🎉")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-        }
-    }
-
-    @ViewBuilder
-    private func moneyStat(label: String, value: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(tint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    // MARK: - Soportes
-
-    /// R.2U.3 — Subcontextos: sólo si ya cargó y hay contenido.
-    @ViewBuilder
-    private var childContextsCard: some View {
-        if hierarchyStore.phase.isLoaded {
-            let children = hierarchyStore.children
-            let canCreate = store.summary?.can("context.children.create") ?? false
-            if !children.isEmpty || canCreate {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Subcontextos (\(children.count))")
-                            .font(.title3.weight(.semibold))
-                        Spacer()
-                        if let summary = store.summary,
-                           summary.can("context.tree.view"),
-                           !children.isEmpty || !hierarchyStore.ancestors.isEmpty {
-                            NavigationLink {
-                                ContextTreeView(rootContext: rootForTree(summary), container: container)
-                            } label: {
-                                Text("Ver estructura →")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
+                        upcomingRowDestination(item)
+                        if idx < items.count - 1 {
+                            Divider().padding(.leading, 56)
                         }
                     }
-                    VStack(spacing: 0) {
-                        if children.isEmpty {
-                            Text("Sin subcontextos todavía")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(16)
-                        } else {
-                            ForEach(Array(children.enumerated()), id: \.element.id) { idx, child in
-                                Button {
-                                    if let target = container.contextStore.availableContexts.first(where: { $0.id == child.id }) {
-                                        container.contextStore.switchTo(target)
-                                    }
-                                } label: {
-                                    childRow(child)
-                                }
-                                .buttonStyle(.plain)
-                                if idx < children.count - 1 {
-                                    Divider().padding(.leading, 56)
-                                }
-                            }
-                        }
-                        if canCreate {
-                            Divider().padding(.leading, 16)
-                            Button {
-                                isShowingCreateChild = true
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "plus.rectangle.on.rectangle")
-                                        .font(.callout)
-                                        .foregroundStyle(.tint)
-                                        .frame(width: 32)
-                                    Text("Agregar subcontexto")
-                                        .font(.callout.weight(.medium))
-                                        .foregroundStyle(.tint)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
                 }
+                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
             }
         }
     }
 
+    private struct UpcomingItem: Identifiable {
+        let id: String
+        let symbol: String
+        let tint: Color
+        let title: String
+        let timeLabel: String
+        let date: Date?
+        let destination: UpcomingDestination
+    }
+
+    private enum UpcomingDestination {
+        case event(UUID)
+        case decision(UUID)
+        case obligation(UUID)
+    }
+
+    private func upcomingItems(_ summary: ContextSummary) -> [UpcomingItem] {
+        var out: [UpcomingItem] = []
+
+        for event in summary.upcomingEvents {
+            out.append(UpcomingItem(
+                id: "event-\(event.eventId.uuidString)",
+                symbol: "calendar",
+                tint: .orange,
+                title: event.title,
+                timeLabel: relativeLabel(event.startsAt, fallback: "Sin fecha"),
+                date: event.startsAt,
+                destination: .event(event.eventId)
+            ))
+        }
+
+        for decision in summary.openDecisions {
+            out.append(UpcomingItem(
+                id: "decision-\(decision.decisionId.uuidString)",
+                symbol: "checkmark.bubble.fill",
+                tint: .purple,
+                title: decision.title,
+                timeLabel: "Propuesta abierta",
+                date: nil,
+                destination: .decision(decision.decisionId)
+            ))
+        }
+
+        for obligation in actionObligations {
+            guard let due = obligation.dueAt else { continue }
+            out.append(UpcomingItem(
+                id: "obligation-\(obligation.id.uuidString)",
+                symbol: actionKindSymbol(obligation.obligationKind),
+                tint: .indigo,
+                title: obligation.title ?? obligation.kindLabel,
+                timeLabel: "Vence \(relativeLabel(due, fallback: ""))",
+                date: due,
+                destination: .obligation(obligation.id)
+            ))
+        }
+
+        out.sort {
+            switch ($0.date, $1.date) {
+            case let (a?, b?): return a < b
+            case (_?, nil):    return true
+            case (nil, _?):    return false
+            case (nil, nil):   return false
+            }
+        }
+
+        return Array(out.prefix(5))
+    }
+
+    private func relativeLabel(_ date: Date?, fallback: String) -> String {
+        guard let date else { return fallback }
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+        let startOfDate = calendar.startOfDay(for: date)
+        let days = calendar.dateComponents([.day], from: startOfToday, to: startOfDate).day ?? 0
+
+        let timeStr = date.formatted(date: .omitted, time: .shortened)
+        switch days {
+        case 0:           return "Hoy \(timeStr)"
+        case 1:           return "Mañana \(timeStr)"
+        case -1:          return "Ayer \(timeStr)"
+        case 2...6:       return date.formatted(.dateTime.weekday(.wide)) + " \(timeStr)"
+        case -6 ... -2:   return "Hace \(-days) días"
+        default:
+            if days > 0 && days <= 14 {
+                return "En \(days) días"
+            }
+            return date.formatted(date: .abbreviated, time: .omitted)
+        }
+    }
+
     @ViewBuilder
-    private func childRow(_ child: ContextHierarchyNode) -> some View {
+    private func upcomingRowDestination(_ item: UpcomingItem) -> some View {
+        switch item.destination {
+        case .event(let id):
+            NavigationLink {
+                EventDetailView(eventId: id, context: context, container: container)
+            } label: {
+                upcomingRow(item)
+            }
+            .buttonStyle(.plain)
+        case .decision(let id):
+            NavigationLink {
+                DecisionDetailView(decisionId: id, context: context, container: container)
+            } label: {
+                upcomingRow(item)
+            }
+            .buttonStyle(.plain)
+        case .obligation(let id):
+            Button {
+                selectedObligationId = id
+            } label: {
+                upcomingRow(item)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private func upcomingRow(_ item: UpcomingItem) -> some View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.accentColor.opacity(0.15))
+                    .fill(item.tint.opacity(0.15))
                     .frame(width: 32, height: 32)
-                Image(systemName: child.appContext.symbolName)
+                Image(systemName: item.symbol)
                     .font(.callout)
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(item.tint)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(child.name)
+                Text(item.title)
                     .font(.callout.weight(.medium))
                     .foregroundStyle(.primary)
-                Text(subtypeLabel(child.actorSubtype))
+                    .lineLimit(2)
+                Text(item.timeLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
@@ -979,6 +866,131 @@ public struct ContextHomeView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    // MARK: - Dinero (F.CONTEXT.4 — compacto)
+
+    @ViewBuilder
+    private func moneyCard(_ summary: ContextSummary) -> some View {
+        let openCount = summary.openObligationsCount
+        let balance = summary.money.myBalance
+        let balanceTint: Color = balance < 0 ? .red : (balance > 0 ? .green : .secondary)
+        NavigationLink {
+            MoneyHomeView(context: context, container: container)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "dollarsign.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.green)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Dinero")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    HStack(spacing: 4) {
+                        Text("Balance")
+                            .foregroundStyle(.secondary)
+                        Text(balance.currencyLabel(nil))
+                            .foregroundStyle(balanceTint)
+                            .fontWeight(.semibold)
+                        Text("·")
+                            .foregroundStyle(.secondary)
+                        Text(openCount == 1 ? "1 cuenta abierta" : "\(openCount) cuentas abiertas")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.caption)
+                    .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Soportes
+
+    /// F.CONTEXT.4 — "Espacios dentro de [Contexto]". Cards horizontales
+    /// (estilo Apple Home rooms). Solo aparece si hay hijos.
+    @ViewBuilder
+    private var childContextsCard: some View {
+        if hierarchyStore.phase.isLoaded {
+            let children = hierarchyStore.children
+            if !children.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Espacios dentro de \(context.displayName)")
+                            .font(.title3.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                        Spacer()
+                        if let summary = store.summary,
+                           summary.can("context.tree.view"),
+                           !hierarchyStore.ancestors.isEmpty || children.count > 4 {
+                            NavigationLink {
+                                ContextTreeView(rootContext: rootForTree(summary), container: container)
+                            } label: {
+                                Text("Ver todo →")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(children) { child in
+                                childCarouselCard(child)
+                            }
+                        }
+                        .padding(.bottom, 4)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func childCarouselCard(_ child: ContextHierarchyNode) -> some View {
+        Button {
+            if let target = container.contextStore.availableContexts.first(where: { $0.id == child.id }) {
+                container.contextStore.switchTo(target)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: child.appContext.symbolName)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.tint)
+                    .frame(width: 36, height: 36)
+                    .background(Color.accentColor.opacity(0.15), in: Circle())
+                Spacer(minLength: 0)
+                Text(child.name)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Text(subtypeLabel(child.actorSubtype))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(width: 140, height: 140, alignment: .topLeading)
+            .padding(12)
+            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func subtypeLabel(_ subtype: String) -> String {
