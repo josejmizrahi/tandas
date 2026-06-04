@@ -1423,6 +1423,109 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
         return page.activity
     }
+
+    // MARK: - Subscriptions & Trust (R.3A)
+
+    public func subscribe(
+        targetType: SubscriptionTargetType,
+        targetId: UUID,
+        subscriptionType: SubscriptionType,
+        notes: String?
+    ) async throws -> UUID {
+        struct Params: Encodable, Sendable {
+            let pTargetType: String
+            let pTargetId: UUID
+            let pSubscriptionType: String
+            let pNotes: String?
+            enum CodingKeys: String, CodingKey {
+                case pTargetType        = "p_target_type"
+                case pTargetId          = "p_target_id"
+                case pSubscriptionType  = "p_subscription_type"
+                case pNotes             = "p_notes"
+            }
+        }
+        return try await call("subscribe", params: Params(
+            pTargetType: targetType.rawValue,
+            pTargetId: targetId,
+            pSubscriptionType: subscriptionType.rawValue,
+            pNotes: notes
+        ))
+    }
+
+    public func unsubscribe(subscriptionId: UUID) async throws -> Bool {
+        struct Params: Encodable, Sendable {
+            let pSubscriptionId: UUID
+            enum CodingKeys: String, CodingKey { case pSubscriptionId = "p_subscription_id" }
+        }
+        return try await call("unsubscribe", params: Params(pSubscriptionId: subscriptionId))
+    }
+
+    public func markAsStakeholder(targetType: SubscriptionTargetType, targetId: UUID) async throws -> UUID {
+        struct Params: Encodable, Sendable {
+            let pTargetType: String
+            let pTargetId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pTargetType = "p_target_type"
+                case pTargetId   = "p_target_id"
+            }
+        }
+        return try await call("mark_as_stakeholder", params: Params(
+            pTargetType: targetType.rawValue, pTargetId: targetId
+        ))
+    }
+
+    public func listMySubscriptions() async throws -> SubscriptionList {
+        try await call("list_my_subscriptions")
+    }
+
+    public func activityFeed(actorId: UUID?, limit: Int) async throws -> ActivityFeed {
+        struct Params: Encodable, Sendable {
+            let pActorId: UUID?
+            let pLimit: Int
+            enum CodingKeys: String, CodingKey {
+                case pActorId = "p_actor_id"
+                case pLimit   = "p_limit"
+            }
+        }
+        return try await call("activity_feed", params: Params(pActorId: actorId, pLimit: limit))
+    }
+
+    public func addTrust(targetActorId: UUID, trustLevel: Int, trustType: TrustType, notes: String?) async throws -> UUID {
+        struct Params: Encodable, Sendable {
+            let pTargetActorId: UUID
+            let pTrustLevel: Int
+            let pTrustType: String
+            let pNotes: String?
+            enum CodingKeys: String, CodingKey {
+                case pTargetActorId = "p_target_actor_id"
+                case pTrustLevel    = "p_trust_level"
+                case pTrustType     = "p_trust_type"
+                case pNotes         = "p_notes"
+            }
+        }
+        return try await call("add_trust", params: Params(
+            pTargetActorId: targetActorId,
+            pTrustLevel: trustLevel,
+            pTrustType: trustType.rawValue,
+            pNotes: notes
+        ))
+    }
+
+    public func removeTrust(trustEdgeId: UUID) async throws -> Bool {
+        struct Params: Encodable, Sendable {
+            let pTrustEdgeId: UUID
+            enum CodingKeys: String, CodingKey { case pTrustEdgeId = "p_trust_edge_id" }
+        }
+        return try await call("remove_trust", params: Params(pTrustEdgeId: trustEdgeId))
+    }
+
+    public func listTrustNetwork(actorId: UUID?) async throws -> TrustNetwork {
+        struct Params: Encodable, Sendable {
+            let pActorId: UUID?
+            enum CodingKeys: String, CodingKey { case pActorId = "p_actor_id" }
+        }
+        return try await call("list_trust_network", params: Params(pActorId: actorId))
+    }
 }
 
 // MARK: - Params compartidos

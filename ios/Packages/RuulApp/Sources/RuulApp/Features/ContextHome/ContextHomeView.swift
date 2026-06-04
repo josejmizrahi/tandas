@@ -270,6 +270,20 @@ public struct ContextHomeView: View {
 
     @ViewBuilder
     private func myWorldSections(_ world: MyWorld) -> some View {
+        // R.3A — Mi Actividad: feed personalizado (subscriptions + ownership + membership).
+        Section {
+            NavigationLink {
+                MyActivityFeedView(container: container)
+            } label: {
+                Label("Mi Actividad", systemImage: "antenna.radiowaves.left.and.right")
+                    .font(.callout)
+            }
+        } header: {
+            Text("Lo que me importa")
+        } footer: {
+            Text("Últimas señales de los contextos, recursos y decisiones que sigues o donde tienes interés.")
+        }
+
         Section {
             if world.resources.isEmpty {
                 Text("Nadie te ha compartido recursos todavía")

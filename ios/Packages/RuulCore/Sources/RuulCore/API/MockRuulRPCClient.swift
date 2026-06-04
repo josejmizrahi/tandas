@@ -2842,6 +2842,237 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return Array(list.prefix(min(limit, 100)))
     }
 
+    // MARK: - Subscriptions & Trust (R.3A)
+
+    var subscriptionsBySubscriber: [UUID: [Subscription]] = [:]
+    var trustOutgoing: [UUID: [TrustEdgeOutgoing]] = [:]
+    var trustIncoming: [UUID: [TrustEdgeIncoming]] = [:]
+
+    public func subscribe(
+        targetType: SubscriptionTargetType,
+        targetId: UUID,
+        subscriptionType: SubscriptionType,
+        notes: String?
+    ) async throws -> UUID {
+        try throwIfNeeded()
+        var list = subscriptionsBySubscriber[me.id] ?? []
+        if let existingIdx = list.firstIndex(where: { $0.targetType == targetType && $0.targetId == targetId }) {
+            let existing = list[existingIdx]
+            let updated = Subscription(
+                id: existing.id,
+                targetType: targetType,
+                targetActorId: (targetType == .actor || targetType == .context) ? targetId : nil,
+                targetResourceId: targetType == .resource ? targetId : nil,
+                targetDecisionId: targetType == .decision ? targetId : nil,
+                targetEventId: targetType == .event ? targetId : nil,
+                targetObligationId: targetType == .obligation ? targetId : nil,
+                subscriptionType: subscriptionType,
+                notes: notes ?? existing.notes,
+                createdAt: existing.createdAt,
+                targetDisplayName: existing.targetDisplayName
+            )
+            list[existingIdx] = updated
+            subscriptionsBySubscriber[me.id] = list
+            return existing.id
+        }
+        let id = UUID()
+        let row = Subscription(
+            id: id,
+            targetType: targetType,
+            targetActorId: (targetType == .actor || targetType == .context) ? targetId : nil,
+            targetResourceId: targetType == .resource ? targetId : nil,
+            targetDecisionId: targetType == .decision ? targetId : nil,
+            targetEventId: targetType == .event ? targetId : nil,
+            targetObligationId: targetType == .obligation ? targetId : nil,
+            subscriptionType: subscriptionType,
+            notes: notes,
+            createdAt: Date(),
+            targetDisplayName: mockTargetDisplayName(targetType: targetType, targetId: targetId)
+        )
+        list.insert(row, at: 0)
+        subscriptionsBySubscriber[me.id] = list
+        return id
+    }
+
+    public func unsubscribe(subscriptionId: UUID) async throws -> Bool {
+        try throwIfNeeded()
+        guard var list = subscriptionsBySubscriber[me.id],
+              let idx = list.firstIndex(where: { $0.id == subscriptionId })
+        else { return false }
+        list.remove(at: idx)
+        subscriptionsBySubscriber[me.id] = list
+        return true
+    }
+
+    public func markAsStakeholder(targetType: SubscriptionTargetType, targetId: UUID) async throws -> UUID {
+        try await subscribe(targetType: targetType, targetId: targetId, subscriptionType: .stakeholder, notes: nil)
+    }
+
+    public func listMySubscriptions() async throws -> SubscriptionList {
+        try throwIfNeeded()
+        return SubscriptionList(
+            subscriberActorId: me.id,
+            subscriptions: subscriptionsBySubscriber[me.id] ?? []
+        )
+    }
+
+    public func activityFeed(actorId: UUID?, limit: Int) async throws -> ActivityFeed {
+        try throwIfNeeded()
+        let actor = actorId ?? me.id
+        guard actor == me.id else {
+            throw RuulError.backend(.missingPermission(key: nil))
+        }
+        let subs = subscriptionsBySubscriber[me.id] ?? []
+        let memberContexts = Set<UUID>(memberships.compactMap { (ctxId, members) in
+            members.contains(where: { $0.actorId == me.id }) ? ctxId : nil
+        }).union([me.id])
+
+        var items: [FeedItem] = []
+        var seen = Set<UUID>()
+
+        for (ctxId, events) in activity {
+            let isMember = memberContexts.contains(ctxId)
+            for ev in events {
+                var bestScore: Int? = nil
+                var bestSource: FeedSource? = nil
+                var bestSubType: SubscriptionType? = nil
+
+                for sub in subs where (sub.targetType == .context || sub.targetType == .actor) && sub.targetActorId == ctxId {
+                    let w = sub.subscriptionType.rankWeight
+                    if bestScore == nil || w > bestScore! { bestScore = w; bestSource = .subscription; bestSubType = sub.subscriptionType }
+                }
+                if let resId = ev.resourceId {
+                    for sub in subs where sub.targetType == .resource && sub.targetResourceId == resId {
+                        let w = sub.subscriptionType.rankWeight
+                        if bestScore == nil || w > bestScore! { bestScore = w; bestSource = .subscription; bestSubType = sub.subscriptionType }
+                    }
+                }
+                if let decId = ev.decisionId {
+                    for sub in subs where sub.targetType == .decision && sub.targetDecisionId == decId {
+                        let w = sub.subscriptionType.rankWeight
+                        if bestScore == nil || w > bestScore! { bestScore = w; bestSource = .subscription; bestSubType = sub.subscriptionType }
+                    }
+                }
+                if let resId = ev.resourceId,
+                   let rs = rights[resId],
+                   rs.contains(where: { $0.holderActorId == me.id && $0.kind == .own })
+                {
+                    if bestScore == nil || 90 > bestScore! { bestScore = 90; bestSource = .ownership; bestSubType = nil }
+                }
+                if isMember {
+                    if bestScore == nil || 70 > bestScore! { bestScore = 70; bestSource = .membership; bestSubType = nil }
+                }
+
+                guard let score = bestScore, let source = bestSource, !seen.contains(ev.id) else { continue }
+                seen.insert(ev.id)
+                items.append(FeedItem(
+                    id: ev.id,
+                    eventType: ev.eventType,
+                    actorId: ev.actorId,
+                    contextActorId: ctxId,
+                    subjectType: ev.subjectType,
+                    subjectId: ev.subjectId,
+                    payload: ev.payload,
+                    resourceId: ev.resourceId,
+                    decisionId: ev.decisionId,
+                    obligationId: ev.obligationId,
+                    occurredAt: ev.occurredAt,
+                    source: source,
+                    subscriptionType: bestSubType,
+                    score: score
+                ))
+            }
+        }
+
+        items.sort { lhs, rhs in
+            if lhs.score != rhs.score { return lhs.score > rhs.score }
+            return (lhs.occurredAt ?? .distantPast) > (rhs.occurredAt ?? .distantPast)
+        }
+        return ActivityFeed(actorId: actor, limit: limit, items: Array(items.prefix(min(limit, 200))))
+    }
+
+    public func addTrust(targetActorId: UUID, trustLevel: Int, trustType: TrustType, notes: String?) async throws -> UUID {
+        try throwIfNeeded()
+        guard targetActorId != me.id else { throw RuulError.backend(.validation(message: "No puedes confiar en ti mismo")) }
+        guard (1...5).contains(trustLevel) else { throw RuulError.backend(.validation(message: "Trust 1..5")) }
+        var out = trustOutgoing[me.id] ?? []
+        if let idx = out.firstIndex(where: { $0.targetActorId == targetActorId && $0.trustType == trustType }) {
+            let existing = out[idx]
+            let updated = TrustEdgeOutgoing(
+                id: existing.id,
+                targetActorId: targetActorId,
+                targetDisplayName: existing.targetDisplayName ?? actors[targetActorId]?.displayName,
+                trustLevel: trustLevel,
+                trustType: trustType,
+                notes: notes ?? existing.notes,
+                createdAt: existing.createdAt,
+                updatedAt: Date()
+            )
+            out[idx] = updated
+            trustOutgoing[me.id] = out
+            return existing.id
+        }
+        let id = UUID()
+        let edge = TrustEdgeOutgoing(
+            id: id,
+            targetActorId: targetActorId,
+            targetDisplayName: actors[targetActorId]?.displayName,
+            trustLevel: trustLevel,
+            trustType: trustType,
+            notes: notes,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+        out.insert(edge, at: 0)
+        trustOutgoing[me.id] = out
+
+        var inc = trustIncoming[targetActorId] ?? []
+        inc.insert(TrustEdgeIncoming(
+            id: id,
+            sourceActorId: me.id,
+            sourceDisplayName: me.displayName,
+            trustLevel: trustLevel,
+            trustType: trustType,
+            createdAt: Date()
+        ), at: 0)
+        trustIncoming[targetActorId] = inc
+        return id
+    }
+
+    public func removeTrust(trustEdgeId: UUID) async throws -> Bool {
+        try throwIfNeeded()
+        guard var out = trustOutgoing[me.id],
+              let idx = out.firstIndex(where: { $0.id == trustEdgeId })
+        else { return false }
+        let removed = out.remove(at: idx)
+        trustOutgoing[me.id] = out
+        if var inc = trustIncoming[removed.targetActorId] {
+            inc.removeAll(where: { $0.id == trustEdgeId })
+            trustIncoming[removed.targetActorId] = inc
+        }
+        return true
+    }
+
+    public func listTrustNetwork(actorId: UUID?) async throws -> TrustNetwork {
+        try throwIfNeeded()
+        let actor = actorId ?? me.id
+        return TrustNetwork(
+            actorId: actor,
+            outgoing: actor == me.id ? (trustOutgoing[actor] ?? []) : [],
+            incoming: actor == me.id ? (trustIncoming[actor] ?? []) : []
+        )
+    }
+
+    private func mockTargetDisplayName(targetType: SubscriptionTargetType, targetId: UUID) -> String? {
+        switch targetType {
+        case .actor, .context: return actors[targetId]?.displayName
+        case .resource:        return resources[targetId]?.displayName
+        case .decision:        return decisions[targetId]?.title
+        case .event:           return events[targetId]?.title
+        case .obligation:      return obligations[targetId]?.title
+        }
+    }
+
     // MARK: - Catálogos
 
     public static let allPermissions: [String] = [

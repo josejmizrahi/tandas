@@ -270,6 +270,28 @@ public protocol RuulRPCClient: Sendable {
 
     /// `list_activity(p_context_actor_id, p_limit, p_before)`
     func listActivity(contextId: UUID, limit: Int, before: Date?) async throws -> [ActivityEvent]
+
+    // MARK: - Subscriptions & Trust (R.3A)
+
+    /// `subscribe(p_target_type, p_target_id, p_subscription_type, p_notes?)` —
+    /// idempotente (reactiva si existía soft-removed). Devuelve `subscription_id`.
+    func subscribe(targetType: SubscriptionTargetType, targetId: UUID, subscriptionType: SubscriptionType, notes: String?) async throws -> UUID
+    /// `unsubscribe(p_subscription_id)` — soft remove. Idempotente.
+    func unsubscribe(subscriptionId: UUID) async throws -> Bool
+    /// `mark_as_stakeholder(p_target_type, p_target_id, p_actor_id?)` — atajo
+    /// para `subscribe(..., stakeholder)`. Sólo el caller puede marcarse a sí mismo.
+    func markAsStakeholder(targetType: SubscriptionTargetType, targetId: UUID) async throws -> UUID
+    /// `list_my_subscriptions()` — todas las subs activas del caller.
+    func listMySubscriptions() async throws -> SubscriptionList
+    /// `activity_feed(p_actor_id?, p_limit?)` — feed personalizado del caller.
+    func activityFeed(actorId: UUID?, limit: Int) async throws -> ActivityFeed
+    /// `add_trust(p_target_actor_id, p_trust_level, p_trust_type, p_notes?)` —
+    /// idempotente por (caller, target, type).
+    func addTrust(targetActorId: UUID, trustLevel: Int, trustType: TrustType, notes: String?) async throws -> UUID
+    /// `remove_trust(p_trust_edge_id)` — soft remove. Idempotente.
+    func removeTrust(trustEdgeId: UUID) async throws -> Bool
+    /// `list_trust_network(p_actor_id?)` — outgoing/incoming del caller (RLS gatea).
+    func listTrustNetwork(actorId: UUID?) async throws -> TrustNetwork
 }
 
 // MARK: - Inputs
