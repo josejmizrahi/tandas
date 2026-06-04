@@ -263,41 +263,87 @@ public struct EventDetailView: View {
     /// la frecuencia.
     @ViewBuilder
     private func nextHostCard(_ event: CalendarEvent) -> some View {
-        if event.isRecurring && event.isScheduled,
-           let preview = store.nextHostPreview,
-           let hostName = preview.nextActorName,
-           let nextStart = nextOccurrenceDate(for: event) {
-            HStack(spacing: 14) {
-                Image(systemName: "person.2.crop.square.stack.fill")
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-                    .frame(width: 36, height: 36)
-                    .background(Color.accentColor.opacity(0.15), in: Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("Próxima reunión")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        if preview.isOverride {
-                            Text("Definido manualmente")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.tint)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.accentColor.opacity(0.15), in: Capsule())
+        if event.isRecurring && event.isScheduled {
+            if isLastSession(event) {
+                lastSessionCard(event)
+            } else if let preview = store.nextHostPreview,
+                      let hostName = preview.nextActorName,
+                      let nextStart = nextOccurrenceDate(for: event) {
+                HStack(spacing: 14) {
+                    Image(systemName: "person.2.crop.square.stack.fill")
+                        .font(.title3)
+                        .foregroundStyle(.tint)
+                        .frame(width: 36, height: 36)
+                        .background(Color.accentColor.opacity(0.15), in: Circle())
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Próxima reunión")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            if preview.isOverride {
+                                Text("Definido manualmente")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.tint)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.accentColor.opacity(0.15), in: Capsule())
+                            }
                         }
+                        Text("Organiza \(hostName)")
+                            .font(.callout.weight(.medium))
+                        Text(nextStart.formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                    Text("Organiza \(hostName)")
-                        .font(.callout.weight(.medium))
-                    Text(nextStart.formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                    Spacer()
+                }
+                .padding(14)
+                .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
+            }
+        }
+    }
+
+    /// F.EVENT.9 — cierre visual cuando esta es la última sesión por bounds.
+    @ViewBuilder
+    private func lastSessionCard(_ event: CalendarEvent) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: "flag.checkered")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(Color.secondary.opacity(0.15), in: Circle())
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Última sesión de la serie")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                if let total = event.recurrenceCount {
+                    Text("Sesión \(event.occurrenceNumber) de \(total). Al cerrar este evento la serie termina.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let until = event.recurrenceUntil {
+                    Text("La serie termina al pasar el \(until.formatted(date: .abbreviated, time: .omitted)).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Spacer()
             }
-            .padding(14)
-            .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
+            Spacer()
         }
+        .padding(14)
+        .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// `true` cuando cerrar este evento NO va a crear una siguiente ocurrencia
+    /// por alguno de los bounds (count alcanzado o next_start excede until).
+    /// Espejea la lógica de `close_event` en el backend.
+    private func isLastSession(_ event: CalendarEvent) -> Bool {
+        if let total = event.recurrenceCount, event.occurrenceNumber >= total {
+            return true
+        }
+        if let until = event.recurrenceUntil, let nextStart = nextOccurrenceDate(for: event),
+           nextStart > until {
+            return true
+        }
+        return false
     }
 
     /// Calcula la fecha de la próxima ocurrencia client-side a partir del
@@ -396,6 +442,13 @@ public struct EventDetailView: View {
         }
         if event.isRecurring {
             out.append(HeaderChip(symbol: "arrow.triangle.2.circlepath", text: recurrenceLabel(event)))
+        }
+        // F.EVENT.9 — chip "Sesión X de Y" sólo cuando hay count.
+        if let total = event.recurrenceCount {
+            out.append(HeaderChip(
+                symbol: "number.circle.fill",
+                text: "Sesión \(event.occurrenceNumber) de \(total)"
+            ))
         }
         return out
     }
@@ -830,6 +883,16 @@ public struct EventDetailView: View {
         }
         if event.isRecurring {
             rows.append(InfoRow(label: "Repetición", value: recurrenceLabel(event)))
+        }
+        // F.EVENT.9 — bounds visibles.
+        if let total = event.recurrenceCount {
+            rows.append(InfoRow(label: "Serie", value: "\(event.occurrenceNumber) de \(total)"))
+        }
+        if let until = event.recurrenceUntil {
+            rows.append(InfoRow(
+                label: "Termina",
+                value: until.formatted(date: .abbreviated, time: .omitted)
+            ))
         }
         rows.append(InfoRow(label: "Contexto", value: context.displayName))
         return rows

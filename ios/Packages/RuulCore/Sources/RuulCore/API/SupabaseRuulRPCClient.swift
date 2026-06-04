@@ -629,6 +629,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pInviteAllMembers: Bool
             let pClientId: String?
             let pIsVirtual: Bool
+            let pRecurrenceCount: Int?
+            let pRecurrenceUntil: Date?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pTitle = "p_title"
@@ -642,6 +644,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pInviteAllMembers = "p_invite_all_members"
                 case pClientId = "p_client_id"
                 case pIsVirtual = "p_is_virtual"
+                case pRecurrenceCount = "p_recurrence_count"
+                case pRecurrenceUntil = "p_recurrence_until"
             }
         }
         let created: EventCreated = try await call("create_calendar_event", params: Params(
@@ -656,7 +660,9 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pHostActorId: input.hostActorId,
             pInviteAllMembers: input.inviteAllMembers,
             pClientId: input.clientId,
-            pIsVirtual: input.isVirtual
+            pIsVirtual: input.isVirtual,
+            pRecurrenceCount: input.recurrenceCount,
+            pRecurrenceUntil: input.recurrenceUntil
         ))
         return created.event
     }
@@ -1052,6 +1058,31 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return created.decision
     }
 
+    public func updateDecision(_ input: UpdateDecisionInput) async throws -> Decision {
+        struct Params: Encodable, Sendable {
+            let pDecisionId: UUID
+            let pTitle: String?
+            let pDescription: String?
+            let pClosesAt: Date?
+            enum CodingKeys: String, CodingKey {
+                case pDecisionId = "p_decision_id"
+                case pTitle = "p_title"
+                case pDescription = "p_description"
+                case pClosesAt = "p_closes_at"
+            }
+        }
+        struct UpdateResult: Decodable, Sendable {
+            let decision: Decision
+        }
+        let result: UpdateResult = try await call("update_decision", params: Params(
+            pDecisionId: input.decisionId,
+            pTitle: input.title,
+            pDescription: input.description,
+            pClosesAt: input.closesAt
+        ))
+        return result.decision
+    }
+
     public func listDecisions(contextId: UUID) async throws -> [Decision] {
         do {
             return try await client
@@ -1387,6 +1418,37 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             enum CodingKeys: String, CodingKey { case pObligationId = "p_obligation_id" }
         }
         return try await call("obligation_detail", params: Params(pObligationId: obligationId))
+    }
+
+    public func updateObligation(_ input: UpdateObligationInput) async throws -> Obligation {
+        struct Params: Encodable, Sendable {
+            let pObligationId: UUID
+            let pTitle: String?
+            let pDescription: String?
+            let pDueAt: Date?
+            let pAmount: Double?
+            let pCurrency: String?
+            enum CodingKeys: String, CodingKey {
+                case pObligationId = "p_obligation_id"
+                case pTitle = "p_title"
+                case pDescription = "p_description"
+                case pDueAt = "p_due_at"
+                case pAmount = "p_amount"
+                case pCurrency = "p_currency"
+            }
+        }
+        struct UpdateResult: Decodable, Sendable {
+            let obligation: Obligation
+        }
+        let result: UpdateResult = try await call("update_obligation", params: Params(
+            pObligationId: input.obligationId,
+            pTitle: input.title,
+            pDescription: input.description,
+            pDueAt: input.dueAt,
+            pAmount: input.amount,
+            pCurrency: input.currency
+        ))
+        return result.obligation
     }
 
     // MARK: - Settlement

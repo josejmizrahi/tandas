@@ -205,6 +205,9 @@ public protocol RuulRPCClient: Sendable {
 
     /// `create_decision(...)`
     func createDecision(_ input: CreateDecisionInput) async throws -> Decision
+    /// `update_decision(p_decision_id, p_title?, p_description?, p_closes_at?)` — F.DECISION.5.
+    /// Permiso: autor o `decisions.execute`. Sólo decisiones `open`. NULL = no cambiar.
+    func updateDecision(_ input: UpdateDecisionInput) async throws -> Decision
     /// Lectura PostgREST: `decisions` del contexto.
     func listDecisions(contextId: UUID) async throws -> [Decision]
     /// Lectura PostgREST: `decision_votes` de una decisión.
@@ -243,6 +246,10 @@ public protocol RuulRPCClient: Sendable {
     func completeObligation(obligationId: UUID, completionNotes: String?, completionMetadata: JSONValue?) async throws -> ObligationCompletedResult
     /// `obligation_detail(p_obligation_id)` — R.2R: detalle + `available_actions`.
     func obligationDetail(obligationId: UUID) async throws -> ObligationDetail
+    /// `update_obligation(p_obligation_id, p_title?, p_description?, p_due_at?, p_amount?, p_currency?)` — F.MONEY.4.
+    /// Permiso: acreedor o `money.settle`. Sólo obligaciones activas. NULL = no cambiar.
+    /// amount/currency sólo aplican a obligaciones kind='money'.
+    func updateObligation(_ input: UpdateObligationInput) async throws -> Obligation
 
     // MARK: - Settlement
 
@@ -598,6 +605,11 @@ public struct CreateEventInput: Sendable, Equatable {
     public var isVirtual: Bool
     /// `weekly` para cenas recurrentes con host rotativo.
     public var recurrenceRule: String?
+    /// F.EVENT.9 — acota la serie por número total de ocurrencias.
+    public var recurrenceCount: Int?
+    /// F.EVENT.9 — acota la serie por fecha tope (la última ocurrencia
+    /// debe iniciar antes o en este timestamp).
+    public var recurrenceUntil: Date?
     public var hostActorId: UUID?
     public var inviteAllMembers: Bool
     public var clientId: String?
@@ -612,6 +624,8 @@ public struct CreateEventInput: Sendable, Equatable {
         locationText: String? = nil,
         isVirtual: Bool = false,
         recurrenceRule: String? = nil,
+        recurrenceCount: Int? = nil,
+        recurrenceUntil: Date? = nil,
         hostActorId: UUID? = nil,
         inviteAllMembers: Bool = true,
         clientId: String? = nil
@@ -625,6 +639,8 @@ public struct CreateEventInput: Sendable, Equatable {
         self.locationText = locationText
         self.isVirtual = isVirtual
         self.recurrenceRule = recurrenceRule
+        self.recurrenceCount = recurrenceCount
+        self.recurrenceUntil = recurrenceUntil
         self.hostActorId = hostActorId
         self.inviteAllMembers = inviteAllMembers
         self.clientId = clientId
@@ -734,6 +750,26 @@ public struct RequestReservationInput: Sendable, Equatable {
         self.reservedForActorId = reservedForActorId
         self.clientId = clientId
         self.sourceEventId = sourceEventId
+    }
+}
+
+/// Input de `update_decision` (F.DECISION.5). NULL = no cambiar.
+public struct UpdateDecisionInput: Sendable, Equatable {
+    public var decisionId: UUID
+    public var title: String?
+    public var description: String?
+    public var closesAt: Date?
+
+    public init(
+        decisionId: UUID,
+        title: String? = nil,
+        description: String? = nil,
+        closesAt: Date? = nil
+    ) {
+        self.decisionId = decisionId
+        self.title = title
+        self.description = description
+        self.closesAt = closesAt
     }
 }
 
@@ -856,6 +892,33 @@ public struct RecordExpenseInput: Sendable, Equatable {
 
 /// Input de `create_action_obligation` (R.2R). `kind` ∈ action/approval/delivery/
 /// attendance/document/reservation/custom. NO acepta `money` (eso va por record_*).
+/// Input de `update_obligation` (F.MONEY.4). NULL = no cambiar.
+/// `amount` y `currency` sólo aplican a obligaciones kind='money' (backend valida).
+public struct UpdateObligationInput: Sendable, Equatable {
+    public var obligationId: UUID
+    public var title: String?
+    public var description: String?
+    public var dueAt: Date?
+    public var amount: Double?
+    public var currency: String?
+
+    public init(
+        obligationId: UUID,
+        title: String? = nil,
+        description: String? = nil,
+        dueAt: Date? = nil,
+        amount: Double? = nil,
+        currency: String? = nil
+    ) {
+        self.obligationId = obligationId
+        self.title = title
+        self.description = description
+        self.dueAt = dueAt
+        self.amount = amount
+        self.currency = currency
+    }
+}
+
 public struct CreateActionObligationInput: Sendable, Equatable {
     public var contextId: UUID
     public var debtorActorId: UUID

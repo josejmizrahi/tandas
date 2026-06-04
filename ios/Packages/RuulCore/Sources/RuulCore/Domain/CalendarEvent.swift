@@ -84,6 +84,12 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
     public let seriesId: UUID?
     public let previousEventId: UUID?
     public let nextEventId: UUID?
+    /// F.EVENT.9 — bounds opcionales de la serie. `recurrenceCount` acota
+    /// cuántas ocurrencias se crean; `recurrenceUntil` acota la última fecha.
+    /// `occurrenceNumber` es 1-based: la primera instancia de la serie es 1.
+    public let recurrenceCount: Int?
+    public let recurrenceUntil: Date?
+    public let occurrenceNumber: Int
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -104,6 +110,9 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         case seriesId = "series_id"
         case previousEventId = "previous_event_id"
         case nextEventId = "next_event_id"
+        case recurrenceCount = "recurrence_count"
+        case recurrenceUntil = "recurrence_until"
+        case occurrenceNumber = "occurrence_number"
     }
 
     public init(
@@ -124,7 +133,10 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         createdAt: Date? = nil,
         seriesId: UUID? = nil,
         previousEventId: UUID? = nil,
-        nextEventId: UUID? = nil
+        nextEventId: UUID? = nil,
+        recurrenceCount: Int? = nil,
+        recurrenceUntil: Date? = nil,
+        occurrenceNumber: Int = 1
     ) {
         self.id = id
         self.contextActorId = contextActorId
@@ -144,6 +156,9 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.seriesId = seriesId
         self.previousEventId = previousEventId
         self.nextEventId = nextEventId
+        self.recurrenceCount = recurrenceCount
+        self.recurrenceUntil = recurrenceUntil
+        self.occurrenceNumber = occurrenceNumber
     }
 
     public init(from decoder: Decoder) throws {
@@ -168,6 +183,10 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.seriesId = try c.decodeIfPresent(UUID.self, forKey: .seriesId)
         self.previousEventId = try c.decodeIfPresent(UUID.self, forKey: .previousEventId)
         self.nextEventId = try c.decodeIfPresent(UUID.self, forKey: .nextEventId)
+        // F.EVENT.9 — bounds opcionales; eventos pre-mig caen en occurrence 1.
+        self.recurrenceCount = try c.decodeIfPresent(Int.self, forKey: .recurrenceCount)
+        self.recurrenceUntil = try c.decodeIfPresent(Date.self, forKey: .recurrenceUntil)
+        self.occurrenceNumber = try c.decodeIfPresent(Int.self, forKey: .occurrenceNumber) ?? 1
     }
 
     public var type: EventType { EventType(rawValue: eventType) ?? .other }

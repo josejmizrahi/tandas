@@ -1344,6 +1344,17 @@ public actor MockRuulRPCClient: RuulRPCClient {
         if !input.isVirtual && trimmedLocation.isEmpty {
             throw RuulError.unexpected(message: "El evento necesita una ubicación o marcarse como virtual.")
         }
+        // F.EVENT.9 — bounds require recurrence_rule + non-trivial values.
+        if (input.recurrenceCount != nil || input.recurrenceUntil != nil)
+            && input.recurrenceRule == nil {
+            throw RuulError.unexpected(message: "Los límites de recurrencia requieren una frecuencia.")
+        }
+        if let count = input.recurrenceCount, count <= 0 {
+            throw RuulError.unexpected(message: "El número de ocurrencias debe ser mayor a 0.")
+        }
+        if let until = input.recurrenceUntil, until <= input.startsAt {
+            throw RuulError.unexpected(message: "La fecha tope debe ser posterior a la fecha de inicio.")
+        }
         let id = UUID()
         let event = CalendarEvent(
             id: id,
@@ -1359,7 +1370,11 @@ public actor MockRuulRPCClient: RuulRPCClient {
             hostActorId: input.hostActorId ?? me.id,
             status: "scheduled",
             createdByActorId: me.id,
-            createdAt: Date()
+            createdAt: Date(),
+            seriesId: id,
+            recurrenceCount: input.recurrenceCount,
+            recurrenceUntil: input.recurrenceUntil,
+            occurrenceNumber: 1
         )
         events[id] = event
         var eventParticipants: [EventParticipant] = []
@@ -2134,6 +2149,50 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return decision
     }
 
+    public func updateDecision(_ input: UpdateDecisionInput) async throws -> Decision {
+        try throwIfNeeded()
+        guard let current = decisions[input.decisionId] else {
+            throw RuulError.unexpected(message: "Decisión no encontrada")
+        }
+        let myPerms = Set(permissions[current.contextActorId] ?? [])
+        let isAuthor = current.createdByActorId == me.id
+        guard isAuthor || myPerms.contains("decisions.execute") else {
+            throw RuulError.backend(.missingPermission(key: "decisions.execute"))
+        }
+        guard current.status == "open" else {
+            throw RuulError.unexpected(message: "No se puede editar una decisión cerrada.")
+        }
+
+        let trimmedTitle = input.title?.trimmingCharacters(in: .whitespaces)
+        let newTitle = (trimmedTitle?.isEmpty == false ? trimmedTitle : nil) ?? current.title
+        let newDescription = input.description ?? current.description
+        let newClosesAt = input.closesAt ?? current.closesAt
+
+        if let closesAt = input.closesAt, closesAt < Date() {
+            throw RuulError.unexpected(message: "La fecha de cierre debe ser futura.")
+        }
+
+        let updated = Decision(
+            id: current.id,
+            contextActorId: current.contextActorId,
+            decisionType: current.decisionType,
+            title: newTitle,
+            description: newDescription,
+            status: current.status,
+            votingModel: current.votingModel,
+            createdByActorId: current.createdByActorId,
+            closesAt: newClosesAt,
+            decidedAt: current.decidedAt,
+            executedAt: current.executedAt,
+            payload: current.payload,
+            result: current.result,
+            createdAt: current.createdAt
+        )
+        decisions[input.decisionId] = updated
+        emit(current.contextActorId, "decision.updated")
+        return updated
+    }
+
     /// Espeja la heurística de `create_decision` en el backend (R.2Q).
     private func inferVotingModel(decisionType: DecisionType, payload: JSONValue?) -> String {
         if payload?["options"]?.arrayValue != nil {
@@ -2401,6 +2460,16 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 actionKey: "cancel_decision", label: "Cancelar decisión", section: "decisions",
                 enabled: canManage,
                 reason: canManage ? "Puedes cancelar la decisión" : "Requiere permiso decisions.execute"
+            ))
+            // F.DECISION.5 — edit_decision: autor o decisions.execute, sólo si open.
+            let isAuthor = decision.createdByActorId == me.id
+            let canEdit = isAuthor || canManage
+            actions.append(AvailableAction(
+                actionKey: "edit_decision", label: "Editar decisión", section: "decisions",
+                enabled: canEdit,
+                reason: isAuthor ? "Eres el autor de la decisión"
+                    : (canEdit ? "Tienes permiso para administrar decisiones"
+                       : "Solo el autor o un administrador pueden editar la decisión")
             ))
         case "approved", "rejected":
             actions.append(AvailableAction(
@@ -2733,6 +2802,69 @@ public actor MockRuulRPCClient: RuulRPCClient {
         )
     }
 
+    public func updateObligation(_ input: UpdateObligationInput) async throws -> Obligation {
+        try throwIfNeeded()
+        guard let current = obligations[input.obligationId] else {
+            throw RuulError.unexpected(message: "Obligación no encontrada")
+        }
+        let ctxId = current.contextActorId
+        let myPerms = ctxId.flatMap { permissions[$0] } ?? []
+        let isCreditor = current.creditorActorId == me.id
+        let isManager = myPerms.contains("money.settle")
+        guard isCreditor || isManager else {
+            throw RuulError.backend(.missingPermission(key: "money.settle"))
+        }
+        let active: Set<String> = ["open", "accepted", "in_progress"]
+        guard active.contains(current.status) else {
+            throw RuulError.unexpected(message: "No se puede editar una obligación cerrada.")
+        }
+        if current.obligationKind != "money", (input.amount != nil || input.currency != nil) {
+            throw RuulError.unexpected(message: "Monto y moneda sólo aplican a obligaciones de dinero.")
+        }
+        if let amount = input.amount, amount <= 0 {
+            throw RuulError.backend(.validation(message: "amount must be positive"))
+        }
+
+        let newTitle = input.title ?? current.title
+        let newDescription = input.description ?? current.description
+        let newDueAt = input.dueAt ?? current.dueAt
+        let newAmount = input.amount ?? current.amount
+        let newCurrency: String?
+        if let raw = input.currency?.trimmingCharacters(in: .whitespaces), !raw.isEmpty {
+            newCurrency = raw
+        } else {
+            newCurrency = current.currency
+        }
+
+        let updated = Obligation(
+            id: current.id,
+            contextActorId: current.contextActorId,
+            debtorActorId: current.debtorActorId,
+            creditorActorId: current.creditorActorId,
+            obligationType: current.obligationType,
+            obligationKind: current.obligationKind,
+            amount: newAmount,
+            currency: newCurrency,
+            status: current.status,
+            dueAt: newDueAt,
+            sourceEventId: current.sourceEventId,
+            sourceRuleId: current.sourceRuleId,
+            sourceDecisionId: current.sourceDecisionId,
+            sourceReservationId: current.sourceReservationId,
+            title: newTitle,
+            description: newDescription,
+            completedAt: current.completedAt,
+            completedByActorId: current.completedByActorId,
+            completionNotes: current.completionNotes,
+            createdAt: current.createdAt
+        )
+        obligations[input.obligationId] = updated
+        if let ctxId = ctxId {
+            emit(ctxId, "obligation.updated")
+        }
+        return updated
+    }
+
     public func obligationDetail(obligationId: UUID) async throws -> ObligationDetail {
         try throwIfNeeded()
         guard let obligation = obligations[obligationId] else {
@@ -2783,6 +2915,15 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 actionKey: "cancel", label: "Cancelar", section: "obligations",
                 enabled: isCreditor || isManager,
                 reason: (isCreditor || isManager) ? "Eres acreedor o administrador" : "Solo el acreedor o un administrador pueden cancelar"
+            ))
+            // F.MONEY.4 — edit_obligation: acreedor o money.settle, sólo si activa.
+            let canEdit = isCreditor || isManager
+            actions.append(AvailableAction(
+                actionKey: "edit_obligation", label: "Editar obligación", section: "obligations",
+                enabled: canEdit,
+                reason: isCreditor ? "Eres el acreedor y puedes editar"
+                    : (canEdit ? "Tienes permiso para administrar dinero"
+                       : "Solo el acreedor o un administrador pueden editar la obligación")
             ))
         }
 

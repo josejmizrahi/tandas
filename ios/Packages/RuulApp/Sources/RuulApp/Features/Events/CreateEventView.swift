@@ -15,11 +15,28 @@ public struct CreateEventView: View {
     @State private var locationText = ""
     @State private var isVirtual = false
     @State private var recurrence: Recurrence = .none
+    /// F.EVENT.9 — cómo se acota la serie. `.indefinite` = sin fin.
+    @State private var seriesBound: SeriesBound = .indefinite
+    @State private var occurrenceCountText = "10"
+    @State private var seriesUntil = Calendar.current.date(byAdding: .month, value: 3, to: Date()) ?? Date()
     @State private var inviteAllMembers = true
     @State private var runner = ActionRunner()
     /// F.EVENT.7 — Apple Maps autocomplete vía MKLocalSearchCompleter.
     @State private var locationCompleter = LocationCompleter()
     @State private var suppressNextQueryUpdate = false
+
+    /// F.EVENT.9 — tres modos de acotar la serie.
+    private enum SeriesBound: String, CaseIterable, Identifiable {
+        case indefinite, count, until
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .indefinite: return "Sin fin"
+            case .count:      return "N veces"
+            case .until:      return "Hasta fecha"
+            }
+        }
+    }
 
     /// F.EVENT.6 — frecuencias soportadas. El backend `close_event` interpreta
     /// el `rawValue` para auto-crear la siguiente instancia (weekly rota host;
@@ -52,9 +69,48 @@ public struct CreateEventView: View {
         isVirtual || !locationText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// F.EVENT.9 — validación del bound elegido. `count` debe ser entero > 0.
+    private var seriesBoundIsValid: Bool {
+        guard recurrence != .none else { return true }
+        switch seriesBound {
+        case .indefinite: return true
+        case .count:      return parsedOccurrenceCount.map { $0 > 0 } ?? false
+        case .until:      return seriesUntil > startsAt
+        }
+    }
+
+    private var parsedOccurrenceCount: Int? {
+        Int(occurrenceCountText.trimmingCharacters(in: .whitespaces))
+    }
+
+    /// Binding bridge entre `String` y `Int` para el Stepper.
+    private var occurrenceCountBinding: Binding<Int> {
+        Binding(
+            get: { parsedOccurrenceCount ?? 1 },
+            set: { occurrenceCountText = String($0) }
+        )
+    }
+
+    @ViewBuilder
+    private var seriesBoundFooter: some View {
+        switch seriesBound {
+        case .indefinite:
+            Text("La serie continúa hasta que alguien cierre la última instancia.")
+        case .count:
+            if let count = parsedOccurrenceCount, count > 0 {
+                Text("Se crearán hasta \(count) ocurrencias en total.")
+            } else {
+                Text("Indica cuántas ocurrencias quieres.")
+            }
+        case .until:
+            Text("La serie termina al pasar esta fecha.")
+        }
+    }
+
     private var canSubmit: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty
             && locationIsValid
+            && seriesBoundIsValid
             && !runner.isRunning
     }
 
@@ -145,6 +201,39 @@ public struct CreateEventView: View {
                     }
                 }
 
+                // F.EVENT.9 — bounds de la serie. Sólo visible cuando hay recurrencia.
+                if recurrence != .none {
+                    Section {
+                        Picker("Hasta cuándo", selection: $seriesBound) {
+                            ForEach(SeriesBound.allCases) { bound in
+                                Text(bound.label).tag(bound)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        switch seriesBound {
+                        case .indefinite:
+                            EmptyView()
+                        case .count:
+                            HStack {
+                                Text("Número de ocurrencias")
+                                Spacer()
+                                TextField("10", text: $occurrenceCountText)
+                                    .keyboardType(.numberPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .frame(width: 60)
+                                Stepper("", value: occurrenceCountBinding, in: 1...365)
+                                    .labelsHidden()
+                            }
+                        case .until:
+                            DatePicker("Hasta", selection: $seriesUntil, in: startsAt..., displayedComponents: .date)
+                        }
+                    } header: {
+                        Text("Hasta cuándo")
+                    } footer: {
+                        seriesBoundFooter
+                    }
+                }
+
                 if !context.isPersonal {
                     Section("Invitados") {
                         Toggle("Invitar a todos los miembros", isOn: $inviteAllMembers)
@@ -178,6 +267,9 @@ public struct CreateEventView: View {
 
     private func create() async {
         let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
+        // F.EVENT.9 — bounds sólo aplican si hay recurrencia.
+        let count: Int? = (recurrence != .none && seriesBound == .count) ? parsedOccurrenceCount : nil
+        let until: Date? = (recurrence != .none && seriesBound == .until) ? seriesUntil : nil
         let success = await runner.run {
             _ = try await store.createEvent(
                 CreateEventInput(
@@ -188,6 +280,8 @@ public struct CreateEventView: View {
                     locationText: isVirtual || trimmedLocation.isEmpty ? nil : trimmedLocation,
                     isVirtual: isVirtual,
                     recurrenceRule: recurrence.ruleValue,
+                    recurrenceCount: count,
+                    recurrenceUntil: until,
                     inviteAllMembers: inviteAllMembers,
                     clientId: UUID().uuidString
                 ),
@@ -220,8 +314,9 @@ public struct CreateEventView: View {
 /// `@unchecked Sendable` bypasses la verificación estática porque MapKit
 /// garantiza que los delegate methods corren en el main thread (donde el
 /// `@State` los lee), así que en la práctica no hay race.
+@MainActor
 @Observable
-final class LocationCompleter: NSObject, MKLocalSearchCompleterDelegate, @unchecked Sendable {
+final class LocationCompleter: NSObject, MKLocalSearchCompleterDelegate {
     /// Hasta 5 sugerencias formateadas listas para mostrar.
     var suggestions: [LocationSuggestion] = []
 
@@ -249,14 +344,22 @@ final class LocationCompleter: NSObject, MKLocalSearchCompleterDelegate, @unchec
         suggestions = []
     }
 
-    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        suggestions = completer.results.prefix(5).map {
+    // MKLocalSearchCompleterDelegate methods son nonisolated por contrato; MapKit los
+    // entrega en main thread pero la firma de Apple no lleva @MainActor. Extraemos
+    // strings (Sendable) y rebotamos a MainActor para escribir `suggestions`.
+    nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        let snapshot: [LocationSuggestion] = completer.results.prefix(5).map {
             LocationSuggestion(title: $0.title, subtitle: $0.subtitle)
+        }
+        Task { @MainActor [weak self] in
+            self?.suggestions = snapshot
         }
     }
 
-    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
-        suggestions = []
+    nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        Task { @MainActor [weak self] in
+            self?.suggestions = []
+        }
     }
 }
 
