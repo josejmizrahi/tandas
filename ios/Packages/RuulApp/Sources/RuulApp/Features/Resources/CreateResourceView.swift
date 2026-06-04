@@ -1,5 +1,6 @@
 import SwiftUI
 import RuulCore
+import MapKit
 
 /// F.6 / R.2M — crear un recurso gobernado por el contexto. El catálogo
 /// de tipos se carga desde `resource_type_catalog()` (R.2M): labels, iconos
@@ -18,6 +19,10 @@ public struct CreateResourceView: View {
     @State private var estimatedValue = ""
     @State private var currency = "MXN"
     @State private var runner = ActionRunner()
+    /// F.RESOURCE.4 — ubicación opcional con autocomplete de Apple Maps.
+    @State private var locationText = ""
+    @State private var locationCompleter = LocationCompleter()
+    @State private var suppressNextQueryUpdate = false
 
     public init(context: AppContext, store: ResourcesStore, container: DependencyContainer) {
         self.context = context
@@ -70,6 +75,48 @@ public struct CreateResourceView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                }
+
+                Section {
+                    TextField("Dirección o lugar", text: $locationText)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
+                        .onChange(of: locationText) { _, new in
+                            if suppressNextQueryUpdate {
+                                suppressNextQueryUpdate = false
+                                return
+                            }
+                            locationCompleter.setQuery(new)
+                        }
+                    ForEach(locationCompleter.suggestions) { suggestion in
+                        Button {
+                            pickLocation(suggestion)
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .foregroundStyle(.tint)
+                                    .padding(.top, 2)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(suggestion.title)
+                                        .font(.callout)
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.leading)
+                                    if !suggestion.subtitle.isEmpty {
+                                        Text(suggestion.subtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                }
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Ubicación")
+                } footer: {
+                    Text("Opcional. Casas, vehículos y juegos físicos pueden tener una; cuentas y activos digitales no.")
                 }
 
                 Section("Valor estimado") {
@@ -135,6 +182,7 @@ public struct CreateResourceView: View {
     }
 
     private func create() async {
+        let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
         let success = await runner.run {
             _ = try await store.createResource(
                 CreateResourceInput(
@@ -144,12 +192,22 @@ public struct CreateResourceView: View {
                     description: description.isEmpty ? nil : description,
                     estimatedValue: hasValue ? Double(estimatedValue) : nil,
                     currency: hasValue ? currency : nil,
+                    locationText: trimmedLocation.isEmpty ? nil : trimmedLocation,
                     clientId: UUID().uuidString
                 ),
                 context: context
             )
         }
         if success { dismiss() }
+    }
+
+    private func pickLocation(_ suggestion: LocationSuggestion) {
+        let composed = suggestion.subtitle.isEmpty
+            ? suggestion.title
+            : "\(suggestion.title), \(suggestion.subtitle)"
+        suppressNextQueryUpdate = true
+        locationText = composed
+        locationCompleter.clear()
     }
 }
 

@@ -67,15 +67,26 @@ public struct MemberDetailView: View {
             // Acciones de admin
             if store.canManageMembers(in: context) && !isMe {
                 Section("Administración") {
-                    if !member.isAdmin {
-                        Button {
-                            Task {
-                                await runner.run {
-                                    try await store.assignRole(context: context, memberActorId: member.actorId, roleKey: "admin")
+                    let assignable = assignableRoles(for: member)
+                    if !assignable.isEmpty {
+                        Menu {
+                            ForEach(assignable, id: \.key) { role in
+                                Button {
+                                    Task {
+                                        await runner.run {
+                                            try await store.assignRole(
+                                                context: context,
+                                                memberActorId: member.actorId,
+                                                roleKey: role.key
+                                            )
+                                        }
+                                    }
+                                } label: {
+                                    Label(role.label, systemImage: role.symbol)
                                 }
                             }
                         } label: {
-                            Label("Hacer admin", systemImage: "person.badge.shield.checkmark")
+                            Label("Asignar rol", systemImage: "person.badge.shield.checkmark")
                         }
                     }
 
@@ -205,6 +216,27 @@ public struct MemberDetailView: View {
         } catch {
             memberObligations = []
         }
+    }
+
+    // MARK: - F.MEMBER.2 — role assignment catalog
+
+    /// Catálogo de roles asignables. El backend (`roles` table) define hoy
+    /// `admin` y `member` por contexto; el frontend no infiere comportamiento,
+    /// solo presenta los keys disponibles y deja que el backend valide.
+    private struct AssignableRole {
+        let key: String
+        let label: String
+        let symbol: String
+    }
+
+    private static let roleCatalog: [AssignableRole] = [
+        AssignableRole(key: "admin",  label: "Admin",   symbol: "person.badge.shield.checkmark"),
+        AssignableRole(key: "member", label: "Miembro", symbol: "person.fill")
+    ]
+
+    private func assignableRoles(for member: ContextMember) -> [AssignableRole] {
+        let current = Set(member.roles)
+        return Self.roleCatalog.filter { !current.contains($0.key) }
     }
 
     private func obligationSymbol(_ kind: String) -> String {

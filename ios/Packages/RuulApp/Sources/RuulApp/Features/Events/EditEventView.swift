@@ -187,16 +187,21 @@ public struct EditEventView: View {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         let trimmedDescription = description.trimmingCharacters(in: .whitespaces)
         let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
-        // Sólo mandamos campos que cambiaron — NULL = "no cambiar" en el backend.
+        // F.EVENT.10.1 — mandamos los valores actuales del form siempre. El
+        // backend ya usa `coalesce(nullif(btrim(...), ''), existing)` para
+        // detectar no-ops + devuelve diff_keys vacío cuando nada cambió.
+        // Hacer el diff client-side abre la puerta a bugs sutiles (por
+        // ejemplo cuando MapKit recompone la dirección o cuando el usuario
+        // cambia capitalización), por eso preferimos delegarlo al backend.
         let input = UpdateEventInput(
             eventId: event.id,
-            title: trimmedTitle == event.title ? nil : trimmedTitle,
-            description: trimmedDescription == (event.description ?? "") ? nil : trimmedDescription,
-            startsAt: startsAt == event.startsAt ? nil : startsAt,
-            endsAt: (hasEndsAt ? endsAt : nil) == event.endsAt ? nil : (hasEndsAt ? endsAt : nil),
-            locationText: isVirtual ? nil : (trimmedLocation == (event.locationText ?? "") ? nil : trimmedLocation),
-            isVirtual: isVirtual == event.isVirtual ? nil : isVirtual,
-            recurrenceRule: recurrence.ruleValue == event.recurrenceRule ? nil : recurrence.ruleValue
+            title: trimmedTitle,
+            description: trimmedDescription,
+            startsAt: startsAt,
+            endsAt: hasEndsAt ? endsAt : nil,
+            locationText: isVirtual ? nil : trimmedLocation,
+            isVirtual: isVirtual,
+            recurrenceRule: recurrence.ruleValue
         )
         let success = await runner.run {
             _ = try await container.rpc.updateCalendarEvent(input)

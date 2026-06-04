@@ -414,6 +414,8 @@ public struct CreateResourceInput: Sendable, Equatable {
     public var description: String?
     public var estimatedValue: Double?
     public var currency: String?
+    /// F.RESOURCE.4 — ubicación opcional.
+    public var locationText: String?
     public var clientId: String?
 
     /// Init con type_key arbitrario (preferido para usar el catálogo dinámico).
@@ -424,6 +426,7 @@ public struct CreateResourceInput: Sendable, Equatable {
         description: String? = nil,
         estimatedValue: Double? = nil,
         currency: String? = nil,
+        locationText: String? = nil,
         clientId: String? = nil
     ) {
         self.contextId = contextId
@@ -431,6 +434,7 @@ public struct CreateResourceInput: Sendable, Equatable {
         self.displayName = displayName
         self.description = description
         self.estimatedValue = estimatedValue
+        self.locationText = locationText
         self.currency = currency
         self.clientId = clientId
     }
@@ -547,6 +551,8 @@ public struct TransferOwnershipResult: Decodable, Sendable, Equatable {
 
 /// Input de `update_resource`. Todos los campos son opcionales — solo se aplica
 /// lo que llegue distinto de nil. `metadata` es jsonb (incluye policies por capability).
+/// F.RESOURCE.4: `locationText` semántica especial — `nil` = no cambiar;
+/// `""` = limpiar; otro = setear.
 public struct UpdateResourceInput: Sendable, Equatable {
     public var resourceId: UUID
     public var displayName: String?
@@ -554,6 +560,7 @@ public struct UpdateResourceInput: Sendable, Equatable {
     public var estimatedValue: Double?
     public var currency: String?
     public var metadata: JSONValue?
+    public var locationText: String?
 
     public init(
         resourceId: UUID,
@@ -561,7 +568,8 @@ public struct UpdateResourceInput: Sendable, Equatable {
         description: String? = nil,
         estimatedValue: Double? = nil,
         currency: String? = nil,
-        metadata: JSONValue? = nil
+        metadata: JSONValue? = nil,
+        locationText: String? = nil
     ) {
         self.resourceId = resourceId
         self.displayName = displayName
@@ -569,6 +577,7 @@ public struct UpdateResourceInput: Sendable, Equatable {
         self.estimatedValue = estimatedValue
         self.currency = currency
         self.metadata = metadata
+        self.locationText = locationText
     }
 }
 

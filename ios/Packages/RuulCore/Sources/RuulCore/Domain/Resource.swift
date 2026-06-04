@@ -108,6 +108,10 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
     public let currency: String?
     public let canonicalOwnerActorId: UUID?
     public let createdAt: Date?
+    /// F.RESOURCE.4 — ubicación opcional. A diferencia de eventos, no es
+    /// obligatoria (recursos no físicos como cuentas bancarias o juegos
+    /// digitales no la necesitan).
+    public let locationText: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -119,6 +123,7 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
         case currency
         case canonicalOwnerActorId = "canonical_owner_actor_id"
         case createdAt = "created_at"
+        case locationText = "location_text"
     }
 
     public init(
@@ -130,7 +135,8 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
         estimatedValue: Double? = nil,
         currency: String? = nil,
         canonicalOwnerActorId: UUID? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        locationText: String? = nil
     ) {
         self.id = id
         self.resourceType = resourceType
@@ -141,6 +147,22 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
         self.currency = currency
         self.canonicalOwnerActorId = canonicalOwnerActorId
         self.createdAt = createdAt
+        self.locationText = locationText
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.resourceType = try c.decode(String.self, forKey: .resourceType)
+        self.displayName = try c.decode(String.self, forKey: .displayName)
+        self.description = try c.decodeIfPresent(String.self, forKey: .description)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "active"
+        self.estimatedValue = try c.decodeIfPresent(Double.self, forKey: .estimatedValue)
+        self.currency = try c.decodeIfPresent(String.self, forKey: .currency)
+        self.canonicalOwnerActorId = try c.decodeIfPresent(UUID.self, forKey: .canonicalOwnerActorId)
+        self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        // F.RESOURCE.4 — back-compat: shapes viejos no traen el campo.
+        self.locationText = try c.decodeIfPresent(String.self, forKey: .locationText)
     }
 
     public var type: ResourceType { ResourceType(rawValue: resourceType) ?? .other }
