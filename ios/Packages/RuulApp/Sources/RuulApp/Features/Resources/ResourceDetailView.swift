@@ -61,6 +61,11 @@ public struct ResourceDetailView: View {
         }
         .navigationTitle(store.detail?.resource.displayName ?? "Recurso")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let detail = store.detail {
+                toolbarMenu(for: detail)
+            }
+        }
         .task {
             await store.load(resourceId: resourceId)
             await documentsStore.loadResourceDocuments(resourceId: resourceId)
@@ -142,12 +147,10 @@ public struct ResourceDetailView: View {
             VStack(spacing: 24) {
                 heroSection(detail)
                 primaryMetricSection(detail)
-                whatYouCanDoSection(detail)
                 peopleSection(detail)
                 relationshipsSection(detail)
                 documentsSection(detail)
                 activitySection(detail)
-                moreSection(detail)
                 followToggleCard(detail)
             }
             .padding(.horizontal)
@@ -442,9 +445,9 @@ public struct ResourceDetailView: View {
         resourceActivity.compactMap(\.occurredAt).max()
     }
 
-    // MARK: - 3. Qué puedes hacer (lista Settings-style)
+    // MARK: - Toolbar menu (acciones + más)
 
-    /// Action keys que NO van en la lista principal — viven en "Más".
+    /// Action keys administrativas (van en la sección "Más" del menú).
     private let adminActionKeys: Set<String> = [
         "grant_right",
         "attach_document",
@@ -452,66 +455,85 @@ public struct ResourceDetailView: View {
         "delete_resource"
     ]
 
-    @ViewBuilder
-    private func whatYouCanDoSection(_ detail: ResourceDetail) -> some View {
-        let actions = detail.availableActions.filter { !adminActionKeys.contains($0.actionKey) }
-        if !actions.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Qué puedes hacer")
-                    .font(.title3.weight(.semibold))
-                VStack(spacing: 0) {
-                    ForEach(Array(actions.enumerated()), id: \.offset) { idx, action in
-                        actionRow(action)
-                        if idx < actions.count - 1 {
-                            Divider().padding(.leading, 56)
+    @ToolbarContentBuilder
+    private func toolbarMenu(for detail: ResourceDetail) -> some ToolbarContent {
+        let primary = detail.availableActions.filter { !adminActionKeys.contains($0.actionKey) }
+        let extras = moreMenuItems(for: detail)
+        if !primary.isEmpty || !extras.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    if !primary.isEmpty {
+                        Section("Acciones") {
+                            ForEach(primary) { action in
+                                actionMenuButton(action)
+                            }
                         }
                     }
+                    if !extras.isEmpty {
+                        Section("Más") {
+                            ForEach(Array(extras.enumerated()), id: \.offset) { _, item in
+                                Button(action: item.action) {
+                                    Label(item.label, systemImage: item.symbol)
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "plus")
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .accessibilityLabel("Acciones del recurso")
             }
         }
     }
 
     @ViewBuilder
-    private func actionRow(_ action: AvailableAction) -> some View {
+    private func actionMenuButton(_ action: AvailableAction) -> some View {
         let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
         Button {
             quickActionsRouter.open(ActionRouter.destination(for: action, in: .resource(resourceId)))
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: presentation.symbolName)
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(action.enabled ? presentation.tint : Color.secondary)
-                    .frame(width: 28, height: 28)
-                    .background(
-                        Color.accentColor.opacity(action.enabled ? 0.12 : 0.06),
-                        in: RoundedRectangle(cornerRadius: 7)
-                    )
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(action.label)
-                        .font(.callout)
-                        .foregroundStyle(action.enabled ? Color.primary : Color.secondary)
-                        .multilineTextAlignment(.leading)
-                    if !action.enabled, let reason = action.reason {
-                        Text(reason)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
+            Label(action.label, systemImage: presentation.symbolName)
         }
-        .buttonStyle(.plain)
         .disabled(!action.enabled)
-        .accessibilityHint(action.reason ?? "")
+    }
+
+    private struct MoreMenuItem {
+        let symbol: String
+        let label: String
+        let action: () -> Void
+    }
+
+    private func moreMenuItems(for detail: ResourceDetail) -> [MoreMenuItem] {
+        var items: [MoreMenuItem] = []
+        if detail.can("grant_right") {
+            items.append(MoreMenuItem(symbol: "key.fill", label: "Otorgar derecho") {
+                isShowingGrantRight = true
+            })
+        }
+        if detail.can("attach_document") || canAttachDocuments(detail) {
+            items.append(MoreMenuItem(symbol: "paperclip", label: "Adjuntar documento") {
+                isShowingAttachDocument = true
+            })
+        }
+        items.append(MoreMenuItem(symbol: "doc.text.magnifyingglass", label: "Ver auditoría") {
+            if resourceActivity.isEmpty {
+                Task {
+                    await loadResourceActivity()
+                    isShowingFullActivity = true
+                }
+            } else {
+                isShowingFullActivity = true
+            }
+        })
+        items.append(MoreMenuItem(symbol: "info.circle", label: "Información de acceso") {
+            isShowingAccessInfo = true
+        })
+        if canShowSettings(detail) {
+            items.append(MoreMenuItem(symbol: "gearshape", label: "Configuración") {
+                isShowingSettings = true
+            })
+        }
+        return items
     }
 
     // MARK: - 4. Personas relacionadas
@@ -862,110 +884,6 @@ public struct ResourceDetailView: View {
         } catch {
             resourceActivity = []
         }
-    }
-
-    // MARK: - 7. Más
-
-    @ViewBuilder
-    private func moreSection(_ detail: ResourceDetail) -> some View {
-        let rows = moreRows(detail)
-        if !rows.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Más")
-                    .font(.title3.weight(.semibold))
-                VStack(spacing: 0) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { idx, row in
-                        Button(action: row.action) {
-                            HStack(spacing: 12) {
-                                Image(systemName: row.symbol)
-                                    .font(.callout.weight(.semibold))
-                                    .foregroundStyle(row.tint)
-                                    .frame(width: 28, height: 28)
-                                    .background(row.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
-                                Text(row.label)
-                                    .font(.callout)
-                                    .foregroundStyle(row.isDestructive ? Color.red : Color.primary)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        if idx < rows.count - 1 {
-                            Divider().padding(.leading, 56)
-                        }
-                    }
-                }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            }
-        }
-    }
-
-    private struct MoreRow {
-        let symbol: String
-        let label: String
-        let tint: Color
-        let isDestructive: Bool
-        let action: () -> Void
-    }
-
-    private func moreRows(_ detail: ResourceDetail) -> [MoreRow] {
-        var rows: [MoreRow] = []
-        if detail.can("grant_right") {
-            rows.append(MoreRow(
-                symbol: "key.fill",
-                label: "Otorgar derecho",
-                tint: .blue,
-                isDestructive: false,
-                action: { isShowingGrantRight = true }
-            ))
-        }
-        if detail.can("attach_document") || canAttachDocuments(detail) {
-            rows.append(MoreRow(
-                symbol: "paperclip",
-                label: "Adjuntar documento",
-                tint: .secondary,
-                isDestructive: false,
-                action: { isShowingAttachDocument = true }
-            ))
-        }
-        rows.append(MoreRow(
-            symbol: "doc.text.magnifyingglass",
-            label: "Ver auditoría",
-            tint: .secondary,
-            isDestructive: false,
-            action: {
-                if resourceActivity.isEmpty {
-                    Task {
-                        await loadResourceActivity()
-                        isShowingFullActivity = true
-                    }
-                } else {
-                    isShowingFullActivity = true
-                }
-            }
-        ))
-        rows.append(MoreRow(
-            symbol: "info.circle",
-            label: "Información de acceso",
-            tint: .secondary,
-            isDestructive: false,
-            action: { isShowingAccessInfo = true }
-        ))
-        if canShowSettings(detail) {
-            rows.append(MoreRow(
-                symbol: "gearshape",
-                label: "Configuración",
-                tint: .secondary,
-                isDestructive: false,
-                action: { isShowingSettings = true }
-            ))
-        }
-        return rows
     }
 
     private func canShowSettings(_ detail: ResourceDetail) -> Bool {
