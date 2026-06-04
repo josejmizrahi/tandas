@@ -50,6 +50,12 @@ public final class MembersStore {
         try await rpc.createInvite(contextId: contextId, maxUses: maxUses, expiresAt: expiresAt)
     }
 
+    /// Revoca un código de invitación generado por `createInvite`. Idempotente
+    /// del lado del backend; nadie podrá unirse con ese código tras revocarlo.
+    public func revokeInvite(inviteId: UUID) async throws {
+        try await rpc.revokeInvite(inviteId: inviteId)
+    }
+
     /// Invitación directa actor→actor. Tras el éxito refresca el contexto para
     /// que el invitado aparezca en la lista (status='invited').
     public func inviteMember(

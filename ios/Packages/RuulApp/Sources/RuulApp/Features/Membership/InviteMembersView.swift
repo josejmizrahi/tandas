@@ -30,6 +30,8 @@ public struct InviteMembersView: View {
     @State private var invite: InviteCreated?
     @State private var limitUses = false
     @State private var maxUses = 5
+    @State private var confirmRevoke = false
+    @State private var lastRevokedCode: String?
 
     // Mode .direct
     @State private var knownActors: [KnownActor] = []
@@ -76,6 +78,14 @@ public struct InviteMembersView: View {
                 await loadKnown()
             }
             .actionErrorAlert(runner)
+            .alert("¿Revocar este código?", isPresented: $confirmRevoke) {
+                Button("Revocar", role: .destructive) {
+                    Task { await revoke() }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Nadie más podrá usarlo. Los miembros que ya se unieron siguen siendo miembros.")
+            }
         }
     }
 
@@ -222,8 +232,23 @@ public struct InviteMembersView: View {
                 Button("Generar otro código") {
                     self.invite = nil
                 }
+                Button(role: .destructive) {
+                    confirmRevoke = true
+                } label: {
+                    Label("Revocar código", systemImage: "xmark.circle")
+                }
+                .disabled(runner.isRunning)
+            } footer: {
+                Text("Revocar invalida el código para todos. Las personas que ya se unieron siguen siendo miembros.")
             }
         } else {
+            if let lastRevokedCode {
+                Section {
+                    Label("Código \(lastRevokedCode) revocado.", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
+            }
+
             Section("Opciones") {
                 Toggle("Limitar usos", isOn: $limitUses)
                 if limitUses {
@@ -255,6 +280,16 @@ public struct InviteMembersView: View {
                 contextId: context.id,
                 maxUses: limitUses ? maxUses : nil
             )
+            lastRevokedCode = nil
+        }
+    }
+
+    private func revoke() async {
+        guard let current = invite else { return }
+        await runner.run {
+            try await store.revokeInvite(inviteId: current.inviteId)
+            lastRevokedCode = current.code
+            invite = nil
         }
     }
 

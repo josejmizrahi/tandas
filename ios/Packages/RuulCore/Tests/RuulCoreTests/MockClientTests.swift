@@ -55,6 +55,22 @@ struct MockClientTests {
         }
     }
 
+    @Test("revoke_invite invalida el código y bloquea joins futuros")
+    func revokeInviteBlocksJoin() async throws {
+        let mock = await makeDemoClient()
+        let created = try await mock.createContext(CreateContextInput(displayName: "Revoke Test", actorSubtype: "trip"))
+        let invite = try await mock.createInvite(contextId: created.contextActorId, maxUses: nil, expiresAt: nil)
+
+        try await mock.revokeInvite(inviteId: invite.inviteId)
+
+        await #expect(throws: RuulError.self) {
+            _ = try await mock.joinByInviteCode(invite.code)
+        }
+
+        // Idempotencia: revocar dos veces no debe romper (el código ya no existe).
+        try await mock.revokeInvite(inviteId: invite.inviteId)
+    }
+
     @Test("el mundo demo siembra una invitación pendiente para José")
     func demoSeedsPendingInvitation() async throws {
         let mock = await makeDemoClient()
