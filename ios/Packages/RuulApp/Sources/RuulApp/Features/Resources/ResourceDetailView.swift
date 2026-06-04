@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import RuulCore
 
 /// F.RESOURCE.2 — Resource Detail Apple-first, value-first.
@@ -560,6 +561,7 @@ public struct ResourceDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Propietarios")
                 .font(.title3.weight(.semibold))
+            ownershipDonut(owners)
             VStack(spacing: 0) {
                 ForEach(Array(owners.enumerated()), id: \.offset) { idx, right in
                     Button {
@@ -573,6 +575,28 @@ public struct ResourceDetailView: View {
                     }
                 }
             }
+            .background(Theme.Surface.card, in: Theme.cardShape())
+        }
+    }
+
+    /// Apple-native donut chart de participaciones (SectorMark). Aparece sólo
+    /// cuando hay ≥2 dueños con `percent` válido — para un solo dueño no
+    /// aporta información.
+    @ViewBuilder
+    private func ownershipDonut(_ owners: [ResourceRight]) -> some View {
+        let chartable = owners.filter { ($0.percent ?? 0) > 0 }
+        if chartable.count >= 2 {
+            Chart(chartable, id: \.id) { right in
+                SectorMark(
+                    angle: .value("Participación", right.percent ?? 0),
+                    innerRadius: .ratio(0.62),
+                    angularInset: 1.5
+                )
+                .foregroundStyle(by: .value("Propietario", right.holderDisplayName ?? "—"))
+                .cornerRadius(4)
+            }
+            .frame(height: 140)
+            .padding(Theme.Spacing.md)
             .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }

@@ -364,6 +364,7 @@ public struct EventDetailView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.title3)
                 .foregroundStyle(.green)
+                .symbolEffect(.bounce, value: when)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Registraste tu llegada")
                     .font(.callout.weight(.semibold))

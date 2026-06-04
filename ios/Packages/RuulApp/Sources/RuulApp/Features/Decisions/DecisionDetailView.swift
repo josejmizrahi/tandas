@@ -342,6 +342,7 @@ public struct DecisionDetailView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.tint)
+                            .symbolEffect(.bounce, value: mine.optionId ?? mine.id)
                         Text(yourVoteConfirmation(decision: decision, mine: mine))
                             .font(.subheadline.weight(.semibold))
                     }
