@@ -87,11 +87,11 @@ public struct MeView: View {
             } label: {
                 Label("Mis suscripciones", systemImage: "bookmark.fill")
             }
-            // F.NAV.6 — Mis recursos: stub hasta que exista un aggregator
-            // cross-context. Por ahora la sección Contextos cumple la función.
-            Label("Mis recursos", systemImage: "shippingbox.fill")
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Mis recursos. Próximamente.")
+            NavigationLink {
+                MyResourcesView(container: container)
+            } label: {
+                Label("Mis recursos", systemImage: "shippingbox.fill")
+            }
         } header: {
             Text("Mis cosas")
         }

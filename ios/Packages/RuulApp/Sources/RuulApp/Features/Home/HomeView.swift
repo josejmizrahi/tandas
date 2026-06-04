@@ -14,13 +14,17 @@ public struct HomeView: View {
     /// Callback para cambiar al tab Contextos con un contexto específico
     /// (usado para `reservation_conflict` y "Continuar").
     let jumpToContext: (AppContext) -> Void
+    /// F.NAV.8+: dispara la sheet intent-first ("¿Qué quieres hacer?") sin
+    /// pasar por el tab Crear. Le delega al MainTabShell.
+    let onTriggerCreate: () -> Void
 
     @State private var presentedAttention: AttentionItem?
     @State private var isShowingPendingInvitations = false
 
-    public init(container: DependencyContainer, jumpToContext: @escaping (AppContext) -> Void) {
+    public init(container: DependencyContainer, jumpToContext: @escaping (AppContext) -> Void, onTriggerCreate: @escaping () -> Void) {
         self.container = container
         self.jumpToContext = jumpToContext
+        self.onTriggerCreate = onTriggerCreate
     }
 
     public var body: some View {
@@ -246,17 +250,31 @@ public struct HomeView: View {
     @ViewBuilder
     private var globalActionsSection: some View {
         Section {
-            Label("Crear", systemImage: "plus.circle.fill")
-                .foregroundStyle(.primary)
+            Button {
+                onTriggerCreate()
+            } label: {
+                HStack {
+                    Label("Crear", systemImage: "plus.circle.fill")
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+            // Buscar y Preguntar a Ruul: aún no implementados.
             Label("Buscar", systemImage: "magnifyingglass")
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Buscar. Próximamente.")
             Label("Preguntar a Ruul", systemImage: "sparkles")
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("Preguntar a Ruul. Próximamente.")
         } header: {
             Label("Acciones rápidas", systemImage: "bolt.fill")
                 .font(.subheadline)
         } footer: {
-            Text("F.NAV.5 wirea estas acciones al sheet intent-first y al search global.")
+            Text("Buscar global y \"Preguntar a Ruul\" llegarán en un slice futuro.")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -305,5 +323,5 @@ private struct ContextNotAvailableView: View {
 }
 
 #Preview("Home (demo)") {
-    HomeView(container: .demo(), jumpToContext: { _ in })
+    HomeView(container: .demo(), jumpToContext: { _ in }, onTriggerCreate: {})
 }

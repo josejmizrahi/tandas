@@ -299,39 +299,100 @@ private struct DismissButton: View {
     }
 }
 
-/// F.NAV.5 — landing para el intent "Subir documento". Como `AttachDocumentView`
-/// requiere un `Resource`, mostramos un mensaje y un CTA para ir al contexto
-/// a elegir el recurso. F.NAV.5+ puede agregar resource picker inline.
+/// F.NAV.8 — Resource picker para el intent "Subir documento". Lista los
+/// recursos del contexto seleccionado. Tap → push a AttachDocumentView.
 private struct DocumentIntentLanding: View {
     let context: AppContext
     let container: DependencyContainer
     let onClose: () -> Void
 
+    @State private var resources: [ContextResource] = []
+    @State private var phase: StorePhase = .idle
+    @State private var documentsStore: DocumentsStore
+    @State private var pickedResource: Resource?
+
+    init(context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void) {
+        self.context = context
+        self.container = container
+        self.onClose = onClose
+        _documentsStore = State(initialValue: DocumentsStore(rpc: container.rpc))
+    }
+
     var body: some View {
-        VStack(spacing: 16) {
-            Spacer(minLength: 0)
-            Image(systemName: "paperclip")
-                .font(.system(size: 56))
-                .foregroundStyle(.secondary)
-            Text("Subir documento")
-                .font(.title3.weight(.semibold))
-            Text("Los documentos se adjuntan a un recurso específico (casa, cuenta, contrato…). Abre el recurso y usa \"Adjuntar documento\" desde su detalle.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            Button {
-                container.contextStore.switchTo(context)
-                onClose()
-            } label: {
-                Label("Abrir \(context.displayName)", systemImage: "arrow.up.right.square")
+        Group {
+            switch phase {
+            case .idle, .loading:
+                LoadingStateView()
+            case .failed(let message):
+                ErrorStateView(message: message) {
+                    Task { await load() }
+                }
+            case .loaded:
+                if resources.isEmpty {
+                    ContentUnavailableView(
+                        "Sin recursos",
+                        systemImage: "shippingbox",
+                        description: Text("\(context.displayName) no tiene recursos aún. Crea uno primero.")
+                    )
+                } else {
+                    List {
+                        Section {
+                            ForEach(resources) { r in
+                                Button {
+                                    pickedResource = Resource(
+                                        id: r.resourceId,
+                                        resourceType: r.resourceType,
+                                        displayName: r.displayName,
+                                        status: r.status,
+                                        estimatedValue: r.estimatedValue,
+                                        currency: r.currency,
+                                        canonicalOwnerActorId: r.canonicalOwnerActorId
+                                    )
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: r.type.symbolName)
+                                            .foregroundStyle(.tint)
+                                            .frame(width: 28)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(r.displayName).font(.callout.weight(.medium))
+                                            Text(r.type.label).font(.caption).foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        } header: {
+                            Text("Adjuntar a recurso en \(context.displayName)")
+                        }
+                    }
+                }
             }
-            .buttonStyle(.borderedProminent)
-            Spacer(minLength: 0)
         }
-        .padding()
         .navigationTitle("Subir documento")
         .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+        .sheet(item: $pickedResource) { resource in
+            AttachDocumentView(
+                resource: resource,
+                context: context,
+                container: container,
+                store: documentsStore
+            )
+        }
+    }
+
+    private func load() async {
+        if resources.isEmpty { phase = .loading }
+        do {
+            resources = try await container.rpc.listContextResources(contextId: context.id)
+            phase = .loaded
+        } catch {
+            phase = .failed(message: UserFacingError.from(error).message)
+        }
     }
 }
 

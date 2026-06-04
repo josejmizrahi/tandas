@@ -50,7 +50,11 @@ public struct MainTabShell: View {
     public var body: some View {
         TabView(selection: tabBinding) {
             Tab("Home", systemImage: "house.fill", value: AppTab.home) {
-                HomeView(container: container, jumpToContext: jumpToContext)
+                HomeView(
+                    container: container,
+                    jumpToContext: jumpToContext,
+                    onTriggerCreate: { isShowingCreateSheet = true }
+                )
             }
 
             Tab("Contextos", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
