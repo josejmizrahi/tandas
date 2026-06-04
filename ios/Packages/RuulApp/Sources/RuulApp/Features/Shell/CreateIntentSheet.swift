@@ -106,12 +106,12 @@ public struct CreateIntentSheet: View {
         switch route {
         case .pickContext(let intent):
             ContextPickerView(container: container, intent: intent) { ctx in
-                path.append(.form(intent: intent, contextId: ctx.id))
+                // F.NAV.7+: pasamos AppContext directo (no contextId) — evita
+                // un lookup que puede fallar entre el tap y el render del destino.
+                path.append(.form(intent: intent, context: ctx))
             }
-        case .form(let intent, let contextId):
-            if let ctx = container.contextStore.availableContexts.first(where: { $0.id == contextId }) {
-                FormDestination(intent: intent, context: ctx, container: container, onClose: { dismiss() })
-            }
+        case .form(let intent, let context):
+            FormDestination(intent: intent, context: context, container: container, onClose: { dismiss() })
         case .createContext:
             // CreateContextView trae su propia UI/navegación.
             CreateContextView(container: container)
@@ -126,7 +126,7 @@ public struct CreateIntentSheet: View {
 
     enum Route: Hashable {
         case pickContext(intent: Intent)
-        case form(intent: Intent, contextId: UUID)
+        case form(intent: Intent, context: AppContext)
         case createContext
     }
 }
@@ -205,40 +205,44 @@ private struct ContextPickerView: View {
 
 // MARK: - Form destination
 
-/// Conecta el intent + contexto al form real. Cada flow trae su propio store.
+/// F.NAV.7+: conecta el intent + contexto al form real. Stores instanciados
+/// EAGER via `@State` init constructor — el patrón lazy `.task + @State?` era
+/// frágil cuando SwiftUI re-renderizaba el destino antes de que el task
+/// completara, causando crashes intermitentes.
 private struct FormDestination: View {
     let intent: CreateIntentSheet.Intent
     let context: AppContext
     let container: DependencyContainer
     let onClose: () -> Void
 
-    @State private var eventsStore: EventsStore?
-    @State private var moneyStore: MoneyStore?
+    @State private var eventsStore: EventsStore
+    @State private var moneyStore: MoneyStore
+
+    init(intent: CreateIntentSheet.Intent, context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void) {
+        self.intent = intent
+        self.context = context
+        self.container = container
+        self.onClose = onClose
+        _eventsStore = State(initialValue: EventsStore(
+            rpc: container.rpc,
+            myActorId: container.currentActorStore.actorId
+        ))
+        _moneyStore = State(initialValue: MoneyStore(
+            rpc: container.rpc,
+            myActorId: container.currentActorStore.actorId
+        ))
+    }
 
     var body: some View {
-        Group {
-            switch intent {
-            case .event:
-                if let store = eventsStore {
-                    CreateEventView(context: context, store: store, container: container)
-                } else {
-                    ProgressView().task {
-                        eventsStore = EventsStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId)
-                    }
-                }
-            case .expense:
-                if let store = moneyStore {
-                    RecordExpenseView(context: context, store: store, container: container)
-                } else {
-                    ProgressView().task {
-                        moneyStore = MoneyStore(rpc: container.rpc)
-                    }
-                }
-            case .decision:
-                CreateDecisionView(context: context, container: container)
-            case .document:
-                DocumentIntentLanding(context: context, container: container, onClose: onClose)
-            }
+        switch intent {
+        case .event:
+            CreateEventView(context: context, store: eventsStore, container: container)
+        case .expense:
+            RecordExpenseView(context: context, store: moneyStore, container: container)
+        case .decision:
+            CreateDecisionView(context: context, container: container)
+        case .document:
+            DocumentIntentLanding(context: context, container: container, onClose: onClose)
         }
     }
 }
