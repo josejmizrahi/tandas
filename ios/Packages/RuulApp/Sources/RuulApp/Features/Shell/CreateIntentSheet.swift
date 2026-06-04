@@ -14,6 +14,11 @@ public struct CreateIntentSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var path: [Route] = []
+    /// F.NAV.7+: el form (CreateEventView / RecordExpenseView / etc.) trae
+    /// SU PROPIO NavigationStack interno. Anidarlo dentro del NavigationStack
+    /// de la sheet crashea SwiftUI iOS 16+. Por eso presentamos el form como
+    /// sheet anidado sobre la sheet de intent, no como push.
+    @State private var pendingForm: PendingForm?
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -66,6 +71,20 @@ public struct CreateIntentSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        // F.NAV.7+: form anidado como sheet sobre la sheet de intent.
+        // Evita el crash de NavigationStack anidado (CreateEventView etc.
+        // traen su propio NavigationStack interno).
+        .sheet(item: $pendingForm) { form in
+            FormDestination(
+                intent: form.intent,
+                context: form.context,
+                container: container,
+                onClose: {
+                    pendingForm = nil
+                    dismiss()
+                }
+            )
+        }
     }
 
     // MARK: - Row helpers
@@ -106,12 +125,11 @@ public struct CreateIntentSheet: View {
         switch route {
         case .pickContext(let intent):
             ContextPickerView(container: container, intent: intent) { ctx in
-                // F.NAV.7+: pasamos AppContext directo (no contextId) — evita
-                // un lookup que puede fallar entre el tap y el render del destino.
-                path.append(.form(intent: intent, context: ctx))
+                // F.NAV.7+: en lugar de push (que causaba NavigationStack
+                // anidado), guardamos el form en pendingForm para abrir como
+                // sheet anidada sobre la sheet actual.
+                pendingForm = PendingForm(intent: intent, context: ctx)
             }
-        case .form(let intent, let context):
-            FormDestination(intent: intent, context: context, container: container, onClose: { dismiss() })
         case .createContext:
             // CreateContextView trae su propia UI/navegación.
             CreateContextView(container: container)
@@ -126,8 +144,14 @@ public struct CreateIntentSheet: View {
 
     enum Route: Hashable {
         case pickContext(intent: Intent)
-        case form(intent: Intent, context: AppContext)
         case createContext
+    }
+
+    /// Sheet anidada pendiente. `Identifiable` para `.sheet(item:)`.
+    struct PendingForm: Identifiable {
+        let id = UUID()
+        let intent: Intent
+        let context: AppContext
     }
 }
 
@@ -236,14 +260,42 @@ private struct FormDestination: View {
     var body: some View {
         switch intent {
         case .event:
+            // Trae su propio NavigationStack interno.
             CreateEventView(context: context, store: eventsStore, container: container)
         case .expense:
+            // Trae su propio NavigationStack interno.
             RecordExpenseView(context: context, store: moneyStore, container: container)
         case .decision:
-            CreateDecisionView(context: context, container: container)
+            // CreateDecisionView NO trae NavigationStack — lo envolvemos aquí
+            // para que el sheet tenga título + Cancel.
+            NavigationStack {
+                CreateDecisionView(context: context, container: container)
+                    .navigationTitle("Nueva decisión")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            DismissButton()
+                        }
+                    }
+            }
         case .document:
-            DocumentIntentLanding(context: context, container: container, onClose: onClose)
+            NavigationStack {
+                DocumentIntentLanding(context: context, container: container, onClose: onClose)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            DismissButton()
+                        }
+                    }
+            }
         }
+    }
+}
+
+/// Helper para incluir un botón Cancelar que dismissea el sheet anidado.
+private struct DismissButton: View {
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        Button("Cancelar") { dismiss() }
     }
 }
 
