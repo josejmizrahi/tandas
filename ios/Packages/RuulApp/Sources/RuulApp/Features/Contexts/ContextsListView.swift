@@ -145,9 +145,11 @@ public struct ContextsListView: View {
 
     @ViewBuilder
     private var favoritesSection: some View {
+        // F.NAV.3 — Sólo contextos raíz; los hijos viven dentro del parent.
         Section {
             ForEach(preferencesStore.favorites) { pref in
-                if let ctx = contextStore.availableContexts.first(where: { $0.id == pref.contextActorId }) {
+                if let ctx = contextStore.availableContexts.first(where: { $0.id == pref.contextActorId }),
+                   ctx.isRoot {
                     contextRow(ctx, isFavorite: true)
                 }
             }
@@ -162,10 +164,14 @@ public struct ContextsListView: View {
 
     @ViewBuilder
     private var allContextsSection: some View {
+        // F.NAV.3 — Sólo raíces. Los hijos se ven dentro del ContextHome del padre
+        // (en su sección "Subcontextos" + ContextTreeView).
         let favoriteIds = Set(preferencesStore.favorites.map(\.contextActorId))
-        let nonFavorites = contextStore.availableContexts.filter { !favoriteIds.contains($0.id) }
+        let rootNonFavorites = contextStore.availableContexts.filter {
+            $0.isRoot && !favoriteIds.contains($0.id)
+        }
         Section("Todos") {
-            ForEach(nonFavorites) { ctx in
+            ForEach(rootNonFavorites) { ctx in
                 contextRow(ctx, isFavorite: false)
             }
         }

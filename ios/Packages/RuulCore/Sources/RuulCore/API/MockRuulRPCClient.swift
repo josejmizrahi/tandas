@@ -448,6 +448,10 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     public func contextCandidates() async throws -> ContextCandidates {
         try throwIfNeeded()
+        // F.NAV.3 — buscar parent en contextChildrenById (parent → [children]).
+        func parent(of contextId: UUID) -> UUID? {
+            contextChildrenById.first(where: { $0.value.contains(contextId) })?.key
+        }
         let candidates = memberships.compactMap { contextId, members -> ContextCandidate? in
             guard members.contains(where: { $0.actorId == me.id }),
                   let actor = actors[contextId] else { return nil }
@@ -459,7 +463,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 visibility: actor.visibility,
                 membershipType: members.first { $0.actorId == me.id }?.membershipType,
                 memberCount: members.count,
-                roles: members.first { $0.actorId == me.id }?.roles ?? []
+                roles: members.first { $0.actorId == me.id }?.roles ?? [],
+                parentContextActorId: parent(of: contextId)
             )
         }.sorted { $0.displayName < $1.displayName }
         return ContextCandidates(personalContext: me.actor, contexts: candidates)

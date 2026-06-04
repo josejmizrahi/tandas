@@ -13,6 +13,10 @@ public struct AppContext: Sendable, Equatable, Hashable, Identifiable {
     public let memberCount: Int
     /// Role keys del caller en este contexto (`admin`, `member`, …).
     public let roles: [String]
+    /// F.NAV.3 — id del contexto padre cuando este contexto es hijo en
+    /// `actor_relationships('contains')`. nil para raíces. Permite a
+    /// `ContextsListView` mostrar sólo raíces; los hijos viven dentro del padre.
+    public let parentContextActorId: UUID?
 
     public init(
         id: UUID,
@@ -21,7 +25,8 @@ public struct AppContext: Sendable, Equatable, Hashable, Identifiable {
         displayName: String,
         membershipType: String? = nil,
         memberCount: Int = 0,
-        roles: [String] = []
+        roles: [String] = [],
+        parentContextActorId: UUID? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -30,7 +35,11 @@ public struct AppContext: Sendable, Equatable, Hashable, Identifiable {
         self.membershipType = membershipType
         self.memberCount = memberCount
         self.roles = roles
+        self.parentContextActorId = parentContextActorId
     }
+
+    /// F.NAV.3 — true si este contexto no es hijo de otro (raíz).
+    public var isRoot: Bool { parentContextActorId == nil }
 
     public var isPersonal: Bool { kind == .person }
     public var isAdmin: Bool { isPersonal || roles.contains("admin") }
@@ -108,6 +117,8 @@ public struct ContextCandidate: Decodable, Sendable, Equatable, Identifiable {
     public let membershipType: String?
     public let memberCount: Int
     public let roles: [String]
+    /// F.NAV.3 — id del contexto padre (null = raíz).
+    public let parentContextActorId: UUID?
 
     enum CodingKeys: String, CodingKey {
         case contextActorId = "context_actor_id"
@@ -118,6 +129,7 @@ public struct ContextCandidate: Decodable, Sendable, Equatable, Identifiable {
         case membershipType = "membership_type"
         case memberCount = "member_count"
         case roles
+        case parentContextActorId = "parent_context_actor_id"
     }
 
     public init(from decoder: Decoder) throws {
@@ -130,6 +142,7 @@ public struct ContextCandidate: Decodable, Sendable, Equatable, Identifiable {
         self.membershipType = try c.decodeIfPresent(String.self, forKey: .membershipType)
         self.memberCount = try c.decodeIfPresent(Int.self, forKey: .memberCount) ?? 0
         self.roles = try c.decodeIfPresent([String].self, forKey: .roles) ?? []
+        self.parentContextActorId = try c.decodeIfPresent(UUID.self, forKey: .parentContextActorId)
     }
 
     public init(
@@ -140,7 +153,8 @@ public struct ContextCandidate: Decodable, Sendable, Equatable, Identifiable {
         visibility: String? = nil,
         membershipType: String? = nil,
         memberCount: Int = 0,
-        roles: [String] = []
+        roles: [String] = [],
+        parentContextActorId: UUID? = nil
     ) {
         self.contextActorId = contextActorId
         self.displayName = displayName
@@ -150,6 +164,7 @@ public struct ContextCandidate: Decodable, Sendable, Equatable, Identifiable {
         self.membershipType = membershipType
         self.memberCount = memberCount
         self.roles = roles
+        self.parentContextActorId = parentContextActorId
     }
 
     public var id: UUID { contextActorId }
@@ -162,7 +177,8 @@ public struct ContextCandidate: Decodable, Sendable, Equatable, Identifiable {
             displayName: displayName,
             membershipType: membershipType,
             memberCount: memberCount,
-            roles: roles
+            roles: roles,
+            parentContextActorId: parentContextActorId
         )
     }
 }
