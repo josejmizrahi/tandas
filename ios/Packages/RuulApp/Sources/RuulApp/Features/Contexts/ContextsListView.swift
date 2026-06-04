@@ -132,6 +132,15 @@ public struct ContextsListView: View {
                     path.append(newCtx)
                 }
             )
+            // F.CONTEXT.5 — expone una callback de navegación cross-cutting para
+            // que descendientes (BreadcrumbView, child cards, similarity cards…)
+            // puedan empujar otros contextos al stack sin re-plumbing.
+            .environment(\.navigateToContext, NavigateToContextAction { target in
+                container.contextStore.switchTo(target)
+                Task { await container.contextPreferencesStore.recordVisit(target.id) }
+                path.removeAll()
+                path.append(target)
+            })
         }
     }
 
