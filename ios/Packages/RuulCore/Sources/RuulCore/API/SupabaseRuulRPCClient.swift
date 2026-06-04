@@ -661,6 +661,43 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return created.event
     }
 
+    public func updateCalendarEvent(_ input: UpdateEventInput) async throws -> CalendarEvent {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pTitle: String?
+            let pDescription: String?
+            let pStartsAt: Date?
+            let pEndsAt: Date?
+            let pLocationText: String?
+            let pIsVirtual: Bool?
+            let pRecurrenceRule: String?
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pTitle = "p_title"
+                case pDescription = "p_description"
+                case pStartsAt = "p_starts_at"
+                case pEndsAt = "p_ends_at"
+                case pLocationText = "p_location_text"
+                case pIsVirtual = "p_is_virtual"
+                case pRecurrenceRule = "p_recurrence_rule"
+            }
+        }
+        struct UpdateResult: Decodable, Sendable {
+            let event: CalendarEvent
+        }
+        let result: UpdateResult = try await call("update_calendar_event", params: Params(
+            pEventId: input.eventId,
+            pTitle: input.title,
+            pDescription: input.description,
+            pStartsAt: input.startsAt,
+            pEndsAt: input.endsAt,
+            pLocationText: input.locationText,
+            pIsVirtual: input.isVirtual,
+            pRecurrenceRule: input.recurrenceRule
+        ))
+        return result.event
+    }
+
     public func listEvents(contextId: UUID) async throws -> [CalendarEvent] {
         do {
             return try await client
@@ -755,6 +792,28 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             enum CodingKeys: String, CodingKey { case pEventId = "p_event_id" }
         }
         return try await call("close_event", params: Params(pEventId: eventId))
+    }
+
+    // MARK: - F.EVENT.8 host rotation
+
+    public func previewNextHost(eventId: UUID) async throws -> NextHostPreview {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            enum CodingKeys: String, CodingKey { case pEventId = "p_event_id" }
+        }
+        return try await call("preview_next_host", params: Params(pEventId: eventId))
+    }
+
+    public func setNextHost(eventId: UUID, actorId: UUID) async throws -> NextHostPreview {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pActorId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pActorId = "p_actor_id"
+            }
+        }
+        return try await call("set_next_host", params: Params(pEventId: eventId, pActorId: actorId))
     }
 
     // MARK: - Rules

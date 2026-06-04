@@ -48,12 +48,55 @@ public struct EventDetailView: View {
     @State private var expenseScope: EventScope?
     @State private var moneyStoreForExpense: MoneyStore?
     @State private var pushedDecisions = false
+    /// F.EVENT.7 — sheet de edición.
+    @State private var isShowingEdit = false
+    /// F.EVENT.8 — sheet de cambiar próximo anfitrión.
+    @State private var isShowingNextHostPicker = false
+    @State private var nextHostNotice: String?
 
     public init(eventId: UUID, context: AppContext, container: DependencyContainer) {
         self.eventId = eventId
         self.context = context
         self.container = container
         _store = State(initialValue: EventDetailStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
+    }
+
+    /// Toolbar extraído a un computed property para no hinchar el body y
+    /// evitar que el type-checker se quede sin presupuesto.
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        if let event = store.event {
+            let items = moreActions(event)
+            if !items.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(items) { item in
+                            moreActionButton(for: item)
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                            .accessibilityLabel("Más acciones")
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func moreActionButton(for item: MoreActionItem) -> some View {
+        if item.isDestructive {
+            Button(role: .destructive) {
+                handleMoreAction(item.kind)
+            } label: {
+                Label(item.label, systemImage: item.symbol)
+            }
+        } else {
+            Button {
+                handleMoreAction(item.kind)
+            } label: {
+                Label(item.label, systemImage: item.symbol)
+            }
+        }
     }
 
     private var myActorId: UUID? { container.currentActorStore.actorId }
@@ -82,27 +125,7 @@ public struct EventDetailView: View {
         }
         .navigationTitle(store.event?.title ?? "Evento")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let event = store.event {
-                let items = moreActions(event)
-                if !items.isEmpty {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            ForEach(items) { item in
-                                Button(role: item.isDestructive ? .destructive : nil) {
-                                    handleMoreAction(item.kind)
-                                } label: {
-                                    Label(item.label, systemImage: item.symbol)
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "plus")
-                                .accessibilityLabel("Más acciones")
-                        }
-                    }
-                }
-            }
-        }
+        .toolbar { toolbarContent }
         .task {
             await store.load(eventId: eventId, context: context)
             await loadEventActivity()
@@ -174,6 +197,43 @@ public struct EventDetailView: View {
                 )
             }
         }
+        // F.EVENT.7 — sheet de edición.
+        .sheet(isPresented: $isShowingEdit) { editSheetContent() }
+        // F.EVENT.8 — sheet picker próximo anfitrión.
+        .sheet(isPresented: $isShowingNextHostPicker) { nextHostPickerSheetContent() }
+        .alert("Próximo anfitrión", isPresented: Binding(
+            get: { nextHostNotice != nil },
+            set: { if !$0 { nextHostNotice = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(nextHostNotice ?? "")
+        }
+    }
+
+    @ViewBuilder
+    private func editSheetContent() -> some View {
+        if let event = store.event {
+            EditEventView(
+                event: event,
+                context: context,
+                container: container,
+                onSaved: {
+                    Task { await store.load(eventId: eventId, context: context) }
+                }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func nextHostPickerSheetContent() -> some View {
+        NextHostPickerSheet(
+            members: store.members.filter { $0.actorId != store.event?.hostActorId },
+            currentNextHostId: store.nextHostPreview?.nextActorId,
+            onPick: { actorId in
+                Task { await applyNextHost(actorId) }
+            }
+        )
     }
 
     // MARK: - Container
@@ -184,6 +244,7 @@ public struct EventDetailView: View {
             VStack(spacing: 22) {
                 headerSection(event)
                 primaryActionSection(event)
+                nextHostCard(event)
                 participantsSection(event)
                 relatedResourcesSection(event)
                 relatedDecisionsSection(event)
@@ -191,6 +252,81 @@ public struct EventDetailView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 32)
+        }
+    }
+
+    // MARK: - F.EVENT.8 Próxima reunión
+
+    /// Card "Próxima reunión" — sólo visible cuando el evento es recurrente
+    /// y sigue programado. Muestra quién organiza la próxima ocurrencia
+    /// (rotación natural o override manual) + fecha derivada de starts_at +
+    /// la frecuencia.
+    @ViewBuilder
+    private func nextHostCard(_ event: CalendarEvent) -> some View {
+        if event.isRecurring && event.isScheduled,
+           let preview = store.nextHostPreview,
+           let hostName = preview.nextActorName,
+           let nextStart = nextOccurrenceDate(for: event) {
+            HStack(spacing: 14) {
+                Image(systemName: "person.2.crop.square.stack.fill")
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                    .frame(width: 36, height: 36)
+                    .background(Color.accentColor.opacity(0.15), in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text("Próxima reunión")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        if preview.isOverride {
+                            Text("Definido manualmente")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.tint)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.accentColor.opacity(0.15), in: Capsule())
+                        }
+                    }
+                    Text("Organiza \(hostName)")
+                        .font(.callout.weight(.medium))
+                    Text(nextStart.formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(14)
+            .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
+    /// Calcula la fecha de la próxima ocurrencia client-side a partir del
+    /// `starts_at` actual + la frecuencia. El backend hace lo mismo en
+    /// `close_event`; acá lo replicamos sólo para mostrar — la verdad sigue
+    /// siendo del backend al cerrar.
+    private func nextOccurrenceDate(for event: CalendarEvent) -> Date? {
+        guard let starts = event.startsAt,
+              let rule = event.recurrenceRule?.lowercased() else { return nil }
+        let calendar = Calendar.current
+        if rule == "weekly" || rule.contains("freq=weekly") {
+            return calendar.date(byAdding: .day, value: 7, to: starts)
+        }
+        if rule == "daily" || rule.contains("freq=daily") {
+            return calendar.date(byAdding: .day, value: 1, to: starts)
+        }
+        if rule == "monthly" || rule.contains("freq=monthly") {
+            return calendar.date(byAdding: .month, value: 1, to: starts)
+        }
+        if rule == "yearly" || rule.contains("freq=yearly") {
+            return calendar.date(byAdding: .year, value: 1, to: starts)
+        }
+        return nil
+    }
+
+    private func applyNextHost(_ actorId: UUID) async {
+        await runner.run {
+            let result = try await store.setNextHost(eventId: eventId, actorId: actorId, context: context)
+            nextHostNotice = "Próximo anfitrión actualizado: \(result.nextActorName ?? "—")."
         }
     }
 
@@ -721,6 +857,9 @@ public struct EventDetailView: View {
         case createDecision
         case closeEvent
         case cancelParticipation
+        case editEvent
+        /// F.EVENT.8 — override del próximo anfitrión.
+        case changeNextHost
     }
 
     private struct MoreActionItem: Identifiable {
@@ -760,9 +899,26 @@ public struct EventDetailView: View {
                     kind: .cancelParticipation, label: action.label,
                     symbol: "xmark.circle", isDestructive: true
                 ))
+            case "edit_event":
+                if event.isScheduled || event.status == "in_progress" {
+                    out.append(MoreActionItem(
+                        kind: .editEvent, label: action.label,
+                        symbol: "pencil", isDestructive: false
+                    ))
+                }
             default:
                 break
             }
+        }
+        // F.EVENT.8 — "Cambiar próximo anfitrión" sólo para eventos
+        // recurrentes con autoridad de manage. No es action_key del backend
+        // todavía (no se modeló en available_actions); lo derivamos del
+        // estado: recurring + scheduled + hasManageAuthority.
+        if event.isRecurring && event.isScheduled && hasManageAuthority {
+            out.append(MoreActionItem(
+                kind: .changeNextHost, label: "Cambiar próximo anfitrión",
+                symbol: "person.crop.circle.badge.checkmark", isDestructive: false
+            ))
         }
         return out
     }
@@ -773,6 +929,8 @@ public struct EventDetailView: View {
         case .createDecision:       pushedDecisions = true
         case .closeEvent:           isConfirmingClose = true
         case .cancelParticipation:  isConfirmingCancel = true
+        case .editEvent:            isShowingEdit = true
+        case .changeNextHost:       isShowingNextHostPicker = true
         }
     }
 

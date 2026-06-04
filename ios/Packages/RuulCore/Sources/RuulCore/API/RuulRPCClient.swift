@@ -127,6 +127,9 @@ public protocol RuulRPCClient: Sendable {
 
     /// `create_calendar_event(...)`
     func createCalendarEvent(_ input: CreateEventInput) async throws -> CalendarEvent
+    /// `update_calendar_event(...)` — F.EVENT.7. Host del evento o `events.manage`.
+    /// Sólo eventos no terminales. NULL = no cambiar. Devuelve el evento actualizado.
+    func updateCalendarEvent(_ input: UpdateEventInput) async throws -> CalendarEvent
     /// Lectura PostgREST: `calendar_events` del contexto (más recientes primero).
     func listEvents(contextId: UUID) async throws -> [CalendarEvent]
     /// Lectura PostgREST: un evento por id.
@@ -145,6 +148,16 @@ public protocol RuulRPCClient: Sendable {
     func cancelParticipation(eventId: UUID) async throws -> CancelParticipationResult
     /// `close_event(p_event_id)`
     func closeEvent(eventId: UUID) async throws -> CloseEventResult
+
+    /// F.EVENT.8 — `preview_next_host(p_event_id)`. Devuelve quién será el
+    /// próximo anfitrión sin mutar nada. Para eventos no recurrentes los
+    /// campos quedan nil.
+    func previewNextHost(eventId: UUID) async throws -> NextHostPreview
+
+    /// F.EVENT.8 — `set_next_host(p_event_id, p_actor_id)`. Override de un
+    /// solo uso: al cerrar el evento se aplica y luego se limpia. Requiere
+    /// permiso `events.manage`.
+    func setNextHost(eventId: UUID, actorId: UUID) async throws -> NextHostPreview
 
     // MARK: - Rules
 
@@ -615,6 +628,40 @@ public struct CreateEventInput: Sendable, Equatable {
         self.hostActorId = hostActorId
         self.inviteAllMembers = inviteAllMembers
         self.clientId = clientId
+    }
+}
+
+/// Input de `update_calendar_event` (F.EVENT.7). Todos los campos opcionales —
+/// solo se aplica lo que llegue distinto de nil. `clear*` flags permiten limpiar
+/// campos opcionales explícitamente (descripción / recurrencia).
+public struct UpdateEventInput: Sendable, Equatable {
+    public var eventId: UUID
+    public var title: String?
+    public var description: String?
+    public var startsAt: Date?
+    public var endsAt: Date?
+    public var locationText: String?
+    public var isVirtual: Bool?
+    public var recurrenceRule: String?
+
+    public init(
+        eventId: UUID,
+        title: String? = nil,
+        description: String? = nil,
+        startsAt: Date? = nil,
+        endsAt: Date? = nil,
+        locationText: String? = nil,
+        isVirtual: Bool? = nil,
+        recurrenceRule: String? = nil
+    ) {
+        self.eventId = eventId
+        self.title = title
+        self.description = description
+        self.startsAt = startsAt
+        self.endsAt = endsAt
+        self.locationText = locationText
+        self.isVirtual = isVirtual
+        self.recurrenceRule = recurrenceRule
     }
 }
 

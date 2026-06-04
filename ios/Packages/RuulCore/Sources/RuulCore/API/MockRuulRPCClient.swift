@@ -1383,6 +1383,61 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return event
     }
 
+    public func updateCalendarEvent(_ input: UpdateEventInput) async throws -> CalendarEvent {
+        try throwIfNeeded()
+        guard let current = events[input.eventId] else {
+            throw RuulError.unexpected(message: "Evento no encontrado")
+        }
+        let myPerms = Set(permissions[current.contextActorId] ?? [])
+        let isHost = current.hostActorId == me.id
+        guard isHost || myPerms.contains("events.manage") else {
+            throw RuulError.backend(.missingPermission(key: "events.manage"))
+        }
+        guard current.status == "scheduled" || current.status == "in_progress" else {
+            throw RuulError.unexpected(message: "No se puede editar un evento cerrado o cancelado.")
+        }
+
+        func trimmedOrNil(_ value: String?) -> String? {
+            guard let v = value?.trimmingCharacters(in: .whitespaces), !v.isEmpty else { return nil }
+            return v
+        }
+        let newTitle = trimmedOrNil(input.title) ?? current.title
+        let newDescription = input.description ?? current.description
+        let newStarts = input.startsAt ?? current.startsAt
+        let newEnds = input.endsAt ?? current.endsAt
+        let newLocation = trimmedOrNil(input.locationText) ?? current.locationText
+        let newIsVirtual = input.isVirtual ?? current.isVirtual
+        let newRecurrence = trimmedOrNil(input.recurrenceRule) ?? current.recurrenceRule
+
+        if !newIsVirtual && (newLocation?.isEmpty ?? true) {
+            throw RuulError.unexpected(message: "El evento necesita una ubicación o marcarse como virtual.")
+        }
+        if let s = newStarts, let e = newEnds, e < s {
+            throw RuulError.unexpected(message: "El fin del evento no puede ser antes del inicio.")
+        }
+
+        let updated = CalendarEvent(
+            id: current.id,
+            contextActorId: current.contextActorId,
+            title: newTitle,
+            description: newDescription,
+            eventType: current.eventType,
+            startsAt: newStarts,
+            endsAt: newEnds,
+            timezone: current.timezone,
+            locationText: newLocation,
+            isVirtual: newIsVirtual,
+            recurrenceRule: newRecurrence,
+            hostActorId: current.hostActorId,
+            status: current.status,
+            createdByActorId: current.createdByActorId,
+            createdAt: current.createdAt
+        )
+        events[input.eventId] = updated
+        emit(current.contextActorId, "event.updated")
+        return updated
+    }
+
     public func listEvents(contextId: UUID) async throws -> [CalendarEvent] {
         try throwIfNeeded()
         return events.values
@@ -1444,6 +1499,11 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 isHost ? "Eres el anfitrión del evento"
                 : (canClose ? "Tienes permiso para administrar eventos"
                    : "Solo el anfitrión o un administrador pueden cerrar el evento"))
+            // F.EVENT.7 — edit_event: mismas reglas que close.
+            add("edit_event", "Editar evento", "participation", canClose,
+                isHost ? "Eres el anfitrión del evento"
+                : (canClose ? "Tienes permiso para administrar eventos"
+                   : "Solo el anfitrión o un administrador pueden editar el evento"))
         }
         if event.status != "cancelled" {
             let granted = myPerms.contains("money.record")
@@ -1610,7 +1670,85 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 EventParticipant(id: UUID(), eventId: nextId, participantActorId: member.actorId, status: "invited")
             }
         }
-        return CloseEventResult(eventId: eventId, noShows: noShows, nextEventId: nextEventId, nextHostActorId: nextHost)
+        let nextHostName = nextHost.flatMap { lookupMemberName($0) }
+        return CloseEventResult(
+            eventId: eventId, noShows: noShows,
+            nextEventId: nextEventId, nextHostActorId: nextHost,
+            nextHostName: nextHostName,
+            nextStartsAt: nextEventId.flatMap { events[$0]?.startsAt }
+        )
+    }
+
+    // MARK: - F.EVENT.8 host rotation
+
+    /// Overrides one-shot persistidos in-memory por event id.
+    nonisolated(unsafe) private static var hostOverrides: [UUID: UUID] = [:]
+
+    public func previewNextHost(eventId: UUID) async throws -> NextHostPreview {
+        try throwIfNeeded()
+        guard let event = events[eventId] else {
+            throw RuulError.unexpected(message: "Evento no encontrado")
+        }
+        // 1. Override gana.
+        if let override = MockRuulRPCClient.hostOverrides[eventId] {
+            let name = lookupMemberName(override) ?? "Actor"
+            return NextHostPreview(
+                nextActorId: override, nextActorName: name,
+                source: "override", reason: "manual override"
+            )
+        }
+        // 2. Weekly rota.
+        let rule = (event.recurrenceRule ?? "").lowercased()
+        if rule == "weekly" || rule.contains("freq=weekly") {
+            let members = memberships[event.contextActorId] ?? []
+            if let currentIndex = members.firstIndex(where: { $0.actorId == event.hostActorId }) {
+                let next = members[(currentIndex + 1) % max(members.count, 1)]
+                return NextHostPreview(
+                    nextActorId: next.actorId, nextActorName: next.displayName,
+                    source: "rotation", reason: "next participant in rotation"
+                )
+            }
+            return NextHostPreview(
+                nextActorId: event.hostActorId,
+                nextActorName: event.hostActorId.flatMap { lookupMemberName($0) },
+                source: "rotation", reason: "next participant in rotation"
+            )
+        }
+        // 3. Daily/Monthly/Yearly: mismo host.
+        if ["daily", "monthly", "yearly"].contains(rule)
+            || rule.contains("freq=daily") || rule.contains("freq=monthly") || rule.contains("freq=yearly") {
+            return NextHostPreview(
+                nextActorId: event.hostActorId,
+                nextActorName: event.hostActorId.flatMap { lookupMemberName($0) },
+                source: "rotation",
+                reason: "same host (no rotation for this frequency)"
+            )
+        }
+        // 4. No recurrencia.
+        return NextHostPreview(reason: "event is not recurring")
+    }
+
+    public func setNextHost(eventId: UUID, actorId: UUID) async throws -> NextHostPreview {
+        try throwIfNeeded()
+        guard let event = events[eventId] else {
+            throw RuulError.unexpected(message: "Evento no encontrado")
+        }
+        // El actor tiene que ser miembro activo del contexto.
+        let isMember = (memberships[event.contextActorId] ?? []).contains { $0.actorId == actorId }
+        guard isMember else {
+            throw RuulError.unexpected(message: "El actor no es miembro activo del contexto")
+        }
+        MockRuulRPCClient.hostOverrides[eventId] = actorId
+        emit(event.contextActorId, "event.next_host_overridden", payload: .object([
+            "next_actor_id": .string(actorId.uuidString),
+            "title": .string(event.title)
+        ]))
+        return NextHostPreview(
+            nextActorId: actorId,
+            nextActorName: lookupMemberName(actorId),
+            source: "override",
+            reason: "manual override"
+        )
     }
 
     private func updateParticipant(eventId: UUID, actorId: UUID, transform: (EventParticipant) -> EventParticipant) {

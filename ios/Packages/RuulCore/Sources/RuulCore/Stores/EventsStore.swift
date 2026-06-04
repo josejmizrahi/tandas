@@ -81,6 +81,10 @@ public final class EventDetailStore {
     public private(set) var lastCancellation: CancelParticipationResult?
     /// Resultado del último cierre.
     public private(set) var lastClose: CloseEventResult?
+    /// F.EVENT.8 — preview del próximo anfitrión. Sólo se llena para eventos
+    /// recurrentes (`event_is_recurring == true`). Se refresca junto con el
+    /// load del detail.
+    public private(set) var nextHostPreview: NextHostPreview?
 
     private let rpc: any RuulRPCClient
     /// Para resolver "Tú" cuando el actor no está en members
@@ -107,6 +111,13 @@ public final class EventDetailStore {
             members = summary.members
             myPermissions = summary.myPermissions
             phase = .loaded
+            // F.EVENT.8 — preview del próximo anfitrión cuando el evento es
+            // recurrente. Falla silencioso para no romper el load principal.
+            if detail.event.isRecurring && detail.event.isScheduled {
+                nextHostPreview = try? await rpc.previewNextHost(eventId: eventId)
+            } else {
+                nextHostPreview = nil
+            }
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
         }
@@ -154,6 +165,16 @@ public final class EventDetailStore {
         let result = try await rpc.closeEvent(eventId: eventId)
         lastClose = result
         await load(eventId: eventId, context: context)
+        return result
+    }
+
+    /// F.EVENT.8 — admin define el próximo anfitrión. El backend persiste el
+    /// override en `metadata.next_host_override_actor_id` y lo limpia al
+    /// próximo `closeEvent`.
+    @discardableResult
+    public func setNextHost(eventId: UUID, actorId: UUID, context: AppContext) async throws -> NextHostPreview {
+        let result = try await rpc.setNextHost(eventId: eventId, actorId: actorId)
+        nextHostPreview = result
         return result
     }
 }

@@ -79,6 +79,11 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
     public let status: String
     public let createdByActorId: UUID?
     public let createdAt: Date?
+    /// F.EVENT.8 — id de serie que agrupa todas las ocurrencias del evento
+    /// recurrente. Para eventos no recurrentes queda nil.
+    public let seriesId: UUID?
+    public let previousEventId: UUID?
+    public let nextEventId: UUID?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -96,6 +101,9 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         case status
         case createdByActorId = "created_by_actor_id"
         case createdAt = "created_at"
+        case seriesId = "series_id"
+        case previousEventId = "previous_event_id"
+        case nextEventId = "next_event_id"
     }
 
     public init(
@@ -113,7 +121,10 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         hostActorId: UUID? = nil,
         status: String = "scheduled",
         createdByActorId: UUID? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        seriesId: UUID? = nil,
+        previousEventId: UUID? = nil,
+        nextEventId: UUID? = nil
     ) {
         self.id = id
         self.contextActorId = contextActorId
@@ -130,6 +141,9 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.status = status
         self.createdByActorId = createdByActorId
         self.createdAt = createdAt
+        self.seriesId = seriesId
+        self.previousEventId = previousEventId
+        self.nextEventId = nextEventId
     }
 
     public init(from decoder: Decoder) throws {
@@ -150,6 +164,10 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "scheduled"
         self.createdByActorId = try c.decodeIfPresent(UUID.self, forKey: .createdByActorId)
         self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        // F.EVENT.8 — series linkage; viejos shapes los traen como null.
+        self.seriesId = try c.decodeIfPresent(UUID.self, forKey: .seriesId)
+        self.previousEventId = try c.decodeIfPresent(UUID.self, forKey: .previousEventId)
+        self.nextEventId = try c.decodeIfPresent(UUID.self, forKey: .nextEventId)
     }
 
     public var type: EventType { EventType(rawValue: eventType) ?? .other }
@@ -334,13 +352,17 @@ public struct CancelParticipationResult: Decodable, Sendable, Equatable {
     }
 }
 
-/// Resultado de `close_event()`.
+/// Resultado de `close_event()`. F.EVENT.8 suma `nextHostName` y
+/// `nextStartsAt` para que la confirmación al cerrar pueda mostrar
+/// "La próxima reunión la organiza X el día Y".
 public struct CloseEventResult: Decodable, Sendable, Equatable {
     public let eventId: UUID
     public let status: String
     public let noShows: Int?
     public let nextEventId: UUID?
     public let nextHostActorId: UUID?
+    public let nextHostName: String?
+    public let nextStartsAt: Date?
     public let alreadyClosed: Bool
 
     enum CodingKeys: String, CodingKey {
@@ -349,6 +371,8 @@ public struct CloseEventResult: Decodable, Sendable, Equatable {
         case noShows = "no_shows"
         case nextEventId = "next_event_id"
         case nextHostActorId = "next_host_actor_id"
+        case nextHostName = "next_host_name"
+        case nextStartsAt = "next_starts_at"
         case alreadyClosed = "already_closed"
     }
 
@@ -359,15 +383,65 @@ public struct CloseEventResult: Decodable, Sendable, Equatable {
         self.noShows = try c.decodeIfPresent(Int.self, forKey: .noShows)
         self.nextEventId = try c.decodeIfPresent(UUID.self, forKey: .nextEventId)
         self.nextHostActorId = try c.decodeIfPresent(UUID.self, forKey: .nextHostActorId)
+        self.nextHostName = try c.decodeIfPresent(String.self, forKey: .nextHostName)
+        self.nextStartsAt = try c.decodeIfPresent(Date.self, forKey: .nextStartsAt)
         self.alreadyClosed = try c.decodeIfPresent(Bool.self, forKey: .alreadyClosed) ?? false
     }
 
-    public init(eventId: UUID, status: String = "completed", noShows: Int? = nil, nextEventId: UUID? = nil, nextHostActorId: UUID? = nil, alreadyClosed: Bool = false) {
+    public init(
+        eventId: UUID,
+        status: String = "completed",
+        noShows: Int? = nil,
+        nextEventId: UUID? = nil,
+        nextHostActorId: UUID? = nil,
+        nextHostName: String? = nil,
+        nextStartsAt: Date? = nil,
+        alreadyClosed: Bool = false
+    ) {
         self.eventId = eventId
         self.status = status
         self.noShows = noShows
         self.nextEventId = nextEventId
         self.nextHostActorId = nextHostActorId
+        self.nextHostName = nextHostName
+        self.nextStartsAt = nextStartsAt
         self.alreadyClosed = alreadyClosed
     }
+}
+
+/// F.EVENT.8 — preview canónico del próximo anfitrión.
+/// Si `source == "override"` el admin lo fijó manualmente; si
+/// `source == "rotation"` salió de la rotación natural (weekly rota,
+/// daily/monthly/yearly mantienen). Para eventos no recurrentes los 3
+/// campos son nil.
+public struct NextHostPreview: Decodable, Sendable, Equatable {
+    public let nextActorId: UUID?
+    public let nextActorName: String?
+    public let source: String?
+    public let reason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case nextActorId = "next_actor_id"
+        case nextActorName = "next_actor_name"
+        case source
+        case reason
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.nextActorId = try c.decodeIfPresent(UUID.self, forKey: .nextActorId)
+        self.nextActorName = try c.decodeIfPresent(String.self, forKey: .nextActorName)
+        self.source = try c.decodeIfPresent(String.self, forKey: .source)
+        self.reason = try c.decodeIfPresent(String.self, forKey: .reason)
+    }
+
+    public init(nextActorId: UUID? = nil, nextActorName: String? = nil, source: String? = nil, reason: String? = nil) {
+        self.nextActorId = nextActorId
+        self.nextActorName = nextActorName
+        self.source = source
+        self.reason = reason
+    }
+
+    public var isOverride: Bool { source == "override" }
+    public var hasNext: Bool { nextActorId != nil }
 }
