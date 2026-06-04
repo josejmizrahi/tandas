@@ -71,6 +71,9 @@ public final class EventDetailStore {
     public private(set) var participants: [EventParticipant] = []
     public private(set) var members: [ContextMember] = []
     public private(set) var myPermissions: [String] = []
+    /// F.2X.4 — Acciones canónicas del evento desde `event_detail.available_actions`.
+    /// La vista renderiza la sección "⚡ Acciones rápidas" exclusivamente desde aquí.
+    public private(set) var availableActions: [AvailableAction] = []
     public private(set) var phase: StorePhase = .idle
     /// Resultado del último check-in (para mostrar "llegaste tarde → multa").
     public private(set) var lastCheckIn: CheckInResult?
@@ -92,12 +95,15 @@ public final class EventDetailStore {
     public func load(eventId: UUID, context: AppContext) async {
         if event == nil { phase = .loading }
         do {
-            async let eventTask = rpc.getEvent(eventId: eventId)
-            async let participantsTask = rpc.listEventParticipants(eventId: eventId)
+            // F.2X.4 — event_detail consolida event + participants + available_actions.
+            // Sigue necesitando context_summary para members + my_permissions porque
+            // event_detail no los incluye (members vive en el contexto).
+            async let detailTask = rpc.eventDetail(eventId: eventId)
             async let summaryTask = rpc.contextSummary(contextId: context.id)
-            let (loadedEvent, loadedParticipants, summary) = try await (eventTask, participantsTask, summaryTask)
-            event = loadedEvent
-            participants = loadedParticipants
+            let (detail, summary) = try await (detailTask, summaryTask)
+            event = detail.event
+            participants = detail.participants
+            availableActions = detail.availableActions
             members = summary.members
             myPermissions = summary.myPermissions
             phase = .loaded

@@ -16,6 +16,10 @@ public struct EventDetailView: View {
     @State private var checkInNotice: String?
     @State private var isConfirmingCancel = false
     @State private var isConfirmingClose = false
+    /// F.2X.4 — Quick Actions intent-first del evento.
+    @State private var quickActionsRouter = NoopActionRouter()
+    @State private var pushedMoney = false
+    @State private var pushedDecisions = false
 
     public init(eventId: UUID, context: AppContext, container: DependencyContainer) {
         self.eventId = eventId
@@ -61,6 +65,38 @@ public struct EventDetailView: View {
         } message: {
             Text(checkInNotice ?? "")
         }
+        // F.2X.4 — Quick Actions intent-first del evento.
+        .onChange(of: quickActionsRouter.lastOpened) { _, destination in
+            guard let destination else { return }
+            handleEventAction(destination)
+            quickActionsRouter.lastOpened = nil
+        }
+        .navigationDestination(isPresented: $pushedMoney) {
+            MoneyHomeView(context: context, container: container)
+        }
+        .navigationDestination(isPresented: $pushedDecisions) {
+            DecisionsListView(context: context, container: container)
+        }
+    }
+
+    /// F.2X.4 — Mapea `action_key` de evento a acción local. Las acciones de
+    /// participación (rsvp/check_in/cancel/close) ya tienen UI propia en las
+    /// secciones rsvpSection/hostSection — el Quick Action sólo dispara los
+    /// confirmation dialogs o el self check-in.
+    private func handleEventAction(_ destination: ActionDestination) {
+        switch destination.actionKey {
+        case "check_in_participant": Task { await selfCheckIn() }
+        case "cancel_participation": isConfirmingCancel = true
+        case "close_event":          isConfirmingClose = true
+        case "record_expense":       pushedMoney = true
+        case "create_decision":      pushedDecisions = true
+        case "rsvp_event", "attach_document":
+            // rsvp_event: las cápsulas de la sección rsvpSection son la UI canónica.
+            // attach_document: aún no hay sheet específico para evento; F.2X.5 puede sumarlo.
+            break
+        default:
+            break
+        }
     }
 
     // MARK: - Contenido
@@ -69,6 +105,13 @@ public struct EventDetailView: View {
     private func detailList(_ event: CalendarEvent) -> some View {
         List {
             headerSection(event)
+
+            // F.2X.4 — Acciones intent-first verbatim del backend (event_detail).
+            QuickActionsSection(
+                actions: store.availableActions,
+                scope: .event(eventId),
+                router: quickActionsRouter
+            )
 
             if event.isScheduled {
                 rsvpSection(event)

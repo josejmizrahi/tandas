@@ -143,6 +143,52 @@ public struct EventCreated: Decodable, Sendable, Equatable {
     }
 }
 
+/// F.2X.0 — Detalle canónico de un evento (`event_detail(p_event_id)`).
+/// Mismo shape que `resource_detail` / `decision_detail` / `reservation_detail`
+/// / `obligation_detail`: event + participants[] + available_actions[] +
+/// capabilities[] + why_visible[].
+public struct EventDetail: Decodable, Sendable, Equatable {
+    public let event: CalendarEvent
+    public let participants: [EventParticipant]
+    public let availableActions: [AvailableAction]
+    public let capabilities: [String]
+    public let whyVisible: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case event
+        case participants
+        case availableActions = "available_actions"
+        case capabilities
+        case whyVisible = "why_visible"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.event = try c.decode(CalendarEvent.self, forKey: .event)
+        self.participants = try c.decodeIfPresent([EventParticipant].self, forKey: .participants) ?? []
+        self.availableActions = try c.decodeIfPresent([AvailableAction].self, forKey: .availableActions) ?? []
+        self.capabilities = try c.decodeIfPresent([String].self, forKey: .capabilities) ?? []
+        self.whyVisible = try c.decodeIfPresent([String].self, forKey: .whyVisible) ?? []
+    }
+
+    public init(
+        event: CalendarEvent,
+        participants: [EventParticipant] = [],
+        availableActions: [AvailableAction] = [],
+        capabilities: [String] = [],
+        whyVisible: [String] = []
+    ) {
+        self.event = event
+        self.participants = participants
+        self.availableActions = availableActions
+        self.capabilities = capabilities
+        self.whyVisible = whyVisible
+    }
+
+    public func can(_ actionKey: String) -> Bool { availableActions.can(actionKey) }
+    public func action(_ actionKey: String) -> AvailableAction? { availableActions.enabled(actionKey) }
+}
+
 // MARK: - Participantes (fila de `event_participants`)
 
 public struct EventParticipant: Codable, Sendable, Equatable, Identifiable {

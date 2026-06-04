@@ -133,6 +133,10 @@ public protocol RuulRPCClient: Sendable {
     func getEvent(eventId: UUID) async throws -> CalendarEvent
     /// Lectura PostgREST: `event_participants` del evento.
     func listEventParticipants(eventId: UUID) async throws -> [EventParticipant]
+    /// `event_detail(p_event_id)` — F.2X.0 wrapper canónico.
+    /// Devuelve event + participants[] + available_actions[] + capabilities[]
+    /// + why_visible[]. Misma forma que resource/decision/reservation/obligation.
+    func eventDetail(eventId: UUID) async throws -> EventDetail
     /// `rsvp_event(p_event_id, p_status)`
     func rsvpEvent(eventId: UUID, status: RSVPStatus) async throws
     /// `check_in_participant(p_event_id, p_participant_actor_id?)`

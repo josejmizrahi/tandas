@@ -1389,6 +1389,83 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return participants[eventId] ?? []
     }
 
+    public func eventDetail(eventId: UUID) async throws -> EventDetail {
+        try throwIfNeeded()
+        guard let event = events[eventId] else {
+            throw RuulError.unexpected(message: "Evento no encontrado")
+        }
+        let eventParticipants = participants[eventId] ?? []
+        let myPerms = Set(permissions[event.contextActorId] ?? [])
+        let myParticipation = eventParticipants.first { $0.participantActorId == me.id }
+        let isHost = event.hostActorId == me.id
+        let isActive = event.status == "scheduled" || event.status == "in_progress"
+        let isTerminal = event.status == "completed" || event.status == "cancelled"
+        let isMember = (memberships[event.contextActorId] ?? []).contains(where: { $0.actorId == me.id })
+
+        var actions: [AvailableAction] = []
+        func add(_ key: String, _ label: String, _ section: String, _ enabled: Bool, _ reason: String) {
+            actions.append(AvailableAction(
+                actionKey: key, label: label, section: section,
+                enabled: enabled, reason: reason
+            ))
+        }
+
+        if isActive && (myParticipation == nil
+                        || ["invited", "going", "maybe", "declined"].contains(myParticipation?.status ?? "")) {
+            add("rsvp_event", "Responder asistencia", "participation", true,
+                myParticipation == nil ? "Puedes responder asistencia" : "Puedes cambiar tu respuesta")
+        }
+        if isActive, let p = myParticipation,
+           p.checkedInAt == nil, !["cancelled", "declined"].contains(p.status) {
+            add("check_in_participant", "Marcar mi llegada", "participation", true,
+                "Puedes registrar tu propia llegada al evento")
+        }
+        if isActive, let p = myParticipation, ["invited", "going", "maybe"].contains(p.status) {
+            add("cancel_participation", "Cancelar mi asistencia", "participation", true,
+                "Puedes cancelar tu participación")
+        }
+        if isActive {
+            let canClose = isHost || myPerms.contains("events.manage")
+            add("close_event", "Cerrar evento", "participation", canClose,
+                isHost ? "Eres el anfitrión del evento"
+                : (canClose ? "Tienes permiso para administrar eventos"
+                   : "Solo el anfitrión o un administrador pueden cerrar el evento"))
+        }
+        if event.status != "cancelled" {
+            let granted = myPerms.contains("money.record")
+            add("record_expense", "Registrar gasto", "money", granted,
+                granted ? "Puedes registrar un gasto asociado al evento"
+                : "Requiere permiso money.record")
+        }
+        if !isTerminal {
+            let granted = myPerms.contains("decisions.create")
+            add("create_decision", "Abrir decisión", "decisions", granted,
+                granted ? "Puedes abrir una decisión vinculada al evento"
+                : "Requiere permiso decisions.create")
+        }
+        add("attach_document", "Adjuntar documento", "documents", true,
+            "Puedes adjuntar un documento al evento")
+
+        let whyVisible: String
+        if isHost { whyVisible = "host del evento" }
+        else if myParticipation != nil { whyVisible = "participante del evento" }
+        else { whyVisible = "miembro del contexto" }
+
+        // Si el caller ni siquiera es miembro del contexto, el backend lanzaría
+        // 42501. Aquí mantenemos paridad para tests / smokes.
+        if !isMember && !isHost {
+            throw RuulError.backend(.notAMember)
+        }
+
+        return EventDetail(
+            event: event,
+            participants: eventParticipants,
+            availableActions: actions,
+            capabilities: [],
+            whyVisible: [whyVisible]
+        )
+    }
+
     public func rsvpEvent(eventId: UUID, status: RSVPStatus) async throws {
         try throwIfNeeded()
         updateParticipant(eventId: eventId, actorId: me.id) { participant in

@@ -704,6 +704,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func eventDetail(eventId: UUID) async throws -> EventDetail {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            enum CodingKeys: String, CodingKey { case pEventId = "p_event_id" }
+        }
+        return try await call("event_detail", params: Params(pEventId: eventId))
+    }
+
     public func rsvpEvent(eventId: UUID, status: RSVPStatus) async throws {
         struct Params: Encodable, Sendable {
             let pEventId: UUID
