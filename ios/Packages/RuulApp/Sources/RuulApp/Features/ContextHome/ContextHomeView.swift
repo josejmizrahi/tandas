@@ -92,6 +92,10 @@ public struct ContextHomeView: View {
             }
         }
         .task(id: context.id) {
+            // F.CONTEXT.4 fix — al navegar a un subcontexto vía push, sincroniza
+            // contextStore + recents para que el switcher/Home reflejen el actual.
+            container.contextStore.switchTo(context)
+            await container.contextPreferencesStore.recordVisit(context.id)
             await store.load(context: context)
             await loadActionObligations()
             await container.attentionInboxStore.load()
@@ -327,7 +331,7 @@ public struct ContextHomeView: View {
                 Spacer()
             }
             .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         } else {
             Button {
                 if items.count == 1 {
@@ -380,7 +384,7 @@ public struct ContextHomeView: View {
                     }
                     .padding(16)
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
             .buttonStyle(.plain)
         }
@@ -524,12 +528,12 @@ public struct ContextHomeView: View {
                     ForEach(Array(items.enumerated()), id: \.offset) { idx, activity in
                         activityRow(activity)
                         if idx < items.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -595,7 +599,7 @@ public struct ContextHomeView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                    .background(Theme.Surface.card, in: Theme.cardShape())
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
@@ -621,7 +625,7 @@ public struct ContextHomeView: View {
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.orange)
                     .frame(width: 36, height: 36)
-                    .background(Color.orange.opacity(0.15), in: Circle())
+                    .background(Color.orange.badgeFill, in: Circle())
                 Spacer(minLength: 0)
                 Text(resource.displayName)
                     .font(.callout.weight(.semibold))
@@ -636,10 +640,10 @@ public struct ContextHomeView: View {
                 }
             }
             .frame(width: 140, height: 140, alignment: .topLeading)
-            .padding(12)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .padding(Theme.Spacing.md)
+            .background(Theme.Surface.card, in: Theme.cardShape())
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                Theme.cardShape()
                     .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
             )
         }
@@ -670,7 +674,7 @@ public struct ContextHomeView: View {
                     ForEach(Array(visible.enumerated()), id: \.element.id) { idx, member in
                         ActorInitialsView(name: member.displayName, size: 32)
                             .overlay(
-                                Circle().strokeBorder(Color(uiColor: .secondarySystemGroupedBackground), lineWidth: 2)
+                                Circle().strokeBorder(Theme.Surface.card, lineWidth: 2)
                             )
                             .zIndex(Double(visible.count - idx))
                     }
@@ -681,7 +685,7 @@ public struct ContextHomeView: View {
                             .frame(width: 32, height: 32)
                             .background(Color(uiColor: .tertiarySystemGroupedBackground), in: Circle())
                             .overlay(
-                                Circle().strokeBorder(Color(uiColor: .secondarySystemGroupedBackground), lineWidth: 2)
+                                Circle().strokeBorder(Theme.Surface.card, lineWidth: 2)
                             )
                     }
                 }
@@ -691,7 +695,7 @@ public struct ContextHomeView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
         .buttonStyle(.plain)
     }
@@ -711,11 +715,11 @@ public struct ContextHomeView: View {
                     ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
                         upcomingRowDestination(item)
                         if idx < items.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -912,7 +916,7 @@ public struct ContextHomeView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
         .buttonStyle(.plain)
     }
@@ -960,37 +964,49 @@ public struct ContextHomeView: View {
 
     @ViewBuilder
     private func childCarouselCard(_ child: ContextHierarchyNode) -> some View {
-        Button {
-            if let target = container.contextStore.availableContexts.first(where: { $0.id == child.id }) {
-                container.contextStore.switchTo(target)
+        // F.CONTEXT.4 fix — push real al subcontexto vía NavigationLink(value:).
+        // ContextsListView registra `.navigationDestination(for: AppContext.self)`
+        // que renderiza ContextHomeContainer; switchTo + recordVisit corren en
+        // el `.task(id: context.id)` del child al montarse.
+        if let target = container.contextStore.availableContexts.first(where: { $0.id == child.id }) {
+            NavigationLink(value: target) {
+                childCarouselCardLabel(child)
             }
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Image(systemName: child.appContext.symbolName)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.tint)
-                    .frame(width: 36, height: 36)
-                    .background(Color.accentColor.opacity(0.15), in: Circle())
-                Spacer(minLength: 0)
-                Text(child.name)
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Text(subtypeLabel(child.actorSubtype))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            .frame(width: 140, height: 140, alignment: .topLeading)
-            .padding(12)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
-            )
+            .buttonStyle(.plain)
+        } else {
+            // El backend lista el child pero el contextStore no lo tiene aún
+            // (raro: caller no es miembro del child). Render disabled.
+            childCarouselCardLabel(child)
+                .opacity(0.5)
         }
-        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func childCarouselCardLabel(_ child: ContextHierarchyNode) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: child.appContext.symbolName)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 36, height: 36)
+                .background(Color.accentColor.opacity(0.15), in: Circle())
+            Spacer(minLength: 0)
+            Text(child.name)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            Text(subtypeLabel(child.actorSubtype))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(width: 140, height: 140, alignment: .topLeading)
+        .padding(12)
+        .background(Theme.Surface.card, in: Theme.cardShape())
+        .overlay(
+            Theme.cardShape()
+                .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
+        )
     }
 
     private func subtypeLabel(_ subtype: String) -> String {
@@ -1038,7 +1054,7 @@ public struct ContextHomeView: View {
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
                 Text("Ruul detecta contextos parecidos por nombre, miembros y recursos. \"Ignorar\" oculta la sugerencia.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -1174,11 +1190,11 @@ public struct ContextHomeView: View {
                         }
                         .buttonStyle(.plain)
                         if idx < min(5, actionObligations.count) - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -1188,7 +1204,7 @@ public struct ContextHomeView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.indigo.opacity(0.15))
+                    .fill(Color.indigo.badgeFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: actionKindSymbol(obligation.obligationKind))
                     .font(.callout)
@@ -1249,11 +1265,11 @@ public struct ContextHomeView: View {
                     ForEach(Array(summary.activeRules.prefix(5).enumerated()), id: \.element.id) { idx, rule in
                         ruleRow(rule)
                         if idx < min(5, summary.activeRules.count) - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -1263,7 +1279,7 @@ public struct ContextHomeView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.indigo.opacity(0.15))
+                    .fill(Color.indigo.badgeFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: "scroll.fill")
                     .font(.callout)
@@ -1302,7 +1318,7 @@ public struct ContextHomeView: View {
                 Spacer()
             }
             .padding(16)
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Hoy")
@@ -1337,11 +1353,11 @@ public struct ContextHomeView: View {
                         .buttonStyle(.plain)
                         .disabled(signal.cta == nil)
                         if idx < signals.count - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
-                .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+                .background(Theme.Surface.card, in: Theme.cardShape())
             }
         }
     }
@@ -1487,12 +1503,12 @@ public struct ContextHomeView: View {
                         }
                         .buttonStyle(.plain)
                         if idx < min(5, world.resources.count) - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
@@ -1501,7 +1517,7 @@ public struct ContextHomeView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.orange.opacity(0.15))
+                    .fill(Color.orange.badgeFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: (ResourceType(rawValue: resource.resourceType) ?? .other).symbolName)
                     .font(.callout)
@@ -1581,12 +1597,12 @@ public struct ContextHomeView: View {
                     ForEach(Array(world.openObligations.prefix(5).enumerated()), id: \.element.id) { idx, obligation in
                         personalObligationRow(obligation)
                         if idx < min(5, world.openObligations.count) - 1 {
-                            Divider().padding(.leading, 56)
+                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
                         }
                     }
                 }
             }
-            .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.Surface.card, in: Theme.cardShape())
             if !world.openObligations.isEmpty {
                 Text("Se liquidan desde el contexto donde nacieron (Dinero → Liquidar).")
                     .font(.caption2)
