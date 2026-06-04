@@ -12,6 +12,7 @@ public struct MainTabShell: View {
     let container: DependencyContainer
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .home
+    @State private var previousTab: AppTab = .home
     @State private var isShowingCreateSheet = false
     @State private var isShowingJoinByCode = false
     @State private var prefilledInviteCode: String?
@@ -40,7 +41,10 @@ public struct MainTabShell: View {
             }
 
             Tab("Crear", systemImage: "plus.circle.fill", value: AppTab.create, role: nil) {
-                CreateTabPlaceholderView(isShowingCreateSheet: $isShowingCreateSheet)
+                // F.NAV.5 — el tab Crear no tiene contenido propio. Al
+                // seleccionarlo abrimos la sheet intent-first y volvemos al
+                // tab anterior (patrón Twitter/Instagram).
+                Color.clear
             }
 
             Tab("Actividad", systemImage: "bell.fill", value: AppTab.activity) {
@@ -55,7 +59,18 @@ public struct MainTabShell: View {
             }
         }
         .sheet(isPresented: $isShowingCreateSheet) {
-            CreateIntentSheet()
+            CreateIntentSheet(container: container)
+        }
+        // F.NAV.5 — auto-bounce: tap al tab Crear dispara la sheet y vuelve
+        // al tab previo. Si el usuario re-tapea Crear estando ya allí, la
+        // sheet vuelve a aparecer.
+        .onChange(of: selectedTab) { oldTab, newTab in
+            if newTab == .create {
+                isShowingCreateSheet = true
+                selectedTab = oldTab == .create ? previousTab : oldTab
+            } else {
+                previousTab = newTab
+            }
         }
         .sheet(isPresented: $isShowingJoinByCode, onDismiss: { prefilledInviteCode = nil }) {
             JoinByCodeView(container: container, prefilledCode: prefilledInviteCode)
@@ -85,67 +100,6 @@ public enum AppTab: Hashable {
 }
 
 // MARK: - Stubs F.NAV.1
-
-/// F.NAV.5 reemplaza este placeholder con la sheet intent-first real
-/// ("¿Qué quieres hacer?"). El tab Crear no tiene contenido propio — sólo
-/// abre la sheet al seleccionarse.
-private struct CreateTabPlaceholderView: View {
-    @Binding var isShowingCreateSheet: Bool
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.tint)
-                Text("Crear")
-                    .font(.title2.weight(.semibold))
-                Text("F.NAV.5 abrirá la sheet intent-first desde aquí.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                Button("Abrir sheet") {
-                    isShowingCreateSheet = true
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.top, 8)
-            }
-            .padding()
-            .navigationTitle("Crear")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-}
-
-/// F.NAV.5 stub de la sheet "¿Qué quieres hacer?".
-private struct CreateIntentSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Label("Programar algo", systemImage: "calendar.badge.plus")
-                    Label("Registrar movimiento", systemImage: "dollarsign.circle.fill")
-                    Label("Crear propuesta", systemImage: "checkmark.bubble.fill")
-                    Label("Subir documento", systemImage: "paperclip")
-                    Label("Crear contexto", systemImage: "rectangle.split.2x1.fill")
-                } header: {
-                    Text("¿Qué quieres hacer?")
-                } footer: {
-                    Text("F.NAV.5 wirea cada intención al flow correspondiente.")
-                }
-            }
-            .navigationTitle("Crear")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cerrar") { dismiss() }
-                }
-            }
-        }
-    }
-}
 
 /// F.NAV.6 reemplaza con la pantalla de perfil consolidada
 /// (mi actividad / mis contextos / mis recursos / mis suscripciones / mi red
