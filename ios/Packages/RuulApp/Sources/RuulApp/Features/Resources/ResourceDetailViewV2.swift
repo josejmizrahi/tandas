@@ -19,11 +19,20 @@ public struct ResourceDetailViewV2: View {
     let container: DependencyContainer
 
     @State private var store: ResourceDescriptorStore
+    /// R.5A.F.2 — action seleccionada para presentar `ResourceActionFormView`.
+    @State private var pendingAction: PendingAction?
 
     public init(resourceId: UUID, container: DependencyContainer) {
         self.resourceId = resourceId
         self.container = container
         _store = State(initialValue: ResourceDescriptorStore(rpc: container.rpc))
+    }
+
+    /// Wrapper Identifiable para `.sheet(item:)`.
+    private struct PendingAction: Identifiable {
+        let action: ResourceDescriptorAction
+        let form: ResourceActionForm?
+        var id: String { action.actionKey }
     }
 
     public var body: some View {
@@ -59,6 +68,16 @@ public struct ResourceDetailViewV2: View {
         }
         .refreshable {
             await store.load(resourceId: resourceId)
+        }
+        .sheet(item: $pendingAction) { entry in
+            ResourceActionFormView(
+                resourceId: resourceId,
+                action: entry.action,
+                actionForm: entry.form,
+                container: container
+            ) { _ in
+                Task { await store.refreshActions(resourceId: resourceId) }
+            }
         }
     }
 
@@ -234,7 +253,14 @@ public struct ResourceDetailViewV2: View {
                             .textCase(.uppercase)
                         VStack(spacing: 0) {
                             ForEach(actions.enumerated().map { ($0, $1) }, id: \.1.id) { idx, action in
-                                actionRow(action)
+                                Button {
+                                    guard action.enabled else { return }
+                                    pendingAction = PendingAction(action: action, form: descriptorForm(for: action))
+                                } label: {
+                                    actionRow(action)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!action.enabled)
                                 if idx < actions.count - 1 { Divider().padding(.leading, 56) }
                             }
                         }
@@ -243,6 +269,11 @@ public struct ResourceDetailViewV2: View {
                 }
             }
         }
+    }
+
+    /// Lookup del form correspondiente en `descriptor.action_forms`.
+    private func descriptorForm(for action: ResourceDescriptorAction) -> ResourceActionForm? {
+        store.descriptor?.form(for: action.actionKey)
     }
 
     @ViewBuilder

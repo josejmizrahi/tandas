@@ -631,6 +631,7 @@ Cada slice debe ser rollback-safe vía migration descendiente. Política:
 | **B.H** (post review) | ✅ founder review hardening (items 4/5/6 — 1/2/3/7 already in spec) + B.5b smoke updated | `20260605221742` + smoke fix `20260605221841` | 2026-06-05 |
 | F.0 | ✅ Domain models (ResourceDetailDescriptor + ContextDetailDescriptor + 4 RPCs wire) + build verde 28s | iOS only (no migrations) | 2026-06-05 |
 | F.1 | ✅ ResourceDescriptorStore + ResourceDetailViewV2 (read-only descriptor render) + beta toggle en v1 Menu | iOS only — build verde 18s | 2026-06-05 |
+| F.2 | ✅ ResourceActionFormSchema + ResourceActionFormView runtime (11 field types + confirmation + execute_resource_action wire) | iOS only — build verde 21s | 2026-06-05 |
 | F.1 | ⬜ pendiente | — | — |
 | F.2 | ⬜ pendiente | — | — |
 | F.3 | ⬜ pendiente | — | — |
