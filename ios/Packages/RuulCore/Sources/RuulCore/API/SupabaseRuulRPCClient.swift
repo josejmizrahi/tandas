@@ -160,6 +160,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await call("context_summary", params: ContextIdParams(contextId: contextId))
     }
 
+    public func contextDetailDescriptor(contextId: UUID) async throws -> ContextDetailDescriptor {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            enum CodingKeys: String, CodingKey { case pContextActorId = "p_context_actor_id" }
+        }
+        return try await call("context_detail_descriptor", params: Params(pContextActorId: contextId))
+    }
+
     public func myWorld() async throws -> MyWorld {
         try await call("my_world")
     }
@@ -516,6 +524,48 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
         }
         return try await call("resource_detail", params: Params(pResourceId: resourceId))
+    }
+
+    public func resourceDetailDescriptor(resourceId: UUID) async throws -> ResourceDetailDescriptor {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
+        }
+        return try await call("resource_detail_descriptor", params: Params(pResourceId: resourceId))
+    }
+
+    public func listResourceActions(resourceId: UUID) async throws -> [ResourceDescriptorAction] {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
+        }
+        return try await call("list_resource_actions", params: Params(pResourceId: resourceId))
+    }
+
+    public func executeResourceAction(
+        resourceId: UUID,
+        actionKey: String,
+        payload: JSONValue,
+        clientId: UUID?
+    ) async throws -> ExecuteResourceActionResult {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            let pActionKey: String
+            let pPayload: JSONValue
+            let pClientId: UUID?
+            enum CodingKeys: String, CodingKey {
+                case pResourceId = "p_resource_id"
+                case pActionKey = "p_action_key"
+                case pPayload = "p_payload"
+                case pClientId = "p_client_id"
+            }
+        }
+        return try await call("execute_resource_action", params: Params(
+            pResourceId: resourceId,
+            pActionKey: actionKey,
+            pPayload: payload,
+            pClientId: clientId
+        ))
     }
 
     public func grantRight(_ input: GrantRightInput) async throws -> UUID {

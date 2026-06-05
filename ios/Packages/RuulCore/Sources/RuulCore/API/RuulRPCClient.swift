@@ -40,6 +40,10 @@ public protocol RuulRPCClient: Sendable {
     func contextCandidates() async throws -> ContextCandidates
     /// `context_summary(p_context_actor_id)`
     func contextSummary(contextId: UUID) async throws -> ContextSummary
+    /// `context_detail_descriptor(p_context_actor_id)` — R.5A.B.7. Descriptor
+    /// consolidado (context+membership+my_permissions+roles+sections+widgets+
+    /// actions+metrics+8 previews). ContextDetailView v2 (tabs).
+    func contextDetailDescriptor(contextId: UUID) async throws -> ContextDetailDescriptor
     /// `my_world()`
     func myWorld() async throws -> MyWorld
     /// `create_context(...)`
@@ -110,6 +114,22 @@ public protocol RuulRPCClient: Sendable {
     func listContextResources(contextId: UUID) async throws -> [ContextResource]
     /// `resource_detail(p_resource_id)`
     func resourceDetail(resourceId: UUID) async throws -> ResourceDetail
+    /// `resource_detail_descriptor(p_resource_id)` — R.5A.B.6. Descriptor consolidado
+    /// (class+subtype+effective_capabilities+rights+sections+widgets+actions+action_forms+
+    /// state+metrics+relations+linked_documents+activity_preview). ResourceDetailView v2.
+    func resourceDetailDescriptor(resourceId: UUID) async throws -> ResourceDetailDescriptor
+    /// `list_resource_actions(p_resource_id)` — R.5A.B.8. Subset standalone del
+    /// descriptor.actions[] para refresh barato post-execute.
+    func listResourceActions(resourceId: UUID) async throws -> [ResourceDescriptorAction]
+    /// `execute_resource_action(p_resource_id, p_action_key, p_payload, p_client_id?)`
+    /// — R.5A.B.8. Dispatcher canónico: gate via available_actions, branch
+    /// execute vs request_decision, delegate a RPC vivo, emit activity_event.
+    func executeResourceAction(
+        resourceId: UUID,
+        actionKey: String,
+        payload: JSONValue,
+        clientId: UUID?
+    ) async throws -> ExecuteResourceActionResult
     /// `grant_right(...)` → right id
     func grantRight(_ input: GrantRightInput) async throws -> UUID
     /// `revoke_right(p_right_id)`

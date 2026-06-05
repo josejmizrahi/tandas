@@ -36,6 +36,9 @@ public struct ResourceDetailView: View {
     @State private var isShowingAccessInfo = false
     /// F.RESOURCE.3 — sheet de edición de campos generales (no Settings).
     @State private var isShowingEdit = false
+    /// R.5A.F.1 — beta toggle para ver el nuevo ResourceDetailView v2 backed
+    /// by `resource_detail_descriptor`. Mantener v1 hasta paridad founder.
+    @State private var isShowingV2Preview = false
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -88,6 +91,16 @@ public struct ResourceDetailView: View {
         }
         .sheet(isPresented: $isShowingSettings) {
             ResourceSettingsView(resourceId: resourceId, container: container)
+        }
+        .sheet(isPresented: $isShowingV2Preview) {
+            NavigationStack {
+                ResourceDetailViewV2(resourceId: resourceId, container: container)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cerrar") { isShowingV2Preview = false }
+                        }
+                    }
+            }
         }
         .sheet(isPresented: $isShowingGrantRight) {
             if let detail = store.detail {
@@ -494,6 +507,14 @@ public struct ResourceDetailView: View {
                                     Label(item.label, systemImage: item.symbol)
                                 }
                             }
+                        }
+                    }
+                    // R.5A.F.1 beta — vista descriptor-driven (read-only)
+                    Section("Beta") {
+                        Button {
+                            isShowingV2Preview = true
+                        } label: {
+                            Label("Vista R.5A (descriptor)", systemImage: "sparkles")
                         }
                     }
                 } label: {

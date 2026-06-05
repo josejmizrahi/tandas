@@ -592,6 +592,44 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return actions
     }
 
+    public func contextDetailDescriptor(contextId: UUID) async throws -> ContextDetailDescriptor {
+        try throwIfNeeded()
+        let summary = try await contextSummary(contextId: contextId)
+        let actorRow: JSONValue = .object([
+            "id": .string(contextId.uuidString),
+            "is_context": .bool(true),
+            "actor_subtype": .string(summary.context.actorSubtype),
+            "display_name": .string(summary.context.displayName),
+            "actor_kind": .string(summary.context.actorKind.rawValue)
+        ])
+        let membershipRow: JSONValue = .object([
+            "my_permissions": .array(summary.myPermissions.map { .string($0) })
+        ])
+        return ContextDetailDescriptor(
+            context: actorRow,
+            membership: membershipRow,
+            roles: [],
+            permissions: summary.myPermissions,
+            sections: [],
+            widgets: [],
+            actions: [],
+            metrics: ContextMetrics(
+                memberCount: summary.membersCount,
+                resourceCountByClass: [:],
+                pendingDecisions: summary.pendingDecisions,
+                openObligations: summary.openObligationsCount
+            ),
+            membersPreview: [],
+            resourcesPreview: [],
+            eventsPreview: [],
+            moneyPreview: ContextMoneyPreview(),
+            obligationsPreview: [],
+            decisionsPreview: [],
+            documentsPreview: [],
+            activityPreview: []
+        )
+    }
+
     public func myWorld() async throws -> MyWorld {
         try throwIfNeeded()
         let myContexts = memberships.compactMap { contextId, members -> MyWorldContext? in
@@ -1118,6 +1156,105 @@ public actor MockRuulRPCClient: RuulRPCClient {
             availableActions: actions,
             whyVisible: whyVisible(on: resourceId, rights: resourceRights)
         )
+    }
+
+    // MARK: R.5A.B.6 / B.7 / B.8 — Descriptors + Action Dispatcher
+
+    public func resourceDetailDescriptor(resourceId: UUID) async throws -> ResourceDetailDescriptor {
+        try throwIfNeeded()
+        guard let resource = resources[resourceId] else {
+            throw RuulError.unexpected(message: "Recurso no encontrado")
+        }
+        let resourceRights = rights[resourceId] ?? []
+        let caps = Self.capabilities(for: resource.resourceType)
+        let effective = effectiveRights(on: resourceId, rights: resourceRights)
+        let availableLegacy = Self.actionCatalog
+            .filter { action in
+                (action.capability == nil || caps.contains(action.capability!))
+                    && (action.rights.isEmpty || !action.rights.isDisjoint(with: effective))
+            }
+            .map { def in
+                ResourceDescriptorAction(
+                    actionKey: def.key,
+                    label: def.label,
+                    section: def.section,
+                    enabled: true,
+                    requiredRights: Array(def.rights),
+                    requiredCapabilities: def.capability.map { [$0] } ?? [],
+                    mode: "execute",
+                    formSchemaPresent: false
+                )
+            }
+        // Class/subtype derivado del resource_type legacy (mismo mapping que B.1)
+        let (classKey, subtypeKey) = Self.classSubtypeFor(resource.resourceType)
+        return ResourceDetailDescriptor(
+            resource: resource,
+            class: ResourceClassRef(classKey: classKey, displayName: classKey.capitalized),
+            subtype: ResourceSubtypeRef(subtypeKey: subtypeKey, classKey: classKey, displayName: subtypeKey.replacingOccurrences(of: "_", with: " ").capitalized),
+            effectiveCapabilities: caps,
+            rights: resourceRights,
+            sections: [],
+            widgets: [],
+            actions: availableLegacy,
+            actionForms: [:],
+            state: ResourceDescriptorState(status: resource.status),
+            metrics: ResourceMetrics(estimatedValue: resource.estimatedValue, currency: resource.currency),
+            relations: ResourceRelationsBundle(resourceId: resourceId)
+        )
+    }
+
+    public func listResourceActions(resourceId: UUID) async throws -> [ResourceDescriptorAction] {
+        let descriptor = try await resourceDetailDescriptor(resourceId: resourceId)
+        return descriptor.actions
+    }
+
+    public func executeResourceAction(
+        resourceId: UUID,
+        actionKey: String,
+        payload: JSONValue,
+        clientId: UUID?
+    ) async throws -> ExecuteResourceActionResult {
+        try throwIfNeeded()
+        guard resources[resourceId] != nil else {
+            throw RuulError.unexpected(message: "Recurso no encontrado")
+        }
+        // Mock no ejecuta efectos secundarios; round-trip a JSON para construir
+        // el shape canónico decodificable.
+        let isRequestDecision = (actionKey == "transfer_ownership" || actionKey == "request_transfer")
+        let wire: JSONValue = .object([
+            "action_key": .string(actionKey),
+            "mode": .string(isRequestDecision ? "request_decision" : "execute"),
+            "delegated_to_rpc": .string(isRequestDecision ? "create_decision" : actionKey),
+            "result": .object([:]),
+            "decision_id": .null,
+            "activity_event_id": .null,
+            "idempotent_hit": .bool(false)
+        ])
+        let data = try JSONEncoder().encode(wire)
+        return try JSONDecoder().decode(ExecuteResourceActionResult.self, from: data)
+    }
+
+    /// Mapping idéntico al de R.5A.B.1 (`_r5a_b1_class_for` / `_subtype_for`).
+    static func classSubtypeFor(_ resourceType: String) -> (classKey: String, subtypeKey: String) {
+        switch resourceType {
+        case "house": return ("real_estate", "primary_residence")
+        case "property": return ("real_estate", "land")
+        case "vehicle": return ("vehicle", "car")
+        case "bank_account": return ("financial", "bank_account")
+        case "cash_pool": return ("financial", "money_pool")
+        case "security": return ("financial", "investment_account")
+        case "contract": return ("document", "contract")
+        case "document": return ("document", "certificate")
+        case "equipment": return ("equipment", "generic_equipment")
+        case "digital_asset": return ("digital_asset", "generic_digital_asset")
+        case "trust_asset": return ("financial", "trust_fund")
+        case "trip_booking": return ("trip", "group_trip")
+        case "game": return ("event", "recurring_event")
+        case "membership_asset": return ("membership", "generic_membership")
+        case "reservation": return ("space", "generic_space")
+        case "other": return ("generic", "generic_resource")
+        default: return ("generic", "generic_resource")
+        }
     }
 
     // MARK: R.2M-3 capability/action mirror (para previews y tests)
