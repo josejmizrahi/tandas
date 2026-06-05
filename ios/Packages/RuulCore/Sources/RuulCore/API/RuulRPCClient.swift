@@ -381,6 +381,15 @@ public protocol RuulRPCClient: Sendable {
     /// upsert (también funciona como update). Requiere `decisions.execute` en backend.
     /// Si `policyValue` es `.null`, el backend elimina la política.
     func setGovernancePolicy(contextActorId: UUID, policyKey: String, policyValue: JSONValue) async throws
+    /// PostgREST read sobre `vote_delegations` filtrado por contexto + activas
+    /// (`revoked_at is null`). Member-only por RLS.
+    func listVoteDelegations(contextActorId: UUID) async throws -> [VoteDelegation]
+    /// `delegate_vote(p_context_actor_id, p_delegate_actor_id, p_ends_at?)` —
+    /// el caller delega su voto. Auto-revoca delegación previa.
+    func delegateVote(contextActorId: UUID, delegateActorId: UUID, endsAt: Date?) async throws
+    /// `revoke_vote_delegation(p_context_actor_id)` — revoca la delegación activa
+    /// del caller en ese contexto. Idempotente.
+    func revokeVoteDelegation(contextActorId: UUID) async throws
 }
 
 extension RuulRPCClient {

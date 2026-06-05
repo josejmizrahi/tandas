@@ -72,3 +72,55 @@ public struct GovernancePolicy: Decodable, Sendable, Equatable, Hashable, Identi
         ))
     }
 }
+
+/// R.5 — Delegación de voto dentro de un contexto. Mientras la delegación esté
+/// activa (`revokedAt == nil` y `endsAt > now`), los votos del delegate cuentan
+/// también el peso del delegator.
+public struct VoteDelegation: Decodable, Sendable, Equatable, Hashable, Identifiable {
+    public let id: UUID
+    public let contextActorId: UUID
+    public let delegatorActorId: UUID
+    public let delegateActorId: UUID
+    public let startsAt: Date
+    public let endsAt: Date?
+    public let revokedAt: Date?
+    public let createdAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case contextActorId = "context_actor_id"
+        case delegatorActorId = "delegator_actor_id"
+        case delegateActorId = "delegate_actor_id"
+        case startsAt = "starts_at"
+        case endsAt = "ends_at"
+        case revokedAt = "revoked_at"
+        case createdAt = "created_at"
+    }
+
+    public init(
+        id: UUID,
+        contextActorId: UUID,
+        delegatorActorId: UUID,
+        delegateActorId: UUID,
+        startsAt: Date,
+        endsAt: Date? = nil,
+        revokedAt: Date? = nil,
+        createdAt: Date? = nil
+    ) {
+        self.id = id
+        self.contextActorId = contextActorId
+        self.delegatorActorId = delegatorActorId
+        self.delegateActorId = delegateActorId
+        self.startsAt = startsAt
+        self.endsAt = endsAt
+        self.revokedAt = revokedAt
+        self.createdAt = createdAt
+    }
+
+    /// La delegación está vigente AHORA.
+    public var isActive: Bool {
+        guard revokedAt == nil else { return false }
+        if let ends = endsAt, ends <= Date() { return false }
+        return true
+    }
+}

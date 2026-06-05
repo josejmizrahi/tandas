@@ -1891,6 +1891,43 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pPolicyValue: policyValue
         ))
     }
+
+    public func listVoteDelegations(contextActorId: UUID) async throws -> [VoteDelegation] {
+        do {
+            return try await client
+                .from("vote_delegations")
+                .select()
+                .eq("context_actor_id", value: contextActorId.uuidString)
+                .is("revoked_at", value: nil)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func delegateVote(contextActorId: UUID, delegateActorId: UUID, endsAt: Date?) async throws {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pDelegateActorId: UUID
+            let pEndsAt: Date?
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pDelegateActorId = "p_delegate_actor_id"
+                case pEndsAt = "p_ends_at"
+            }
+        }
+        try await callVoid("delegate_vote", params: Params(
+            pContextActorId: contextActorId,
+            pDelegateActorId: delegateActorId,
+            pEndsAt: endsAt
+        ))
+    }
+
+    public func revokeVoteDelegation(contextActorId: UUID) async throws {
+        try await callVoid("revoke_vote_delegation", params: ContextIdParams(contextId: contextActorId))
+    }
 }
 
 // MARK: - Params compartidos

@@ -12,9 +12,12 @@ public struct ContextSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var store: ContextSettingsStore
     @State private var governanceStore: GovernanceStore
+    @State private var membersStore: MembersStore
     @State private var isShowingEditGeneral = false
     /// D.2 — política bajo edición (nil = crear nueva, no-nil = editar existente).
     @State private var editingPolicy: EditPolicyTarget?
+    /// D.3 — sheet de delegación de voto.
+    @State private var isShowingDelegate = false
     @State private var runner = ActionRunner()
 
     public init(context: AppContext, container: DependencyContainer) {
@@ -22,6 +25,7 @@ public struct ContextSettingsView: View {
         self.container = container
         _store = State(initialValue: ContextSettingsStore(rpc: container.rpc))
         _governanceStore = State(initialValue: GovernanceStore(rpc: container.rpc))
+        _membersStore = State(initialValue: MembersStore(rpc: container.rpc))
     }
 
     public var body: some View {
@@ -53,10 +57,12 @@ public struct ContextSettingsView: View {
         .task {
             await store.load(contextId: context.id)
             await governanceStore.load(contextId: context.id)
+            await membersStore.load(context: context)
         }
         .refreshable {
             await store.load(contextId: context.id)
             await governanceStore.load(contextId: context.id)
+            await membersStore.load(context: context)
         }
         .sheet(isPresented: $isShowingEditGeneral, onDismiss: {
             Task { await store.load(contextId: context.id) }
@@ -74,6 +80,14 @@ public struct ContextSettingsView: View {
                 contextId: context.id,
                 initialKey: target.key,
                 initialValue: target.value,
+                governanceStore: governanceStore
+            )
+        }
+        .sheet(isPresented: $isShowingDelegate) {
+            DelegateVoteSheet(
+                context: context,
+                myActorId: container.currentActorStore.actorId,
+                container: container,
                 governanceStore: governanceStore
             )
         }
@@ -164,6 +178,73 @@ public struct ContextSettingsView: View {
                 Text("Sólo quien tiene autoridad para ejecutar decisiones puede editar políticas.")
             }
         }
+
+        // D.3 — Mi delegación de voto en este contexto.
+        myDelegationSection()
+    }
+
+    /// Subsección "Mi voto" para delegar/revocar la delegación del caller.
+    @ViewBuilder
+    private func myDelegationSection() -> some View {
+        let myActorId = container.currentActorStore.actorId
+        let active = myActorId.flatMap { governanceStore.myActiveDelegation(actorId: $0) }
+        let incoming = myActorId.map { governanceStore.incomingDelegationCount(actorId: $0) } ?? 0
+        Section {
+            if let delegation = active {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Delegas tu voto en…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(delegateDisplayName(delegation.delegateActorId))
+                        .font(.callout.weight(.medium))
+                    if let ends = delegation.endsAt {
+                        Text("Vence \(ends.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        Text("Sin vencimiento")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(.vertical, 2)
+
+                Button(role: .destructive) {
+                    Task {
+                        try? await governanceStore.revokeMyDelegation(contextId: context.id)
+                    }
+                } label: {
+                    Label("Revocar delegación", systemImage: "arrow.uturn.backward")
+                }
+            } else {
+                Text("No has delegado tu voto en este contexto.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Button {
+                    isShowingDelegate = true
+                } label: {
+                    Label("Delegar mi voto", systemImage: "person.crop.circle.badge.checkmark")
+                }
+            }
+
+            if incoming > 0 {
+                Label("\(incoming) \(incoming == 1 ? "persona delega" : "personas delegan") en ti",
+                      systemImage: "person.2.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Mi voto")
+        } footer: {
+            Text("Mientras delegues, tu peso de voto se suma al del delegado en decisiones de este contexto.")
+        }
+    }
+
+    /// Resuelve el display name del delegado vía MembersStore (cargado en .task).
+    /// Fallback a UUID corto si todavía no llegó el roster.
+    private func delegateDisplayName(_ actorId: UUID) -> String {
+        membersStore.members.first { $0.actorId == actorId }?.displayName
+            ?? String(actorId.uuidString.prefix(8))
     }
 
     /// Renderiza un JSONValue como string compacto para preview en la lista.
@@ -822,6 +903,118 @@ private struct EditGovernancePolicySheet: View {
         let trimmedKey = key.trimmingCharacters(in: .whitespaces)
         let success = await runner.run {
             try await governanceStore.setPolicy(contextId: contextId, key: trimmedKey, value: value)
+        }
+        if success { dismiss() }
+    }
+}
+
+// MARK: - D.3 Delegate vote sheet
+
+/// Sheet para delegar el voto del caller en otro miembro del contexto. Carga
+/// el roster vía MembersStore para presentar el picker y, opcionalmente,
+/// permite poner fecha de vencimiento.
+private struct DelegateVoteSheet: View {
+    let context: AppContext
+    let myActorId: UUID?
+    let container: DependencyContainer
+    let governanceStore: GovernanceStore
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var membersStore: MembersStore
+    @State private var selectedActorId: UUID?
+    @State private var hasExpiration = false
+    @State private var expirationDate: Date = Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()
+    @State private var runner = ActionRunner()
+
+    init(context: AppContext, myActorId: UUID?, container: DependencyContainer, governanceStore: GovernanceStore) {
+        self.context = context
+        self.myActorId = myActorId
+        self.container = container
+        self.governanceStore = governanceStore
+        _membersStore = State(initialValue: MembersStore(rpc: container.rpc))
+    }
+
+    private var candidates: [ContextMember] {
+        membersStore.members.filter { $0.actorId != myActorId }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                switch membersStore.phase {
+                case .idle, .loading:
+                    LoadingStateView(title: "Cargando miembros…")
+                case .failed(let message):
+                    ErrorStateView(message: message) {
+                        Task { await membersStore.load(context: context) }
+                    }
+                case .loaded:
+                    form
+                }
+            }
+            .navigationTitle("Delegar mi voto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Delegar") { Task { await delegate() } }
+                        .disabled(selectedActorId == nil || runner.isRunning)
+                }
+            }
+            .actionErrorAlert(runner)
+            .task {
+                await membersStore.load(context: context)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var form: some View {
+        Form {
+            Section {
+                if candidates.isEmpty {
+                    Text("No hay otros miembros activos a quien delegar.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(candidates) { member in
+                        Button {
+                            selectedActorId = member.actorId
+                        } label: {
+                            HStack {
+                                Text(member.displayName)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if selectedActorId == member.actorId {
+                                    Image(systemName: "checkmark").foregroundStyle(.tint)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            } header: {
+                Text("¿En quién delegas?")
+            } footer: {
+                Text("Mientras la delegación esté activa, tu peso de voto se suma al del delegado.")
+            }
+
+            Section("Vencimiento") {
+                Toggle("Poner fecha de vencimiento", isOn: $hasExpiration)
+                if hasExpiration {
+                    DatePicker("Vence", selection: $expirationDate, in: Date()...)
+                        .datePickerStyle(.compact)
+                }
+            }
+        }
+    }
+
+    private func delegate() async {
+        guard let actorId = selectedActorId else { return }
+        let endsAt: Date? = hasExpiration ? expirationDate : nil
+        let success = await runner.run {
+            try await governanceStore.delegateVote(contextId: context.id, to: actorId, endsAt: endsAt)
         }
         if success { dismiss() }
     }

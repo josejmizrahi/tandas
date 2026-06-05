@@ -51,6 +51,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var contextPreferences: [UUID: MockContextPreference] = [:]
     /// R.5 — políticas de gobierno por contexto. Vacío por default.
     var mockGovernancePolicies: [UUID: [GovernancePolicy]] = [:]
+    /// R.5 — delegaciones de voto por contexto. Activas e históricas.
+    var mockVoteDelegations: [UUID: [VoteDelegation]] = [:]
 
     /// Error a lanzar en la siguiente llamada (para probar manejo de errores).
     public var nextError: RuulError?
@@ -4007,6 +4009,63 @@ public actor MockRuulRPCClient: RuulRPCClient {
             ))
         }
         mockGovernancePolicies[contextActorId] = policies
+    }
+
+    public func listVoteDelegations(contextActorId: UUID) async throws -> [VoteDelegation] {
+        try throwIfNeeded()
+        return (mockVoteDelegations[contextActorId] ?? []).filter { $0.isActive }
+    }
+
+    public func delegateVote(contextActorId: UUID, delegateActorId: UUID, endsAt: Date?) async throws {
+        try throwIfNeeded()
+        var delegations = mockVoteDelegations[contextActorId] ?? []
+        // Revoca delegación previa del caller en este contexto.
+        delegations = delegations.map { existing in
+            if existing.delegatorActorId == me.id && existing.revokedAt == nil {
+                return VoteDelegation(
+                    id: existing.id,
+                    contextActorId: existing.contextActorId,
+                    delegatorActorId: existing.delegatorActorId,
+                    delegateActorId: existing.delegateActorId,
+                    startsAt: existing.startsAt,
+                    endsAt: existing.endsAt,
+                    revokedAt: Date(),
+                    createdAt: existing.createdAt
+                )
+            }
+            return existing
+        }
+        delegations.append(VoteDelegation(
+            id: UUID(),
+            contextActorId: contextActorId,
+            delegatorActorId: me.id,
+            delegateActorId: delegateActorId,
+            startsAt: Date(),
+            endsAt: endsAt,
+            revokedAt: nil,
+            createdAt: Date()
+        ))
+        mockVoteDelegations[contextActorId] = delegations
+    }
+
+    public func revokeVoteDelegation(contextActorId: UUID) async throws {
+        try throwIfNeeded()
+        let delegations = mockVoteDelegations[contextActorId] ?? []
+        mockVoteDelegations[contextActorId] = delegations.map { existing in
+            if existing.delegatorActorId == me.id && existing.revokedAt == nil {
+                return VoteDelegation(
+                    id: existing.id,
+                    contextActorId: existing.contextActorId,
+                    delegatorActorId: existing.delegatorActorId,
+                    delegateActorId: existing.delegateActorId,
+                    startsAt: existing.startsAt,
+                    endsAt: existing.endsAt,
+                    revokedAt: Date(),
+                    createdAt: existing.createdAt
+                )
+            }
+            return existing
+        }
     }
 
     // MARK: - Catálogos
