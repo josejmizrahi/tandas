@@ -13,6 +13,8 @@ public struct ContextSettingsView: View {
     @State private var store: ContextSettingsStore
     @State private var governanceStore: GovernanceStore
     @State private var isShowingEditGeneral = false
+    /// D.2 — política bajo edición (nil = crear nueva, no-nil = editar existente).
+    @State private var editingPolicy: EditPolicyTarget?
     @State private var runner = ActionRunner()
 
     public init(context: AppContext, container: DependencyContainer) {
@@ -67,6 +69,14 @@ public struct ContextSettingsView: View {
                 )
             }
         }
+        .sheet(item: $editingPolicy) { target in
+            EditGovernancePolicySheet(
+                contextId: context.id,
+                initialKey: target.key,
+                initialValue: target.value,
+                governanceStore: governanceStore
+            )
+        }
         .actionErrorAlert(runner)
     }
 
@@ -88,10 +98,12 @@ public struct ContextSettingsView: View {
 
     // MARK: - Gobierno (R.5)
 
-    /// Lista las políticas de gobierno del contexto desde `list_governance_policies`.
-    /// Read-only en D.1 (write paths llegan en sub-slices posteriores).
+    /// Sección de gobernanza. Lectura: `list_governance_policies`. Escritura:
+    /// `create_governance_policy` (upsert + delete cuando value es null), gated
+    /// por backend a `decisions.execute`.
     @ViewBuilder
     private func governanceSection() -> some View {
+        let canEdit = store.can("decisions.execute")
         Section {
             if governanceStore.policies.isEmpty {
                 Text("Sin políticas configuradas.")
@@ -99,21 +111,58 @@ public struct ContextSettingsView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(governanceStore.policies) { policy in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(policy.policyKey)
-                            .font(.callout.weight(.medium))
-                        Text(policyValueSummary(policy.policyValue))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(3)
+                    Button {
+                        guard canEdit else { return }
+                        editingPolicy = EditPolicyTarget(key: policy.policyKey, value: policy.policyValue)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(policy.policyKey)
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(.primary)
+                            Text(policyValueSummary(policy.policyValue))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(3)
+                        }
+                        .padding(.vertical, 2)
                     }
-                    .padding(.vertical, 2)
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing) {
+                        if canEdit {
+                            Button("Eliminar", role: .destructive) {
+                                Task {
+                                    try? await governanceStore.setPolicy(
+                                        contextId: context.id,
+                                        key: policy.policyKey,
+                                        value: .null
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         } header: {
-            Text("Gobierno")
+            HStack {
+                Text("Gobierno")
+                Spacer()
+                if canEdit {
+                    Button {
+                        editingPolicy = EditPolicyTarget(key: "", value: .bool(true))
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(.tint)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Nueva política de gobernanza")
+                }
+            }
         } footer: {
-            Text("Políticas que rigen el comportamiento del contexto. La edición llega en siguiente slice.")
+            if canEdit {
+                Text("Toca una política para editarla. Eliminar = swipe izquierdo.")
+            } else {
+                Text("Sólo quien tiene autoridad para ejecutar decisiones puede editar políticas.")
+            }
         }
     }
 
@@ -616,4 +665,164 @@ private struct EditContextGeneralSheet: View {
         ),
         container: .demo()
     )
+}
+
+// MARK: - D.2 Edit governance policy
+
+/// Target del sheet de edición. `key.isEmpty` ⇒ crear nueva.
+struct EditPolicyTarget: Identifiable {
+    let key: String
+    let value: JSONValue
+    var id: String { key.isEmpty ? "__new__" : key }
+}
+
+/// Sheet para crear/editar una política de gobernanza. UX neutra al policy_key:
+/// no hardcodea behaviors. Soporta 4 tipos de valor (Boolean / Number / String /
+/// JSON crudo) suficiente para todos los policy_value que R.5 acepta hoy.
+private struct EditGovernancePolicySheet: View {
+    let contextId: UUID
+    let initialKey: String
+    let initialValue: JSONValue
+    let governanceStore: GovernanceStore
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var key: String
+    @State private var valueKind: ValueKind
+    @State private var boolValue: Bool
+    @State private var numberText: String
+    @State private var stringValue: String
+    @State private var jsonText: String
+    @State private var runner = ActionRunner()
+
+    enum ValueKind: String, CaseIterable, Identifiable {
+        case boolean = "Booleano"
+        case number = "Número"
+        case string = "Texto"
+        case json = "JSON"
+        var id: String { rawValue }
+    }
+
+    init(contextId: UUID, initialKey: String, initialValue: JSONValue, governanceStore: GovernanceStore) {
+        self.contextId = contextId
+        self.initialKey = initialKey
+        self.initialValue = initialValue
+        self.governanceStore = governanceStore
+        _key = State(initialValue: initialKey)
+        // Inferir kind y valores iniciales del JSONValue actual.
+        switch initialValue {
+        case .bool(let b):
+            _valueKind = State(initialValue: .boolean)
+            _boolValue = State(initialValue: b)
+            _numberText = State(initialValue: "")
+            _stringValue = State(initialValue: "")
+            _jsonText = State(initialValue: "")
+        case .number(let n):
+            _valueKind = State(initialValue: .number)
+            _boolValue = State(initialValue: false)
+            _numberText = State(initialValue: n.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(n)) : String(n))
+            _stringValue = State(initialValue: "")
+            _jsonText = State(initialValue: "")
+        case .string(let s):
+            _valueKind = State(initialValue: .string)
+            _boolValue = State(initialValue: false)
+            _numberText = State(initialValue: "")
+            _stringValue = State(initialValue: s)
+            _jsonText = State(initialValue: "")
+        case .null, .array, .object:
+            _valueKind = State(initialValue: .json)
+            _boolValue = State(initialValue: false)
+            _numberText = State(initialValue: "")
+            _stringValue = State(initialValue: "")
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let text = (try? encoder.encode(initialValue)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+            _jsonText = State(initialValue: text)
+        }
+    }
+
+    private var isEditingExisting: Bool { !initialKey.isEmpty }
+    private var canSave: Bool {
+        !key.trimmingCharacters(in: .whitespaces).isEmpty && !runner.isRunning && composedValue != nil
+    }
+
+    private var composedValue: JSONValue? {
+        switch valueKind {
+        case .boolean: return .bool(boolValue)
+        case .number:
+            let trimmed = numberText.trimmingCharacters(in: .whitespaces)
+            guard let n = Double(trimmed) else { return nil }
+            return .number(n)
+        case .string: return .string(stringValue)
+        case .json:
+            let trimmed = jsonText.trimmingCharacters(in: .whitespaces)
+            guard let data = trimmed.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(JSONValue.self, from: data)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Clave") {
+                    TextField("policy_key (ej. quorum, consent_voting)", text: $key)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .disabled(isEditingExisting)
+                }
+
+                Section("Tipo de valor") {
+                    Picker("Tipo", selection: $valueKind) {
+                        ForEach(ValueKind.allCases) { kind in
+                            Text(kind.rawValue).tag(kind)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Section("Valor") {
+                    switch valueKind {
+                    case .boolean:
+                        Toggle(boolValue ? "true" : "false", isOn: $boolValue)
+                    case .number:
+                        TextField("Ej. 0.5", text: $numberText)
+                            .keyboardType(.decimalPad)
+                    case .string:
+                        TextField("Texto", text: $stringValue)
+                    case .json:
+                        TextField("{\"key\":\"value\"}", text: $jsonText, axis: .vertical)
+                            .lineLimit(3...10)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .font(.system(.callout, design: .monospaced))
+                        if composedValue == nil {
+                            Text("JSON inválido")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+            }
+            .navigationTitle(isEditingExisting ? "Editar política" : "Nueva política")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Guardar") { Task { await save() } }
+                        .disabled(!canSave)
+                }
+            }
+            .actionErrorAlert(runner)
+        }
+    }
+
+    private func save() async {
+        guard let value = composedValue else { return }
+        let trimmedKey = key.trimmingCharacters(in: .whitespaces)
+        let success = await runner.run {
+            try await governanceStore.setPolicy(contextId: contextId, key: trimmedKey, value: value)
+        }
+        if success { dismiss() }
+    }
 }

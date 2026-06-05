@@ -49,6 +49,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
     /// F.NAV.0 — preferencias del caller por contexto (favorito + última visita).
     /// El Mock asume que el caller es siempre `me.id`.
     var contextPreferences: [UUID: MockContextPreference] = [:]
+    /// R.5 — políticas de gobierno por contexto. Vacío por default.
+    var mockGovernancePolicies: [UUID: [GovernancePolicy]] = [:]
 
     /// Error a lanzar en la siguiente llamada (para probar manejo de errores).
     public var nextError: RuulError?
@@ -3986,8 +3988,25 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     public func listGovernancePolicies(contextActorId: UUID) async throws -> [GovernancePolicy] {
         try throwIfNeeded()
-        // Mundo demo: sin políticas configuradas — el founder no ha activado R.5.
-        return []
+        return mockGovernancePolicies[contextActorId] ?? []
+    }
+
+    public func setGovernancePolicy(contextActorId: UUID, policyKey: String, policyValue: JSONValue) async throws {
+        try throwIfNeeded()
+        var policies = mockGovernancePolicies[contextActorId] ?? []
+        policies.removeAll { $0.policyKey == policyKey }
+        if case .null = policyValue {
+            // Removal — backend hace delete cuando policy_value es null.
+        } else {
+            policies.append(GovernancePolicy(
+                id: UUID(),
+                contextActorId: contextActorId,
+                policyKey: policyKey,
+                policyValue: policyValue,
+                updatedAt: Date()
+            ))
+        }
+        mockGovernancePolicies[contextActorId] = policies
     }
 
     // MARK: - Catálogos

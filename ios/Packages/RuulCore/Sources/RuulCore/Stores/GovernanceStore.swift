@@ -31,6 +31,13 @@ public final class GovernanceStore {
         }
     }
 
+    /// Upsert (también funciona como remove cuando policyValue es `.null`).
+    /// Recarga la lista al finalizar.
+    public func setPolicy(contextId: UUID, key: String, value: JSONValue) async throws {
+        try await rpc.setGovernancePolicy(contextActorId: contextId, policyKey: key, policyValue: value)
+        await load(contextId: contextId)
+    }
+
     public func reset() {
         policies = []
         phase = .idle

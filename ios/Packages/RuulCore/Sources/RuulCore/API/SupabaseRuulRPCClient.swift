@@ -1873,6 +1873,24 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
     public func listGovernancePolicies(contextActorId: UUID) async throws -> [GovernancePolicy] {
         try await call("list_governance_policies", params: ContextIdParams(contextId: contextActorId))
     }
+
+    public func setGovernancePolicy(contextActorId: UUID, policyKey: String, policyValue: JSONValue) async throws {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pPolicyKey: String
+            let pPolicyValue: JSONValue
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pPolicyKey = "p_policy_key"
+                case pPolicyValue = "p_policy_value"
+            }
+        }
+        try await callVoid("create_governance_policy", params: Params(
+            pContextActorId: contextActorId,
+            pPolicyKey: policyKey,
+            pPolicyValue: policyValue
+        ))
+    }
 }
 
 // MARK: - Params compartidos

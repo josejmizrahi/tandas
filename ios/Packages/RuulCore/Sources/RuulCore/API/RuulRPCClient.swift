@@ -377,6 +377,10 @@ public protocol RuulRPCClient: Sendable {
     /// `list_governance_policies(p_context_actor_id)` — políticas del contexto.
     /// Member-only en backend.
     func listGovernancePolicies(contextActorId: UUID) async throws -> [GovernancePolicy]
+    /// `create_governance_policy(p_context_actor_id, p_policy_key, p_policy_value)` —
+    /// upsert (también funciona como update). Requiere `decisions.execute` en backend.
+    /// Si `policyValue` es `.null`, el backend elimina la política.
+    func setGovernancePolicy(contextActorId: UUID, policyKey: String, policyValue: JSONValue) async throws
 }
 
 extension RuulRPCClient {
