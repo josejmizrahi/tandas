@@ -15,6 +15,10 @@ public struct ContextDetailViewV2: View {
 
     @State private var store: ContextDescriptorStore
     @State private var selectedTab: Tab = .overview
+    /// R.5A.F.4 — sub-tab dentro de More (Calendar / Governance / Documents /
+    /// Activity / Settings). Auto-select del primero disponible si la actual
+    /// no aplica al subtype del context.
+    @State private var selectedMoreSubTab: MoreSubTab = .calendar
 
     public init(contextId: UUID, container: DependencyContainer) {
         self.contextId = contextId
@@ -44,6 +48,32 @@ public struct ContextDetailViewV2: View {
             case .resources: return ["resources"]
             case .money:     return ["money", "obligations"]
             case .more:      return ["calendar", "governance", "documents", "activity", "settings"]
+            }
+        }
+    }
+
+    /// R.5A.F.4 — sub-tabs dentro de More. Cada uno mapea a un section_key
+    /// específico del descriptor B.4C.
+    private enum MoreSubTab: String, CaseIterable, Identifiable {
+        case calendar, governance, documents, activity, settings
+        var id: String { rawValue }
+        var sectionKey: String { rawValue }
+        var label: String {
+            switch self {
+            case .calendar:   return "Calendario"
+            case .governance: return "Gobernanza"
+            case .documents:  return "Documentos"
+            case .activity:   return "Actividad"
+            case .settings:   return "Config"
+            }
+        }
+        var icon: String {
+            switch self {
+            case .calendar:   return "calendar"
+            case .governance: return "building.columns"
+            case .documents:  return "doc"
+            case .activity:   return "bolt"
+            case .settings:   return "gearshape"
             }
         }
     }
@@ -391,39 +421,273 @@ public struct ContextDetailViewV2: View {
         }
     }
 
-    // MARK: - More
+    // MARK: - More (sub-tabs F.4)
 
     @ViewBuilder
     private func moreTab(_ d: ContextDetailDescriptor) -> some View {
-        let moreSections = d.sections.filter {
-            $0.visible && Tab.more.sectionKeys.contains($0.sectionKey)
+        let availableSubTabs = availableMoreSubTabs(d)
+        if availableSubTabs.isEmpty {
+            EmptyCard(icon: "ellipsis.circle", label: "Sin más secciones")
+        } else {
+            VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                // Sub-tab picker
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(availableSubTabs) { sub in
+                            subTabChip(sub, selected: effectiveMoreSubTab(availableSubTabs) == sub)
+                                .onTapGesture { selectedMoreSubTab = sub }
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+                // Render del sub-tab activo
+                moreSubTabContent(d, sub: effectiveMoreSubTab(availableSubTabs))
+            }
+            .onAppear {
+                if !availableSubTabs.contains(selectedMoreSubTab),
+                   let first = availableSubTabs.first {
+                    selectedMoreSubTab = first
+                }
+            }
         }
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            if moreSections.isEmpty {
-                EmptyCard(icon: "ellipsis.circle", label: "Sin más secciones")
+    }
+
+    private func availableMoreSubTabs(_ d: ContextDetailDescriptor) -> [MoreSubTab] {
+        MoreSubTab.allCases.filter { sub in
+            d.sections.contains { $0.sectionKey == sub.sectionKey && $0.visible }
+        }
+    }
+
+    private func effectiveMoreSubTab(_ available: [MoreSubTab]) -> MoreSubTab {
+        available.contains(selectedMoreSubTab) ? selectedMoreSubTab : (available.first ?? .activity)
+    }
+
+    @ViewBuilder
+    private func subTabChip(_ sub: MoreSubTab, selected: Bool) -> some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            Image(systemName: sub.icon)
+                .font(.caption)
+            Text(sub.label)
+                .font(.subheadline)
+        }
+        .foregroundStyle(selected ? Color.white : Color.primary)
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background(
+            selected ? Color.accentColor : Theme.Surface.card,
+            in: Capsule()
+        )
+        .contentShape(Capsule())
+    }
+
+    @ViewBuilder
+    private func moreSubTabContent(_ d: ContextDetailDescriptor, sub: MoreSubTab) -> some View {
+        switch sub {
+        case .calendar:   calendarSubTab(d)
+        case .governance: governanceSubTab(d)
+        case .documents:  documentsSubTab(d)
+        case .activity:   activitySubTab(d)
+        case .settings:   settingsSubTab(d)
+        }
+    }
+
+    @ViewBuilder
+    private func calendarSubTab(_ d: ContextDetailDescriptor) -> some View {
+        if d.eventsPreview.isEmpty {
+            EmptyCard(icon: "calendar", label: "Sin eventos próximos")
+        } else {
+            VStack(spacing: 0) {
+                ForEach(d.eventsPreview.enumerated().map { ($0, $1) }, id: \.1.id) { idx, ev in
+                    HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                        Image(systemName: "calendar.circle")
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: Theme.IconSize.sm)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ev.title).font(.body)
+                            if let starts = ev.startsAt {
+                                Text(starts.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            if let type = ev.eventType {
+                                Text(type).font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        if let status = ev.status {
+                            chipBadge(status, tint: status == "open" ? .green : .secondary)
+                        }
+                    }
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.vertical, Theme.Spacing.md)
+                    if idx < d.eventsPreview.count - 1 { Divider().padding(.leading, 56) }
+                }
+            }
+            .background(Theme.Surface.card, in: Theme.cardShape())
+        }
+    }
+
+    @ViewBuilder
+    private func governanceSubTab(_ d: ContextDetailDescriptor) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            if d.decisionsPreview.isEmpty {
+                EmptyCard(icon: "questionmark.circle", label: "Sin decisiones abiertas")
             } else {
-                Text("Secciones adicionales")
+                Text("Decisiones abiertas")
                     .font(.subheadline.bold())
                     .foregroundStyle(.secondary)
                 VStack(spacing: 0) {
-                    ForEach(moreSections.enumerated().map { ($0, $1) }, id: \.1.id) { idx, section in
-                        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-                            Image(systemName: section.icon ?? "circle")
-                                .foregroundStyle(Color.accentColor)
+                    ForEach(d.decisionsPreview.enumerated().map { ($0, $1) }, id: \.1.id) { idx, dec in
+                        HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                            Image(systemName: "questionmark.circle.fill")
+                                .foregroundStyle(.orange)
                                 .frame(width: Theme.IconSize.sm)
-                            Text(section.displayName).font(.body)
-                            Spacer()
-                            if let perm = section.requiredPermission {
-                                Text(perm).font(.caption2).foregroundStyle(.tertiary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(dec.title).font(.body)
+                                if let type = dec.decisionType {
+                                    Text(type.replacingOccurrences(of: "_", with: " "))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if let closes = dec.closesAt {
+                                    Text("Cierra \(closes.formatted(date: .abbreviated, time: .omitted))")
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
                             }
-                            Image(systemName: "chevron.right")
+                            Spacer()
+                            if let status = dec.status {
+                                chipBadge(status, tint: .orange)
+                            }
+                        }
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .padding(.vertical, Theme.Spacing.md)
+                        if idx < d.decisionsPreview.count - 1 { Divider().padding(.leading, 56) }
+                    }
+                }
+                .background(Theme.Surface.card, in: Theme.cardShape())
+            }
+            if !d.roles.isEmpty {
+                Text("Roles del contexto")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                    .padding(.top, Theme.Spacing.sm)
+                VStack(spacing: 0) {
+                    ForEach(d.roles.enumerated().map { ($0, $1) }, id: \.1.id) { idx, role in
+                        HStack {
+                            Image(systemName: "person.badge.key")
+                                .foregroundStyle(.secondary)
+                                .frame(width: Theme.IconSize.sm)
+                            Text(role.displayName).font(.body)
+                            Spacer()
+                            Text("\(role.memberCount) miembros")
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
                         .padding(.horizontal, Theme.Spacing.md)
                         .padding(.vertical, Theme.Spacing.md)
-                        if idx < moreSections.count - 1 { Divider().padding(.leading, 56) }
+                        if idx < d.roles.count - 1 { Divider().padding(.leading, 56) }
                     }
+                }
+                .background(Theme.Surface.card, in: Theme.cardShape())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func documentsSubTab(_ d: ContextDetailDescriptor) -> some View {
+        if d.documentsPreview.isEmpty {
+            EmptyCard(icon: "doc", label: "Sin documentos")
+        } else {
+            VStack(spacing: 0) {
+                ForEach(d.documentsPreview.enumerated().map { ($0, $1) }, id: \.1.id) { idx, doc in
+                    HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                        Image(systemName: "doc.fill")
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: Theme.IconSize.sm)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(doc.title).font(.body)
+                            if let type = doc.documentType {
+                                Text(type.replacingOccurrences(of: "_", with: " "))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let created = doc.createdAt {
+                                Text(created.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.vertical, Theme.Spacing.md)
+                    if idx < d.documentsPreview.count - 1 { Divider().padding(.leading, 56) }
+                }
+            }
+            .background(Theme.Surface.card, in: Theme.cardShape())
+        }
+    }
+
+    @ViewBuilder
+    private func activitySubTab(_ d: ContextDetailDescriptor) -> some View {
+        if d.activityPreview.isEmpty {
+            EmptyCard(icon: "bolt", label: "Sin actividad reciente")
+        } else {
+            VStack(spacing: 0) {
+                ForEach(d.activityPreview.enumerated().map { ($0, $1) }, id: \.1.id) { idx, ev in
+                    HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                        Image(systemName: "bolt.circle")
+                            .foregroundStyle(.secondary)
+                            .frame(width: Theme.IconSize.sm)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ev.eventType.replacingOccurrences(of: ".", with: " · "))
+                                .font(.subheadline)
+                            if let when = ev.occurredAt {
+                                Text(when.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            if let actor = ev.actorId {
+                                Text("Actor: \(actor.uuidString.prefix(8))…")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.vertical, Theme.Spacing.md)
+                    if idx < d.activityPreview.count - 1 { Divider().padding(.leading, 56) }
+                }
+            }
+            .background(Theme.Surface.card, in: Theme.cardShape())
+        }
+    }
+
+    @ViewBuilder
+    private func settingsSubTab(_ d: ContextDetailDescriptor) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Identidad del contexto")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 0) {
+                    settingsRow(icon: "person.text.rectangle",
+                                label: "Nombre",
+                                value: d.contextDisplayName ?? "—")
+                    Divider().padding(.leading, 56)
+                    settingsRow(icon: "tag",
+                                label: "Subtype",
+                                value: d.actorSubtype ?? "—")
+                    Divider().padding(.leading, 56)
+                    settingsRow(icon: "eye",
+                                label: "Visibilidad",
+                                value: d.context["visibility"]?.stringValue ?? "—")
+                    Divider().padding(.leading, 56)
+                    settingsRow(icon: "person.3",
+                                label: "Miembros",
+                                value: "\(d.metrics.memberCount)")
                 }
                 .background(Theme.Surface.card, in: Theme.cardShape())
             }
@@ -431,7 +695,7 @@ public struct ContextDetailViewV2: View {
                 Text("Mis permisos (\(d.permissions.count))")
                     .font(.subheadline.bold())
                     .foregroundStyle(.secondary)
-                    .padding(.top, Theme.Spacing.md)
+                    .padding(.top, Theme.Spacing.sm)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Spacing.xs) {
                         ForEach(d.permissions, id: \.self) { p in
@@ -441,6 +705,20 @@ public struct ContextDetailViewV2: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func settingsRow(icon: String, label: String, value: String) -> some View {
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: icon)
+                .foregroundStyle(.secondary)
+                .frame(width: Theme.IconSize.sm)
+            Text(label).font(.body)
+            Spacer()
+            Text(value).font(.body).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.md)
     }
 
     // MARK: - Helpers

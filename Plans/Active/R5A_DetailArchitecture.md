@@ -633,6 +633,7 @@ Cada slice debe ser rollback-safe vía migration descendiente. Política:
 | F.1 | ✅ ResourceDescriptorStore + ResourceDetailViewV2 (read-only descriptor render) + beta toggle en v1 Menu | iOS only — build verde 18s | 2026-06-05 |
 | F.2 | ✅ ResourceActionFormSchema + ResourceActionFormView runtime (11 field types + confirmation + execute_resource_action wire) | iOS only — build verde 21s | 2026-06-05 |
 | F.3 | ✅ ContextDescriptorStore + ContextDetailViewV2 (5 tabs segmentadas + filtered by sections + per-tab previews) + beta toggle en ContextHome Menu | iOS only — build verde 22s | 2026-06-05 |
+| F.4 | ✅ Sub-tabs dentro de More (Calendar/Governance/Documents/Activity/Settings) + chip Picker + per-sub-tab renderers desde previews — **R.5A 100% CLOSED 🟢** | iOS only — build verde 13s | 2026-06-05 |
 | F.1 | ⬜ pendiente | — | — |
 | F.2 | ⬜ pendiente | — | — |
 | F.3 | ⬜ pendiente | — | — |
