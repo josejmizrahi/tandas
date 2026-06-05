@@ -21,7 +21,9 @@ public struct ContextsListView: View {
     @State private var isShowingCreateContext = false
     @State private var isShowingJoinByCode = false
     @State private var isShowingInvitations = false
-    @State private var isShowingContextSettings = false
+    /// Capturado al momento del tap en ContextHomeContainer para no depender
+    /// de `path.last` (que puede leerse stale durante la animación del sheet).
+    @State private var settingsContext: AppContext?
     @State private var prefilledInviteCode: String?
 
     public init(container: DependencyContainer, path: Binding<[AppContext]>) {
@@ -78,10 +80,8 @@ public struct ContextsListView: View {
         .sheet(isPresented: $isShowingInvitations) {
             PendingInvitationsView(container: container)
         }
-        .sheet(isPresented: $isShowingContextSettings) {
-            if let current = path.last, !current.isPersonal {
-                ContextSettingsView(context: current, container: container)
-            }
+        .sheet(item: $settingsContext) { ctx in
+            ContextSettingsView(context: ctx, container: container)
         }
     }
 
@@ -124,7 +124,10 @@ public struct ContextsListView: View {
             ContextHomeContainer(
                 context: context,
                 container: container,
-                onOpenSettings: { isShowingContextSettings = true },
+                onOpenSettings: {
+                    // Captura el context al tap; evita race con path.last.
+                    if !context.isPersonal { settingsContext = context }
+                },
                 onSwitchContext: { newCtx in
                     container.contextStore.switchTo(newCtx)
                     Task { await container.contextPreferencesStore.recordVisit(newCtx.id) }
