@@ -1867,6 +1867,12 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
         return try await call("list_recent_contexts", params: Params(pLimit: limit))
     }
+
+    // MARK: - Governance (R.5)
+
+    public func listGovernancePolicies(contextActorId: UUID) async throws -> [GovernancePolicy] {
+        try await call("list_governance_policies", params: ContextIdParams(contextId: contextActorId))
+    }
 }
 
 // MARK: - Params compartidos

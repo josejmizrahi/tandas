@@ -3982,6 +3982,14 @@ public actor MockRuulRPCClient: RuulRPCClient {
             .map { $0 }
     }
 
+    // MARK: - Governance (R.5)
+
+    public func listGovernancePolicies(contextActorId: UUID) async throws -> [GovernancePolicy] {
+        try throwIfNeeded()
+        // Mundo demo: sin políticas configuradas — el founder no ha activado R.5.
+        return []
+    }
+
     // MARK: - Catálogos
 
     public static let allPermissions: [String] = [

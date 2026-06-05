@@ -11,6 +11,7 @@ public struct ContextSettingsView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var store: ContextSettingsStore
+    @State private var governanceStore: GovernanceStore
     @State private var isShowingEditGeneral = false
     @State private var runner = ActionRunner()
 
@@ -18,6 +19,7 @@ public struct ContextSettingsView: View {
         self.context = context
         self.container = container
         _store = State(initialValue: ContextSettingsStore(rpc: container.rpc))
+        _governanceStore = State(initialValue: GovernanceStore(rpc: container.rpc))
     }
 
     public var body: some View {
@@ -46,8 +48,14 @@ public struct ContextSettingsView: View {
                 }
             }
         }
-        .task { await store.load(contextId: context.id) }
-        .refreshable { await store.load(contextId: context.id) }
+        .task {
+            await store.load(contextId: context.id)
+            await governanceStore.load(contextId: context.id)
+        }
+        .refreshable {
+            await store.load(contextId: context.id)
+            await governanceStore.load(contextId: context.id)
+        }
         .sheet(isPresented: $isShowingEditGeneral, onDismiss: {
             Task { await store.load(contextId: context.id) }
         }) {
@@ -73,7 +81,57 @@ public struct ContextSettingsView: View {
             moneySection(settings.moneyConfig)
             reservationsSection(settings.reservationsConfig)
             invitationsSection(settings.invitationsConfig)
+            governanceSection()
             auditSection(settings)
+        }
+    }
+
+    // MARK: - Gobierno (R.5)
+
+    /// Lista las políticas de gobierno del contexto desde `list_governance_policies`.
+    /// Read-only en D.1 (write paths llegan en sub-slices posteriores).
+    @ViewBuilder
+    private func governanceSection() -> some View {
+        Section {
+            if governanceStore.policies.isEmpty {
+                Text("Sin políticas configuradas.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(governanceStore.policies) { policy in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(policy.policyKey)
+                            .font(.callout.weight(.medium))
+                        Text(policyValueSummary(policy.policyValue))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        } header: {
+            Text("Gobierno")
+        } footer: {
+            Text("Políticas que rigen el comportamiento del contexto. La edición llega en siguiente slice.")
+        }
+    }
+
+    /// Renderiza un JSONValue como string compacto para preview en la lista.
+    private func policyValueSummary(_ value: JSONValue) -> String {
+        switch value {
+        case .null: return "—"
+        case .bool(let b): return b ? "Sí" : "No"
+        case .number(let n):
+            return n.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(n)) : String(n)
+        case .string(let s): return s
+        case .array, .object:
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            if let data = try? encoder.encode(value), let s = String(data: data, encoding: .utf8) {
+                return s
+            }
+            return "(estructurado)"
         }
     }
 

@@ -371,6 +371,12 @@ public protocol RuulRPCClient: Sendable {
     func listContextFavorites() async throws -> [ContextPreference]
     /// `list_recent_contexts(limit)` — contextos visitados recientemente.
     func listRecentContexts(limit: Int) async throws -> [ContextPreference]
+
+    // MARK: - Governance (R.5)
+
+    /// `list_governance_policies(p_context_actor_id)` — políticas del contexto.
+    /// Member-only en backend.
+    func listGovernancePolicies(contextActorId: UUID) async throws -> [GovernancePolicy]
 }
 
 extension RuulRPCClient {
