@@ -95,25 +95,47 @@ public struct ResourcesListView: View {
     @ViewBuilder
     private var contextResourcesList: some View {
         if store.resources.isEmpty {
-            EmptyStateView(
-                symbolName: "shippingbox",
-                title: "Sin recursos",
-                message: "Registra una casa, un fondo común, un coche o cualquier cosa que este contexto gobierne."
-            )
+            List {
+                reservationsEntry
+                Section {
+                    EmptyStateView(
+                        symbolName: "shippingbox",
+                        title: "Sin recursos",
+                        message: "Registra una casa, un fondo común, un coche o cualquier cosa que este contexto gobierne."
+                    )
+                    .listRowBackground(Color.clear)
+                }
+            }
         } else {
             List {
-                ForEach(store.resources) { resource in
-                    NavigationLink {
-                        ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
-                    } label: {
-                        InfoRow(
-                            symbolName: resource.type.symbolName,
-                            title: resource.displayName,
-                            subtitle: rightsSummary(resource),
-                            value: resource.estimatedValue.map { $0.currencyLabel(resource.currency) }
-                        )
+                reservationsEntry
+                Section("Recursos") {
+                    ForEach(store.resources) { resource in
+                        NavigationLink {
+                            ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
+                        } label: {
+                            InfoRow(
+                                symbolName: resource.type.symbolName,
+                                title: resource.displayName,
+                                subtitle: rightsSummary(resource),
+                                value: resource.estimatedValue.map { $0.currencyLabel(resource.currency) }
+                            )
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    /// Acceso context-wide a `list_context_reservations`. Visible sólo para
+    /// contextos governing (no para el personal, donde no se gobiernan recursos).
+    @ViewBuilder
+    private var reservationsEntry: some View {
+        Section {
+            NavigationLink {
+                ContextReservationsView(context: context, container: container)
+            } label: {
+                Label("Reservaciones del contexto", systemImage: "calendar.badge.clock")
             }
         }
     }

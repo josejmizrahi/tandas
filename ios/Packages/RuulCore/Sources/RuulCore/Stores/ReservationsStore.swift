@@ -9,6 +9,9 @@ public final class ReservationsStore {
     public private(set) var conflicts: [ReservationConflict] = []
     public private(set) var members: [ContextMember] = []
     public private(set) var myPermissions: [String] = []
+    /// Sólo se llena en `loadByContext`; permite resolver el nombre del recurso
+    /// por reservación cuando la vista es context-wide.
+    public private(set) var resources: [SummaryResource] = []
     public private(set) var phase: StorePhase = .idle
 
     private let rpc: any RuulRPCClient
@@ -65,6 +68,31 @@ public final class ReservationsStore {
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
         }
+    }
+
+    /// Variante context-wide: trae todas las reservaciones del contexto a través
+    /// de `list_context_reservations`. No carga conflictos (sólo viven por
+    /// recurso vía `detect_reservation_conflicts`); `conflicts` queda vacío.
+    public func loadByContext(context: AppContext) async {
+        if reservations.isEmpty { phase = .loading }
+        do {
+            async let reservationsTask = rpc.listContextReservations(contextId: context.id)
+            async let summaryTask = rpc.contextSummary(contextId: context.id)
+            let (loadedReservations, summary) = try await (reservationsTask, summaryTask)
+            reservations = loadedReservations
+            conflicts = []
+            members = summary.members
+            myPermissions = summary.myPermissions
+            resources = summary.resources
+            phase = .loaded
+        } catch {
+            phase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+
+    /// Para context-wide rows: devuelve el nombre del recurso si lo conocemos.
+    public func resourceName(for resourceId: UUID) -> String? {
+        resources.first(where: { $0.resourceId == resourceId })?.displayName
     }
 
     /// Reservaciones que cubren un día dado (para el calendario).
