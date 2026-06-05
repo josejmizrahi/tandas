@@ -23,6 +23,8 @@ public struct CreateResourceView: View {
     @State private var locationText = ""
     @State private var locationCompleter = LocationCompleter()
     @State private var suppressNextQueryUpdate = false
+    /// R.2V.4 — creation guard: candidatos similares al nombre dentro del contexto.
+    @State private var guardCandidates: [ResourceCreationCandidate] = []
 
     public init(context: AppContext, store: ResourcesStore, container: DependencyContainer) {
         self.context = context
@@ -57,6 +59,14 @@ public struct CreateResourceView: View {
                     TextField("Nombre (Casa Valle, Fondo común…)", text: $displayName)
                     TextField("Descripción (opcional)", text: $description, axis: .vertical)
                         .lineLimit(2...4)
+                }
+
+                CreationGuardView(
+                    candidates: guardCandidates.map(CreationGuardCandidate.from)
+                ) { _ in
+                    // El recurso ya existe en este contexto; cierra el sheet
+                    // y deja al usuario abrirlo desde la lista para evitar duplicado.
+                    dismiss()
                 }
 
                 Section("Tipo") {
@@ -153,6 +163,23 @@ public struct CreateResourceView: View {
             }
             .task {
                 await catalogStore.loadIfNeeded()
+            }
+            // R.2V.4 — debounce creation guard al teclear el nombre.
+            .task(id: displayName) {
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                let trimmed = displayName.trimmingCharacters(in: .whitespaces)
+                guard !Task.isCancelled, trimmed.count >= 3 else {
+                    if trimmed.count < 3 { guardCandidates = [] }
+                    return
+                }
+                do {
+                    guardCandidates = try await container.rpc.resourceCreationCandidates(
+                        displayName: trimmed,
+                        contextId: context.id
+                    )
+                } catch {
+                    guardCandidates = []
+                }
             }
             .actionErrorAlert(runner)
         }
