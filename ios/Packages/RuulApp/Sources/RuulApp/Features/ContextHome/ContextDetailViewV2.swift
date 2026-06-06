@@ -231,9 +231,15 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func activityCard(_ events: [ActivityPreviewEvent]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text("Actividad reciente")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("Actividad reciente").font(.subheadline.bold()).foregroundStyle(.secondary)
+                Spacer()
+                NavigationLink {
+                    ActivityFeedView(context: context, container: container)
+                } label: {
+                    Text("Ver todo").font(.caption).foregroundStyle(Color.accentColor)
+                }
+            }
             VStack(spacing: 0) {
                 let take = Array(events.prefix(5))
                 ForEach(take.enumerated().map { ($0, $1) }, id: \.1.id) { idx, ev in
@@ -265,31 +271,44 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func peopleTab(_ d: ContextDetailDescriptor) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text("\(d.metrics.memberCount) miembros")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("\(d.metrics.memberCount) miembros").font(.subheadline.bold()).foregroundStyle(.secondary)
+                Spacer()
+                NavigationLink {
+                    MembersListView(context: context, container: container)
+                } label: {
+                    Text("Ver todos").font(.caption).foregroundStyle(Color.accentColor)
+                }
+            }
             if d.membersPreview.isEmpty {
                 EmptyCard(icon: "person.2", label: "Sin miembros para mostrar")
             } else {
                 VStack(spacing: 0) {
                     ForEach(d.membersPreview.enumerated().map { ($0, $1) }, id: \.1.id) { idx, m in
-                        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-                            Circle()
-                                .fill(Color.accentColor.badgeFillSubtle)
-                                .frame(width: 32, height: 32)
-                                .overlay(
-                                    Text(m.displayName.first.map { String($0) } ?? "?")
-                                        .font(.subheadline.bold())
-                                        .foregroundStyle(Color.accentColor)
-                                )
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(m.displayName).font(.body)
-                                Text(m.membershipType).font(.caption).foregroundStyle(.tertiary)
+                        NavigationLink {
+                            MembersListView(context: context, container: container)
+                        } label: {
+                            HStack(alignment: .center, spacing: Theme.Spacing.md) {
+                                Circle()
+                                    .fill(Color.accentColor.badgeFillSubtle)
+                                    .frame(width: 32, height: 32)
+                                    .overlay(
+                                        Text(m.displayName.first.map { String($0) } ?? "?")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(Color.accentColor)
+                                    )
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(m.displayName).font(.body).foregroundStyle(.primary)
+                                    Text(m.membershipType).font(.caption).foregroundStyle(.tertiary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                             }
-                            Spacer()
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.vertical, Theme.Spacing.md)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.horizontal, Theme.Spacing.md)
-                        .padding(.vertical, Theme.Spacing.md)
+                        .buttonStyle(.plain)
                         if idx < d.membersPreview.count - 1 { Divider().padding(.leading, 56) }
                     }
                 }
@@ -337,22 +356,29 @@ public struct ContextDetailViewV2: View {
                             .textCase(.uppercase)
                         VStack(spacing: 0) {
                             ForEach(items.enumerated().map { ($0, $1) }, id: \.1.id) { idx, r in
-                                HStack(alignment: .center, spacing: Theme.Spacing.md) {
-                                    Image(systemName: "cube")
-                                        .foregroundStyle(Color.accentColor)
-                                        .frame(width: Theme.IconSize.sm)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(r.displayName).font(.body)
-                                        if let sub = r.subtypeKey {
-                                            Text(sub.replacingOccurrences(of: "_", with: " "))
-                                                .font(.caption2)
-                                                .foregroundStyle(.tertiary)
+                                NavigationLink {
+                                    ResourceDetailViewV2(resourceId: r.resourceId, context: context, container: container)
+                                } label: {
+                                    HStack(alignment: .center, spacing: Theme.Spacing.md) {
+                                        Image(systemName: "cube")
+                                            .foregroundStyle(Color.accentColor)
+                                            .frame(width: Theme.IconSize.sm)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(r.displayName).font(.body).foregroundStyle(.primary)
+                                            if let sub = r.subtypeKey {
+                                                Text(sub.replacingOccurrences(of: "_", with: " "))
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.tertiary)
+                                            }
                                         }
+                                        Spacer()
+                                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                                     }
-                                    Spacer()
+                                    .padding(.horizontal, Theme.Spacing.md)
+                                    .padding(.vertical, Theme.Spacing.md)
+                                    .contentShape(Rectangle())
                                 }
-                                .padding(.horizontal, Theme.Spacing.md)
-                                .padding(.vertical, Theme.Spacing.md)
+                                .buttonStyle(.plain)
                                 if idx < items.count - 1 { Divider().padding(.leading, 56) }
                             }
                         }
@@ -387,23 +413,30 @@ public struct ContextDetailViewV2: View {
                     .foregroundStyle(.secondary)
                 VStack(spacing: 0) {
                     ForEach(d.obligationsPreview.enumerated().map { ($0, $1) }, id: \.1.id) { idx, o in
-                        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-                            Image(systemName: "doc.text")
-                                .foregroundStyle(.secondary)
-                                .frame(width: Theme.IconSize.sm)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(o.kind ?? "Obligación").font(.body)
-                                if let s = o.status {
-                                    Text(s).font(.caption).foregroundStyle(.tertiary)
+                        NavigationLink {
+                            ObligationDetailView(obligationId: o.obligationId, context: context, container: container)
+                        } label: {
+                            HStack(alignment: .center, spacing: Theme.Spacing.md) {
+                                Image(systemName: "doc.text")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: Theme.IconSize.sm)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(o.kind ?? "Obligación").font(.body).foregroundStyle(.primary)
+                                    if let s = o.status {
+                                        Text(s).font(.caption).foregroundStyle(.tertiary)
+                                    }
                                 }
+                                Spacer()
+                                if let amount = o.amount, let cur = o.currency {
+                                    Text("\(Int(amount)) \(cur)").font(.subheadline.bold()).foregroundStyle(.primary)
+                                }
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                             }
-                            Spacer()
-                            if let amount = o.amount, let cur = o.currency {
-                                Text("\(Int(amount)) \(cur)").font(.subheadline.bold())
-                            }
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.vertical, Theme.Spacing.md)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.horizontal, Theme.Spacing.md)
-                        .padding(.vertical, Theme.Spacing.md)
+                        .buttonStyle(.plain)
                         if idx < d.obligationsPreview.count - 1 { Divider().padding(.leading, 56) }
                     }
                 }
@@ -428,21 +461,27 @@ public struct ContextDetailViewV2: View {
                     .foregroundStyle(.secondary)
                 VStack(spacing: 0) {
                     ForEach(moreSections.enumerated().map { ($0, $1) }, id: \.1.id) { idx, section in
-                        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-                            Image(systemName: section.icon ?? "circle")
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: Theme.IconSize.sm)
-                            Text(section.displayName).font(.body)
-                            Spacer()
-                            if let perm = section.requiredPermission {
-                                Text(perm).font(.caption2).foregroundStyle(.tertiary)
+                        NavigationLink {
+                            moreSectionDestination(section.sectionKey)
+                        } label: {
+                            HStack(alignment: .center, spacing: Theme.Spacing.md) {
+                                Image(systemName: section.icon ?? "circle")
+                                    .foregroundStyle(Color.accentColor)
+                                    .frame(width: Theme.IconSize.sm)
+                                Text(section.displayName).font(.body).foregroundStyle(.primary)
+                                Spacer()
+                                if let perm = section.requiredPermission {
+                                    Text(perm).font(.caption2).foregroundStyle(.tertiary)
+                                }
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
                             }
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.vertical, Theme.Spacing.md)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.horizontal, Theme.Spacing.md)
-                        .padding(.vertical, Theme.Spacing.md)
+                        .buttonStyle(.plain)
                         if idx < moreSections.count - 1 { Divider().padding(.leading, 56) }
                     }
                 }
@@ -465,6 +504,20 @@ public struct ContextDetailViewV2: View {
     }
 
     // MARK: - Helpers
+
+    /// R.5A wire — destinos legacy por section_key del More tab. Fallback a
+    /// ActivityFeed si la section no tiene un destino dedicado.
+    @ViewBuilder
+    private func moreSectionDestination(_ sectionKey: String) -> some View {
+        switch sectionKey {
+        case "calendar":   EventsListView(context: context, container: container)
+        case "governance": DecisionsListView(context: context, container: container)
+        case "documents":  ActivityFeedView(context: context, container: container)  // sin lista dedicada todavía
+        case "activity":   ActivityFeedView(context: context, container: container)
+        case "settings":   ContextSettingsView(context: context, container: container)
+        default:           ActivityFeedView(context: context, container: container)
+        }
+    }
 
     @ViewBuilder
     private func chipBadge(_ text: String, tint: Color) -> some View {

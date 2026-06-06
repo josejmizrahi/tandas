@@ -221,7 +221,7 @@ public struct ResourceDetailViewV2: View {
                 .foregroundStyle(.secondary)
             VStack(spacing: 0) {
                 ForEach(d.sections.enumerated().map { ($0, $1) }, id: \.1.id) { idx, section in
-                    sectionRow(section)
+                    sectionLink(d, section: section)
                     if idx < d.sections.count - 1 { Divider().padding(.leading, 56) }
                 }
             }
@@ -229,8 +229,52 @@ public struct ResourceDetailViewV2: View {
         }
     }
 
+    /// Si la section tiene destino, envuelve en NavigationLink; si no, row plana.
     @ViewBuilder
-    private func sectionRow(_ section: ResourceSection) -> some View {
+    private func sectionLink(_ d: ResourceDetailDescriptor, section: ResourceSection) -> some View {
+        if let _ = sectionDestinationKey(section.sectionKey) {
+            NavigationLink {
+                sectionDestination(d, sectionKey: section.sectionKey)
+            } label: {
+                sectionRow(section, tappable: true)
+            }
+            .buttonStyle(.plain)
+        } else {
+            sectionRow(section, tappable: false)
+        }
+    }
+
+    /// Sentinel para saber si una section_key tiene destino wireado.
+    private func sectionDestinationKey(_ key: String) -> String? {
+        switch key {
+        case "reservations", "availability", "activity", "settings": return key
+        default: return nil
+        }
+    }
+
+    /// Destinos legacy por section_key. Reservations usa ReservationsListView
+    /// scoped a este resource; settings abre ResourceSettingsView.
+    @ViewBuilder
+    private func sectionDestination(_ d: ResourceDetailDescriptor, sectionKey: String) -> some View {
+        switch sectionKey {
+        case "reservations", "availability":
+            ReservationsListView(
+                resource: d.resource,
+                context: context,
+                reservationContextId: nil,
+                container: container
+            )
+        case "activity":
+            ActivityFeedView(context: context, container: container)
+        case "settings":
+            ResourceSettingsView(resourceId: resourceId, container: container)
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private func sectionRow(_ section: ResourceSection, tappable: Bool) -> some View {
         HStack(alignment: .center, spacing: Theme.Spacing.md) {
             Image(systemName: section.icon ?? "circle")
                 .foregroundStyle(Color.accentColor)
@@ -238,6 +282,7 @@ public struct ResourceDetailViewV2: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(section.displayName)
                     .font(.body)
+                    .foregroundStyle(.primary)
                 if let cap = section.requiredCapability {
                     Text("Requiere: \(cap)")
                         .font(.caption2)
@@ -245,9 +290,11 @@ public struct ResourceDetailViewV2: View {
                 }
             }
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            if tappable {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.md)
@@ -358,26 +405,34 @@ public struct ResourceDetailViewV2: View {
 
     @ViewBuilder
     private func relationRow(_ rel: ResourceRelation) -> some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-            Image(systemName: rel.isOutbound ? "arrow.right" : "arrow.left")
-                .foregroundStyle(.secondary)
-                .frame(width: Theme.IconSize.sm, alignment: .center)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(rel.other.displayName)
-                    .font(.body)
-                Text(rel.relationType.replacingOccurrences(of: "_", with: " "))
-                    .font(.caption)
+        NavigationLink {
+            ResourceDetailViewV2(resourceId: rel.otherResourceId, context: context, container: container)
+        } label: {
+            HStack(alignment: .center, spacing: Theme.Spacing.md) {
+                Image(systemName: rel.isOutbound ? "arrow.right" : "arrow.left")
                     .foregroundStyle(.secondary)
+                    .frame(width: Theme.IconSize.sm, alignment: .center)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(rel.other.displayName)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                    Text(rel.relationType.replacingOccurrences(of: "_", with: " "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if let subKey = rel.other.subtypeKey {
+                    Text(subKey.replacingOccurrences(of: "_", with: " "))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
             }
-            Spacer()
-            if let subKey = rel.other.subtypeKey {
-                Text(subKey.replacingOccurrences(of: "_", with: " "))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.md)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.md)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Activity preview
@@ -385,9 +440,15 @@ public struct ResourceDetailViewV2: View {
     @ViewBuilder
     private func activityCard(_ events: [ActivityPreviewEvent]) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text("Actividad reciente")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("Actividad reciente").font(.subheadline.bold()).foregroundStyle(.secondary)
+                Spacer()
+                NavigationLink {
+                    ActivityFeedView(context: context, container: container)
+                } label: {
+                    Text("Ver todo").font(.caption).foregroundStyle(Color.accentColor)
+                }
+            }
             VStack(spacing: 0) {
                 ForEach(events.prefix(5).enumerated().map { ($0, $1) }, id: \.1.id) { idx, ev in
                     activityRow(ev)
