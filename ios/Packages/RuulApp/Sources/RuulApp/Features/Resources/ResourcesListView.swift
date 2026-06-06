@@ -79,7 +79,7 @@ public struct ResourcesListView: View {
             List {
                 ForEach(store.personalResources) { resource in
                     NavigationLink {
-                        ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
+                        ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
                     } label: {
                         InfoRow(
                             symbolName: (ResourceType(rawValue: resource.resourceType) ?? .other).symbolName,
@@ -112,7 +112,7 @@ public struct ResourcesListView: View {
                 Section("Recursos") {
                     ForEach(store.resources) { resource in
                         NavigationLink {
-                            ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
+                            ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
                         } label: {
                             InfoRow(
                                 symbolName: resource.type.symbolName,

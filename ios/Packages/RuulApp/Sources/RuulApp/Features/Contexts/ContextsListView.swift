@@ -453,7 +453,7 @@ private struct ContextHomeContainer: View {
     @State private var isShowingSwitcher = false
 
     var body: some View {
-        ContextHomeView(context: context, container: container)
+        ContextDetailViewV2(contextId: context.id, context: context, container: container)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {

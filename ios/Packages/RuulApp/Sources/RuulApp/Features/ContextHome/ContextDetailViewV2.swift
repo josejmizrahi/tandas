@@ -11,13 +11,18 @@ import RuulCore
 /// actor_subtypes (family/company/trip/project/community/trust/generic/friend_group).
 public struct ContextDetailViewV2: View {
     let contextId: UUID
+    let context: AppContext
     let container: DependencyContainer
 
     @State private var store: ContextDescriptorStore
     @State private var selectedTab: Tab = .overview
+    /// R.5A cutover — fallback a `ContextHomeView` legacy cuando V2 aún no
+    /// cubre algún flow (create_*, edit_context, governance wizards…).
+    @State private var isShowingClassicSheet = false
 
-    public init(contextId: UUID, container: DependencyContainer) {
+    public init(contextId: UUID, context: AppContext, container: DependencyContainer) {
         self.contextId = contextId
+        self.context = context
         self.container = container
         _store = State(initialValue: ContextDescriptorStore(rpc: container.rpc))
     }
@@ -68,17 +73,32 @@ public struct ContextDetailViewV2: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Label("R.5A", systemImage: "sparkles")
-                    .labelStyle(.titleAndIcon)
-                    .foregroundStyle(.purple)
-                    .font(.caption)
-                    .padding(.horizontal, Theme.Spacing.sm)
-                    .padding(.vertical, Theme.Spacing.xxs)
-                    .background(Color.purple.badgeFillSubtle, in: Capsule())
+                Menu {
+                    Section("Fallback") {
+                        Button {
+                            isShowingClassicSheet = true
+                        } label: {
+                            Label("Vista clásica", systemImage: "rectangle.stack")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Más opciones")
             }
         }
         .task { await store.load(contextId: contextId) }
         .refreshable { await store.load(contextId: contextId) }
+        .sheet(isPresented: $isShowingClassicSheet) {
+            NavigationStack {
+                ContextHomeView(context: context, container: container)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cerrar") { isShowingClassicSheet = false }
+                        }
+                    }
+            }
+        }
     }
 
     @ViewBuilder

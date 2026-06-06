@@ -37,8 +37,6 @@ public struct ContextHomeView: View {
     @State private var presentedAttention: AttentionItem?
     @State private var isShowingAllAttention = false
     @State private var isShowingPendingInvitations = false
-    /// R.5A.F.3 — beta toggle para `ContextDetailViewV2` descriptor-driven.
-    @State private var isShowingV2Preview = false
 
     private enum QuickActionPush: Hashable, Identifiable {
         case resources, events, decisions, money, members, rules
@@ -152,16 +150,6 @@ public struct ContextHomeView: View {
                     isShowingAllAttention = false
                     handleAttentionTap(item)
                 }
-            }
-        }
-        .sheet(isPresented: $isShowingV2Preview) {
-            NavigationStack {
-                ContextDetailViewV2(contextId: context.id, container: container)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Cerrar") { isShowingV2Preview = false }
-                        }
-                    }
             }
         }
         // F.2X.2 — router
@@ -493,14 +481,6 @@ public struct ContextHomeView: View {
                         Label(action.label, systemImage: presentation.symbolName)
                     }
                     .disabled(!action.enabled)
-                }
-                // R.5A.F.3 beta — vista descriptor-driven (tabs)
-                Section("Beta") {
-                    Button {
-                        isShowingV2Preview = true
-                    } label: {
-                        Label("Vista R.5A (descriptor)", systemImage: "sparkles")
-                    }
                 }
             } label: {
                 Image(systemName: "plus.circle.fill")

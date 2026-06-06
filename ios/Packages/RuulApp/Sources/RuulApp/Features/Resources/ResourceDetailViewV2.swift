@@ -16,14 +16,19 @@ import RuulCore
 /// recurring_event, contract, iou).
 public struct ResourceDetailViewV2: View {
     let resourceId: UUID
+    let context: AppContext
     let container: DependencyContainer
 
     @State private var store: ResourceDescriptorStore
     /// R.5A.F.2 — action seleccionada para presentar `ResourceActionFormView`.
     @State private var pendingAction: PendingAction?
+    /// R.5A cutover — fallback a la vista clásica (v1) cuando V2 aún no cubre
+    /// algún flow (edit/settings/grant_right/attach_document).
+    @State private var isShowingClassicSheet = false
 
-    public init(resourceId: UUID, container: DependencyContainer) {
+    public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
+        self.context = context
         self.container = container
         _store = State(initialValue: ResourceDescriptorStore(rpc: container.rpc))
     }
@@ -54,13 +59,18 @@ public struct ResourceDetailViewV2: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Label("Vista R.5A", systemImage: "sparkles")
-                    .labelStyle(.titleAndIcon)
-                    .foregroundStyle(.purple)
-                    .font(.caption)
-                    .padding(.horizontal, Theme.Spacing.sm)
-                    .padding(.vertical, Theme.Spacing.xxs)
-                    .background(Color.purple.badgeFillSubtle, in: Capsule())
+                Menu {
+                    Section("Fallback") {
+                        Button {
+                            isShowingClassicSheet = true
+                        } label: {
+                            Label("Vista clásica", systemImage: "rectangle.stack")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Más opciones")
             }
         }
         .task {
@@ -77,6 +87,16 @@ public struct ResourceDetailViewV2: View {
                 container: container
             ) { _ in
                 Task { await store.refreshActions(resourceId: resourceId) }
+            }
+        }
+        .sheet(isPresented: $isShowingClassicSheet) {
+            NavigationStack {
+                ResourceDetailView(resourceId: resourceId, context: context, container: container)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cerrar") { isShowingClassicSheet = false }
+                        }
+                    }
             }
         }
     }
