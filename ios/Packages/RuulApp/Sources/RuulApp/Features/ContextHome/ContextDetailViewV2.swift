@@ -221,9 +221,87 @@ public struct ContextDetailViewV2: View {
             attentionCard
             metricsCard(d.metrics)
             if !d.widgets.isEmpty { widgetsRow(d.widgets) }
+            childContextsCarousel
             if !d.activityPreview.isEmpty {
                 activityCard(d.activityPreview)
             }
+        }
+    }
+
+    // MARK: - Child contexts (F.CONTEXT.4 — "Espacios dentro de X")
+
+    @ViewBuilder
+    private var childContextsCarousel: some View {
+        if hierarchyStore.phase.isLoaded {
+            let children = hierarchyStore.children
+            if !children.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text("Espacios dentro de \(context.displayName)")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.secondary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: Theme.Spacing.sm) {
+                            ForEach(children) { child in
+                                childCard(child)
+                            }
+                        }
+                        .padding(.bottom, 4)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func childCard(_ child: ContextHierarchyNode) -> some View {
+        if let target = container.contextStore.availableContexts.first(where: { $0.id == child.id }) {
+            NavigationLink(value: target) {
+                childCardLabel(child)
+            }
+            .buttonStyle(.plain)
+        } else {
+            childCardLabel(child).opacity(0.5)
+        }
+    }
+
+    @ViewBuilder
+    private func childCardLabel(_ child: ContextHierarchyNode) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: child.appContext.symbolName)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 36, height: 36)
+                .background(Color.accentColor.badgeFill, in: Circle())
+            Spacer(minLength: 0)
+            Text(child.name)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            Text(childSubtypeLabel(child.actorSubtype))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(width: 140, height: 140, alignment: .topLeading)
+        .padding(Theme.Spacing.md)
+        .background(Theme.Surface.card, in: Theme.cardShape())
+        .overlay(
+            Theme.cardShape()
+                .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
+        )
+    }
+
+    private func childSubtypeLabel(_ subtype: String) -> String {
+        switch subtype {
+        case "family":       return "Familia"
+        case "community":    return "Comunidad"
+        case "trip":         return "Viaje"
+        case "project":      return "Proyecto"
+        case "trust":        return "Fideicomiso"
+        case "friend_group": return "Grupo"
+        case "company":      return "Empresa"
+        default:             return "Contexto"
         }
     }
 
