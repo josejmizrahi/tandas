@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-06-05
 **Founder-signed lock:** ver `doctrine_ruul_foundation_actor_context_resource.md` (memoria) y CLAUDE.md MVP 2.0 doctrine.
-**Status:** Contrato congelado — pendiente ejecución por slices.
+**Status:** ✅ CLOSED 2026-06-07. Backend B.0–B.8 + B.H + B.6.1 + B.7.1 + iOS F.0–F.3 + cutover + wire-up V2 P1/P2/P3 todos shipped. Section rows residuales sin pantallas dedicadas se quedan inertes como UX honesto (fallback v1 cubre).
 **Branch base:** `main` (último commit `96e58d4f` D.0 drift fix).
 
 Documento autoritativo para R.5A. Antes de tocar SQL o iOS, todo cambio debe alinearse a este contrato.
@@ -634,7 +634,17 @@ Cada slice debe ser rollback-safe vía migration descendiente. Política:
 | F.2 | ✅ ResourceActionFormSchema + ResourceActionFormView runtime (11 field types + confirmation + execute_resource_action wire) | iOS only — build verde 21s | 2026-06-05 |
 | F.3 | ✅ ContextDescriptorStore + ContextDetailViewV2 (5 tabs segmentadas + filtered by sections + per-tab previews) + beta toggle en ContextHome Menu | iOS only — build verde 22s | 2026-06-05 |
 | F.4 | ⚠️ Sub-tabs en More — **DEROGADO** por founder UX feedback. Restaurado el flat sections list de F.3 estilo. R.5A queda en F.3 como UI final. | reverted same day | 2026-06-05 |
-| F.1 | ⬜ pendiente | — | — |
-| F.2 | ⬜ pendiente | — | — |
-| F.3 | ⬜ pendiente | — | — |
-| F.4 | ⬜ pendiente | — | — |
+| **CUTOVER** | ✅ V2 default en Resource + Context; v1/ContextHome como "Vista clásica" fallback en toolbar | `f5e4ec36` + `a39206ff` (wire-all-clicks) | 2026-06-05 |
+| **P1.1** | ✅ Quick Actions toolbar Context V2 (F.2X descriptor.actions + create_child_context sheet) | `4a982c44` | 2026-06-05 |
+| **P1.2** | ✅ attention_inbox surface Context Overview tab (F.NAV.10 mirror) | `91ca8e11` | 2026-06-05 |
+| **P1.3** | ✅ Breadcrumb jerarquía Context V2 (R.2U.3 safeAreaInset) | `73f073f5` | 2026-06-05 |
+| **P1.4** | ✅ Native sheets grant_right + attach_document en Resource V2 | `2fc26e2d` | 2026-06-05 |
+| **P2.4** | ✅ actor_ref/resource_ref pickers nativos en form runtime (MembersStore + ResourcesStore) | `fbe5dcfb` | 2026-06-05 |
+| **P2.5** | ✅ Widget cards tappables Resource (10/17) + Context (10/12) con sentinel destinos | `b0f49e46` | 2026-06-05 |
+| **B.6.1** | ✅ resource_descriptor linked_events/obligations/decisions enrichment + iOS render | `20260607041924` + `bb95e077` | 2026-06-06 |
+| **P3.A** | ✅ Child contexts carousel Context Overview (F.CONTEXT.4 mirror via hierarchyStore) | `e8ee9bbb` | 2026-06-06 |
+| **P3.B** | ✅ Settlement card + role rows drill-down Context (NavigationLink chevron) | `2067c903` | 2026-06-06 |
+| **P3.C** | ✅ Capability chip explanations Resource hero (snapshot estático 42 entries + alert) | `e4e9b117` | 2026-06-07 |
+| **P3.D** | ✅ edit_resource native sheet Resource (extiende P1.4 a EditResourceView con map picker) | `e90b0861` | 2026-06-07 |
+| **B.7.1** | ✅ context_descriptor child_contexts_preview + pending_invitations_preview + my_balance_by_currency + fixup invites NULL max_uses + iOS render Overview/Money/More | `20260607220017` + fixup `20260607220242` + `d21febf6` | 2026-06-07 |
+| **R.5A CLOSED** | 🎉 Backend + iOS wire-up completos end-to-end. Doctrina actor/context/resource validada en producción. | — | 2026-06-07 |
