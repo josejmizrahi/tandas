@@ -504,6 +504,8 @@ public struct ResourceDetailDescriptor: Decodable, Sendable, Equatable {
     public let linkedObligations: [JSONValue]
     public let linkedDecisions: [JSONValue]
     public let activityPreview: [ActivityPreviewEvent]
+    /// R.5B.4 — conflicts abiertos del recurso (full list dedup'd).
+    public let conflicts: ResourceConflictList
 
     enum CodingKeys: String, CodingKey {
         case resource
@@ -523,6 +525,7 @@ public struct ResourceDetailDescriptor: Decodable, Sendable, Equatable {
         case linkedObligations = "linked_obligations"
         case linkedDecisions = "linked_decisions"
         case activityPreview = "activity_preview"
+        case conflicts
     }
 
     public init(from decoder: Decoder) throws {
@@ -544,6 +547,7 @@ public struct ResourceDetailDescriptor: Decodable, Sendable, Equatable {
         self.linkedObligations = try c.decodeIfPresent([JSONValue].self, forKey: .linkedObligations) ?? []
         self.linkedDecisions = try c.decodeIfPresent([JSONValue].self, forKey: .linkedDecisions) ?? []
         self.activityPreview = try c.decodeIfPresent([ActivityPreviewEvent].self, forKey: .activityPreview) ?? []
+        self.conflicts = try c.decodeIfPresent(ResourceConflictList.self, forKey: .conflicts) ?? .empty
     }
 
     public init(
@@ -563,7 +567,8 @@ public struct ResourceDetailDescriptor: Decodable, Sendable, Equatable {
         linkedDocuments: [LinkedDocument] = [],
         linkedObligations: [JSONValue] = [],
         linkedDecisions: [JSONValue] = [],
-        activityPreview: [ActivityPreviewEvent] = []
+        activityPreview: [ActivityPreviewEvent] = [],
+        conflicts: ResourceConflictList = .empty
     ) {
         self.resource = resource
         self.class = `class`
@@ -582,6 +587,7 @@ public struct ResourceDetailDescriptor: Decodable, Sendable, Equatable {
         self.linkedObligations = linkedObligations
         self.linkedDecisions = linkedDecisions
         self.activityPreview = activityPreview
+        self.conflicts = conflicts
     }
 
     /// ¿La capability efectiva del recurso incluye este key?

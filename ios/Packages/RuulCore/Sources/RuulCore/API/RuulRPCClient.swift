@@ -209,6 +209,29 @@ public protocol RuulRPCClient: Sendable {
     /// `detect_reservation_conflicts(resource)` — equivalente RPC al list pero
     /// invocado server-side (puede detectar conflictos no persistidos).
     func detectReservationConflicts(resourceId: UUID) async throws -> [ReservationConflict]
+
+    // MARK: - R.5B Resource Conflicts
+
+    /// `list_resource_conflicts(p_resource_id, p_include_resolved)` — R.5B.3.
+    /// Lista dedupe'd con items enriquecidos. Mismo shape que `descriptor.conflicts`.
+    func listResourceConflicts(resourceId: UUID, includeResolved: Bool) async throws -> ResourceConflictList
+    /// `list_context_conflicts(p_context_actor_id, p_include_resolved)` — R.5B.3.
+    /// Lista enriquecida con `resource_display_name`.
+    func listContextConflicts(contextActorId: UUID, includeResolved: Bool) async throws -> ContextConflictList
+    /// `resolve_resource_conflict(p_conflict_id, p_resolution_kind, p_winner_actor_id?, p_payload?)` — R.5B.3.
+    /// Kinds: `manualResolution`, `escalate`, `dismiss`. Escalate crea decision vía
+    /// template auto-seleccionada por conflict_type.
+    func resolveResourceConflict(
+        conflictId: UUID,
+        kind: ResolveResourceConflictKind,
+        winnerActorId: UUID?,
+        payload: JSONValue
+    ) async throws -> ResolveResourceConflictResult
+    /// `detect_resource_conflicts(p_resource_id)` — R.5B.1. Idempotente.
+    func detectResourceConflicts(resourceId: UUID) async throws -> DetectResourceConflictsResult
+    /// `detect_context_conflicts(p_context_actor_id)` — R.5B.1. Fanout sobre
+    /// resources con reservations en el contexto.
+    func detectContextConflicts(contextActorId: UUID) async throws -> DetectContextConflictsResult
     /// `reservation_detail(p_reservation_id)` — R.2S: detalle + `available_actions` canónicos.
     func reservationDetail(reservationId: UUID) async throws -> ReservationDetail
     /// `approve_reservation(p_reservation_id)`

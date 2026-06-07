@@ -1133,6 +1133,78 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
     }
 
+    // MARK: - R.5B Resource Conflicts (R.5B.5a wire)
+
+    public func listResourceConflicts(resourceId: UUID, includeResolved: Bool) async throws -> ResourceConflictList {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            let pIncludeResolved: Bool
+            enum CodingKeys: String, CodingKey {
+                case pResourceId = "p_resource_id"
+                case pIncludeResolved = "p_include_resolved"
+            }
+        }
+        return try await call("list_resource_conflicts", params: Params(
+            pResourceId: resourceId, pIncludeResolved: includeResolved
+        ))
+    }
+
+    public func listContextConflicts(contextActorId: UUID, includeResolved: Bool) async throws -> ContextConflictList {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pIncludeResolved: Bool
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pIncludeResolved = "p_include_resolved"
+            }
+        }
+        return try await call("list_context_conflicts", params: Params(
+            pContextActorId: contextActorId, pIncludeResolved: includeResolved
+        ))
+    }
+
+    public func resolveResourceConflict(
+        conflictId: UUID,
+        kind: ResolveResourceConflictKind,
+        winnerActorId: UUID?,
+        payload: JSONValue
+    ) async throws -> ResolveResourceConflictResult {
+        struct Params: Encodable, Sendable {
+            let pConflictId: UUID
+            let pResolutionKind: String
+            let pWinnerActorId: UUID?
+            let pResolutionPayload: JSONValue
+            enum CodingKeys: String, CodingKey {
+                case pConflictId = "p_conflict_id"
+                case pResolutionKind = "p_resolution_kind"
+                case pWinnerActorId = "p_winner_actor_id"
+                case pResolutionPayload = "p_resolution_payload"
+            }
+        }
+        return try await call("resolve_resource_conflict", params: Params(
+            pConflictId: conflictId,
+            pResolutionKind: kind.rawValue,
+            pWinnerActorId: winnerActorId,
+            pResolutionPayload: payload
+        ))
+    }
+
+    public func detectResourceConflicts(resourceId: UUID) async throws -> DetectResourceConflictsResult {
+        struct Params: Encodable, Sendable {
+            let pResourceId: UUID
+            enum CodingKeys: String, CodingKey { case pResourceId = "p_resource_id" }
+        }
+        return try await call("detect_resource_conflicts", params: Params(pResourceId: resourceId))
+    }
+
+    public func detectContextConflicts(contextActorId: UUID) async throws -> DetectContextConflictsResult {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            enum CodingKeys: String, CodingKey { case pContextActorId = "p_context_actor_id" }
+        }
+        return try await call("detect_context_conflicts", params: Params(pContextActorId: contextActorId))
+    }
+
     // MARK: - Decisions
 
     public func createDecision(_ input: CreateDecisionInput) async throws -> Decision {

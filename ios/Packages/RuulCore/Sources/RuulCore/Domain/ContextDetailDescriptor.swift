@@ -449,6 +449,9 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
     public let childContextsPreview: [ContextChildPreview]
     /// R.5A.B.7.1 — invites activos no expirados con cupos.
     public let pendingInvitationsPreview: [ContextInvitePreview]
+    /// R.5B.4 — counts agregados de conflictos (open/critical/total). Lista
+    /// completa via `list_context_conflicts` cuando el user tap.
+    public let conflicts: ContextConflictsSummary
 
     enum CodingKeys: String, CodingKey {
         case context
@@ -469,6 +472,7 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
         case activityPreview = "activity_preview"
         case childContextsPreview = "child_contexts_preview"
         case pendingInvitationsPreview = "pending_invitations_preview"
+        case conflicts
     }
 
     public init(from decoder: Decoder) throws {
@@ -491,6 +495,7 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
         self.activityPreview = try c.decodeIfPresent([ActivityPreviewEvent].self, forKey: .activityPreview) ?? []
         self.childContextsPreview = try c.decodeIfPresent([ContextChildPreview].self, forKey: .childContextsPreview) ?? []
         self.pendingInvitationsPreview = try c.decodeIfPresent([ContextInvitePreview].self, forKey: .pendingInvitationsPreview) ?? []
+        self.conflicts = try c.decodeIfPresent(ContextConflictsSummary.self, forKey: .conflicts) ?? .empty
     }
 
     public init(
@@ -511,7 +516,8 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
         documentsPreview: [ContextDocumentPreview] = [],
         activityPreview: [ActivityPreviewEvent] = [],
         childContextsPreview: [ContextChildPreview] = [],
-        pendingInvitationsPreview: [ContextInvitePreview] = []
+        pendingInvitationsPreview: [ContextInvitePreview] = [],
+        conflicts: ContextConflictsSummary = .empty
     ) {
         self.context = context
         self.membership = membership
@@ -531,6 +537,7 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
         self.activityPreview = activityPreview
         self.childContextsPreview = childContextsPreview
         self.pendingInvitationsPreview = pendingInvitationsPreview
+        self.conflicts = conflicts
     }
 
     /// ¿El caller tiene este permission key?

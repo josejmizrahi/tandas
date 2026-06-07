@@ -2162,6 +2162,64 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return try await listConflicts(resourceId: resourceId)
     }
 
+    // MARK: - R.5B Resource Conflicts (mock — no persistencia interna, devuelve vacío)
+
+    public func listResourceConflicts(resourceId: UUID, includeResolved: Bool) async throws -> ResourceConflictList {
+        try throwIfNeeded()
+        return ResourceConflictList(resourceId: resourceId)
+    }
+
+    public func listContextConflicts(contextActorId: UUID, includeResolved: Bool) async throws -> ContextConflictList {
+        try throwIfNeeded()
+        return ContextConflictList(contextActorId: contextActorId)
+    }
+
+    public func resolveResourceConflict(
+        conflictId: UUID,
+        kind: ResolveResourceConflictKind,
+        winnerActorId: UUID?,
+        payload: JSONValue
+    ) async throws -> ResolveResourceConflictResult {
+        try throwIfNeeded()
+        let status: String = {
+            switch kind {
+            case .escalate: return "acknowledged"
+            case .dismiss:  return "dismissed"
+            case .manualResolution: return "resolved"
+            }
+        }()
+        let raw: JSONValue = .object([
+            "conflict_id": .string(conflictId.uuidString),
+            "resolution_kind": .string(kind.rawValue),
+            "status": .string(status),
+            "no_op": .bool(false)
+        ])
+        return try JSONDecoder.ruul.decode(ResolveResourceConflictResult.self, from: JSONEncoder().encode(raw))
+    }
+
+    public func detectResourceConflicts(resourceId: UUID) async throws -> DetectResourceConflictsResult {
+        try throwIfNeeded()
+        let raw: JSONValue = .object([
+            "resource_id": .string(resourceId.uuidString),
+            "detected_new_count": .number(0),
+            "dismissed_stale_count": .number(0),
+            "open_total": .number(0)
+        ])
+        return try JSONDecoder.ruul.decode(DetectResourceConflictsResult.self, from: JSONEncoder().encode(raw))
+    }
+
+    public func detectContextConflicts(contextActorId: UUID) async throws -> DetectContextConflictsResult {
+        try throwIfNeeded()
+        let raw: JSONValue = .object([
+            "context_actor_id": .string(contextActorId.uuidString),
+            "resources_scanned": .number(0),
+            "detected_new_count": .number(0),
+            "dismissed_stale_count": .number(0),
+            "open_conflicts_total": .number(0)
+        ])
+        return try JSONDecoder.ruul.decode(DetectContextConflictsResult.self, from: JSONEncoder().encode(raw))
+    }
+
     public func reservationDetail(reservationId: UUID) async throws -> ReservationDetail {
         try throwIfNeeded()
         guard let reservation = reservations[reservationId] else {
