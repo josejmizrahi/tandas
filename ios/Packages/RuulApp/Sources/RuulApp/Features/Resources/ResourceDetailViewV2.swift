@@ -30,6 +30,8 @@ public struct ResourceDetailViewV2: View {
     @State private var documentsStore: DocumentsStore
     @State private var isShowingGrantRight = false
     @State private var isShowingAttachDocument = false
+    /// P3 — chip seleccionada para alert explicativo.
+    @State private var explainedCapability: String?
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -114,6 +116,18 @@ public struct ResourceDetailViewV2: View {
                 )
             }
         }
+        .alert(
+            explainedCapability.map { capabilityDisplayName($0) } ?? "",
+            isPresented: Binding(
+                get: { explainedCapability != nil },
+                set: { if !$0 { explainedCapability = nil } }
+            ),
+            presenting: explainedCapability
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { cap in
+            Text(capabilityDescription(cap))
+        }
         .sheet(isPresented: $isShowingClassicSheet) {
             NavigationStack {
                 ResourceDetailView(resourceId: resourceId, context: context, container: container)
@@ -191,7 +205,12 @@ public struct ResourceDetailViewV2: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Spacing.xs) {
                         ForEach(d.effectiveCapabilities, id: \.self) { cap in
-                            chipBadge(cap.replacingOccurrences(of: "_", with: " "), tint: .blue)
+                            Button {
+                                explainedCapability = cap
+                            } label: {
+                                chipBadge(capabilityDisplayName(cap), tint: .blue)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -791,6 +810,63 @@ public struct ResourceDetailViewV2: View {
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.md)
+    }
+
+    // MARK: - Capability catalog (snapshot estático de resource_capabilities_catalog)
+
+    private static let capabilityCatalog: [String: (displayName: String, description: String)] = [
+        "access_controlled":     ("Acceso controlado", "Tiene control de acceso físico o digital."),
+        "approvable":            ("Aprobable", "Sus cambios pueden someterse a aprobación explícita."),
+        "approval_required":     ("Requiere aprobación", "Sus cambios requieren aprobación."),
+        "assignable":            ("Asignable", "Puede asignarse a un actor (custodio, holder)."),
+        "auditable":             ("Auditable", "Sus movimientos quedan auditados."),
+        "beneficiary_supported": ("Con beneficiarios", "Puede tener beneficiarios designados."),
+        "chargeable":            ("Cobrable", "Puede emitir cargos / cobros."),
+        "closeable":             ("Cerrable", "Puede cerrarse / finalizarse."),
+        "condition_trackable":   ("Condición rastreable", "Su condición física/estado puede registrarse."),
+        "custodiable":           ("Custodiable", "Puede tener custodio asignado."),
+        "depreciable":           ("Depreciable", "Pierde valor en el tiempo."),
+        "disputable":            ("Disputable", "Puede disputarse / impugnarse."),
+        "documentable":          ("Documentable", "Puede tener documentos asociados."),
+        "expirable":             ("Expirable", "Tiene fecha de expiración."),
+        "governable":            ("Gobernable", "Puede someterse a decisiones del contexto."),
+        "income_generating":     ("Genera ingreso", "Genera flujo de ingreso (renta, dividendos)."),
+        "insurable":             ("Asegurable", "Puede tener seguro asociado."),
+        "inventory_tracked":     ("Inventariable", "Forma parte de un inventario stock-tracked."),
+        "leasable":              ("Arrendable", "Puede arrendarse a terceros."),
+        "location_bound":        ("Ligado a ubicación", "Tiene ubicación física relevante."),
+        "maintainable":          ("Mantenible", "Puede registrar mantenimiento / servicio."),
+        "monetary":              ("Monetario", "Puede registrar y mover dinero."),
+        "notifiable":            ("Notificable", "Emite notificaciones por su lifecycle."),
+        "ownable":               ("Apropiable", "Puede tener owners formales (rights OWN)."),
+        "ownership_trackable":   ("Propiedad rastreable", "Su propiedad (OWN %) se rastrea por porcentajes."),
+        "payable":               ("Pagable", "Puede recibir pagos / cargos monetarios."),
+        "quantity_tracked":      ("Cantidad rastreable", "Tiene cantidad numérica rastreada."),
+        "recurring":             ("Recurrente", "Se repite en patrón temporal."),
+        "rentable":              ("Rentable", "Puede rentarse a terceros."),
+        "reservable":            ("Reservable", "Puede reservarse en bloques de tiempo."),
+        "rule_bound":            ("Sujeto a reglas", "Su comportamiento se ve afectado por rules."),
+        "schedulable":           ("Calendarizable", "Puede agendarse en el tiempo."),
+        "sellable":              ("Vendible", "Puede venderse."),
+        "settleable":            ("Liquidable", "Puede liquidarse en settlement batches."),
+        "shareable":             ("Compartible", "Puede compartirse con varios actores vía rights."),
+        "signable":              ("Firmable", "Puede firmarse digitalmente."),
+        "splittable":            ("Divisible", "Sus montos pueden dividirse entre actores."),
+        "taxable":               ("Sujeto a impuestos", "Genera obligaciones fiscales."),
+        "transferable":          ("Transferible", "Puede transferirse a otro actor."),
+        "usable":                ("Usable", "Puede usarse sin reserva formal (right USE)."),
+        "versionable":           ("Versionable", "Tiene versiones rastreables."),
+        "votable":               ("Votable", "Puede someterse a votación.")
+    ]
+
+    private func capabilityDisplayName(_ key: String) -> String {
+        Self.capabilityCatalog[key]?.displayName
+            ?? key.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func capabilityDescription(_ key: String) -> String {
+        Self.capabilityCatalog[key]?.description
+            ?? "Capacidad del recurso \"\(key)\"."
     }
 
     // MARK: - Helpers
