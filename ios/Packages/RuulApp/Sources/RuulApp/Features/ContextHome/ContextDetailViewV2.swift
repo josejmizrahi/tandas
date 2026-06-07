@@ -429,21 +429,89 @@ public struct ContextDetailViewV2: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.Spacing.md) {
                     ForEach(widgets) { widget in
-                        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                            Image(systemName: widget.icon ?? "rectangle.stack")
-                                .font(.system(size: Theme.IconSize.md))
-                                .foregroundStyle(Color.accentColor)
-                            Text(widget.displayName).font(.subheadline.bold())
-                            if let src = widget.dataSourceKey {
-                                Text(src).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
-                            }
-                        }
-                        .frame(width: 140, alignment: .leading)
-                        .padding(Theme.Spacing.md)
-                        .background(Theme.Surface.card, in: Theme.cardShape())
+                        contextWidgetCard(widget)
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func contextWidgetCard(_ widget: ContextWidget) -> some View {
+        if let _ = contextWidgetDestinationKey(widget.widgetKey) {
+            NavigationLink {
+                contextWidgetDestination(widgetKey: widget.widgetKey)
+            } label: {
+                contextWidgetCardBody(widget, tappable: true)
+            }
+            .buttonStyle(.plain)
+        } else {
+            contextWidgetCardBody(widget, tappable: false)
+        }
+    }
+
+    @ViewBuilder
+    private func contextWidgetCardBody(_ widget: ContextWidget, tappable: Bool) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(alignment: .top) {
+                Image(systemName: widget.icon ?? "rectangle.stack")
+                    .font(.system(size: Theme.IconSize.md))
+                    .foregroundStyle(Color.accentColor)
+                Spacer()
+                if tappable {
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            Text(widget.displayName)
+                .font(.subheadline.bold())
+                .foregroundStyle(.primary)
+            if let src = widget.dataSourceKey {
+                Text(src).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+            }
+        }
+        .frame(width: 140, alignment: .leading)
+        .padding(Theme.Spacing.md)
+        .background(Theme.Surface.card, in: Theme.cardShape())
+        .contentShape(Rectangle())
+    }
+
+    private func contextWidgetDestinationKey(_ key: String) -> String? {
+        switch key {
+        case "cash_balance", "budget_progress", "open_obligations":
+            return "money"
+        case "critical_resources":
+            return "resources"
+        case "member_count_summary":
+            return "members"
+        case "next_event":
+            return "events"
+        case "open_decisions":
+            return "decisions"
+        case "recent_activity":
+            return "activity"
+        case "settlement_status":
+            return "settlement"
+        case "upcoming_reservations":
+            return "reservations"
+        default:
+            return nil
+        }
+    }
+
+    @ViewBuilder
+    private func contextWidgetDestination(widgetKey: String) -> some View {
+        switch contextWidgetDestinationKey(widgetKey) {
+        case "money":        MoneyHomeView(context: context, container: container)
+        case "resources":    ResourcesListView(context: context, container: container)
+        case "members":      MembersListView(context: context, container: container)
+        case "events":       EventsListView(context: context, container: container)
+        case "decisions":    DecisionsListView(context: context, container: container)
+        case "activity":     ActivityFeedView(context: context, container: container)
+        case "settlement":   SettlementView(context: context, container: container)
+        case "reservations": ContextReservationsView(context: context, container: container)
+        default:             EmptyView()
         }
     }
 

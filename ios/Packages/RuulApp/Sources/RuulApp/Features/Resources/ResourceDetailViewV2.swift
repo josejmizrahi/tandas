@@ -133,7 +133,7 @@ public struct ResourceDetailViewV2: View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
                 heroCard(d)
-                if !d.widgets.isEmpty { widgetsRow(d.widgets) }
+                if !d.widgets.isEmpty { widgetsRow(d.widgets, descriptor: d) }
                 if !d.sections.isEmpty { sectionsCard(d) }
                 if !d.actions.isEmpty { actionsCard(d) }
                 if !d.relations.outbound.isEmpty || !d.relations.inbound.isEmpty {
@@ -201,7 +201,7 @@ public struct ResourceDetailViewV2: View {
     // MARK: - Widgets row
 
     @ViewBuilder
-    private func widgetsRow(_ widgets: [ResourceWidget]) -> some View {
+    private func widgetsRow(_ widgets: [ResourceWidget], descriptor: ResourceDetailDescriptor) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             Text("Dashboard")
                 .font(.subheadline.bold())
@@ -209,7 +209,7 @@ public struct ResourceDetailViewV2: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.Spacing.md) {
                     ForEach(widgets) { widget in
-                        widgetCard(widget)
+                        widgetCard(widget, descriptor: descriptor)
                     }
                 }
             }
@@ -217,13 +217,36 @@ public struct ResourceDetailViewV2: View {
     }
 
     @ViewBuilder
-    private func widgetCard(_ widget: ResourceWidget) -> some View {
+    private func widgetCard(_ widget: ResourceWidget, descriptor: ResourceDetailDescriptor) -> some View {
+        if let _ = resourceWidgetDestinationKey(widget.widgetKey) {
+            NavigationLink {
+                resourceWidgetDestination(widgetKey: widget.widgetKey, descriptor: descriptor)
+            } label: {
+                widgetCardBody(widget, tappable: true)
+            }
+            .buttonStyle(.plain)
+        } else {
+            widgetCardBody(widget, tappable: false)
+        }
+    }
+
+    @ViewBuilder
+    private func widgetCardBody(_ widget: ResourceWidget, tappable: Bool) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Image(systemName: widget.icon ?? "rectangle.stack")
-                .font(.system(size: Theme.IconSize.md, weight: .regular))
-                .foregroundStyle(Color.accentColor)
+            HStack(alignment: .top) {
+                Image(systemName: widget.icon ?? "rectangle.stack")
+                    .font(.system(size: Theme.IconSize.md, weight: .regular))
+                    .foregroundStyle(Color.accentColor)
+                Spacer()
+                if tappable {
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
             Text(widget.displayName)
                 .font(.subheadline.bold())
+                .foregroundStyle(.primary)
             if let src = widget.dataSourceKey {
                 Text(src)
                     .font(.caption2)
@@ -234,6 +257,49 @@ public struct ResourceDetailViewV2: View {
         .frame(width: 140, alignment: .leading)
         .padding(Theme.Spacing.md)
         .background(Theme.Surface.card, in: Theme.cardShape())
+        .contentShape(Rectangle())
+    }
+
+    /// Sentinel para widgets con destino legacy wireado.
+    private func resourceWidgetDestinationKey(_ key: String) -> String? {
+        switch key {
+        case "balance_summary", "member_balance_summary", "income_summary",
+             "lease_status", "open_obligations":
+            return "money"
+        case "next_event":
+            return "events"
+        case "recent_activity":
+            return "activity"
+        case "reservation_status", "upcoming_reservations":
+            return "reservations"
+        case "settlement_status":
+            return "settlement"
+        default:
+            return nil
+        }
+    }
+
+    @ViewBuilder
+    private func resourceWidgetDestination(widgetKey: String, descriptor: ResourceDetailDescriptor) -> some View {
+        switch resourceWidgetDestinationKey(widgetKey) {
+        case "money":
+            MoneyHomeView(context: context, container: container)
+        case "events":
+            EventsListView(context: context, container: container)
+        case "activity":
+            ActivityFeedView(context: context, container: container)
+        case "reservations":
+            ReservationsListView(
+                resource: descriptor.resource,
+                context: context,
+                reservationContextId: nil,
+                container: container
+            )
+        case "settlement":
+            SettlementView(context: context, container: container)
+        default:
+            EmptyView()
+        }
     }
 
     // MARK: - Sections
