@@ -23,6 +23,10 @@ public struct ContextDetailViewV2: View {
     @State private var quickActionsRouter = NoopActionRouter()
     @State private var pushedActionDestination: QuickActionPush?
     @State private var isShowingCreateChild = false
+    /// R.5A wire — attention_inbox filtrado por este contexto (F.NAV.10).
+    @State private var presentedAttention: AttentionItem?
+    @State private var isShowingAllAttention = false
+    @State private var isShowingPendingInvitations = false
 
     /// Mismo enum que ContextHomeView v1 para reusar el patrón de destinations.
     private enum QuickActionPush: Hashable, Identifiable {
@@ -104,8 +108,29 @@ public struct ContextDetailViewV2: View {
                 Task { await store.load(contextId: contextId) }
             }
         }
-        .task { await store.load(contextId: contextId) }
-        .refreshable { await store.load(contextId: contextId) }
+        .task {
+            await store.load(contextId: contextId)
+            await container.attentionInboxStore.load()
+        }
+        .refreshable {
+            await store.load(contextId: contextId)
+            await container.attentionInboxStore.load()
+        }
+        // Attention sheets
+        .sheet(item: $presentedAttention) { item in
+            attentionDestination(for: item)
+        }
+        .sheet(isPresented: $isShowingPendingInvitations) {
+            PendingInvitationsView(container: container)
+        }
+        .sheet(isPresented: $isShowingAllAttention) {
+            NavigationStack {
+                AllContextAttentionViewV2(items: contextAttentionItems) { item in
+                    isShowingAllAttention = false
+                    handleAttentionTap(item)
+                }
+            }
+        }
         .sheet(isPresented: $isShowingClassicSheet) {
             NavigationStack {
                 ContextHomeView(context: context, container: container)
@@ -175,10 +200,169 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func overviewTab(_ d: ContextDetailDescriptor) -> some View {
         VStack(spacing: Theme.Spacing.xl) {
+            attentionCard
             metricsCard(d.metrics)
             if !d.widgets.isEmpty { widgetsRow(d.widgets) }
             if !d.activityPreview.isEmpty {
                 activityCard(d.activityPreview)
+            }
+        }
+    }
+
+    // MARK: - Attention (F.NAV.10 — surface inbox filtrado por contexto)
+
+    private var contextAttentionItems: [AttentionItem] {
+        container.attentionInboxStore.items.filter { $0.contextActorId == context.id }
+    }
+
+    @ViewBuilder
+    private var attentionCard: some View {
+        let items = contextAttentionItems
+        if items.isEmpty {
+            HStack(spacing: Theme.Spacing.md) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Atención")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Todo está al día")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(Theme.Spacing.lg)
+            .background(Theme.Surface.card, in: Theme.cardShape())
+        } else {
+            Button {
+                if items.count == 1 {
+                    handleAttentionTap(items[0])
+                } else {
+                    isShowingAllAttention = true
+                }
+            } label: {
+                VStack(spacing: 0) {
+                    HStack {
+                        Label("Requiere atención", systemImage: "exclamationmark.circle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Text(items.count == 1 ? "Ver" : "Ver \(items.count)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, Theme.Spacing.lg)
+                    .padding(.top, Theme.Spacing.lg)
+                    .padding(.bottom, Theme.Spacing.sm)
+
+                    Divider().padding(.leading, Theme.Spacing.lg)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(items.prefix(3)) { item in
+                            HStack(spacing: 10) {
+                                Image(systemName: attentionSymbol(for: item.kind))
+                                    .font(.callout)
+                                    .foregroundStyle(attentionTint(for: item.kind))
+                                    .frame(width: 22)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(item.title)
+                                        .font(.callout)
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                    HStack(spacing: 3) {
+                                        Text(attentionCTALabel(for: item.kind))
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2.weight(.bold))
+                                    }
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                        }
+                        if items.count > 3 {
+                            Text("+ \(items.count - 3) más")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                                .padding(.leading, 32)
+                        }
+                    }
+                    .padding(Theme.Spacing.lg)
+                }
+                .background(Theme.Surface.card, in: Theme.cardShape())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func attentionSymbol(for kind: String) -> String {
+        switch kind {
+        case "reservation_conflict": return "exclamationmark.triangle.fill"
+        case "decision_vote":        return "hand.thumbsup.fill"
+        case "obligation_pay":       return "creditcard.fill"
+        case "obligation_complete":  return "checkmark.circle"
+        case "invitation":           return "envelope.fill"
+        default:                     return "circle.fill"
+        }
+    }
+
+    private func attentionTint(for kind: String) -> Color {
+        switch kind {
+        case "reservation_conflict": return .red
+        case "decision_vote":        return .purple
+        case "obligation_pay",
+             "obligation_complete":  return .green
+        case "invitation":           return .blue
+        default:                     return .secondary
+        }
+    }
+
+    private func attentionCTALabel(for kind: String) -> String {
+        switch kind {
+        case "reservation_conflict": return "Resolver"
+        case "decision_vote":        return "Votar"
+        case "obligation_pay":       return "Pagar"
+        case "obligation_complete":  return "Marcar como hecho"
+        case "invitation":           return "Aceptar"
+        default:                     return "Ver"
+        }
+    }
+
+    private func handleAttentionTap(_ item: AttentionItem) {
+        switch item.kind {
+        case "invitation":
+            isShowingPendingInvitations = true
+        case "reservation_conflict":
+            isShowingAllAttention = true
+        case "decision_vote", "obligation_pay", "obligation_complete":
+            presentedAttention = item
+        default:
+            break
+        }
+    }
+
+    @ViewBuilder
+    private func attentionDestination(for item: AttentionItem) -> some View {
+        NavigationStack {
+            switch item.kind {
+            case "decision_vote":
+                DecisionDetailView(
+                    decisionId: item.ctaScopeId,
+                    context: context,
+                    container: container
+                )
+            case "obligation_pay", "obligation_complete":
+                ObligationDetailView(
+                    obligationId: item.ctaScopeId,
+                    context: context,
+                    container: container
+                )
+            default:
+                EmptyView()
             }
         }
     }
@@ -604,6 +788,70 @@ public struct ContextDetailViewV2: View {
             .padding(.horizontal, Theme.Spacing.sm)
             .padding(.vertical, Theme.Spacing.xxs)
             .background(tint.badgeFillSubtle, in: Capsule())
+    }
+}
+
+// MARK: - Sheet "Todos los pendientes" (V2)
+
+private struct AllContextAttentionViewV2: View {
+    let items: [AttentionItem]
+    let onTap: (AttentionItem) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            ForEach(items) { item in
+                Button {
+                    onTap(item)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: symbol(for: item.kind))
+                            .foregroundStyle(tint(for: item.kind))
+                            .frame(width: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title).font(.callout.weight(.medium))
+                            Text(item.reason)
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .navigationTitle("Pendientes")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Cerrar") { dismiss() }
+            }
+        }
+    }
+
+    private func symbol(for kind: String) -> String {
+        switch kind {
+        case "reservation_conflict": return "exclamationmark.triangle.fill"
+        case "decision_vote":        return "hand.thumbsup.fill"
+        case "obligation_pay":       return "creditcard.fill"
+        case "obligation_complete":  return "checkmark.circle"
+        case "invitation":           return "envelope.fill"
+        default:                     return "circle.fill"
+        }
+    }
+
+    private func tint(for kind: String) -> Color {
+        switch kind {
+        case "reservation_conflict": return .red
+        case "decision_vote":        return .purple
+        case "obligation_pay",
+             "obligation_complete":  return .green
+        case "invitation":           return .blue
+        default:                     return .secondary
+        }
     }
 }
 
