@@ -57,10 +57,42 @@ public final class ResourceDescriptorStore {
                 linkedDocuments: current.linkedDocuments,
                 linkedObligations: current.linkedObligations,
                 linkedDecisions: current.linkedDecisions,
-                activityPreview: current.activityPreview
+                activityPreview: current.activityPreview,
+                conflicts: current.conflicts
             )
         } catch {
             // No degradar el descriptor existente si el refresh falla
+        }
+    }
+
+    /// R.5B.5b — refresca sólo `conflicts` llamando `list_resource_conflicts`.
+    /// Usado post-resolve para evitar recargar todo el descriptor.
+    public func refreshConflicts(resourceId: UUID) async {
+        guard let current = descriptor else { return }
+        do {
+            let fresh = try await rpc.listResourceConflicts(resourceId: resourceId, includeResolved: false)
+            descriptor = ResourceDetailDescriptor(
+                resource: current.resource,
+                class: current.class,
+                subtype: current.subtype,
+                effectiveCapabilities: current.effectiveCapabilities,
+                rights: current.rights,
+                sections: current.sections,
+                widgets: current.widgets,
+                actions: current.actions,
+                actionForms: current.actionForms,
+                state: current.state,
+                metrics: current.metrics,
+                relations: current.relations,
+                linkedEvents: current.linkedEvents,
+                linkedDocuments: current.linkedDocuments,
+                linkedObligations: current.linkedObligations,
+                linkedDecisions: current.linkedDecisions,
+                activityPreview: current.activityPreview,
+                conflicts: fresh
+            )
+        } catch {
+            // Silent — el descriptor anterior sigue válido.
         }
     }
 }

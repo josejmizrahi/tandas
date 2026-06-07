@@ -33,6 +33,14 @@ public struct ResourceDetailViewV2: View {
     @State private var isShowingEditResource = false
     /// P3 — chip seleccionada para alert explicativo.
     @State private var explainedCapability: String?
+    /// R.5B.5b — conflict pendiente para confirmation dialog (3 kinds).
+    @State private var pendingConflict: ResourceConflict?
+    @State private var isShowingConflictDialog = false
+    /// R.5B.5b — alert post-resolve (éxito/error).
+    @State private var conflictResolveAlert: ConflictResolveAlert?
+    @State private var isShowingConflictAlert = false
+    /// R.5B.5b — bloquea taps adicionales mientras se resuelve.
+    @State private var isResolvingConflict = false
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -48,6 +56,7 @@ public struct ResourceDetailViewV2: View {
         let form: ResourceActionForm?
         var id: String { action.actionKey }
     }
+
 
     public var body: some View {
         Group {
@@ -146,6 +155,16 @@ public struct ResourceDetailViewV2: View {
                     }
             }
         }
+        // R.5B.5b — modifiers de conflictos en un chain separado para evitar
+        // type-checker timeout del body principal.
+        .modifier(ConflictsModifier(
+            pendingConflict: $pendingConflict,
+            isShowingDialog: $isShowingConflictDialog,
+            alert: $conflictResolveAlert,
+            isShowingAlert: $isShowingConflictAlert,
+            dialogMessage: conflictDialogMessage(_:),
+            onKind: { conflict, kind in resolveConflict(conflict, kind: kind) }
+        ))
     }
 
     // MARK: - Scroll body
@@ -155,6 +174,7 @@ public struct ResourceDetailViewV2: View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
                 heroCard(d)
+                if d.conflicts.openCount > 0 { conflictsCard(d.conflicts) }
                 if !d.widgets.isEmpty { widgetsRow(d.widgets, descriptor: d) }
                 if !d.sections.isEmpty { sectionsCard(d) }
                 if !d.actions.isEmpty { actionsCard(d) }
@@ -879,6 +899,197 @@ public struct ResourceDetailViewV2: View {
             ?? "Capacidad del recurso \"\(key)\"."
     }
 
+    // MARK: - R.5B.5b — Conflicts card
+
+    @ViewBuilder
+    private func conflictsCard(_ list: ResourceConflictList) -> some View {
+        let critical = list.items.filter(\.isCritical).count
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: Theme.IconSize.md, weight: .regular))
+                    .foregroundStyle(critical > 0 ? Color.red : Color.orange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Conflictos abiertos")
+                        .font(.subheadline.bold())
+                    Text(conflictsSubtitle(open: list.openCount, critical: critical))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Text("\(list.openCount)")
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(critical > 0 ? Color.red : Color.orange)
+            }
+            VStack(spacing: Theme.Spacing.xs) {
+                ForEach(list.items.prefix(4)) { item in
+                    Button {
+                        guard !isResolvingConflict else { return }
+                        pendingConflict = item
+                        isShowingConflictDialog = true
+                    } label: {
+                        conflictRow(item)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isResolvingConflict)
+                }
+            }
+            if list.items.count > 4 {
+                Text("+ \(list.items.count - 4) más")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(Theme.Spacing.lg)
+        .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.card))
+        .overlay(
+            Theme.cardShape(Theme.Radius.card)
+                .stroke((critical > 0 ? Color.red : Color.orange).opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private func conflictRow(_ c: ResourceConflict) -> some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+            Image(systemName: conflictSeverityIcon(c.severity))
+                .font(.system(size: Theme.IconSize.sm, weight: .regular))
+                .foregroundStyle(conflictSeverityTint(c.severity))
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(c.conflictTypeDisplay ?? c.conflictType)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(conflictRowSubtitle(c))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, Theme.Spacing.xs)
+        .padding(.horizontal, Theme.Spacing.sm)
+        .background(conflictSeverityTint(c.severity).badgeFillSubtle, in: Theme.cardShape())
+        .contentShape(Rectangle())
+    }
+
+    private func conflictsSubtitle(open: Int, critical: Int) -> String {
+        if critical > 0 {
+            return critical == open
+                ? "\(critical) crítico\(critical == 1 ? "" : "s")"
+                : "\(critical) crítico\(critical == 1 ? "" : "s") · \(open) abierto\(open == 1 ? "" : "s")"
+        }
+        return "\(open) abierto\(open == 1 ? "" : "s")"
+    }
+
+    private func conflictRowSubtitle(_ c: ResourceConflict) -> String {
+        if c.sourceDecisionId != nil {
+            return "Escalado a decisión"
+        }
+        switch c.sourceType {
+        case "reservation_conflict", "reservation_pair":
+            return c.category?.capitalized ?? "Conflicto de reservación"
+        case "reservation":
+            return "Reserva afectada"
+        default:
+            return c.category?.capitalized ?? c.severity.capitalized
+        }
+    }
+
+    private func conflictSeverityIcon(_ severity: String) -> String {
+        switch severity {
+        case "critical": return "exclamationmark.octagon.fill"
+        case "warning":  return "exclamationmark.triangle.fill"
+        case "info":     return "info.circle.fill"
+        default:         return "exclamationmark.circle"
+        }
+    }
+
+    private func conflictSeverityTint(_ severity: String) -> Color {
+        switch severity {
+        case "critical": return Color.red
+        case "warning":  return Color.orange
+        case "info":     return Color.blue
+        default:         return Color.secondary
+        }
+    }
+
+    private func conflictDialogMessage(_ c: ResourceConflict) -> String {
+        let action = c.recommendedActionKey ?? "resolve_resource_conflict"
+        let recommended: String
+        switch action {
+        case "escalate_to_decision":
+            recommended = "Recomendado: escalar a decisión."
+        case "resolve_reservation_conflict", "resolve_resource_conflict":
+            recommended = "Recomendado: resolver manualmente."
+        default:
+            recommended = ""
+        }
+        return ["¿Qué hacemos con este conflicto?", recommended]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+    }
+
+    private func resolveConflict(_ c: ResourceConflict, kind: ResolveResourceConflictKind) {
+        guard !isResolvingConflict else { return }
+        isResolvingConflict = true
+        Task { @MainActor in
+            defer { isResolvingConflict = false }
+            do {
+                let result = try await container.rpc.resolveResourceConflict(
+                    conflictId: c.conflictId,
+                    kind: kind,
+                    winnerActorId: nil,
+                    payload: .object([:])
+                )
+                await store.refreshConflicts(resourceId: resourceId)
+                if result.noOp {
+                    conflictResolveAlert = ConflictResolveAlert(
+                        title: "Sin cambios",
+                        message: "El conflicto ya no estaba abierto."
+                    )
+                } else {
+                    conflictResolveAlert = ConflictResolveAlert(
+                        title: resolveSuccessTitle(kind),
+                        message: resolveSuccessMessage(kind, result: result)
+                    )
+                }
+                isShowingConflictAlert = true
+            } catch {
+                conflictResolveAlert = ConflictResolveAlert(
+                    title: "No pudimos resolver",
+                    message: UserFacingError.from(error).message
+                )
+                isShowingConflictAlert = true
+            }
+        }
+    }
+
+    private func resolveSuccessTitle(_ kind: ResolveResourceConflictKind) -> String {
+        switch kind {
+        case .manualResolution: return "Resuelto"
+        case .escalate:         return "Escalado"
+        case .dismiss:          return "Descartado"
+        }
+    }
+
+    private func resolveSuccessMessage(_ kind: ResolveResourceConflictKind, result: ResolveResourceConflictResult) -> String {
+        switch kind {
+        case .manualResolution:
+            return "El conflicto quedó resuelto."
+        case .escalate:
+            if let tmpl = result.templateKey {
+                return "Se creó una decisión (\(tmpl)) para resolver el conflicto."
+            }
+            return "Se creó una decisión para resolver el conflicto."
+        case .dismiss:
+            return "El conflicto fue descartado."
+        }
+    }
+
     // MARK: - Helpers
 
     @ViewBuilder
@@ -898,4 +1109,53 @@ public struct ResourceDetailViewV2: View {
         f.maximumFractionDigits = 0
         return f.string(from: NSNumber(value: value)) ?? "\(value) \(currency)"
     }
+}
+
+// MARK: - R.5B.5b — ConflictsModifier
+//
+// Aísla el confirmation dialog + alert de conflictos en un chain separado
+// para evitar que el type-checker del body principal explote (gotcha cazado
+// al sumar al 8º modifier del body).
+
+private struct ConflictsModifier: ViewModifier {
+    @Binding var pendingConflict: ResourceConflict?
+    @Binding var isShowingDialog: Bool
+    @Binding var alert: ConflictResolveAlert?
+    @Binding var isShowingAlert: Bool
+    let dialogMessage: (ResourceConflict) -> String
+    let onKind: (ResourceConflict, ResolveResourceConflictKind) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .confirmationDialog(
+                pendingConflict?.conflictTypeDisplay ?? "Conflicto",
+                isPresented: $isShowingDialog,
+                titleVisibility: .visible,
+                presenting: pendingConflict
+            ) { conflict in
+                Button("Resolver manualmente") { onKind(conflict, .manualResolution) }
+                Button("Escalar a decisión")  { onKind(conflict, .escalate) }
+                Button("Descartar", role: .destructive) { onKind(conflict, .dismiss) }
+                Button("Cancelar", role: .cancel) {}
+            } message: { conflict in
+                Text(dialogMessage(conflict))
+            }
+            .alert(
+                alert?.title ?? "",
+                isPresented: $isShowingAlert,
+                presenting: alert
+            ) { _ in
+                Button("OK", role: .cancel) {}
+            } message: { a in
+                Text(a.message)
+            }
+    }
+}
+
+/// R.5B.5b — alert post-resolve. Fileprivate para ser accesible desde
+/// ConflictsModifier sin exponerlo al resto del app.
+fileprivate struct ConflictResolveAlert: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
 }
