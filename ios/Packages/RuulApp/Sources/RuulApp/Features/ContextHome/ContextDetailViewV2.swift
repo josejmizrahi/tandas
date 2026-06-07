@@ -683,16 +683,25 @@ public struct ContextDetailViewV2: View {
                 Text("Roles").font(.subheadline.bold()).foregroundStyle(.secondary).padding(.top, Theme.Spacing.md)
                 VStack(spacing: 0) {
                     ForEach(d.roles.enumerated().map { ($0, $1) }, id: \.1.id) { idx, role in
-                        HStack {
-                            Image(systemName: "person.badge.key")
-                                .foregroundStyle(.secondary)
-                                .frame(width: Theme.IconSize.sm)
-                            Text(role.displayName).font(.body)
-                            Spacer()
-                            Text("\(role.memberCount)").font(.caption).foregroundStyle(.tertiary)
+                        NavigationLink {
+                            MembersListView(context: context, container: container)
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.badge.key")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: Theme.IconSize.sm)
+                                Text(role.displayName).font(.body).foregroundStyle(.primary)
+                                Spacer()
+                                Text("\(role.memberCount)").font(.caption).foregroundStyle(.tertiary)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.vertical, Theme.Spacing.md)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.horizontal, Theme.Spacing.md)
-                        .padding(.vertical, Theme.Spacing.md)
+                        .buttonStyle(.plain)
                         if idx < d.roles.count - 1 { Divider().padding(.leading, 56) }
                     }
                 }
@@ -759,16 +768,29 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func moneyTab(_ d: ContextDetailDescriptor) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                Text("Liquidaciones abiertas")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("\(d.moneyPreview.openSettlements)")
-                    .font(.title2.bold())
+            NavigationLink {
+                SettlementView(context: context, container: container)
+            } label: {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                        Text("Liquidaciones abiertas")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("\(d.moneyPreview.openSettlements)")
+                            .font(.title2.bold())
+                            .foregroundStyle(.primary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(Theme.Spacing.lg)
+                .background(Theme.Surface.card, in: Theme.cardShape())
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Theme.Spacing.lg)
-            .background(Theme.Surface.card, in: Theme.cardShape())
+            .buttonStyle(.plain)
 
             if d.obligationsPreview.isEmpty {
                 EmptyCard(icon: "doc.text.below.ecg", label: "Sin obligaciones pendientes")
