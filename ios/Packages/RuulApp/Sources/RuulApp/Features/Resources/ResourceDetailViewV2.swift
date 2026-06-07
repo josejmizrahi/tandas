@@ -30,6 +30,7 @@ public struct ResourceDetailViewV2: View {
     @State private var documentsStore: DocumentsStore
     @State private var isShowingGrantRight = false
     @State private var isShowingAttachDocument = false
+    @State private var isShowingEditResource = false
     /// P3 — chip seleccionada para alert explicativo.
     @State private var explainedCapability: String?
 
@@ -114,6 +115,13 @@ public struct ResourceDetailViewV2: View {
                     container: container,
                     store: documentsStore
                 )
+            }
+        }
+        .sheet(isPresented: $isShowingEditResource) {
+            if let d = store.descriptor {
+                EditResourceView(resource: d.resource, container: container) {
+                    Task { await store.load(resourceId: resourceId) }
+                }
             }
         }
         .alert(
@@ -456,7 +464,7 @@ public struct ResourceDetailViewV2: View {
         store.descriptor?.form(for: action.actionKey)
     }
 
-    /// P1.4 — algunos action_keys tienen sheet nativo dedicado (mejor UX
+    /// P1.4/P3 — algunos action_keys tienen sheet nativo dedicado (mejor UX
     /// que el form runtime genérico). Resto cae a ResourceActionFormView.
     private func handleActionTap(_ action: ResourceDescriptorAction) {
         switch action.actionKey {
@@ -464,6 +472,8 @@ public struct ResourceDetailViewV2: View {
             isShowingGrantRight = true
         case "attach_document":
             isShowingAttachDocument = true
+        case "edit_resource", "update_resource":
+            isShowingEditResource = true
         default:
             pendingAction = PendingAction(action: action, form: descriptorForm(for: action))
         }
