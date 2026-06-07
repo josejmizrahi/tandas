@@ -19,6 +19,16 @@ public struct ContextDetailViewV2: View {
     /// R.5A cutover — fallback a `ContextHomeView` legacy cuando V2 aún no
     /// cubre algún flow (create_*, edit_context, governance wizards…).
     @State private var isShowingClassicSheet = false
+    /// R.5A wire — Quick Actions del context_available_actions canónico.
+    @State private var quickActionsRouter = NoopActionRouter()
+    @State private var pushedActionDestination: QuickActionPush?
+    @State private var isShowingCreateChild = false
+
+    /// Mismo enum que ContextHomeView v1 para reusar el patrón de destinations.
+    private enum QuickActionPush: Hashable, Identifiable {
+        case resources, events, decisions, money, members, rules
+        var id: String { String(describing: self) }
+    }
 
     public init(contextId: UUID, context: AppContext, container: DependencyContainer) {
         self.contextId = contextId
@@ -71,20 +81,27 @@ public struct ContextDetailViewV2: View {
         }
         .navigationTitle(store.descriptor?.contextDisplayName ?? "Contexto")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Section("Fallback") {
-                        Button {
-                            isShowingClassicSheet = true
-                        } label: {
-                            Label("Vista clásica", systemImage: "rectangle.stack")
-                        }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-                .accessibilityLabel("Más opciones")
+        .toolbar { toolbarContent }
+        // F.2X.2 — router
+        .onChange(of: quickActionsRouter.lastOpened) { _, destination in
+            guard let destination else { return }
+            handleQuickAction(destination)
+            quickActionsRouter.lastOpened = nil
+        }
+        .navigationDestination(item: $pushedActionDestination) { destination in
+            switch destination {
+            case .resources: ResourcesListView(context: context, container: container)
+            case .events:    EventsListView(context: context, container: container)
+            case .decisions: DecisionsListView(context: context, container: container)
+            case .money:     MoneyHomeView(context: context, container: container)
+            case .members:   MembersListView(context: context, container: container)
+            case .rules:     RulesListView(context: context, container: container)
+            }
+        }
+        .sheet(isPresented: $isShowingCreateChild) {
+            CreateChildContextSheet(parent: context, container: container) { _ in
+                isShowingCreateChild = false
+                Task { await store.load(contextId: contextId) }
             }
         }
         .task { await store.load(contextId: contextId) }
@@ -500,6 +517,66 @@ public struct ContextDetailViewV2: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Toolbar (extracted para ayudar al type-checker)
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        if let actions = store.descriptor?.actions, !actions.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
+                quickActionsMenu(actions: actions)
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Section("Fallback") {
+                    Button {
+                        isShowingClassicSheet = true
+                    } label: {
+                        Label("Vista clásica", systemImage: "rectangle.stack")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .accessibilityLabel("Más opciones")
+        }
+    }
+
+    // MARK: - Quick Actions
+
+    @ViewBuilder
+    private func quickActionsMenu(actions: [AvailableAction]) -> some View {
+        Menu {
+            ForEach(actions) { action in
+                let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
+                Button {
+                    quickActionsRouter.open(ActionRouter.destination(for: action, in: .context(context.id)))
+                } label: {
+                    Label(action.label, systemImage: presentation.symbolName)
+                }
+                .disabled(!action.enabled)
+            }
+        } label: {
+            Image(systemName: "plus.circle.fill")
+                .font(.title3)
+        }
+        .accessibilityLabel("Acciones del contexto")
+    }
+
+    /// Mismo dispatch que ContextHomeView v1 — mapea action_key → destination.
+    private func handleQuickAction(_ destination: ActionDestination) {
+        switch destination.actionKey {
+        case "create_resource":      pushedActionDestination = .resources
+        case "create_event":         pushedActionDestination = .events
+        case "create_decision":      pushedActionDestination = .decisions
+        case "record_expense":       pushedActionDestination = .money
+        case "invite_member":        pushedActionDestination = .members
+        case "create_rule":          pushedActionDestination = .rules
+        case "create_child_context": isShowingCreateChild = true
+        default: break
         }
     }
 
