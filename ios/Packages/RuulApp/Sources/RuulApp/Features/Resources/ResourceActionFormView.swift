@@ -9,6 +9,9 @@ public struct ResourceActionFormView: View {
     let resourceId: UUID
     let action: ResourceDescriptorAction
     let actionForm: ResourceActionForm?
+    /// P2.4 — contexto opcional para alimentar actor_ref/resource_ref pickers
+    /// con miembros + recursos reales. Sin contexto, los pickers caen a UUID text.
+    let context: AppContext?
     let container: DependencyContainer
     /// Callback al cerrar exitosamente para refresh de actions en el caller.
     let onSuccess: (ExecuteResourceActionResult) -> Void
@@ -19,19 +22,26 @@ public struct ResourceActionFormView: View {
     @State private var errorMessage: String?
     @State private var isShowingConfirmation = false
     @State private var successResult: ExecuteResourceActionResult?
+    /// P2.4 — stores para pickers nativos (loaded en .task si hay contexto).
+    @State private var membersStore: MembersStore
+    @State private var resourcesStore: ResourcesStore
 
     public init(
         resourceId: UUID,
         action: ResourceDescriptorAction,
         actionForm: ResourceActionForm?,
+        context: AppContext? = nil,
         container: DependencyContainer,
         onSuccess: @escaping (ExecuteResourceActionResult) -> Void
     ) {
         self.resourceId = resourceId
         self.action = action
         self.actionForm = actionForm
+        self.context = context
         self.container = container
         self.onSuccess = onSuccess
+        _membersStore = State(initialValue: MembersStore(rpc: container.rpc))
+        _resourcesStore = State(initialValue: ResourcesStore(rpc: container.rpc))
     }
 
     private var schema: FormSchema {
@@ -114,6 +124,12 @@ public struct ResourceActionFormView: View {
             .onAppear {
                 seedDefaultsFromForm()
             }
+            .task {
+                guard let context else { return }
+                async let members: Void = membersStore.load(context: context)
+                async let resources: Void = resourcesStore.load(context: context)
+                _ = await (members, resources)
+            }
             .alert("¿Confirmar?", isPresented: $isShowingConfirmation, presenting: confirmationMessage()) { _ in
                 Button("Cancelar", role: .cancel) {}
                 Button(action.dangerous ? "Sí, ejecutar" : "Continuar",
@@ -187,15 +203,9 @@ public struct ResourceActionFormView: View {
                     .pickerStyle(.menu)
                 }
             case .actorRef:
-                TextField(field.placeholder ?? "UUID del actor", text: stringBinding(for: field.key))
-                    .font(.system(.body, design: .monospaced))
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
+                actorRefControl(field)
             case .resourceRef:
-                TextField(field.placeholder ?? "UUID del recurso", text: stringBinding(for: field.key))
-                    .font(.system(.body, design: .monospaced))
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
+                resourceRefControl(field)
             case .fileUrl:
                 TextField(field.placeholder ?? "https://…", text: stringBinding(for: field.key))
                     .keyboardType(.URL)
@@ -206,6 +216,117 @@ public struct ResourceActionFormView: View {
                 Text(help).font(.caption2).foregroundStyle(.secondary)
             }
         }
+    }
+
+    // MARK: - Actor/Resource pickers (P2.4)
+
+    @ViewBuilder
+    private func actorRefControl(_ field: FormFieldSpec) -> some View {
+        let members = membersStore.members
+        if members.isEmpty {
+            // Sin contexto o cargando → fallback UUID text
+            TextField(field.placeholder ?? "UUID del actor", text: stringBinding(for: field.key))
+                .font(.system(.body, design: .monospaced))
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+        } else if field.multiple {
+            actorMultiPicker(field: field, members: members)
+        } else {
+            actorSinglePicker(field: field, members: members)
+        }
+    }
+
+    @ViewBuilder
+    private func actorSinglePicker(field: FormFieldSpec, members: [ContextMember]) -> some View {
+        Picker("", selection: stringBinding(for: field.key)) {
+            Text("Selecciona…").tag("")
+            ForEach(members) { m in
+                Text(m.displayName).tag(m.actorId.uuidString)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
+    @ViewBuilder
+    private func actorMultiPicker(field: FormFieldSpec, members: [ContextMember]) -> some View {
+        let selectedIds = selectedActorIds(for: field.key)
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Menu {
+                ForEach(members) { m in
+                    Button {
+                        toggleActor(m.actorId, key: field.key)
+                    } label: {
+                        Label(m.displayName, systemImage: selectedIds.contains(m.actorId) ? "checkmark.circle.fill" : "circle")
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selectedIds.isEmpty ? "Selecciona…" : "\(selectedIds.count) seleccionado(s)")
+                        .foregroundStyle(selectedIds.isEmpty ? .secondary : .primary)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.tertiary)
+                }
+            }
+            if !selectedIds.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(members.filter { selectedIds.contains($0.actorId) }) { m in
+                            HStack(spacing: 4) {
+                                Text(m.displayName).font(.caption)
+                                Button {
+                                    toggleActor(m.actorId, key: field.key)
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, Theme.Spacing.sm)
+                            .padding(.vertical, Theme.Spacing.xxs)
+                            .background(Color.accentColor.badgeFillSubtle, in: Capsule())
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func resourceRefControl(_ field: FormFieldSpec) -> some View {
+        let resources = resourcesStore.resources
+        if resources.isEmpty {
+            TextField(field.placeholder ?? "UUID del recurso", text: stringBinding(for: field.key))
+                .font(.system(.body, design: .monospaced))
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+        } else {
+            Picker("", selection: stringBinding(for: field.key)) {
+                Text("Selecciona…").tag("")
+                ForEach(resources) { r in
+                    Text(r.displayName).tag(r.resourceId.uuidString)
+                }
+            }
+            .pickerStyle(.menu)
+        }
+    }
+
+    private func selectedActorIds(for key: String) -> Set<UUID> {
+        guard case .array(let items)? = values[key] else { return [] }
+        return Set(items.compactMap {
+            if case .string(let s) = $0 { return UUID(uuidString: s) }
+            return nil
+        })
+    }
+
+    private func toggleActor(_ id: UUID, key: String) {
+        var selected = selectedActorIds(for: key)
+        if selected.contains(id) {
+            selected.remove(id)
+        } else {
+            selected.insert(id)
+        }
+        values[key] = .array(selected.map { .string($0.uuidString) })
     }
 
     // MARK: - Bindings
@@ -277,6 +398,7 @@ public struct ResourceActionFormView: View {
         guard let v = values[field.key] else { return true }
         switch v {
         case .string(let s): return s.isEmpty
+        case .array(let arr): return arr.isEmpty
         case .null: return true
         default: return false
         }

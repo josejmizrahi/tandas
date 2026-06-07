@@ -90,6 +90,7 @@ public struct ResourceDetailViewV2: View {
                 resourceId: resourceId,
                 action: entry.action,
                 actionForm: entry.form,
+                context: context,
                 container: container
             ) { _ in
                 Task { await store.refreshActions(resourceId: resourceId) }
