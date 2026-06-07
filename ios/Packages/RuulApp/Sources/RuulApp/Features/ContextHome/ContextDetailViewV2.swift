@@ -28,6 +28,14 @@ public struct ContextDetailViewV2: View {
     @State private var presentedAttention: AttentionItem?
     @State private var isShowingAllAttention = false
     @State private var isShowingPendingInvitations = false
+    /// R.5B.5c — lista de conflicts del contexto (carga lazy cuando descriptor.conflicts.openCount>0).
+    @State private var conflictsList: ContextConflictList = .empty
+    @State private var didLoadConflictsForContext: UUID?
+    @State private var pendingContextConflict: ContextConflictItem?
+    @State private var isShowingContextConflictDialog = false
+    @State private var contextConflictAlert: ContextConflictsAlert?
+    @State private var isShowingContextConflictAlert = false
+    @State private var isResolvingContextConflict = false
 
     /// Mismo enum que ContextHomeView v1 para reusar el patrón de destinations.
     private enum QuickActionPush: Hashable, Identifiable {
@@ -126,6 +134,7 @@ public struct ContextDetailViewV2: View {
             if !context.isPersonal {
                 await hierarchyStore.load(contextId: contextId)
             }
+            await loadContextConflictsIfNeeded()
         }
         .refreshable {
             await store.load(contextId: contextId)
@@ -133,6 +142,7 @@ public struct ContextDetailViewV2: View {
             if !context.isPersonal {
                 await hierarchyStore.load(contextId: contextId)
             }
+            await reloadContextConflicts()
         }
         // Attention sheets
         .sheet(item: $presentedAttention) { item in
@@ -159,6 +169,16 @@ public struct ContextDetailViewV2: View {
                     }
             }
         }
+        // R.5B.5c — dialog + alert de conflicts aislados en ViewModifier para
+        // evitar type-checker timeout del body (ya tenía 13+ modifiers).
+        .modifier(ContextConflictsModifier(
+            pendingConflict: $pendingContextConflict,
+            isShowingDialog: $isShowingContextConflictDialog,
+            alert: $contextConflictAlert,
+            isShowingAlert: $isShowingContextConflictAlert,
+            dialogMessage: contextConflictDialogMessage(_:),
+            onKind: { item, kind in resolveContextConflict(item, kind: kind) }
+        ))
     }
 
     @ViewBuilder
@@ -219,6 +239,9 @@ public struct ContextDetailViewV2: View {
     private func overviewTab(_ d: ContextDetailDescriptor) -> some View {
         VStack(spacing: Theme.Spacing.xl) {
             attentionCard
+            if d.conflicts.hasOpenConflicts {
+                conflictsCard(summary: d.conflicts, list: conflictsList)
+            }
             metricsCard(d.metrics)
             if !d.widgets.isEmpty { widgetsRow(d.widgets) }
             childContextsFromDescriptor(d.childContextsPreview)
@@ -1134,6 +1157,226 @@ public struct ContextDetailViewV2: View {
             .padding(.vertical, Theme.Spacing.xxs)
             .background(tint.badgeFillSubtle, in: Capsule())
     }
+
+    // MARK: - R.5B.5c — Conflicts card + load + resolve
+
+    @ViewBuilder
+    func conflictsCard(summary: ContextConflictsSummary, list: ContextConflictList) -> some View {
+        let open = summary.openCount
+        let critical = summary.criticalCount
+        let tint: Color = critical > 0 ? .red : .orange
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: Theme.IconSize.md, weight: .regular))
+                    .foregroundStyle(tint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Conflictos abiertos")
+                        .font(.subheadline.bold())
+                    Text(conflictsSubtitle(open: open, critical: critical))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Text("\(open)")
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(tint)
+            }
+            VStack(spacing: Theme.Spacing.xs) {
+                ForEach(list.items.prefix(4)) { item in
+                    conflictRowLink(item)
+                }
+            }
+            if list.items.count > 4 || list.items.count < open {
+                NavigationLink {
+                    ContextConflictsListView(contextActorId: contextId, context: context, container: container)
+                } label: {
+                    HStack {
+                        Text(list.items.count < open ? "Ver \(open) conflictos" : "Ver todos (\(open))")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, Theme.Spacing.xs)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(Theme.Spacing.lg)
+        .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.card))
+        .overlay(
+            Theme.cardShape(Theme.Radius.card)
+                .stroke(tint.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private func conflictRowLink(_ item: ContextConflictItem) -> some View {
+        HStack(spacing: 0) {
+            NavigationLink {
+                ResourceDetailViewV2(resourceId: item.resourceId, context: context, container: container)
+            } label: {
+                contextConflictRow(item)
+            }
+            .buttonStyle(.plain)
+            Button {
+                guard !isResolvingContextConflict else { return }
+                pendingContextConflict = item
+                isShowingContextConflictDialog = true
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: Theme.IconSize.sm))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, Theme.Spacing.sm)
+            }
+            .buttonStyle(.plain)
+            .disabled(isResolvingContextConflict)
+        }
+        .background(contextConflictSeverityTint(item.severity).badgeFillSubtle, in: Theme.cardShape())
+    }
+
+    @ViewBuilder
+    private func contextConflictRow(_ item: ContextConflictItem) -> some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.sm) {
+            Image(systemName: contextConflictSeverityIcon(item.severity))
+                .font(.system(size: Theme.IconSize.sm))
+                .foregroundStyle(contextConflictSeverityTint(item.severity))
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.conflictTypeDisplay ?? item.conflictType)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(item.resourceDisplayName ?? "Recurso")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, Theme.Spacing.xs)
+        .padding(.leading, Theme.Spacing.sm)
+        .contentShape(Rectangle())
+    }
+
+    private func conflictsSubtitle(open: Int, critical: Int) -> String {
+        if critical > 0 {
+            return critical == open
+                ? "\(critical) crítico\(critical == 1 ? "" : "s")"
+                : "\(critical) crítico\(critical == 1 ? "" : "s") · \(open) abierto\(open == 1 ? "" : "s")"
+        }
+        return "\(open) abierto\(open == 1 ? "" : "s")"
+    }
+
+    fileprivate func contextConflictSeverityIcon(_ severity: String) -> String {
+        switch severity {
+        case "critical": return "exclamationmark.octagon.fill"
+        case "warning":  return "exclamationmark.triangle.fill"
+        case "info":     return "info.circle.fill"
+        default:         return "exclamationmark.circle"
+        }
+    }
+
+    fileprivate func contextConflictSeverityTint(_ severity: String) -> Color {
+        switch severity {
+        case "critical": return Color.red
+        case "warning":  return Color.orange
+        case "info":     return Color.blue
+        default:         return Color.secondary
+        }
+    }
+
+    fileprivate func contextConflictDialogMessage(_ item: ContextConflictItem) -> String {
+        let action = item.recommendedActionKey ?? "resolve_resource_conflict"
+        let recommended: String
+        switch action {
+        case "escalate_to_decision":
+            recommended = "Recomendado: escalar a decisión."
+        case "resolve_reservation_conflict", "resolve_resource_conflict":
+            recommended = "Recomendado: resolver manualmente."
+        default:
+            recommended = ""
+        }
+        return ["¿Qué hacemos con este conflicto?", recommended]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+    }
+
+    func loadContextConflictsIfNeeded() async {
+        guard let d = store.descriptor, d.conflicts.hasOpenConflicts else {
+            conflictsList = .empty
+            return
+        }
+        if didLoadConflictsForContext == contextId { return }
+        await reloadContextConflicts()
+    }
+
+    func reloadContextConflicts() async {
+        do {
+            conflictsList = try await container.rpc.listContextConflicts(
+                contextActorId: contextId, includeResolved: false
+            )
+            didLoadConflictsForContext = contextId
+        } catch {
+            // Silent — la card se queda con los items previos.
+        }
+    }
+
+    fileprivate func resolveContextConflict(_ item: ContextConflictItem, kind: ResolveResourceConflictKind) {
+        guard !isResolvingContextConflict else { return }
+        isResolvingContextConflict = true
+        Task { @MainActor in
+            defer { isResolvingContextConflict = false }
+            do {
+                let result = try await container.rpc.resolveResourceConflict(
+                    conflictId: item.conflictId,
+                    kind: kind,
+                    winnerActorId: nil,
+                    payload: .object([:])
+                )
+                await reloadContextConflicts()
+                // El descriptor.conflicts counts cambian → reload del descriptor entero
+                // para mantener el card oculto cuando openCount = 0.
+                await store.load(contextId: contextId)
+                if result.noOp {
+                    contextConflictAlert = ContextConflictsAlert(
+                        title: "Sin cambios",
+                        message: "El conflicto ya no estaba abierto."
+                    )
+                } else {
+                    let title: String = {
+                        switch kind {
+                        case .manualResolution: return "Resuelto"
+                        case .escalate:         return "Escalado"
+                        case .dismiss:          return "Descartado"
+                        }
+                    }()
+                    let message: String = {
+                        switch kind {
+                        case .manualResolution: return "El conflicto quedó resuelto."
+                        case .escalate:
+                            if let tmpl = result.templateKey {
+                                return "Se creó una decisión (\(tmpl)) para resolver el conflicto."
+                            }
+                            return "Se creó una decisión para resolver el conflicto."
+                        case .dismiss: return "El conflicto fue descartado."
+                        }
+                    }()
+                    contextConflictAlert = ContextConflictsAlert(title: title, message: message)
+                }
+                isShowingContextConflictAlert = true
+            } catch {
+                contextConflictAlert = ContextConflictsAlert(
+                    title: "No pudimos resolver",
+                    message: UserFacingError.from(error).message
+                )
+                isShowingContextConflictAlert = true
+            }
+        }
+    }
 }
 
 // MARK: - Sheet "Todos los pendientes" (V2)
@@ -1197,6 +1440,52 @@ private struct AllContextAttentionViewV2: View {
         case "invitation":           return .blue
         default:                     return .secondary
         }
+    }
+}
+
+// MARK: - R.5B.5c — ContextConflictsAlert + ContextConflictsModifier
+
+/// Alert post-resolve fileprivate para ser accesible desde el ViewModifier.
+fileprivate struct ContextConflictsAlert: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
+
+/// Aísla confirmation dialog + alert de conflictos fuera del body — preempt
+/// type-checker timeout porque el body ya tenía 13+ modifiers.
+private struct ContextConflictsModifier: ViewModifier {
+    @Binding var pendingConflict: ContextConflictItem?
+    @Binding var isShowingDialog: Bool
+    @Binding var alert: ContextConflictsAlert?
+    @Binding var isShowingAlert: Bool
+    let dialogMessage: (ContextConflictItem) -> String
+    let onKind: (ContextConflictItem, ResolveResourceConflictKind) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .confirmationDialog(
+                pendingConflict?.conflictTypeDisplay ?? "Conflicto",
+                isPresented: $isShowingDialog,
+                titleVisibility: .visible,
+                presenting: pendingConflict
+            ) { item in
+                Button("Resolver manualmente") { onKind(item, .manualResolution) }
+                Button("Escalar a decisión")  { onKind(item, .escalate) }
+                Button("Descartar", role: .destructive) { onKind(item, .dismiss) }
+                Button("Cancelar", role: .cancel) {}
+            } message: { item in
+                Text(dialogMessage(item))
+            }
+            .alert(
+                alert?.title ?? "",
+                isPresented: $isShowingAlert,
+                presenting: alert
+            ) { _ in
+                Button("OK", role: .cancel) {}
+            } message: { a in
+                Text(a.message)
+            }
     }
 }
 
