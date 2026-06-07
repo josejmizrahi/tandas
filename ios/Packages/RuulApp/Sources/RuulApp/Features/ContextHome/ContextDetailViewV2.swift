@@ -221,10 +221,84 @@ public struct ContextDetailViewV2: View {
             attentionCard
             metricsCard(d.metrics)
             if !d.widgets.isEmpty { widgetsRow(d.widgets) }
-            childContextsCarousel
+            childContextsFromDescriptor(d.childContextsPreview)
             if !d.activityPreview.isEmpty {
                 activityCard(d.activityPreview)
             }
+        }
+    }
+
+    // MARK: - Child contexts via descriptor (B.7.1)
+
+    @ViewBuilder
+    private func childContextsFromDescriptor(_ children: [ContextChildPreview]) -> some View {
+        if !children.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Espacios dentro de \(context.displayName)")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        ForEach(children) { child in
+                            childDescriptorCard(child)
+                        }
+                    }
+                    .padding(.bottom, 4)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func childDescriptorCard(_ child: ContextChildPreview) -> some View {
+        if let target = container.contextStore.availableContexts.first(where: { $0.id == child.id }) {
+            NavigationLink(value: target) {
+                childDescriptorCardLabel(child)
+            }
+            .buttonStyle(.plain)
+        } else {
+            childDescriptorCardLabel(child).opacity(0.5)
+        }
+    }
+
+    @ViewBuilder
+    private func childDescriptorCardLabel(_ child: ContextChildPreview) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: childSymbolName(child))
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 36, height: 36)
+                .background(Color.accentColor.badgeFill, in: Circle())
+            Spacer(minLength: 0)
+            Text(child.displayName)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            Text(childSubtypeLabel(child.actorSubtype ?? "generic"))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(width: 140, height: 140, alignment: .topLeading)
+        .padding(Theme.Spacing.md)
+        .background(Theme.Surface.card, in: Theme.cardShape())
+        .overlay(
+            Theme.cardShape()
+                .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
+        )
+    }
+
+    private func childSymbolName(_ child: ContextChildPreview) -> String {
+        switch child.actorSubtype {
+        case "family":       return "house.fill"
+        case "trip":         return "airplane"
+        case "project":      return "rectangle.stack.fill"
+        case "trust":        return "checkmark.shield.fill"
+        case "community":    return "person.3.fill"
+        case "friend_group": return "person.2.fill"
+        case "company":      return "building.2.fill"
+        default:             return "circle.grid.cross.fill"
         }
     }
 
@@ -768,6 +842,7 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func moneyTab(_ d: ContextDetailDescriptor) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            myBalanceCard(d.moneyPreview.myBalanceByCurrency)
             NavigationLink {
                 SettlementView(context: context, container: container)
             } label: {
@@ -832,6 +907,89 @@ public struct ContextDetailViewV2: View {
         }
     }
 
+    // MARK: - My balance (B.7.1)
+
+    @ViewBuilder
+    private func myBalanceCard(_ balances: [String: Double]) -> some View {
+        if !balances.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Mi saldo")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                let sorted = balances.sorted { $0.key < $1.key }
+                ForEach(sorted, id: \.key) { (currency, net) in
+                    HStack {
+                        Text(currency)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(formatCurrency(net, currency: currency))
+                            .font(.title3.bold())
+                            .foregroundStyle(net >= 0 ? .green : .red)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(Theme.Spacing.lg)
+            .background(Theme.Surface.card, in: Theme.cardShape())
+        }
+    }
+
+    private func formatCurrency(_ value: Double, currency: String) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currency
+        f.maximumFractionDigits = 0
+        return f.string(from: NSNumber(value: value)) ?? "\(Int(value)) \(currency)"
+    }
+
+    // MARK: - Pending invitations (B.7.1)
+
+    @ViewBuilder
+    private func pendingInvitationsCard(_ invites: [ContextInvitePreview]) -> some View {
+        if !invites.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Invitaciones activas (\(invites.count))")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                VStack(spacing: 0) {
+                    ForEach(invites.enumerated().map { ($0, $1) }, id: \.1.id) { idx, inv in
+                        HStack(spacing: Theme.Spacing.md) {
+                            Image(systemName: "envelope.fill")
+                                .foregroundStyle(.blue)
+                                .frame(width: Theme.IconSize.sm)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(inv.code)
+                                    .font(.system(.body, design: .monospaced).weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                Text(inviteUsageLabel(inv))
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            Spacer()
+                            if let exp = inv.expiresAt {
+                                Text(exp.formatted(date: .abbreviated, time: .omitted))
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .padding(.horizontal, Theme.Spacing.md)
+                        .padding(.vertical, Theme.Spacing.md)
+                        if idx < invites.count - 1 { Divider().padding(.leading, 56) }
+                    }
+                }
+                .background(Theme.Surface.card, in: Theme.cardShape())
+            }
+        }
+    }
+
+    private func inviteUsageLabel(_ inv: ContextInvitePreview) -> String {
+        if let max = inv.maxUses {
+            return "\(inv.usedCount) / \(max) usos"
+        }
+        return "\(inv.usedCount) usos · ilimitado"
+    }
+
     // MARK: - More (flat sections list — F.3 estilo)
 
     @ViewBuilder
@@ -840,6 +998,7 @@ public struct ContextDetailViewV2: View {
             $0.visible && Tab.more.sectionKeys.contains($0.sectionKey)
         }
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            pendingInvitationsCard(d.pendingInvitationsPreview)
             if moreSections.isEmpty {
                 EmptyCard(icon: "ellipsis.circle", label: "Sin más secciones")
             } else {

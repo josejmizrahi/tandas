@@ -254,22 +254,97 @@ public struct ContextEventPreview: Codable, Sendable, Equatable, Identifiable {
 public struct ContextMoneyPreview: Codable, Sendable, Equatable {
     public let myBalance: Double?
     public let openSettlements: Int
+    /// R.5A.B.7.1 — net balance del caller agrupado por currency (e.g. {"MXN": 250.0, "USD": -10.0}).
+    public let myBalanceByCurrency: [String: Double]
 
     enum CodingKeys: String, CodingKey {
         case myBalance = "my_balance"
         case openSettlements = "open_settlements"
+        case myBalanceByCurrency = "my_balance_by_currency"
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.myBalance = try c.decodeIfPresent(Double.self, forKey: .myBalance)
         self.openSettlements = try c.decodeIfPresent(Int.self, forKey: .openSettlements) ?? 0
+        self.myBalanceByCurrency = try c.decodeIfPresent([String: Double].self, forKey: .myBalanceByCurrency) ?? [:]
     }
 
-    public init(myBalance: Double? = nil, openSettlements: Int = 0) {
+    public init(myBalance: Double? = nil, openSettlements: Int = 0, myBalanceByCurrency: [String: Double] = [:]) {
         self.myBalance = myBalance
         self.openSettlements = openSettlements
+        self.myBalanceByCurrency = myBalanceByCurrency
     }
+}
+
+/// R.5A.B.7.1 — subcontext entry del descriptor (collective/legal_entity con `contains` relationship).
+public struct ContextChildPreview: Codable, Sendable, Equatable, Identifiable {
+    public let id: UUID
+    public let displayName: String
+    public let actorKind: String
+    public let actorSubtype: String?
+    public let visibility: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case displayName = "display_name"
+        case actorKind = "actor_kind"
+        case actorSubtype = "actor_subtype"
+        case visibility
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.displayName = try c.decode(String.self, forKey: .displayName)
+        self.actorKind = try c.decode(String.self, forKey: .actorKind)
+        self.actorSubtype = try c.decodeIfPresent(String.self, forKey: .actorSubtype)
+        self.visibility = try c.decodeIfPresent(String.self, forKey: .visibility)
+    }
+
+    public init(id: UUID, displayName: String, actorKind: String, actorSubtype: String? = nil, visibility: String? = nil) {
+        self.id = id
+        self.displayName = displayName
+        self.actorKind = actorKind
+        self.actorSubtype = actorSubtype
+        self.visibility = visibility
+    }
+}
+
+/// R.5A.B.7.1 — invite activo no expirado de `context_invites`.
+public struct ContextInvitePreview: Codable, Sendable, Equatable, Identifiable {
+    public let inviteId: UUID
+    public let code: String
+    public let maxUses: Int?
+    public let usedCount: Int
+    public let expiresAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case inviteId = "invite_id"
+        case code
+        case maxUses = "max_uses"
+        case usedCount = "used_count"
+        case expiresAt = "expires_at"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.inviteId = try c.decode(UUID.self, forKey: .inviteId)
+        self.code = try c.decode(String.self, forKey: .code)
+        self.maxUses = try c.decodeIfPresent(Int.self, forKey: .maxUses)
+        self.usedCount = try c.decodeIfPresent(Int.self, forKey: .usedCount) ?? 0
+        self.expiresAt = try c.decodeIfPresent(Date.self, forKey: .expiresAt)
+    }
+
+    public init(inviteId: UUID, code: String, maxUses: Int? = nil, usedCount: Int = 0, expiresAt: Date? = nil) {
+        self.inviteId = inviteId
+        self.code = code
+        self.maxUses = maxUses
+        self.usedCount = usedCount
+        self.expiresAt = expiresAt
+    }
+
+    public var id: UUID { inviteId }
 }
 
 public struct ContextObligationPreview: Codable, Sendable, Equatable, Identifiable {
@@ -370,6 +445,10 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
     public let decisionsPreview: [ContextDecisionPreview]
     public let documentsPreview: [ContextDocumentPreview]
     public let activityPreview: [ActivityPreviewEvent]
+    /// R.5A.B.7.1 — subcontextos via actor_relationships contains.
+    public let childContextsPreview: [ContextChildPreview]
+    /// R.5A.B.7.1 — invites activos no expirados con cupos.
+    public let pendingInvitationsPreview: [ContextInvitePreview]
 
     enum CodingKeys: String, CodingKey {
         case context
@@ -388,6 +467,8 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
         case decisionsPreview = "decisions_preview"
         case documentsPreview = "documents_preview"
         case activityPreview = "activity_preview"
+        case childContextsPreview = "child_contexts_preview"
+        case pendingInvitationsPreview = "pending_invitations_preview"
     }
 
     public init(from decoder: Decoder) throws {
@@ -408,6 +489,8 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
         self.decisionsPreview = try c.decodeIfPresent([ContextDecisionPreview].self, forKey: .decisionsPreview) ?? []
         self.documentsPreview = try c.decodeIfPresent([ContextDocumentPreview].self, forKey: .documentsPreview) ?? []
         self.activityPreview = try c.decodeIfPresent([ActivityPreviewEvent].self, forKey: .activityPreview) ?? []
+        self.childContextsPreview = try c.decodeIfPresent([ContextChildPreview].self, forKey: .childContextsPreview) ?? []
+        self.pendingInvitationsPreview = try c.decodeIfPresent([ContextInvitePreview].self, forKey: .pendingInvitationsPreview) ?? []
     }
 
     public init(
@@ -426,7 +509,9 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
         obligationsPreview: [ContextObligationPreview] = [],
         decisionsPreview: [ContextDecisionPreview] = [],
         documentsPreview: [ContextDocumentPreview] = [],
-        activityPreview: [ActivityPreviewEvent] = []
+        activityPreview: [ActivityPreviewEvent] = [],
+        childContextsPreview: [ContextChildPreview] = [],
+        pendingInvitationsPreview: [ContextInvitePreview] = []
     ) {
         self.context = context
         self.membership = membership
@@ -444,6 +529,8 @@ public struct ContextDetailDescriptor: Decodable, Sendable, Equatable {
         self.decisionsPreview = decisionsPreview
         self.documentsPreview = documentsPreview
         self.activityPreview = activityPreview
+        self.childContextsPreview = childContextsPreview
+        self.pendingInvitationsPreview = pendingInvitationsPreview
     }
 
     /// ¿El caller tiene este permission key?
