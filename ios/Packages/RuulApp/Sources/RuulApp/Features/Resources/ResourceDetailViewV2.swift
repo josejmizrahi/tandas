@@ -23,14 +23,20 @@ public struct ResourceDetailViewV2: View {
     /// R.5A.F.2 — action seleccionada para presentar `ResourceActionFormView`.
     @State private var pendingAction: PendingAction?
     /// R.5A cutover — fallback a la vista clásica (v1) cuando V2 aún no cubre
-    /// algún flow (edit/settings/grant_right/attach_document).
+    /// algún flow (edit/settings).
     @State private var isShowingClassicSheet = false
+    /// R.5A wire P1.4 — sheets nativos para grant_right + attach_document
+    /// (los dos action_keys más usados en v1).
+    @State private var documentsStore: DocumentsStore
+    @State private var isShowingGrantRight = false
+    @State private var isShowingAttachDocument = false
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
         self.context = context
         self.container = container
         _store = State(initialValue: ResourceDescriptorStore(rpc: container.rpc))
+        _documentsStore = State(initialValue: DocumentsStore(rpc: container.rpc))
     }
 
     /// Wrapper Identifiable para `.sheet(item:)`.
@@ -87,6 +93,24 @@ public struct ResourceDetailViewV2: View {
                 container: container
             ) { _ in
                 Task { await store.refreshActions(resourceId: resourceId) }
+            }
+        }
+        // P1.4 — sheets nativos (los más usados en v1, NO via form runtime)
+        .sheet(isPresented: $isShowingGrantRight) {
+            if let d = store.descriptor {
+                GrantRightSheet(resource: d.resource, context: context, container: container) {
+                    Task { await store.load(resourceId: resourceId) }
+                }
+            }
+        }
+        .sheet(isPresented: $isShowingAttachDocument) {
+            if let d = store.descriptor {
+                AttachDocumentView(
+                    resource: d.resource,
+                    context: context,
+                    container: container,
+                    store: documentsStore
+                )
             }
         }
         .sheet(isPresented: $isShowingClassicSheet) {
@@ -322,7 +346,7 @@ public struct ResourceDetailViewV2: View {
                             ForEach(actions.enumerated().map { ($0, $1) }, id: \.1.id) { idx, action in
                                 Button {
                                     guard action.enabled else { return }
-                                    pendingAction = PendingAction(action: action, form: descriptorForm(for: action))
+                                    handleActionTap(action)
                                 } label: {
                                     actionRow(action)
                                 }
@@ -341,6 +365,19 @@ public struct ResourceDetailViewV2: View {
     /// Lookup del form correspondiente en `descriptor.action_forms`.
     private func descriptorForm(for action: ResourceDescriptorAction) -> ResourceActionForm? {
         store.descriptor?.form(for: action.actionKey)
+    }
+
+    /// P1.4 — algunos action_keys tienen sheet nativo dedicado (mejor UX
+    /// que el form runtime genérico). Resto cae a ResourceActionFormView.
+    private func handleActionTap(_ action: ResourceDescriptorAction) {
+        switch action.actionKey {
+        case "grant_right":
+            isShowingGrantRight = true
+        case "attach_document":
+            isShowingAttachDocument = true
+        default:
+            pendingAction = PendingAction(action: action, form: descriptorForm(for: action))
+        }
     }
 
     @ViewBuilder
