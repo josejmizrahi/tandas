@@ -139,6 +139,9 @@ public struct ResourceDetailViewV2: View {
                 if !d.relations.outbound.isEmpty || !d.relations.inbound.isEmpty {
                     relationsCard(d.relations)
                 }
+                linkedEventsCard(d.linkedEvents)
+                linkedObligationsCard(d.linkedObligations)
+                linkedDecisionsCard(d.linkedDecisions)
                 if !d.activityPreview.isEmpty { activityCard(d.activityPreview) }
                 Spacer(minLength: Theme.Spacing.xl)
             }
@@ -537,6 +540,212 @@ public struct ResourceDetailViewV2: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Linked entities (B.6.1)
+
+    @ViewBuilder
+    private func linkedEventsCard(_ raw: [JSONValue]) -> some View {
+        let items = parseLinkedEvents(raw)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Eventos relacionados")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                VStack(spacing: 0) {
+                    ForEach(items.enumerated().map { ($0, $1) }, id: \.1.id) { idx, ev in
+                        NavigationLink {
+                            EventDetailView(eventId: ev.id, context: context, container: container)
+                        } label: {
+                            HStack(spacing: Theme.Spacing.md) {
+                                Image(systemName: "calendar")
+                                    .foregroundStyle(Color.accentColor)
+                                    .frame(width: Theme.IconSize.sm)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(ev.title).font(.body).foregroundStyle(.primary).lineLimit(1)
+                                    if let when = ev.startsAt {
+                                        Text(when.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption).foregroundStyle(.tertiary)
+                                    }
+                                }
+                                Spacer()
+                                if let status = ev.status {
+                                    Text(status).font(.caption2).foregroundStyle(.tertiary)
+                                }
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.vertical, Theme.Spacing.md)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if idx < items.count - 1 { Divider().padding(.leading, 56) }
+                    }
+                }
+                .background(Theme.Surface.card, in: Theme.cardShape())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func linkedObligationsCard(_ raw: [JSONValue]) -> some View {
+        let items = parseLinkedObligations(raw)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Obligaciones relacionadas")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                VStack(spacing: 0) {
+                    ForEach(items.enumerated().map { ($0, $1) }, id: \.1.id) { idx, o in
+                        NavigationLink {
+                            ObligationDetailView(obligationId: o.id, context: context, container: container)
+                        } label: {
+                            HStack(spacing: Theme.Spacing.md) {
+                                Image(systemName: "doc.text")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: Theme.IconSize.sm)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(o.title ?? o.kind ?? "Obligación").font(.body).foregroundStyle(.primary).lineLimit(1)
+                                    if let status = o.status {
+                                        Text(status).font(.caption2).foregroundStyle(.tertiary)
+                                    }
+                                }
+                                Spacer()
+                                if let amount = o.amount, let cur = o.currency {
+                                    Text("\(Int(amount)) \(cur)").font(.subheadline.bold()).foregroundStyle(.primary)
+                                }
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.vertical, Theme.Spacing.md)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if idx < items.count - 1 { Divider().padding(.leading, 56) }
+                    }
+                }
+                .background(Theme.Surface.card, in: Theme.cardShape())
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func linkedDecisionsCard(_ raw: [JSONValue]) -> some View {
+        let items = parseLinkedDecisions(raw)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                Text("Decisiones relacionadas")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                VStack(spacing: 0) {
+                    ForEach(items.enumerated().map { ($0, $1) }, id: \.1.id) { idx, dx in
+                        NavigationLink {
+                            DecisionDetailView(decisionId: dx.id, context: context, container: container)
+                        } label: {
+                            HStack(spacing: Theme.Spacing.md) {
+                                Image(systemName: "questionmark.circle")
+                                    .foregroundStyle(.purple)
+                                    .frame(width: Theme.IconSize.sm)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(dx.title).font(.body).foregroundStyle(.primary).lineLimit(1)
+                                    HStack(spacing: 4) {
+                                        if let tmpl = dx.templateKey {
+                                            Text(tmpl).font(.caption2).foregroundStyle(.tertiary)
+                                        }
+                                        if let st = dx.status {
+                                            Text("· \(st)").font(.caption2).foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal, Theme.Spacing.md)
+                            .padding(.vertical, Theme.Spacing.md)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if idx < items.count - 1 { Divider().padding(.leading, 56) }
+                    }
+                }
+                .background(Theme.Surface.card, in: Theme.cardShape())
+            }
+        }
+    }
+
+    // MARK: - JSONValue parsers (B.6.1 shapes son [JSONValue] opacos en Domain)
+
+    private struct LinkedEventItem: Identifiable {
+        let id: UUID
+        let title: String
+        let startsAt: Date?
+        let status: String?
+    }
+
+    private struct LinkedObligationItem: Identifiable {
+        let id: UUID
+        let title: String?
+        let kind: String?
+        let status: String?
+        let amount: Double?
+        let currency: String?
+    }
+
+    private struct LinkedDecisionItem: Identifiable {
+        let id: UUID
+        let title: String
+        let status: String?
+        let templateKey: String?
+    }
+
+    private func parseLinkedEvents(_ raw: [JSONValue]) -> [LinkedEventItem] {
+        raw.compactMap { v in
+            guard case .object(let o) = v,
+                  case .string(let idStr)? = o["event_id"], let id = UUID(uuidString: idStr),
+                  case .string(let title)? = o["title"]
+            else { return nil }
+            var startsAt: Date?
+            if case .string(let s)? = o["starts_at"] {
+                startsAt = ISO8601DateFormatter().date(from: s)
+            }
+            var status: String?
+            if case .string(let s)? = o["status"] { status = s }
+            return LinkedEventItem(id: id, title: title, startsAt: startsAt, status: status)
+        }
+    }
+
+    private func parseLinkedObligations(_ raw: [JSONValue]) -> [LinkedObligationItem] {
+        raw.compactMap { v in
+            guard case .object(let o) = v,
+                  case .string(let idStr)? = o["obligation_id"], let id = UUID(uuidString: idStr)
+            else { return nil }
+            var title: String?
+            if case .string(let s)? = o["title"] { title = s }
+            var kind: String?
+            if case .string(let s)? = o["obligation_kind"] { kind = s }
+            else if case .string(let s)? = o["obligation_type"] { kind = s }
+            var status: String?
+            if case .string(let s)? = o["status"] { status = s }
+            var amount: Double?
+            if case .number(let n)? = o["amount"] { amount = n }
+            var currency: String?
+            if case .string(let s)? = o["currency"] { currency = s }
+            return LinkedObligationItem(id: id, title: title, kind: kind, status: status, amount: amount, currency: currency)
+        }
+    }
+
+    private func parseLinkedDecisions(_ raw: [JSONValue]) -> [LinkedDecisionItem] {
+        raw.compactMap { v in
+            guard case .object(let o) = v,
+                  case .string(let idStr)? = o["decision_id"], let id = UUID(uuidString: idStr),
+                  case .string(let title)? = o["title"]
+            else { return nil }
+            var status: String?
+            if case .string(let s)? = o["status"] { status = s }
+            var tmpl: String?
+            if case .string(let s)? = o["template_key"] { tmpl = s }
+            return LinkedDecisionItem(id: id, title: title, status: status, templateKey: tmpl)
+        }
     }
 
     // MARK: - Activity preview
