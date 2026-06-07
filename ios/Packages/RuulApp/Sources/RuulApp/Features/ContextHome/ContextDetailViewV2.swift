@@ -15,6 +15,7 @@ public struct ContextDetailViewV2: View {
     let container: DependencyContainer
 
     @State private var store: ContextDescriptorStore
+    @State private var hierarchyStore: ContextHierarchyStore
     @State private var selectedTab: Tab = .overview
     /// R.5A cutover — fallback a `ContextHomeView` legacy cuando V2 aún no
     /// cubre algún flow (create_*, edit_context, governance wizards…).
@@ -39,6 +40,7 @@ public struct ContextDetailViewV2: View {
         self.context = context
         self.container = container
         _store = State(initialValue: ContextDescriptorStore(rpc: container.rpc))
+        _hierarchyStore = State(initialValue: ContextHierarchyStore(rpc: container.rpc))
     }
 
     /// Categorías de tabs founder spec §11. "More" agrupa governance/documents/
@@ -86,6 +88,16 @@ public struct ContextDetailViewV2: View {
         .navigationTitle(store.descriptor?.contextDisplayName ?? "Contexto")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
+        // R.2U.3 — breadcrumb sticky arriba (sólo subcontextos con ancestros).
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
+                BreadcrumbView(
+                    context: context,
+                    ancestors: hierarchyStore.ancestors,
+                    contextStore: container.contextStore
+                )
+            }
+        }
         // F.2X.2 — router
         .onChange(of: quickActionsRouter.lastOpened) { _, destination in
             guard let destination else { return }
@@ -111,10 +123,16 @@ public struct ContextDetailViewV2: View {
         .task {
             await store.load(contextId: contextId)
             await container.attentionInboxStore.load()
+            if !context.isPersonal {
+                await hierarchyStore.load(contextId: contextId)
+            }
         }
         .refreshable {
             await store.load(contextId: contextId)
             await container.attentionInboxStore.load()
+            if !context.isPersonal {
+                await hierarchyStore.load(contextId: contextId)
+            }
         }
         // Attention sheets
         .sheet(item: $presentedAttention) { item in
