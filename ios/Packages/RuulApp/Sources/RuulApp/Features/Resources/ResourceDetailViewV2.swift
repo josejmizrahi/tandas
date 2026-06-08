@@ -1,46 +1,54 @@
 import SwiftUI
 import RuulCore
 
-/// R.5A.F.1 — ResourceDetailView v2 backed by `resource_detail_descriptor`.
+/// R.5A.F.1 + R.5V.5 — Resource Detail backed by `resource_detail_descriptor`.
 ///
-/// Render dinámico desde el descriptor (NO `resource_type`):
-/// - Hero: subtype.icon + display_name + class badge + status badge
-/// - Widgets row horizontal (cards desde `descriptor.widgets[]`)
-/// - Sections (`descriptor.sections[]`) renderizadas como cards con header + meta
-/// - Actions agrupadas por section, con dangerous tint + confirmation hint
-/// - Relations (outbound + inbound) + activity preview
+/// **R.5V.5 (2026-06-07):** refactor visual a `List + Section` Apple-native.
+/// Doctrina canónica DocumentDetailView (founder firmada 2026-06-07): la
+/// Section ES la card. Cero VStack envueltos en `Theme.cardShape()`.
 ///
-/// **F.1 conservador:** vista read-only. La ejecución de acciones (form runtime
-/// + dispatcher call) es F.2. Mantener v1 hasta paridad con 7 founder-canon
-/// subtypes (primary_residence, vacation_home, warehouse, money_pool,
-/// recurring_event, contract, iou).
+/// Estructura:
+/// ```
+/// List(.insetGrouped) {
+///   Section { heroRow + capabilities chips }   // .listRowSeparator(.hidden)
+///   Section "Conflictos abiertos" (conditional)
+///   Section "Información"                       // LabeledContent
+///   Section "Dashboard"                         // widgets carousel
+///   Section "Secciones"                         // NavigationLinks descriptor.sections
+///   Section "Acciones · <group>" (multiple)     // Button + Label nativo · dangerous = role .destructive
+///   Section "Relaciones" (conditional)
+///   Section "Eventos relacionados" (conditional)
+///   Section "Obligaciones relacionadas" (conditional)
+///   Section "Decisiones relacionadas" (conditional)
+///   Section "Documentos" (conditional)
+///   Section "Actividad reciente" (conditional)
+/// }
+/// ```
+///
+/// Lógica preservada: descriptor store, conflicts dialog modifier, capability
+/// alert, native sheets (grant_right / attach_document / edit_resource),
+/// classic fallback sheet, action dispatcher (handleActionTap), all parsers.
+/// Removido: ResourceLinkedDocumentsCard separado (inline ahora con documentsStore).
 public struct ResourceDetailViewV2: View {
     let resourceId: UUID
     let context: AppContext
     let container: DependencyContainer
 
     @State private var store: ResourceDescriptorStore
-    /// R.5A.F.2 — action seleccionada para presentar `ResourceActionFormView`.
     @State private var pendingAction: PendingAction?
-    /// R.5A cutover — fallback a la vista clásica (v1) cuando V2 aún no cubre
-    /// algún flow (edit/settings).
     @State private var isShowingClassicSheet = false
-    /// R.5A wire P1.4 — sheets nativos para grant_right + attach_document
-    /// (los dos action_keys más usados en v1).
     @State private var documentsStore: DocumentsStore
     @State private var isShowingGrantRight = false
     @State private var isShowingAttachDocument = false
     @State private var isShowingEditResource = false
-    /// P3 — chip seleccionada para alert explicativo.
     @State private var explainedCapability: String?
-    /// R.5B.5b — conflict pendiente para confirmation dialog (3 kinds).
     @State private var pendingConflict: ResourceConflict?
     @State private var isShowingConflictDialog = false
-    /// R.5B.5b — alert post-resolve (éxito/error).
     @State private var conflictResolveAlert: ConflictResolveAlert?
     @State private var isShowingConflictAlert = false
-    /// R.5B.5b — bloquea taps adicionales mientras se resuelve.
     @State private var isResolvingConflict = false
+    @State private var pushedDocumentId: UUID?
+    @State private var isShowingAllDocuments = false
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -50,13 +58,11 @@ public struct ResourceDetailViewV2: View {
         _documentsStore = State(initialValue: DocumentsStore(rpc: container.rpc))
     }
 
-    /// Wrapper Identifiable para `.sheet(item:)`.
     private struct PendingAction: Identifiable {
         let action: ResourceDescriptorAction
         let form: ResourceActionForm?
         var id: String { action.actionKey }
     }
-
 
     public var body: some View {
         Group {
@@ -69,7 +75,7 @@ public struct ResourceDetailViewV2: View {
                 }
             case .loaded:
                 if let descriptor = store.descriptor {
-                    descriptorScroll(descriptor)
+                    descriptorList(descriptor)
                 }
             }
         }
@@ -93,9 +99,11 @@ public struct ResourceDetailViewV2: View {
         }
         .task {
             await store.load(resourceId: resourceId)
+            await documentsStore.loadResourceDocuments(resourceId: resourceId)
         }
         .refreshable {
             await store.load(resourceId: resourceId)
+            await documentsStore.loadResourceDocuments(resourceId: resourceId)
         }
         .sheet(item: $pendingAction) { entry in
             ResourceActionFormView(
@@ -108,7 +116,6 @@ public struct ResourceDetailViewV2: View {
                 Task { await store.refreshActions(resourceId: resourceId) }
             }
         }
-        // P1.4 — sheets nativos (los más usados en v1, NO via form runtime)
         .sheet(isPresented: $isShowingGrantRight) {
             if let d = store.descriptor {
                 GrantRightSheet(resource: d.resource, context: context, container: container) {
@@ -133,6 +140,23 @@ public struct ResourceDetailViewV2: View {
                 }
             }
         }
+        .sheet(isPresented: $isShowingAllDocuments) {
+            NavigationStack {
+                ContextDocumentsListView(context: context, container: container)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cerrar") { isShowingAllDocuments = false }
+                        }
+                    }
+            }
+        }
+        .navigationDestination(item: $pushedDocumentId) { id in
+            if let doc = documentsStore.documents.first(where: { $0.id == id }) {
+                DocumentDetailView(document: doc, context: context, container: container, store: documentsStore)
+            } else {
+                RuulErrorState(message: "Documento no encontrado.")
+            }
+        }
         .alert(
             explainedCapability.map { capabilityDisplayName($0) } ?? "",
             isPresented: Binding(
@@ -155,8 +179,6 @@ public struct ResourceDetailViewV2: View {
                     }
             }
         }
-        // R.5B.5b — modifiers de conflictos en un chain separado para evitar
-        // type-checker timeout del body principal.
         .modifier(ConflictsModifier(
             pendingConflict: $pendingConflict,
             isShowingDialog: $isShowingConflictDialog,
@@ -167,112 +189,174 @@ public struct ResourceDetailViewV2: View {
         ))
     }
 
-    // MARK: - Scroll body
+    // MARK: - Descriptor List (R.5V.5 — Apple-native)
 
     @ViewBuilder
-    private func descriptorScroll(_ d: ResourceDetailDescriptor) -> some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.xl) {
-                heroCard(d)
-                if d.conflicts.openCount > 0 { conflictsCard(d.conflicts) }
-                if !d.widgets.isEmpty { widgetsRow(d.widgets, descriptor: d) }
-                if !d.sections.isEmpty { sectionsCard(d) }
-                if !d.actions.isEmpty { actionsCard(d) }
-                if !d.relations.outbound.isEmpty || !d.relations.inbound.isEmpty {
-                    relationsCard(d.relations)
-                }
-                linkedEventsCard(d.linkedEvents)
-                linkedObligationsCard(d.linkedObligations)
-                linkedDecisionsCard(d.linkedDecisions)
-                // Documents V2 D.5 — antes era dead struct (descriptor.linkedDocuments
-                // decoded but never rendered). Card hace su propio fetch para tener
-                // Documents completos con storage_path para tap → DocumentDetailView.
-                ResourceLinkedDocumentsCard(resourceId: resourceId, context: context, container: container)
-                if !d.activityPreview.isEmpty { activityCard(d.activityPreview) }
-                Spacer(minLength: Theme.Spacing.xl)
+    private func descriptorList(_ d: ResourceDetailDescriptor) -> some View {
+        List {
+            heroSection(d)
+            if d.conflicts.openCount > 0 {
+                conflictsSection(d.conflicts)
             }
-            .padding(.horizontal, Theme.Spacing.lg)
-            .padding(.top, Theme.Spacing.lg)
+            informacionSection(d)
+            if !d.widgets.isEmpty {
+                dashboardSection(d.widgets, descriptor: d)
+            }
+            if !d.sections.isEmpty {
+                seccionesSection(d)
+            }
+            actionsSections(d)
+            if !d.relations.outbound.isEmpty || !d.relations.inbound.isEmpty {
+                relacionesSection(d.relations)
+            }
+            linkedEventsSection(d.linkedEvents)
+            linkedObligationsSection(d.linkedObligations)
+            linkedDecisionsSection(d.linkedDecisions)
+            linkedDocumentsSection
+            if !d.activityPreview.isEmpty {
+                activitySection(d.activityPreview)
+            }
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .listStyle(.insetGrouped)
     }
 
     // MARK: - Hero
 
     @ViewBuilder
-    private func heroCard(_ d: ResourceDetailDescriptor) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            HStack(alignment: .center, spacing: Theme.Spacing.md) {
+    private func heroSection(_ d: ResourceDetailDescriptor) -> some View {
+        Section {
+            HStack(alignment: .center, spacing: 14) {
                 Image(systemName: d.subtype.icon ?? d.class.icon ?? "cube")
-                    .font(.system(size: Theme.IconSize.lg, weight: .regular))
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: Theme.IconSize.hero, height: Theme.IconSize.hero)
-                    .background(Color.accentColor.badgeFillSubtle, in: Theme.cardShape(Theme.Radius.card))
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(Theme.Tint.primary)
+                    .frame(width: 56, height: 56)
+                    .background(Theme.Tint.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                VStack(alignment: .leading, spacing: 4) {
                     Text(d.resource.displayName)
-                        .font(.title2.bold())
-                    HStack(spacing: Theme.Spacing.xs) {
-                        chipBadge(d.subtype.displayName, tint: .accentColor)
-                        chipBadge(d.class.displayName, tint: .secondary)
-                        if d.state.archived {
-                            chipBadge("Archivado", tint: .orange)
-                        } else {
-                            chipBadge(d.state.status.capitalized, tint: .green)
-                        }
+                        .font(.title3.bold())
+                        .foregroundStyle(Theme.Text.primary)
+                        .lineLimit(2)
+                    HStack(spacing: 6) {
+                        chipBadge(d.subtype.displayName, tint: Theme.Tint.primary)
+                        chipBadge(d.class.displayName, tint: Theme.Text.secondary)
+                    }
+                    if d.state.archived {
+                        Text("Archivado")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Theme.Tint.warning)
                     }
                 }
                 Spacer(minLength: 0)
             }
-            if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-                HStack {
-                    Image(systemName: "banknote")
-                        .foregroundStyle(.secondary)
-                    Text(formatCurrency(value, currency: currency))
-                        .font(.headline)
-                    Spacer()
-                }
-                .padding(.top, Theme.Spacing.xs)
-            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
+
             if !d.effectiveCapabilities.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Spacing.xs) {
+                    HStack(spacing: 6) {
                         ForEach(d.effectiveCapabilities, id: \.self) { cap in
                             Button {
                                 explainedCapability = cap
                             } label: {
-                                chipBadge(capabilityDisplayName(cap), tint: .blue)
+                                chipBadge(capabilityDisplayName(cap), tint: Theme.Tint.info)
                             }
                             .buttonStyle(.plain)
                         }
                     }
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
                 }
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 0))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
-        .padding(Theme.Spacing.xl)
-        .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
     }
 
-    // MARK: - Widgets row
+    // MARK: - Conflicts (R.5B)
 
     @ViewBuilder
-    private func widgetsRow(_ widgets: [ResourceWidget], descriptor: ResourceDetailDescriptor) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text("Dashboard")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
+    private func conflictsSection(_ list: ResourceConflictList) -> some View {
+        let critical = list.items.filter(\.isCritical).count
+        Section {
+            ForEach(list.items.prefix(4)) { item in
+                Button {
+                    guard !isResolvingConflict else { return }
+                    pendingConflict = item
+                    isShowingConflictDialog = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: conflictSeverityIcon(item.severity))
+                            .foregroundStyle(conflictSeverityTint(item.severity))
+                            .frame(width: 22)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.conflictTypeDisplay ?? item.conflictType)
+                                .font(.callout)
+                                .foregroundStyle(Theme.Text.primary)
+                                .lineLimit(1)
+                            Text(conflictRowSubtitle(item))
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                    }
+                }
+                .disabled(isResolvingConflict)
+            }
+            if list.items.count > 4 {
+                Text("+ \(list.items.count - 4) más")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+        } header: {
+            Text("Conflictos abiertos")
+        } footer: {
+            Text(conflictsSubtitle(open: list.openCount, critical: critical))
+        }
+    }
+
+    // MARK: - Información (metadata)
+
+    @ViewBuilder
+    private func informacionSection(_ d: ResourceDetailDescriptor) -> some View {
+        Section {
+            LabeledContent("Subtipo", value: d.subtype.displayName)
+            LabeledContent("Categoría", value: d.class.displayName)
+            LabeledContent("Estado", value: d.state.archived ? "Archivado" : d.state.status.capitalized)
+            if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
+                LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+            }
+        } header: {
+            Text("Información")
+        }
+    }
+
+    // MARK: - Dashboard (widgets)
+
+    @ViewBuilder
+    private func dashboardSection(_ widgets: [ResourceWidget], descriptor: ResourceDetailDescriptor) -> some View {
+        Section {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.md) {
+                HStack(spacing: 12) {
                     ForEach(widgets) { widget in
                         widgetCard(widget, descriptor: descriptor)
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+        } header: {
+            Text("Dashboard")
         }
     }
 
     @ViewBuilder
     private func widgetCard(_ widget: ResourceWidget, descriptor: ResourceDetailDescriptor) -> some View {
-        if let _ = resourceWidgetDestinationKey(widget.widgetKey) {
+        if resourceWidgetDestinationKey(widget.widgetKey) != nil {
             NavigationLink {
                 resourceWidgetDestination(widgetKey: widget.widgetKey, descriptor: descriptor)
             } label: {
@@ -286,50 +370,46 @@ public struct ResourceDetailViewV2: View {
 
     @ViewBuilder
     private func widgetCardBody(_ widget: ResourceWidget, tappable: Bool) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
                 Image(systemName: widget.icon ?? "rectangle.stack")
-                    .font(.system(size: Theme.IconSize.md, weight: .regular))
-                    .foregroundStyle(Color.accentColor)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Theme.Tint.primary)
                 Spacer()
                 if tappable {
                     Image(systemName: "chevron.right")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.Text.tertiary)
                 }
             }
+            Spacer(minLength: 0)
             Text(widget.displayName)
-                .font(.subheadline.bold())
-                .foregroundStyle(.primary)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(Theme.Text.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
             if let src = widget.dataSourceKey {
                 Text(src)
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.Text.tertiary)
                     .lineLimit(1)
             }
         }
-        .frame(width: 140, alignment: .leading)
-        .padding(Theme.Spacing.md)
-        .background(Theme.Surface.card, in: Theme.cardShape())
-        .contentShape(Rectangle())
+        .frame(width: 150, height: 130, alignment: .topLeading)
+        .padding(14)
+        .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    /// Sentinel para widgets con destino legacy wireado.
     private func resourceWidgetDestinationKey(_ key: String) -> String? {
         switch key {
         case "balance_summary", "member_balance_summary", "income_summary",
              "lease_status", "open_obligations":
             return "money"
-        case "next_event":
-            return "events"
-        case "recent_activity":
-            return "activity"
-        case "reservation_status", "upcoming_reservations":
-            return "reservations"
-        case "settlement_status":
-            return "settlement"
-        default:
-            return nil
+        case "next_event":                            return "events"
+        case "recent_activity":                       return "activity"
+        case "reservation_status", "upcoming_reservations": return "reservations"
+        case "settlement_status":                     return "settlement"
+        default:                                       return nil
         }
     }
 
@@ -356,40 +436,33 @@ public struct ResourceDetailViewV2: View {
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Secciones (descriptor.sections)
 
     @ViewBuilder
-    private func sectionsCard(_ d: ResourceDetailDescriptor) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Text("Secciones")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
-            VStack(spacing: 0) {
-                ForEach(d.sections.enumerated().map { ($0, $1) }, id: \.1.id) { idx, section in
-                    sectionLink(d, section: section)
-                    if idx < d.sections.count - 1 { Divider().padding(.leading, 56) }
-                }
+    private func seccionesSection(_ d: ResourceDetailDescriptor) -> some View {
+        Section {
+            ForEach(d.sections) { section in
+                sectionLink(d, section: section)
             }
-            .background(Theme.Surface.card, in: Theme.cardShape())
+        } header: {
+            Text("Secciones")
         }
     }
 
-    /// Si la section tiene destino, envuelve en NavigationLink; si no, row plana.
     @ViewBuilder
     private func sectionLink(_ d: ResourceDetailDescriptor, section: ResourceSection) -> some View {
-        if let _ = sectionDestinationKey(section.sectionKey) {
+        if sectionDestinationKey(section.sectionKey) != nil {
             NavigationLink {
                 sectionDestination(d, sectionKey: section.sectionKey)
             } label: {
-                sectionRow(section, tappable: true)
+                sectionRowContent(section)
             }
-            .buttonStyle(.plain)
         } else {
-            sectionRow(section, tappable: false)
+            sectionRowContent(section)
+                .foregroundStyle(Theme.Text.secondary)
         }
     }
 
-    /// Sentinel para saber si una section_key tiene destino wireado.
     private func sectionDestinationKey(_ key: String) -> String? {
         switch key {
         case "reservations", "availability", "activity", "settings": return key
@@ -397,8 +470,6 @@ public struct ResourceDetailViewV2: View {
         }
     }
 
-    /// Destinos legacy por section_key. Reservations usa ReservationsListView
-    /// scoped a este resource; settings abre ResourceSettingsView.
     @ViewBuilder
     private func sectionDestination(_ d: ResourceDetailDescriptor, sectionKey: String) -> some View {
         switch sectionKey {
@@ -419,77 +490,89 @@ public struct ResourceDetailViewV2: View {
     }
 
     @ViewBuilder
-    private func sectionRow(_ section: ResourceSection, tappable: Bool) -> some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-            Image(systemName: section.icon ?? "circle")
-                .foregroundStyle(Color.accentColor)
-                .frame(width: Theme.IconSize.sm, alignment: .center)
+    private func sectionRowContent(_ section: ResourceSection) -> some View {
+        Label {
             VStack(alignment: .leading, spacing: 2) {
                 Text(section.displayName)
-                    .font(.body)
-                    .foregroundStyle(.primary)
                 if let cap = section.requiredCapability {
                     Text("Requiere: \(cap)")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.Text.tertiary)
                 }
             }
-            Spacer()
-            if tappable {
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
+        } icon: {
+            Image(systemName: section.icon ?? "circle")
+                .foregroundStyle(Theme.Tint.primary)
         }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.md)
-        .contentShape(Rectangle())
     }
 
-    // MARK: - Actions
+    // MARK: - Acciones (grouped by descriptor section_key)
 
     @ViewBuilder
-    private func actionsCard(_ d: ResourceDetailDescriptor) -> some View {
+    private func actionsSections(_ d: ResourceDetailDescriptor) -> some View {
         let bySection = Dictionary(grouping: d.actions) { $0.section }
         let sectionOrder = bySection.keys.sorted()
-        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-            Text("Acciones disponibles")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
-            ForEach(sectionOrder, id: \.self) { sectionKey in
-                if let actions = bySection[sectionKey] {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                        Text(sectionKey.replacingOccurrences(of: "_", with: " ").capitalized)
-                            .font(.caption.bold())
-                            .foregroundStyle(.tertiary)
-                            .textCase(.uppercase)
-                        VStack(spacing: 0) {
-                            ForEach(actions.enumerated().map { ($0, $1) }, id: \.1.id) { idx, action in
-                                Button {
-                                    guard action.enabled else { return }
-                                    handleActionTap(action)
-                                } label: {
-                                    actionRow(action)
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(!action.enabled)
-                                if idx < actions.count - 1 { Divider().padding(.leading, 56) }
-                            }
-                        }
-                        .background(Theme.Surface.card, in: Theme.cardShape())
+        ForEach(sectionOrder, id: \.self) { sectionKey in
+            if let actions = bySection[sectionKey], !actions.isEmpty {
+                Section {
+                    ForEach(actions) { action in
+                        actionButton(action)
                     }
+                } header: {
+                    Text("Acciones · \(actionSectionLabel(sectionKey))")
                 }
             }
         }
     }
 
-    /// Lookup del form correspondiente en `descriptor.action_forms`.
+    private func actionSectionLabel(_ key: String) -> String {
+        switch key {
+        case "general":     return "General"
+        case "reservations": return "Reservaciones"
+        case "maintenance":  return "Mantenimiento"
+        case "documents":    return "Documentos"
+        case "relations":    return "Relaciones"
+        case "settings":     return "Configuración"
+        case "ownership":    return "Propiedad"
+        case "rights":       return "Derechos"
+        case "monetary":     return "Dinero"
+        default:             return key.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    @ViewBuilder
+    private func actionButton(_ action: ResourceDescriptorAction) -> some View {
+        let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
+        let role: ButtonRole? = action.dangerous ? .destructive : nil
+        Button(role: role) {
+            guard action.enabled else { return }
+            handleActionTap(action)
+        } label: {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(action.label)
+                    if action.isRequestDecision {
+                        Text("vía decisión")
+                            .font(.caption2)
+                            .foregroundStyle(.purple)
+                    }
+                    if !action.enabled, let reason = action.reason {
+                        Text(reason)
+                            .font(.caption)
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                }
+            } icon: {
+                Image(systemName: presentation.symbolName)
+            }
+        }
+        .disabled(!action.enabled)
+    }
+
     private func descriptorForm(for action: ResourceDescriptorAction) -> ResourceActionForm? {
         store.descriptor?.form(for: action.actionKey)
     }
 
-    /// P1.4/P3 — algunos action_keys tienen sheet nativo dedicado (mejor UX
-    /// que el form runtime genérico). Resto cae a ResourceActionFormView.
     private func handleActionTap(_ action: ResourceDescriptorAction) {
         switch action.actionKey {
         case "grant_right":
@@ -503,230 +586,228 @@ public struct ResourceDetailViewV2: View {
         }
     }
 
-    @ViewBuilder
-    private func actionRow(_ action: ResourceDescriptorAction) -> some View {
-        let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
-        let tint = action.dangerous ? Color.red : presentation.tint
-        HStack(alignment: .top, spacing: Theme.Spacing.md) {
-            Image(systemName: presentation.symbolName)
-                .foregroundStyle(action.enabled ? tint : .secondary)
-                .frame(width: Theme.IconSize.sm, alignment: .center)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: Theme.Spacing.xs) {
-                    Text(action.label)
-                        .foregroundStyle(action.enabled ? .primary : .secondary)
-                    if action.isRequestDecision {
-                        Text("·  vía decisión")
-                            .font(.caption2)
-                            .foregroundStyle(.purple)
-                    }
-                    if action.dangerous {
-                        Text("·  peligroso")
-                            .font(.caption2)
-                            .foregroundStyle(.red)
-                    }
-                }
-                if !action.enabled, let reason = action.reason {
-                    Text(reason)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if action.formSchemaPresent {
-                Image(systemName: "list.bullet.rectangle")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.md)
-        .contentShape(Rectangle())
-    }
-
     // MARK: - Relations
 
     @ViewBuilder
-    private func relationsCard(_ relations: ResourceRelationsBundle) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+    private func relacionesSection(_ relations: ResourceRelationsBundle) -> some View {
+        Section {
+            ForEach(relations.outbound + relations.inbound) { rel in
+                NavigationLink {
+                    ResourceDetailViewV2(resourceId: rel.otherResourceId, context: context, container: container)
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(rel.other.displayName)
+                            Text(rel.relationType.replacingOccurrences(of: "_", with: " "))
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: rel.isOutbound ? "arrow.right" : "arrow.left")
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                }
+            }
+        } header: {
             Text("Relaciones")
-                .font(.subheadline.bold())
-                .foregroundStyle(.secondary)
-            VStack(spacing: 0) {
-                let all = relations.outbound + relations.inbound
-                ForEach(all.enumerated().map { ($0, $1) }, id: \.1.id) { idx, rel in
-                    relationRow(rel)
-                    if idx < all.count - 1 { Divider().padding(.leading, 56) }
-                }
-            }
-            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
-    @ViewBuilder
-    private func relationRow(_ rel: ResourceRelation) -> some View {
-        NavigationLink {
-            ResourceDetailViewV2(resourceId: rel.otherResourceId, context: context, container: container)
-        } label: {
-            HStack(alignment: .center, spacing: Theme.Spacing.md) {
-                Image(systemName: rel.isOutbound ? "arrow.right" : "arrow.left")
-                    .foregroundStyle(.secondary)
-                    .frame(width: Theme.IconSize.sm, alignment: .center)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(rel.other.displayName)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                    Text(rel.relationType.replacingOccurrences(of: "_", with: " "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if let subKey = rel.other.subtypeKey {
-                    Text(subKey.replacingOccurrences(of: "_", with: " "))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, Theme.Spacing.md)
-            .padding(.vertical, Theme.Spacing.md)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Linked entities (B.6.1)
+    // MARK: - Linked Events / Obligations / Decisions
 
     @ViewBuilder
-    private func linkedEventsCard(_ raw: [JSONValue]) -> some View {
+    private func linkedEventsSection(_ raw: [JSONValue]) -> some View {
         let items = parseLinkedEvents(raw)
         if !items.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                Text("Eventos relacionados")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.secondary)
-                VStack(spacing: 0) {
-                    ForEach(items.enumerated().map { ($0, $1) }, id: \.1.id) { idx, ev in
-                        NavigationLink {
-                            EventDetailView(eventId: ev.id, context: context, container: container)
-                        } label: {
-                            HStack(spacing: Theme.Spacing.md) {
-                                Image(systemName: "calendar")
-                                    .foregroundStyle(Color.accentColor)
-                                    .frame(width: Theme.IconSize.sm)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(ev.title).font(.body).foregroundStyle(.primary).lineLimit(1)
-                                    if let when = ev.startsAt {
-                                        Text(when.formatted(date: .abbreviated, time: .shortened))
-                                            .font(.caption).foregroundStyle(.tertiary)
-                                    }
+            Section {
+                ForEach(items) { ev in
+                    NavigationLink {
+                        EventDetailView(eventId: ev.id, context: context, container: container)
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ev.title).lineLimit(1)
+                                if let when = ev.startsAt {
+                                    Text(when.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.tertiary)
                                 }
-                                Spacer()
-                                if let status = ev.status {
-                                    Text(status).font(.caption2).foregroundStyle(.tertiary)
-                                }
-                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                             }
-                            .padding(.horizontal, Theme.Spacing.md)
-                            .padding(.vertical, Theme.Spacing.md)
-                            .contentShape(Rectangle())
+                        } icon: {
+                            Image(systemName: "calendar").foregroundStyle(Theme.Tint.primary)
                         }
-                        .buttonStyle(.plain)
-                        if idx < items.count - 1 { Divider().padding(.leading, 56) }
                     }
                 }
-                .background(Theme.Surface.card, in: Theme.cardShape())
+            } header: {
+                Text("Eventos relacionados")
             }
         }
     }
 
     @ViewBuilder
-    private func linkedObligationsCard(_ raw: [JSONValue]) -> some View {
+    private func linkedObligationsSection(_ raw: [JSONValue]) -> some View {
         let items = parseLinkedObligations(raw)
         if !items.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                Text("Obligaciones relacionadas")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.secondary)
-                VStack(spacing: 0) {
-                    ForEach(items.enumerated().map { ($0, $1) }, id: \.1.id) { idx, o in
-                        NavigationLink {
-                            ObligationDetailView(obligationId: o.id, context: context, container: container)
-                        } label: {
-                            HStack(spacing: Theme.Spacing.md) {
-                                Image(systemName: "doc.text")
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: Theme.IconSize.sm)
+            Section {
+                ForEach(items) { o in
+                    NavigationLink {
+                        ObligationDetailView(obligationId: o.id, context: context, container: container)
+                    } label: {
+                        HStack {
+                            Label {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(o.title ?? o.kind ?? "Obligación").font(.body).foregroundStyle(.primary).lineLimit(1)
+                                    Text(o.title ?? o.kind ?? "Obligación").lineLimit(1)
                                     if let status = o.status {
-                                        Text(status).font(.caption2).foregroundStyle(.tertiary)
+                                        Text(status)
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.Text.tertiary)
                                     }
                                 }
-                                Spacer()
-                                if let amount = o.amount, let cur = o.currency {
-                                    Text("\(Int(amount)) \(cur)").font(.subheadline.bold()).foregroundStyle(.primary)
-                                }
-                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                            } icon: {
+                                Image(systemName: "doc.text").foregroundStyle(Theme.Text.secondary)
                             }
-                            .padding(.horizontal, Theme.Spacing.md)
-                            .padding(.vertical, Theme.Spacing.md)
-                            .contentShape(Rectangle())
+                            Spacer()
+                            if let amount = o.amount, let cur = o.currency {
+                                Text("\(Int(amount)) \(cur)")
+                                    .font(.callout.bold())
+                                    .foregroundStyle(Theme.Text.primary)
+                            }
                         }
-                        .buttonStyle(.plain)
-                        if idx < items.count - 1 { Divider().padding(.leading, 56) }
                     }
                 }
-                .background(Theme.Surface.card, in: Theme.cardShape())
+            } header: {
+                Text("Obligaciones relacionadas")
             }
         }
     }
 
     @ViewBuilder
-    private func linkedDecisionsCard(_ raw: [JSONValue]) -> some View {
+    private func linkedDecisionsSection(_ raw: [JSONValue]) -> some View {
         let items = parseLinkedDecisions(raw)
         if !items.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                Text("Decisiones relacionadas")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.secondary)
-                VStack(spacing: 0) {
-                    ForEach(items.enumerated().map { ($0, $1) }, id: \.1.id) { idx, dx in
-                        NavigationLink {
-                            DecisionDetailView(decisionId: dx.id, context: context, container: container)
-                        } label: {
-                            HStack(spacing: Theme.Spacing.md) {
-                                Image(systemName: "questionmark.circle")
-                                    .foregroundStyle(.purple)
-                                    .frame(width: Theme.IconSize.sm)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(dx.title).font(.body).foregroundStyle(.primary).lineLimit(1)
-                                    HStack(spacing: 4) {
-                                        if let tmpl = dx.templateKey {
-                                            Text(tmpl).font(.caption2).foregroundStyle(.tertiary)
-                                        }
-                                        if let st = dx.status {
-                                            Text("· \(st)").font(.caption2).foregroundStyle(.tertiary)
-                                        }
+            Section {
+                ForEach(items) { dx in
+                    NavigationLink {
+                        DecisionDetailView(decisionId: dx.id, context: context, container: container)
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(dx.title).lineLimit(1)
+                                HStack(spacing: 4) {
+                                    if let tmpl = dx.templateKey {
+                                        Text(tmpl)
+                                    }
+                                    if let st = dx.status {
+                                        Text("· \(st)")
                                     }
                                 }
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.tertiary)
                             }
-                            .padding(.horizontal, Theme.Spacing.md)
-                            .padding(.vertical, Theme.Spacing.md)
-                            .contentShape(Rectangle())
+                        } icon: {
+                            Image(systemName: "questionmark.circle").foregroundStyle(.purple)
                         }
-                        .buttonStyle(.plain)
-                        if idx < items.count - 1 { Divider().padding(.leading, 56) }
                     }
                 }
-                .background(Theme.Surface.card, in: Theme.cardShape())
+            } header: {
+                Text("Decisiones relacionadas")
             }
         }
     }
 
-    // MARK: - JSONValue parsers (B.6.1 shapes son [JSONValue] opacos en Domain)
+    // MARK: - Documents (Documents V2 inline)
+
+    @ViewBuilder
+    private var linkedDocumentsSection: some View {
+        let docs = documentsStore.documents
+        if !docs.isEmpty {
+            Section {
+                ForEach(Array(docs.prefix(3))) { doc in
+                    Button {
+                        pushedDocumentId = doc.id
+                    } label: {
+                        HStack {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(doc.title)
+                                        .foregroundStyle(Theme.Text.primary)
+                                        .lineLimit(1)
+                                    Text(doc.documentType.label)
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: doc.documentType.symbolName)
+                                    .foregroundStyle(documentTint(doc.documentType))
+                            }
+                            Spacer()
+                            if doc.isArchived {
+                                RuulStatusBadge(.archived)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.Text.tertiary)
+                        }
+                    }
+                }
+                if docs.count > 3 {
+                    Button {
+                        isShowingAllDocuments = true
+                    } label: {
+                        Label("Ver todos (\(docs.count))", systemImage: "list.bullet")
+                    }
+                }
+            } header: {
+                Text("Documentos")
+            }
+        }
+    }
+
+    private func documentTint(_ type: DocumentType) -> Color {
+        switch type {
+        case .contract:  return Theme.Tint.info
+        case .receipt:   return Theme.Tint.success
+        case .id:        return .purple
+        case .statement: return Theme.Tint.primary
+        case .photo:     return Theme.Tint.warning
+        case .other:     return Theme.Text.tertiary
+        }
+    }
+
+    // MARK: - Activity
+
+    @ViewBuilder
+    private func activitySection(_ events: [ActivityPreviewEvent]) -> some View {
+        Section {
+            ForEach(events.prefix(5)) { ev in
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "bolt.circle")
+                        .foregroundStyle(Theme.Text.secondary)
+                        .frame(width: 22)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ev.eventType.replacingOccurrences(of: ".", with: " · "))
+                            .font(.callout)
+                            .foregroundStyle(Theme.Text.primary)
+                        if let when = ev.occurredAt {
+                            Text(when.formatted(date: .abbreviated, time: .shortened))
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.tertiary)
+                        }
+                    }
+                    Spacer()
+                }
+            }
+            NavigationLink {
+                ActivityFeedView(context: context, container: container)
+            } label: {
+                Label("Ver toda la actividad", systemImage: "list.bullet")
+            }
+        } header: {
+            Text("Actividad reciente")
+        }
+    }
+
+    // MARK: - JSONValue parsers (B.6.1)
 
     private struct LinkedEventItem: Identifiable {
         let id: UUID
@@ -801,52 +882,7 @@ public struct ResourceDetailViewV2: View {
         }
     }
 
-    // MARK: - Activity preview
-
-    @ViewBuilder
-    private func activityCard(_ events: [ActivityPreviewEvent]) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            HStack {
-                Text("Actividad reciente").font(.subheadline.bold()).foregroundStyle(.secondary)
-                Spacer()
-                NavigationLink {
-                    ActivityFeedView(context: context, container: container)
-                } label: {
-                    Text("Ver todo").font(.caption).foregroundStyle(Color.accentColor)
-                }
-            }
-            VStack(spacing: 0) {
-                ForEach(events.prefix(5).enumerated().map { ($0, $1) }, id: \.1.id) { idx, ev in
-                    activityRow(ev)
-                    if idx < min(events.count, 5) - 1 { Divider().padding(.leading, 56) }
-                }
-            }
-            .background(Theme.Surface.card, in: Theme.cardShape())
-        }
-    }
-
-    @ViewBuilder
-    private func activityRow(_ ev: ActivityPreviewEvent) -> some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.md) {
-            Image(systemName: "bolt.circle")
-                .foregroundStyle(.secondary)
-                .frame(width: Theme.IconSize.sm, alignment: .center)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(ev.eventType.replacingOccurrences(of: ".", with: " · "))
-                    .font(.subheadline)
-                if let when = ev.occurredAt {
-                    Text(when.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.md)
-    }
-
-    // MARK: - Capability catalog (snapshot estático de resource_capabilities_catalog)
+    // MARK: - Capability catalog (snapshot estático)
 
     private static let capabilityCatalog: [String: (displayName: String, description: String)] = [
         "access_controlled":     ("Acceso controlado", "Tiene control de acceso físico o digital."),
@@ -903,82 +939,7 @@ public struct ResourceDetailViewV2: View {
             ?? "Capacidad del recurso \"\(key)\"."
     }
 
-    // MARK: - R.5B.5b — Conflicts card
-
-    @ViewBuilder
-    private func conflictsCard(_ list: ResourceConflictList) -> some View {
-        let critical = list.items.filter(\.isCritical).count
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            HStack(alignment: .center, spacing: Theme.Spacing.sm) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: Theme.IconSize.md, weight: .regular))
-                    .foregroundStyle(critical > 0 ? Color.red : Color.orange)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Conflictos abiertos")
-                        .font(.subheadline.bold())
-                    Text(conflictsSubtitle(open: list.openCount, critical: critical))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-                Text("\(list.openCount)")
-                    .font(.headline.monospacedDigit())
-                    .foregroundStyle(critical > 0 ? Color.red : Color.orange)
-            }
-            VStack(spacing: Theme.Spacing.xs) {
-                ForEach(list.items.prefix(4)) { item in
-                    Button {
-                        guard !isResolvingConflict else { return }
-                        pendingConflict = item
-                        isShowingConflictDialog = true
-                    } label: {
-                        conflictRow(item)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isResolvingConflict)
-                }
-            }
-            if list.items.count > 4 {
-                Text("+ \(list.items.count - 4) más")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(Theme.Spacing.lg)
-        .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.card))
-        .overlay(
-            Theme.cardShape(Theme.Radius.card)
-                .stroke((critical > 0 ? Color.red : Color.orange).opacity(0.25), lineWidth: 1)
-        )
-    }
-
-    @ViewBuilder
-    private func conflictRow(_ c: ResourceConflict) -> some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.sm) {
-            Image(systemName: conflictSeverityIcon(c.severity))
-                .font(.system(size: Theme.IconSize.sm, weight: .regular))
-                .foregroundStyle(conflictSeverityTint(c.severity))
-                .frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(c.conflictTypeDisplay ?? c.conflictType)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text(conflictRowSubtitle(c))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.vertical, Theme.Spacing.xs)
-        .padding(.horizontal, Theme.Spacing.sm)
-        .background(conflictSeverityTint(c.severity).badgeFillSubtle, in: Theme.cardShape())
-        .contentShape(Rectangle())
-    }
+    // MARK: - Conflict helpers (preservados)
 
     private func conflictsSubtitle(open: Int, critical: Int) -> String {
         if critical > 0 {
@@ -1014,10 +975,10 @@ public struct ResourceDetailViewV2: View {
 
     private func conflictSeverityTint(_ severity: String) -> Color {
         switch severity {
-        case "critical": return Color.red
-        case "warning":  return Color.orange
-        case "info":     return Color.blue
-        default:         return Color.secondary
+        case "critical": return Theme.Tint.critical
+        case "warning":  return Theme.Tint.warning
+        case "info":     return Theme.Tint.info
+        default:         return Theme.Text.secondary
         }
     }
 
@@ -1094,16 +1055,16 @@ public struct ResourceDetailViewV2: View {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Chip + currency helpers
 
     @ViewBuilder
     private func chipBadge(_ text: String, tint: Color) -> some View {
         Text(text)
-            .font(.caption)
+            .font(.caption.weight(.medium))
             .foregroundStyle(tint)
-            .padding(.horizontal, Theme.Spacing.sm)
-            .padding(.vertical, Theme.Spacing.xxs)
-            .background(tint.badgeFillSubtle, in: Capsule())
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.15), in: Capsule())
     }
 
     private func formatCurrency(_ value: Double, currency: String) -> String {
@@ -1116,10 +1077,6 @@ public struct ResourceDetailViewV2: View {
 }
 
 // MARK: - R.5B.5b — ConflictsModifier
-//
-// Aísla el confirmation dialog + alert de conflictos en un chain separado
-// para evitar que el type-checker del body principal explote (gotcha cazado
-// al sumar al 8º modifier del body).
 
 private struct ConflictsModifier: ViewModifier {
     @Binding var pendingConflict: ResourceConflict?
@@ -1156,8 +1113,6 @@ private struct ConflictsModifier: ViewModifier {
     }
 }
 
-/// R.5B.5b — alert post-resolve. Fileprivate para ser accesible desde
-/// ConflictsModifier sin exponerlo al resto del app.
 fileprivate struct ConflictResolveAlert: Identifiable {
     let id = UUID()
     let title: String
