@@ -57,6 +57,6 @@ public struct NextHostPickerSheet: View {
                 }
             }
         }
-        .ruulSheet()
+        .ruulCompactSheet()
     }
 }

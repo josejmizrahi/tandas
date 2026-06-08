@@ -231,8 +231,13 @@ public extension View {
     /// Package HIG para sheets compactas tipo picker/lookup/detail
     /// (ContextSwitcher, CreateIntent, ObligationDetail, MemberDetail).
     /// Permite preview a media altura y expandir a completa — patrón Maps/Stocks.
+    ///
+    /// R.5V.Sheets: `.regularMaterial` da el efecto Liquid Glass nativo
+    /// detrás de la sheet, mostrando el contenido borroso atrás — coherente
+    /// con HomeKit accessory picker, Stocks, Maps.
     func ruulCompactSheet() -> some View {
         presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+            .presentationBackground(.regularMaterial)
     }
 }
