@@ -1,8 +1,15 @@
 import SwiftUI
 import RuulCore
 
-/// F.MONEY.1 — Dinero rediseñado Apple-first / human-first.
+/// F.MONEY.1 + R.5V.X 2026-06-08 — Dinero Apple-native (List + Section).
+///
 /// Responde en menos de 2 segundos: ¿debo? ¿me deben? ¿cuánto? ¿qué hago?
+///
+/// Refactor visual del dashboard legacy (ScrollView+VStack con custom cards)
+/// al pattern firmado V.3/V.4/V.5: `List + Section + .listStyle(.insetGrouped)`.
+/// Cero `Theme.Surface.card` / `Theme.cardShape()` envueltos custom. Hero
+/// se mantiene visualmente prominente como Section con
+/// `.listRowBackground(.clear) + .listRowSeparator(.hidden)`.
 public struct MoneyHomeView: View {
     let context: AppContext
     let container: DependencyContainer
@@ -12,7 +19,6 @@ public struct MoneyHomeView: View {
     @State private var isShowingGameResult = false
     @State private var isShowingFine = false
     @State private var selectedObligationId: UUID?
-    @State private var showDetalles = false
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -71,7 +77,10 @@ public struct MoneyHomeView: View {
                         Button {
                             handle(actionKey: action.actionKey)
                         } label: {
-                            Label(action.label, systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName)
+                            Label(
+                                action.label,
+                                systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
+                            )
                         }
                         .disabled(!action.enabled)
                     }
@@ -83,13 +92,13 @@ public struct MoneyHomeView: View {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button { isShowingExpense = true } label: {
-                        Label("Registrar gasto", systemImage: "cart")
+                        Label("Registrar gasto", systemImage: "cart.fill")
                     }
                     Button { isShowingGameResult = true } label: {
-                        Label("Resultado de juego", systemImage: "dice")
+                        Label("Resultado de juego", systemImage: "dice.fill")
                     }
                     Button { isShowingFine = true } label: {
-                        Label("Multa manual", systemImage: "exclamationmark.circle")
+                        Label("Multa manual", systemImage: "exclamationmark.circle.fill")
                     }
                 } label: {
                     Image(systemName: "plus")
@@ -100,21 +109,18 @@ public struct MoneyHomeView: View {
 
     @ViewBuilder
     private var content: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                heroSection
-                if !visiblePending.isEmpty {
-                    pendientesSection
-                }
-                accionesSection
-                if !moneyActivity.isEmpty {
-                    actividadSection
-                }
-                detallesSection
+        List {
+            heroSection
+            if !visiblePending.isEmpty {
+                pendientesSection
             }
-            .padding(.horizontal, Theme.Spacing.lg)
-            .padding(.vertical, Theme.Spacing.lg)
+            accionesSection
+            if !moneyActivity.isEmpty {
+                actividadSection
+            }
+            detallesSection
         }
+        .listStyle(.insetGrouped)
     }
 
     // MARK: - Datos derivados
@@ -157,10 +163,20 @@ public struct MoneyHomeView: View {
         openMoney.compactMap(\.currency).first ?? store.obligations.compactMap(\.currency).first
     }
 
-    // MARK: - Hero
+    // MARK: - Hero (Section row con typography prominente, sin custom card)
 
     @ViewBuilder
     private var heroSection: some View {
+        Section {
+            heroContent
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
+        }
+    }
+
+    @ViewBuilder
+    private var heroContent: some View {
         if owedToMe == 0 && iOwe == 0 {
             heroAllClear
         } else if iOwe == 0 {
@@ -174,75 +190,70 @@ public struct MoneyHomeView: View {
 
     private var heroAllClear: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Label("Todo está al día", systemImage: "checkmark.circle.fill")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.green)
-                Text("No debes dinero. Nadie te debe dinero.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 12) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(Theme.Tint.success)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Todo está al día")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(Theme.Text.primary)
+                    Text("No debes dinero. Nadie te debe dinero.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+                Spacer(minLength: 0)
             }
             if store.canRecord(in: context) {
                 Button {
                     isShowingExpense = true
                 } label: {
-                    Text("Registrar gasto")
+                    Label("Registrar gasto", systemImage: "cart.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
             }
         }
-        .padding(Theme.Spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
     }
 
     private var heroOwedToMe: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text("Te deben")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text(owedToMe.currencyLabel(currencyCode))
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.green)
-                Text(distinctDebtorCount == 1 ? "1 persona" : "\(distinctDebtorCount) personas")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Te deben", systemImage: "arrow.up.right.circle.fill")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.Tint.success)
+            Text(owedToMe.currencyLabel(currencyCode))
+                .font(.system(size: 38, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(Theme.Tint.success)
+            Text(distinctDebtorCount == 1 ? "1 persona" : "\(distinctDebtorCount) personas")
+                .font(.subheadline)
+                .foregroundStyle(Theme.Text.secondary)
         }
-        .padding(Theme.Spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
     }
 
     private var heroIOwe: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                Text("Debes")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Debes", systemImage: "arrow.down.right.circle.fill")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.Tint.critical)
                 Text(iOwe.currencyLabel(currencyCode))
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.red)
+                    .font(.system(size: 38, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(Theme.Tint.critical)
                 Text(iOweCount == 1 ? "1 pago pendiente" : "\(iOweCount) pagos pendientes")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.Text.secondary)
             }
             NavigationLink {
                 SettlementView(context: context, container: container)
             } label: {
-                Text("Ver cómo liquidar")
+                Label("Ver cómo liquidar", systemImage: "creditcard.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(.red)
+            .tint(Theme.Tint.critical)
         }
-        .padding(Theme.Spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
     }
 
     private var heroMixed: some View {
@@ -250,100 +261,98 @@ public struct MoneyHomeView: View {
         let netPositive = net >= 0
         let netLabel = (netPositive ? "+" : "−") + abs(net).currencyLabel(currencyCode)
 
-        return VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            HStack(alignment: .top, spacing: Theme.Spacing.xl) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    Text("Te deben")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 24) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Te deben", systemImage: "arrow.up.right.circle.fill")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.Tint.success)
+                        .labelStyle(.titleAndIcon)
                     Text(owedToMe.currencyLabel(currencyCode))
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.green)
+                        .font(.title3.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Theme.Tint.success)
                 }
-                VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    Text("Debes")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Debes", systemImage: "arrow.down.right.circle.fill")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.Tint.critical)
+                        .labelStyle(.titleAndIcon)
                     Text(iOwe.currencyLabel(currencyCode))
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.red)
+                        .font(.title3.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Theme.Tint.critical)
                 }
                 Spacer(minLength: 0)
             }
             Divider()
-            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Resultado neto")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.Text.secondary)
                 Text(netLabel)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(netPositive ? .green : .red)
+                    .font(.system(size: 32, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(netPositive ? Theme.Tint.success : Theme.Tint.critical)
             }
             NavigationLink {
                 SettlementView(context: context, container: container)
             } label: {
-                Text("Ver cómo liquidar")
+                Label("Ver cómo liquidar", systemImage: "creditcard.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
         }
-        .padding(Theme.Spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
     }
 
     // MARK: - Pendientes
 
+    @ViewBuilder
     private var pendientesSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            sectionTitle("Pendientes")
-            VStack(spacing: 0) {
-                ForEach(Array(visiblePending.enumerated()), id: \.element.id) { idx, obligation in
-                    Button {
-                        selectedObligationId = obligation.id
-                    } label: {
-                        pendienteRow(obligation)
-                    }
-                    .buttonStyle(.plain)
-                    if idx < visiblePending.count - 1 {
-                        Divider().padding(.leading, Theme.Spacing.lg)
-                    }
+        Section {
+            ForEach(visiblePending) { obligation in
+                Button {
+                    selectedObligationId = obligation.id
+                } label: {
+                    pendienteRow(obligation)
                 }
             }
-            .background(Theme.Surface.card, in: Theme.cardShape())
+        } header: {
+            Text("Pendientes (\(visiblePending.count))")
         }
     }
 
     @ViewBuilder
     private func pendienteRow(_ obligation: Obligation) -> some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                Text(pendienteTitle(obligation))
-                    .font(.callout)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                if let subtitle = pendienteSubtitle(obligation) {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            Spacer(minLength: Theme.Spacing.md)
+        LabeledContent {
             if let amount = obligation.amount {
                 Text(amount.currencyLabel(obligation.currency))
-                    .font(.callout.weight(.semibold))
+                    .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(amountTint(obligation))
-                    .monospacedDigit()
             }
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
+        } label: {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pendienteTitle(obligation))
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(Theme.Text.primary)
+                        .lineLimit(1)
+                    if let subtitle = pendienteSubtitle(obligation) {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(Theme.Text.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            } icon: {
+                Image(systemName: pendienteIcon(obligation))
+                    .foregroundStyle(amountTint(obligation))
+            }
         }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.md)
-        .contentShape(Rectangle())
+    }
+
+    private func pendienteIcon(_ obligation: Obligation) -> String {
+        if obligation.creditorActorId == myActorId { return "arrow.up.right.circle.fill" }
+        if obligation.debtorActorId == myActorId   { return "arrow.down.right.circle.fill" }
+        return "arrow.left.and.right.circle.fill"
     }
 
     private func pendienteTitle(_ obligation: Obligation) -> String {
@@ -365,60 +374,43 @@ public struct MoneyHomeView: View {
     }
 
     private func amountTint(_ obligation: Obligation) -> Color {
-        if obligation.creditorActorId == myActorId { return .green }
-        if obligation.debtorActorId == myActorId { return .red }
-        return .primary
+        if obligation.creditorActorId == myActorId { return Theme.Tint.success }
+        if obligation.debtorActorId == myActorId { return Theme.Tint.critical }
+        return Theme.Text.primary
     }
 
     // MARK: - Acciones
 
+    @ViewBuilder
     private var accionesSection: some View {
         let backendActions = store.availableActions.filter { moneyActionKeys.contains($0.actionKey) }
-        return VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            sectionTitle("Qué puedes hacer")
-            VStack(spacing: 0) {
-                ForEach(backendActions) { action in
-                    Button {
-                        handle(actionKey: action.actionKey)
-                    } label: {
-                        actionRow(label: action.label, enabled: action.enabled, hint: action.reason)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!action.enabled)
-                    Divider().padding(.leading, Theme.Spacing.lg)
-                }
-                NavigationLink {
-                    ActivityFeedView(context: context, container: container)
+        Section {
+            ForEach(backendActions) { action in
+                Button {
+                    handle(actionKey: action.actionKey)
                 } label: {
-                    actionRow(label: "Ver historial", enabled: true, hint: nil)
+                    Label(
+                        action.label,
+                        systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
+                    )
                 }
-                .buttonStyle(.plain)
+                .disabled(!action.enabled)
+                .accessibilityHint(action.reason ?? "")
             }
-            .background(Theme.Surface.card, in: Theme.cardShape())
+            NavigationLink {
+                ActivityFeedView(context: context, container: container)
+            } label: {
+                Label("Ver historial completo", systemImage: "clock.arrow.circlepath")
+            }
+        } header: {
+            Text("Qué puedes hacer")
         }
-    }
-
-    @ViewBuilder
-    private func actionRow(label: String, enabled: Bool, hint: String?) -> some View {
-        HStack(spacing: Theme.Spacing.sm) {
-            Text(label)
-                .font(.body)
-                .foregroundStyle(enabled ? .primary : .tertiary)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.md)
-        .contentShape(Rectangle())
-        .accessibilityHint(hint ?? "")
     }
 
     private func handle(actionKey: String) {
         switch actionKey {
-        case "record_expense": isShowingExpense = true
-        case "record_fine":    isShowingFine = true
+        case "record_expense":     isShowingExpense = true
+        case "record_fine":        isShowingFine = true
         case "record_game_result": isShowingGameResult = true
         default: break
         }
@@ -433,46 +425,75 @@ public struct MoneyHomeView: View {
             .map { $0 }
     }
 
+    @ViewBuilder
     private var actividadSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            sectionTitle("Actividad reciente")
-            VStack(spacing: 0) {
-                ForEach(Array(moneyActivity.enumerated()), id: \.offset) { idx, item in
-                    activityRow(item)
-                    if idx < moneyActivity.count - 1 {
-                        Divider().padding(.leading, Theme.Spacing.lg)
-                    }
-                }
-                Divider().padding(.leading, Theme.Spacing.lg)
-                NavigationLink {
-                    ActivityFeedView(context: context, container: container)
-                } label: {
-                    actionRow(label: "Ver actividad", enabled: true, hint: nil)
-                }
-                .buttonStyle(.plain)
+        Section {
+            ForEach(Array(moneyActivity.enumerated()), id: \.offset) { _, item in
+                activityRow(item)
             }
-            .background(Theme.Surface.card, in: Theme.cardShape())
+            NavigationLink {
+                ActivityFeedView(context: context, container: container)
+            } label: {
+                Label("Ver toda la actividad", systemImage: "list.bullet")
+            }
+        } header: {
+            Text("Actividad reciente")
         }
     }
 
     @ViewBuilder
     private func activityRow(_ item: SummaryActivity) -> some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.md) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(activityTitle(item))
                     .font(.callout)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Theme.Text.primary)
                     .lineLimit(2)
                 if let date = item.occurredAt {
                     Text(date.formatted(.relative(presentation: .named)))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.Text.tertiary)
                 }
             }
-            Spacer(minLength: 0)
+        } icon: {
+            Image(systemName: activityIcon(item.eventType))
+                .foregroundStyle(activityTint(item.eventType))
         }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.md)
+    }
+
+    private func activityIcon(_ eventType: String) -> String {
+        switch eventType {
+        case "expense.recorded":           return "cart.fill"
+        case "fine.created":               return "exclamationmark.circle.fill"
+        case "game_result.recorded":       return "dice.fill"
+        case "obligation.created":         return "doc.text.fill"
+        case "obligation.completed",
+             "obligation.fulfilled",
+             "obligation.settled",
+             "obligation.paid":            return "checkmark.circle.fill"
+        case "obligation.cancelled":       return "xmark.circle.fill"
+        case "obligation.disputed":        return "exclamationmark.bubble.fill"
+        case "obligation.forgiven":        return "heart.fill"
+        case "settlement.generated":      return "creditcard.fill"
+        case "settlement.paid":            return "checkmark.seal.fill"
+        case "split.generated":            return "divide.circle.fill"
+        default:                           return "bolt.circle.fill"
+        }
+    }
+
+    private func activityTint(_ eventType: String) -> Color {
+        switch eventType {
+        case "expense.recorded", "settlement.generated", "settlement.paid",
+             "obligation.completed", "obligation.fulfilled", "obligation.settled",
+             "obligation.paid":
+            return Theme.Tint.success
+        case "fine.created":
+            return Theme.Tint.warning
+        case "obligation.cancelled", "obligation.disputed":
+            return Theme.Tint.critical
+        default:
+            return Theme.Tint.primary
+        }
     }
 
     private func activityTitle(_ item: SummaryActivity) -> String {
@@ -498,47 +519,44 @@ public struct MoneyHomeView: View {
         }
     }
 
-    // MARK: - Detalles (colapsable)
+    // MARK: - Detalles
 
+    @ViewBuilder
     private var detallesSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            DisclosureGroup(isExpanded: $showDetalles) {
-                VStack(spacing: 0) {
-                    detalleRow("Balance bruto", value: balanceBruto.currencyLabel(currencyCode))
-                    Divider().padding(.leading, Theme.Spacing.lg)
-                    detalleRow("Deuda total", value: iOwe.currencyLabel(currencyCode))
-                    Divider().padding(.leading, Theme.Spacing.lg)
-                    detalleRow("Crédito total", value: owedToMe.currencyLabel(currencyCode))
-                    Divider().padding(.leading, Theme.Spacing.lg)
-                    detalleRow("Obligaciones abiertas", value: "\(openMoney.count)")
-                    Divider().padding(.leading, Theme.Spacing.lg)
-                    NavigationLink {
-                        SettlementView(context: context, container: container)
-                    } label: {
-                        HStack {
-                            Text("Liquidación")
-                                .font(.body)
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(.horizontal, Theme.Spacing.lg)
-                        .padding(.vertical, Theme.Spacing.md)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .background(Theme.Surface.card, in: Theme.cardShape())
-                .padding(.top, Theme.Spacing.sm)
+        Section {
+            LabeledContent {
+                Text(balanceBruto.currencyLabel(currencyCode))
+                    .font(.callout.weight(.semibold).monospacedDigit())
             } label: {
-                Text("Detalles")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
+                Label("Balance bruto", systemImage: "scalemass.fill")
             }
-            .tint(.secondary)
-            .padding(.horizontal, Theme.Spacing.xs)
+            LabeledContent {
+                Text(iOwe.currencyLabel(currencyCode))
+                    .font(.callout.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(iOwe > 0 ? Theme.Tint.critical : Theme.Text.primary)
+            } label: {
+                Label("Deuda total", systemImage: "arrow.down.right.circle.fill")
+            }
+            LabeledContent {
+                Text(owedToMe.currencyLabel(currencyCode))
+                    .font(.callout.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(owedToMe > 0 ? Theme.Tint.success : Theme.Text.primary)
+            } label: {
+                Label("Crédito total", systemImage: "arrow.up.right.circle.fill")
+            }
+            LabeledContent {
+                Text("\(openMoney.count)")
+                    .font(.callout.weight(.semibold).monospacedDigit())
+            } label: {
+                Label("Obligaciones abiertas", systemImage: "doc.text.below.ecg.fill")
+            }
+            NavigationLink {
+                SettlementView(context: context, container: container)
+            } label: {
+                Label("Liquidación completa", systemImage: "creditcard.fill")
+            }
+        } header: {
+            Text("Detalles")
         }
     }
 
@@ -549,28 +567,7 @@ public struct MoneyHomeView: View {
         return total / 2
     }
 
-    @ViewBuilder
-    private func detalleRow(_ label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(.callout.weight(.semibold))
-                .monospacedDigit()
-        }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.md)
-    }
-
     // MARK: - Helpers
-
-    private func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.title3.weight(.semibold))
-            .padding(.horizontal, Theme.Spacing.xs)
-    }
 
     private let recordActionKeys: Set<String> = [
         "record_expense", "record_fine", "record_game_result"
