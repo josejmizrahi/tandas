@@ -91,6 +91,9 @@ public struct ResourceDetailViewV2: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     resourceQuickActionsMenu(actions: descriptor.actions, descriptor: descriptor)
                 }
+                // R.5V.Toolbar.Spacers — separa "+" (quick actions) del
+                // "ellipsis" (más opciones) en cápsulas Liquid Glass distintas.
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {

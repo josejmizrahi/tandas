@@ -1351,6 +1351,9 @@ public struct ContextDetailViewV2: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     quickActionsMenu(actions: actions)
                 }
+                // R.5V.Toolbar.Spacers — separa "+" (quick actions) del
+                // "ellipsis" (más opciones) en cápsulas Liquid Glass distintas.
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
