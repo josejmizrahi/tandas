@@ -42,8 +42,6 @@ public struct EventDetailView: View {
     /// Sólo se usa para derivar recursos / decisiones relacionados.
     @State private var eventActivity: [ActivityEvent] = []
     @State private var isShowingAllParticipants = false
-    @State private var pushedResource: UUID?
-    @State private var pushedDecision: UUID?
     /// F.EVENT.6 — gasto scoped al evento.
     @State private var expenseScope: EventScope?
     @State private var moneyStoreForExpense: MoneyStore?
@@ -121,7 +119,7 @@ public struct EventDetailView: View {
 
             case .loaded:
                 if let event = store.event {
-                    detailScroll(event)
+                    detailList(event)
                 }
             }
         }
@@ -178,12 +176,6 @@ public struct EventDetailView: View {
                     }
                 )
             }
-        }
-        .navigationDestination(item: $pushedResource) { resourceId in
-            ResourceDetailView(resourceId: resourceId, context: context, container: container)
-        }
-        .navigationDestination(item: $pushedDecision) { decisionId in
-            DecisionDetailView(decisionId: decisionId, context: context, container: container)
         }
         .navigationDestination(isPresented: $pushedDecisions) {
             DecisionsListView(context: context, container: container)
@@ -254,101 +246,83 @@ public struct EventDetailView: View {
         )
     }
 
-    // MARK: - Container
+    // MARK: - Container (R.5V doctrina canónica — List + Section)
+    //
+    // Refactor 2026-06-08: ScrollView+VStack+cards manuales → List+Section
+    // grouped Apple-native. "La Section ES la card." Cero `Theme.Surface.card`
+    // envueltos en VStack. RuulDetailHero como primer bloque + LabeledContent
+    // para info rows + NavigationLink directo en related lists.
 
     @ViewBuilder
-    private func detailScroll(_ event: CalendarEvent) -> some View {
-        ScrollView {
-            VStack(spacing: 22) {
-                headerSection(event)
-                primaryActionSection(event)
-                nextHostCard(event)
-                locationCard(event)
-                participantsSection(event)
-                relatedResourcesSection(event)
-                relatedDecisionsSection(event)
-                infoSection(event)
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 32)
+    private func detailList(_ event: CalendarEvent) -> some View {
+        List {
+            heroSection(event)
+            primaryActionSection(event)
+            nextSessionSection(event)
+            locationSection(event)
+            participantsSection(event)
+            relatedResourcesSection(event)
+            relatedDecisionsSection(event)
+            infoSection(event)
         }
+        .listStyle(.insetGrouped)
     }
 
-    // MARK: - F.EVENT.8 Próxima reunión
+    // MARK: - F.EVENT.8 Próxima reunión (Section dedicada)
 
-    /// Card "Próxima reunión" — sólo visible cuando el evento es recurrente
-    /// y sigue programado. Muestra quién organiza la próxima ocurrencia
-    /// (rotación natural o override manual) + fecha derivada de starts_at +
-    /// la frecuencia.
     @ViewBuilder
-    private func nextHostCard(_ event: CalendarEvent) -> some View {
+    private func nextSessionSection(_ event: CalendarEvent) -> some View {
         if event.isRecurring && event.isScheduled {
             if isLastSession(event) {
-                lastSessionCard(event)
+                Section {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Última sesión de la serie")
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                            if let total = event.recurrenceCount {
+                                Text("Sesión \(event.occurrenceNumber) de \(total). Al cerrar este evento la serie termina.")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            } else if let until = event.recurrenceUntil {
+                                Text("La serie termina al pasar el \(until.formatted(date: .abbreviated, time: .omitted)).")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: "flag.checkered")
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                }
             } else if let preview = store.nextHostPreview,
                       let hostName = preview.nextActorName,
                       let nextStart = nextOccurrenceDate(for: event) {
-                HStack(spacing: 14) {
-                    Image(systemName: "person.2.crop.square.stack.fill")
-                        .font(.title3)
-                        .foregroundStyle(.tint)
-                        .frame(width: 36, height: 36)
-                        .background(Color.accentColor.opacity(0.15), in: Circle())
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Text("Próxima reunión")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            if preview.isOverride {
-                                Text("Definido manualmente")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.tint)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.accentColor.opacity(0.15), in: Capsule())
-                            }
+                Section {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Organiza \(hostName)")
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                            Text(nextStart.formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.secondary)
                         }
-                        Text("Organiza \(hostName)")
-                            .font(.callout.weight(.medium))
-                        Text(nextStart.formatted(.dateTime.weekday(.wide).day().month(.wide)))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: "person.2.crop.square.stack.fill")
+                            .foregroundStyle(Theme.Tint.primary)
                     }
-                    Spacer()
-                }
-                .padding(14)
-                .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
-            }
-        }
-    }
-
-    /// F.EVENT.9 — cierre visual cuando esta es la última sesión por bounds.
-    @ViewBuilder
-    private func lastSessionCard(_ event: CalendarEvent) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: "flag.checkered")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .frame(width: 36, height: 36)
-                .background(Color.secondary.opacity(0.15), in: Circle())
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Última sesión de la serie")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                if let total = event.recurrenceCount {
-                    Text("Sesión \(event.occurrenceNumber) de \(total). Al cerrar este evento la serie termina.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else if let until = event.recurrenceUntil {
-                    Text("La serie termina al pasar el \(until.formatted(date: .abbreviated, time: .omitted)).")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                } header: {
+                    HStack(spacing: 6) {
+                        Text("Próxima reunión")
+                        if preview.isOverride {
+                            Text("· Definido manualmente")
+                                .foregroundStyle(Theme.Tint.primary)
+                        }
+                    }
                 }
             }
-            Spacer()
         }
-        .padding(14)
-        .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
     }
 
     /// `true` cuando cerrar este evento NO va a crear una siguiente ocurrencia
@@ -365,41 +339,35 @@ public struct EventDetailView: View {
         return false
     }
 
-    // MARK: - F.EVENT.11 Ubicación card (tap → Apple Maps)
+    // MARK: - F.EVENT.11 Ubicación (Section dedicada — tap → Apple Maps)
 
-    /// Card de ubicación física. Sólo aparece para eventos no-virtuales con
-    /// location_text seteado. Tap → abre Apple Maps con la dirección como
-    /// query (mismo patrón que ResourceDetailView).
     @ViewBuilder
-    private func locationCard(_ event: CalendarEvent) -> some View {
+    private func locationSection(_ event: CalendarEvent) -> some View {
         if !event.isVirtual,
            let location = event.locationText,
            !location.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Ubicación")
-                    .font(.title3.weight(.semibold))
+            Section {
                 Button {
                     openLocationInMaps(location)
                 } label: {
-                    HStack(alignment: .top, spacing: 12) {
+                    Label {
+                        HStack {
+                            Text(location)
+                                .font(.callout)
+                                .foregroundStyle(Theme.Text.primary)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.Text.tertiary)
+                        }
+                    } icon: {
                         Image(systemName: "mappin.and.ellipse")
-                            .font(.title3)
-                            .foregroundStyle(.tint)
-                            .frame(width: 32, height: 32)
-                            .background(Color.accentColor.opacity(0.15), in: Circle())
-                        Text(location)
-                            .font(.callout)
-                            .foregroundStyle(.primary)
-                            .multilineTextAlignment(.leading)
-                        Spacer()
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.Tint.primary)
                     }
-                    .padding(14)
-                    .background(Theme.Surface.card, in: RoundedRectangle(cornerRadius: 16))
                 }
-                .buttonStyle(.plain)
+            } header: {
+                Text("Ubicación")
             }
         }
     }
@@ -441,81 +409,48 @@ public struct EventDetailView: View {
         }
     }
 
-    // MARK: - 1. Header
+    // MARK: - 1. Hero (R.5V — RuulDetailHero canónico)
 
     @ViewBuilder
-    private func headerSection(_ event: CalendarEvent) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Image(systemName: event.type.symbolName)
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-                Text(event.title)
-                    .font(.title.weight(.bold))
-                    .lineLimit(3)
-                    .multilineTextAlignment(.leading)
-            }
-
-            // Contexto debajo del título — no escondido en Información.
-            Text(context.displayName)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-
-            if let starts = event.startsAt {
-                Text(headerDateLine(starts))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-
-            // Chips inline para ubicación + recurrencia (sólo cuando existen).
-            let chips = headerChips(event)
-            if !chips.isEmpty {
-                HStack(spacing: 8) {
-                    ForEach(chips, id: \.text) { chip in
-                        HStack(spacing: 5) {
-                            Image(systemName: chip.symbol)
-                                .font(.caption.weight(.semibold))
-                            Text(chip.text)
-                                .font(.caption.weight(.semibold))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Theme.Surface.card, in: Capsule())
-                    }
-                }
-            }
-
-            Text(participantSummary())
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.tint)
+    private func heroSection(_ event: CalendarEvent) -> some View {
+        Section {
+            RuulDetailHero(
+                title: event.title,
+                subtitle: heroSubtitle(event),
+                systemImage: event.type.symbolName,
+                tint: Theme.Tint.primary,
+                chips: heroChips(event)
+            )
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 8)
     }
 
-    private struct HeaderChip { let symbol: String; let text: String }
+    private func heroSubtitle(_ event: CalendarEvent) -> String? {
+        if let starts = event.startsAt {
+            return headerDateLine(starts)
+        }
+        return context.displayName
+    }
 
-    private func headerChips(_ event: CalendarEvent) -> [HeaderChip] {
-        var out: [HeaderChip] = []
-        // F.EVENT.5 — virtual gana sobre location_text en el chip.
+    /// Chips del Hero — text-only (RuulDetailHero los renderiza como pills).
+    /// Ubicación, recurrencia, número de sesión, asistentes summary.
+    private func heroChips(_ event: CalendarEvent) -> [String] {
+        var chips: [String] = []
         if event.isVirtual {
-            out.append(HeaderChip(symbol: "video.fill", text: "Virtual"))
+            chips.append("Virtual")
         } else if let location = event.locationText, !location.isEmpty {
-            out.append(HeaderChip(symbol: "mappin.and.ellipse", text: location))
+            chips.append(location)
         }
         if event.isRecurring {
-            out.append(HeaderChip(symbol: "arrow.triangle.2.circlepath", text: recurrenceLabel(event)))
+            chips.append(recurrenceLabel(event))
         }
-        // F.EVENT.9 — chip "Sesión X de Y" sólo cuando hay count.
         if let total = event.recurrenceCount {
-            out.append(HeaderChip(
-                symbol: "number.circle.fill",
-                text: "Sesión \(event.occurrenceNumber) de \(total)"
-            ))
+            chips.append("Sesión \(event.occurrenceNumber) de \(total)")
         }
-        return out
+        chips.append(participantSummary())
+        return chips
     }
 
     private func headerDateLine(_ date: Date) -> String {
@@ -586,81 +521,64 @@ public struct EventDetailView: View {
     private func primaryActionSection(_ event: CalendarEvent) -> some View {
         switch primaryState(event) {
         case .ended(let label, let symbol, let tint):
-            endedRow(label: label, symbol: symbol, tint: tint)
-        case .checkedIn(let when):
-            checkedInRow(when)
-        case .canCheckIn:
-            checkInButton()
-        case .needsResponse:
-            rsvpZone(heading: "Responde tu asistencia", current: nil)
-        case .responded(let status):
-            rsvpZone(heading: respondedHeading(status), current: status)
-        }
-    }
-
-    @ViewBuilder
-    private func endedRow(label: String, symbol: String, tint: Color) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(tint)
-            Text(label)
-                .font(.callout.weight(.semibold))
-            Spacer()
-        }
-        .padding(16)
-        .background(Theme.Surface.card, in: Theme.cardShape())
-    }
-
-    @ViewBuilder
-    private func checkedInRow(_ when: Date?) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.title3)
-                .foregroundStyle(.green)
-                .symbolEffect(.bounce, value: when)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Registraste tu llegada")
-                    .font(.callout.weight(.semibold))
-                if let when {
-                    Text(when.formatted(.relative(presentation: .named)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            Section {
+                Label {
+                    Text(label).font(.callout.weight(.semibold))
+                } icon: {
+                    Image(systemName: symbol).foregroundStyle(tint)
                 }
             }
-            Spacer()
-        }
-        .padding(16)
-        .background(Theme.Surface.card, in: Theme.cardShape())
-    }
-
-    @ViewBuilder
-    private func checkInButton() -> some View {
-        Button {
-            Task { await selfCheckIn() }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "checkmark.circle.fill")
-                Text("Llegué")
-                    .fontWeight(.semibold)
+        case .checkedIn(let when):
+            Section {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Registraste tu llegada")
+                            .font(.callout.weight(.semibold))
+                        if let when {
+                            Text(when.formatted(.relative(presentation: .named)))
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.secondary)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.Tint.success)
+                        .symbolEffect(.bounce, value: when)
+                }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+        case .canCheckIn:
+            Section {
+                Button {
+                    Task { await selfCheckIn() }
+                } label: {
+                    Label("Llegué", systemImage: "checkmark.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.glassProminent)
+                .disabled(runner.isRunning)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+            }
+        case .needsResponse:
+            rsvpSection(heading: "Responde tu asistencia", current: nil)
+        case .responded(let status):
+            rsvpSection(heading: respondedHeading(status), current: status)
         }
-        .buttonStyle(.glassProminent)
-        .disabled(runner.isRunning)
     }
 
     @ViewBuilder
-    private func rsvpZone(heading: String, current: String?) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(heading)
-                .font(.title3.weight(.semibold))
+    private func rsvpSection(heading: String, current: String?) -> some View {
+        Section {
             rsvpSegmented(current: current)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+        } header: {
+            Text(heading)
+        } footer: {
             if let confirmation = responseConfirmation(current) {
                 Text(confirmation)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -713,29 +631,25 @@ public struct EventDetailView: View {
         return Date() >= starts.addingTimeInterval(-30 * 60)
     }
 
-    // MARK: - 3. Participantes (avatar strip + breakdown)
+    // MARK: - 3. Participantes (Section + avatar strip + breakdown)
 
     @ViewBuilder
     private func participantsSection(_ event: CalendarEvent) -> some View {
-        if store.participants.isEmpty { EmptyView() } else {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Participantes")
-                    .font(.title3.weight(.semibold))
-
+        if !store.participants.isEmpty {
+            Section {
                 Button {
                     isShowingAllParticipants = true
                 } label: {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 10) {
                         avatarStrip()
                         Text(participantBreakdown())
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.Text.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(Theme.Surface.card, in: Theme.cardShape())
                 }
-                .buttonStyle(.plain)
+            } header: {
+                Text("Participantes (\(store.participants.count))")
             }
         }
     }
@@ -788,35 +702,57 @@ public struct EventDetailView: View {
         return parts.isEmpty ? "Sin respuestas todavía" : parts.joined(separator: " · ")
     }
 
-    // MARK: - 4. Recursos relacionados
+    // MARK: - 4. Recursos relacionados (Section + NavigationLink nativo)
 
     @ViewBuilder
     private func relatedResourcesSection(_ event: CalendarEvent) -> some View {
         let items = relatedResources
-        if items.isEmpty { EmptyView() } else {
-            relatedList(
-                title: "Recursos",
-                items: items,
-                symbol: "shippingbox.fill",
-                tint: .accentColor,
-                onTap: { pushedResource = $0.id }
-            )
+        if !items.isEmpty {
+            Section {
+                ForEach(items) { item in
+                    NavigationLink {
+                        ResourceDetailView(resourceId: item.id, context: context, container: container)
+                    } label: {
+                        Label {
+                            Text(item.title)
+                                .font(.callout)
+                                .foregroundStyle(Theme.Text.primary)
+                        } icon: {
+                            Image(systemName: "shippingbox.fill")
+                                .foregroundStyle(Theme.Tint.primary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Recursos")
+            }
         }
     }
 
-    // MARK: - 5. Decisiones relacionadas
+    // MARK: - 5. Decisiones relacionadas (Section + NavigationLink nativo)
 
     @ViewBuilder
     private func relatedDecisionsSection(_ event: CalendarEvent) -> some View {
         let items = relatedDecisions
-        if items.isEmpty { EmptyView() } else {
-            relatedList(
-                title: "Decisiones",
-                items: items,
-                symbol: "checkmark.seal.fill",
-                tint: .indigo,
-                onTap: { pushedDecision = $0.id }
-            )
+        if !items.isEmpty {
+            Section {
+                ForEach(items) { item in
+                    NavigationLink {
+                        DecisionDetailView(decisionId: item.id, context: context, container: container)
+                    } label: {
+                        Label {
+                            Text(item.title)
+                                .font(.callout)
+                                .foregroundStyle(Theme.Text.primary)
+                        } icon: {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundStyle(.indigo)
+                        }
+                    }
+                }
+            } header: {
+                Text("Decisiones")
+            }
         }
     }
 
@@ -824,56 +760,6 @@ public struct EventDetailView: View {
         let id: UUID
         let title: String
         let trailing: String?
-    }
-
-    @ViewBuilder
-    private func relatedList(
-        title: String,
-        items: [RelatedItem],
-        symbol: String,
-        tint: Color,
-        onTap: @escaping (RelatedItem) -> Void
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.title3.weight(.semibold))
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
-                    Button {
-                        onTap(item)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: symbol)
-                                .foregroundStyle(tint)
-                                .frame(width: 32, height: 32)
-                                .background(tint.badgeFillSubtle, in: Circle())
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.title)
-                                    .font(.callout)
-                                    .foregroundStyle(.primary)
-                                if let trailing = item.trailing {
-                                    Text(trailing)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    if idx < items.count - 1 {
-                        Divider().padding(.leading, Theme.Spacing.dividerLeading)
-                    }
-                }
-            }
-            .background(Theme.Surface.card, in: Theme.cardShape())
-        }
     }
 
     /// Recursos únicos referenciados en la actividad del evento.
@@ -904,78 +790,54 @@ public struct EventDetailView: View {
         return out
     }
 
-    // MARK: - 6. Información (Apple Settings rows — compacta)
+    // MARK: - 6. Información (LabeledContent nativo)
 
     @ViewBuilder
     private func infoSection(_ event: CalendarEvent) -> some View {
-        let rows = infoRows(event)
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Información")
-                .font(.title3.weight(.semibold))
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { idx, row in
-                    infoRow(label: row.label, value: row.value)
-                    if idx < rows.count - 1 {
-                        Divider().padding(.leading, 16)
-                    }
+        Section {
+            LabeledContent("Organizador") {
+                Text(store.displayName(for: event.hostActorId) + (isHost ? " (tú)" : ""))
+                    .foregroundStyle(Theme.Text.primary)
+                    .multilineTextAlignment(.trailing)
+            }
+            if let starts = event.startsAt {
+                LabeledContent("Fecha") {
+                    Text(headerDateLine(starts))
+                        .multilineTextAlignment(.trailing)
                 }
             }
-            .background(Theme.Surface.card, in: Theme.cardShape())
+            if event.isVirtual {
+                LabeledContent("Ubicación") {
+                    Text("Virtual")
+                }
+            } else if let location = event.locationText, !location.isEmpty {
+                LabeledContent("Ubicación") {
+                    Text(location)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+            if event.isRecurring {
+                LabeledContent("Repetición") {
+                    Text(recurrenceLabel(event))
+                }
+            }
+            if let total = event.recurrenceCount {
+                LabeledContent("Serie") {
+                    Text("\(event.occurrenceNumber) de \(total)")
+                }
+            }
+            if let until = event.recurrenceUntil {
+                LabeledContent("Termina") {
+                    Text(until.formatted(date: .abbreviated, time: .omitted))
+                }
+            }
+            LabeledContent("Contexto") {
+                Text(context.displayName)
+                    .multilineTextAlignment(.trailing)
+            }
+        } header: {
+            Text("Información")
         }
-    }
-
-    private struct InfoRow {
-        let label: String
-        let value: String
-    }
-
-    private func infoRows(_ event: CalendarEvent) -> [InfoRow] {
-        var rows: [InfoRow] = []
-        rows.append(InfoRow(
-            label: "Organizador",
-            value: store.displayName(for: event.hostActorId) + (isHost ? " (tú)" : "")
-        ))
-        if let starts = event.startsAt {
-            rows.append(InfoRow(label: "Fecha", value: headerDateLine(starts)))
-        }
-        // F.EVENT.5 — Ubicación siempre se muestra. "Virtual" cuando aplica;
-        // si no, location_text. Como el backend enforza la regla, no debería
-        // haber casos sin ninguna de las dos.
-        if event.isVirtual {
-            rows.append(InfoRow(label: "Ubicación", value: "Virtual"))
-        } else if let location = event.locationText, !location.isEmpty {
-            rows.append(InfoRow(label: "Ubicación", value: location))
-        }
-        if event.isRecurring {
-            rows.append(InfoRow(label: "Repetición", value: recurrenceLabel(event)))
-        }
-        // F.EVENT.9 — bounds visibles.
-        if let total = event.recurrenceCount {
-            rows.append(InfoRow(label: "Serie", value: "\(event.occurrenceNumber) de \(total)"))
-        }
-        if let until = event.recurrenceUntil {
-            rows.append(InfoRow(
-                label: "Termina",
-                value: until.formatted(date: .abbreviated, time: .omitted)
-            ))
-        }
-        rows.append(InfoRow(label: "Contexto", value: context.displayName))
-        return rows
-    }
-
-    @ViewBuilder
-    private func infoRow(label: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 16)
-            Text(value)
-                .multilineTextAlignment(.trailing)
-                .foregroundStyle(.primary)
-        }
-        .font(.callout)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     // MARK: - Más acciones (toolbar `+` top-right — ver `.toolbar` arriba)
