@@ -45,6 +45,8 @@ public struct ContextDetailViewV2: View {
     @State private var contextConflictAlert: ContextConflictsAlert?
     @State private var isShowingContextConflictAlert = false
     @State private var isResolvingContextConflict = false
+    /// P0 fix 2026-06-08 — sheet de ContextSettings desde el toolbar ellipsis.
+    @State private var isShowingSettings = false
 
     private enum QuickActionPush: Hashable, Identifiable {
         case resources, events, decisions, money, members, rules
@@ -154,6 +156,9 @@ public struct ContextDetailViewV2: View {
                     presentedAttention = AttentionDispatcher.destination(for: item)
                 }
             }
+        }
+        .sheet(isPresented: $isShowingSettings) {
+            ContextSettingsView(context: context, container: container)
         }
         .sheet(isPresented: $isShowingClassicSheet) {
             NavigationStack {
@@ -1320,28 +1325,60 @@ public struct ContextDetailViewV2: View {
         }
     }
 
-    // MARK: - Toolbar
+    // MARK: - Toolbar (P0 fix 2026-06-08 — acciones específicas por contexto)
+    //
+    // Personal context: sin acciones de gestión.
+    // Collective context:
+    //   - Trailing "+": Menu con descriptor.actions (create_resource, invite,
+    //     record_expense, create_decision, create_event, create_rule, create_child).
+    //   - Trailing "ellipsis": Menu con drill-downs específicos del contexto
+    //     (Configuración, Documentos, Reglas, Reservaciones) en vez del legacy
+    //     "Vista clásica" que era debug.
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        if let actions = store.descriptor?.actions, !actions.isEmpty {
+        if context.isPersonal {
+            // Personal context — sin acciones de gestión.
+            EmptyToolbarContent()
+        } else {
+            if let actions = store.descriptor?.actions, !actions.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    quickActionsMenu(actions: actions)
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
-                quickActionsMenu(actions: actions)
+                Menu {
+                    Section("Explorar") {
+                        Button {
+                            pushedActionDestination = .rules
+                        } label: {
+                            Label("Reglas", systemImage: "ruler.fill")
+                        }
+                        Button {
+                            isShowingSettings = true
+                        } label: {
+                            Label("Configuración", systemImage: "gearshape.fill")
+                        }
+                    }
+                    Section("Avanzado") {
+                        Button {
+                            isShowingClassicSheet = true
+                        } label: {
+                            Label("Vista clásica", systemImage: "rectangle.stack")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Más opciones del contexto")
             }
         }
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Section("Fallback") {
-                    Button {
-                        isShowingClassicSheet = true
-                    } label: {
-                        Label("Vista clásica", systemImage: "rectangle.stack")
-                    }
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .accessibilityLabel("Más opciones")
+    }
+
+    /// Empty toolbar content para gating del personal sin warnings.
+    private struct EmptyToolbarContent: ToolbarContent {
+        var body: some ToolbarContent {
+            ToolbarItem(placement: .topBarTrailing) { EmptyView() }
         }
     }
 

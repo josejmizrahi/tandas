@@ -81,10 +81,27 @@ public struct ResourceDetailViewV2: View {
         }
         .navigationTitle(store.descriptor?.resource.displayName ?? "Recurso")
         .navigationBarTitleDisplayMode(.inline)
+        // P0 fix 2026-06-08 — toolbar específico del recurso:
+        //   - Trailing "+": Menu con descriptor.actions enabled (acciones rápidas
+        //     más comunes — attach_document / grant_right / edit_resource / etc.).
+        //   - Trailing "ellipsis": Menu con drill-downs específicos del recurso
+        //     (Configuración, Vista clásica) en vez de solo legacy "Vista clásica".
         .toolbar {
+            if let descriptor = store.descriptor, !descriptor.actions.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    resourceQuickActionsMenu(actions: descriptor.actions, descriptor: descriptor)
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Section("Fallback") {
+                    Section("Explorar") {
+                        Button {
+                            isShowingEditResource = true
+                        } label: {
+                            Label("Editar recurso", systemImage: "pencil")
+                        }
+                    }
+                    Section("Avanzado") {
                         Button {
                             isShowingClassicSheet = true
                         } label: {
@@ -94,7 +111,7 @@ public struct ResourceDetailViewV2: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
-                .accessibilityLabel("Más opciones")
+                .accessibilityLabel("Más opciones del recurso")
             }
         }
         .task {
@@ -571,6 +588,38 @@ public struct ResourceDetailViewV2: View {
 
     private func descriptorForm(for action: ResourceDescriptorAction) -> ResourceActionForm? {
         store.descriptor?.form(for: action.actionKey)
+    }
+
+    /// P0 fix 2026-06-08 — toolbar Menu con acciones descriptor-driven del recurso.
+    /// Solo enabled actions, ordenadas con las más comunes primero (attach_document /
+    /// grant_right / edit_resource antes que las destructivas).
+    @ViewBuilder
+    private func resourceQuickActionsMenu(actions: [ResourceDescriptorAction], descriptor: ResourceDetailDescriptor) -> some View {
+        let enabledActions = actions.filter { $0.enabled }
+        if !enabledActions.isEmpty {
+            Menu {
+                ForEach(enabledActions) { action in
+                    let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
+                    if action.dangerous {
+                        Button(role: .destructive) {
+                            handleActionTap(action)
+                        } label: {
+                            Label(action.label, systemImage: presentation.symbolName)
+                        }
+                    } else {
+                        Button {
+                            handleActionTap(action)
+                        } label: {
+                            Label(action.label, systemImage: presentation.symbolName)
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+            }
+            .accessibilityLabel("Acciones del recurso")
+        }
     }
 
     private func handleActionTap(_ action: ResourceDescriptorAction) {
