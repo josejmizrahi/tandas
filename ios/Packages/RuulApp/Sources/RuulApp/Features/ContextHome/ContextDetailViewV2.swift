@@ -823,6 +823,11 @@ public struct ContextDetailViewV2: View {
     }
 
     // MARK: - People tab
+    //
+    // P0 fix 2026-06-08: removidos NavigationLinks redundantes en member rows
+    // y role rows — todos pusheaban a la MISMA `MembersListView`. Member rows
+    // ahora pasivos (preview info), UN solo CTA al final pushea la lista
+    // completa con drill-down a MemberDetailView. Roles también pasivos.
 
     @ViewBuilder
     private func peopleSections(_ d: ContextDetailDescriptor) -> some View {
@@ -832,39 +837,35 @@ public struct ContextDetailViewV2: View {
                     .foregroundStyle(Theme.Text.secondary)
             } else {
                 ForEach(d.membersPreview) { m in
-                    NavigationLink {
-                        MembersListView(context: context, container: container)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Circle()
-                                .fill(Theme.Tint.primary.opacity(0.15))
-                                .frame(width: 36, height: 36)
-                                .overlay(
-                                    Text(m.displayName.first.map { String($0) } ?? "?")
-                                        .font(.subheadline.bold())
-                                        .foregroundStyle(Theme.Tint.primary)
-                                )
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(m.displayName)
-                                    .font(.callout.weight(.medium))
-                                    .foregroundStyle(Theme.Text.primary)
-                                Text(membershipTypeLabel(m.membershipType))
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.Text.secondary)
-                            }
-                            Spacer()
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(Theme.Tint.primary.opacity(0.15))
+                            .frame(width: 36, height: 36)
+                            .overlay(
+                                Text(m.displayName.first.map { String($0) } ?? "?")
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(Theme.Tint.primary)
+                            )
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(m.displayName)
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                            Text(membershipTypeLabel(m.membershipType))
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.secondary)
                         }
+                        Spacer()
                     }
                 }
-                if d.metrics.memberCount > d.membersPreview.count {
-                    NavigationLink {
-                        MembersListView(context: context, container: container)
-                    } label: {
-                        Label(
-                            "Ver todos los miembros (\(d.metrics.memberCount))",
-                            systemImage: "person.3.fill"
-                        )
-                    }
+                NavigationLink {
+                    MembersListView(context: context, container: container)
+                } label: {
+                    Label(
+                        d.metrics.memberCount > d.membersPreview.count
+                            ? "Ver todos los miembros (\(d.metrics.memberCount))"
+                            : "Ver detalle de miembros",
+                        systemImage: "person.3.fill"
+                    )
                 }
             }
         } header: {
@@ -874,20 +875,18 @@ public struct ContextDetailViewV2: View {
         if !d.roles.isEmpty {
             Section {
                 ForEach(d.roles) { role in
-                    NavigationLink {
-                        MembersListView(context: context, container: container)
+                    LabeledContent {
+                        Text("\(role.memberCount)")
+                            .font(.callout.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(Theme.Text.primary)
                     } label: {
-                        LabeledContent {
-                            Text("\(role.memberCount)")
-                                .font(.callout.weight(.semibold).monospacedDigit())
-                                .foregroundStyle(Theme.Text.primary)
-                        } label: {
-                            Label(role.displayName, systemImage: roleIcon(role.roleKey))
-                        }
+                        Label(role.displayName, systemImage: roleIcon(role.roleKey))
                     }
                 }
             } header: {
                 Text("Roles")
+            } footer: {
+                Text("Los roles se asignan desde el detalle de cada miembro.")
             }
         }
     }

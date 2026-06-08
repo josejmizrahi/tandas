@@ -322,31 +322,36 @@ public struct MoneyHomeView: View {
 
     @ViewBuilder
     private func pendienteRow(_ obligation: Obligation) -> some View {
-        LabeledContent {
+        // P0 fix 2026-06-08: Button + LabeledContent dentro de List causaba
+        // crash al tap. Simplificado a HStack plano + .contentShape Rectangle
+        // para hit-test estable.
+        HStack(spacing: 12) {
+            Image(systemName: pendienteIcon(obligation))
+                .foregroundStyle(amountTint(obligation))
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(pendienteTitle(obligation))
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Theme.Text.primary)
+                    .lineLimit(1)
+                if let subtitle = pendienteSubtitle(obligation) {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 12)
             if let amount = obligation.amount {
                 Text(amount.currencyLabel(obligation.currency))
                     .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(amountTint(obligation))
             }
-        } label: {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(pendienteTitle(obligation))
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(Theme.Text.primary)
-                        .lineLimit(1)
-                    if let subtitle = pendienteSubtitle(obligation) {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(Theme.Text.secondary)
-                            .lineLimit(1)
-                    }
-                }
-            } icon: {
-                Image(systemName: pendienteIcon(obligation))
-                    .foregroundStyle(amountTint(obligation))
-            }
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.Text.tertiary)
         }
+        .contentShape(Rectangle())
     }
 
     private func pendienteIcon(_ obligation: Obligation) -> String {
