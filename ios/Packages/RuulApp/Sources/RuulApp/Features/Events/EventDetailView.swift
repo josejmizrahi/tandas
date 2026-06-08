@@ -53,6 +53,12 @@ public struct EventDetailView: View {
     @State private var nextHostNotice: String?
     /// F.EVENT.10 — sheet de configurar el orden de rotación de host.
     @State private var isShowingRotationOrder = false
+    /// R.2T — reservaciones linkeadas a este evento vía `source_event_id`.
+    /// Carga ondemand una sola vez por evento (sin polling). Vacía por default.
+    @State private var linkedReservations: [Reservation] = []
+    /// R.2T — map `resourceId → displayName` resuelto vía `listContextResources`
+    /// para mostrar nombres reales en lugar de UUIDs.
+    @State private var linkedResourceNames: [UUID: String] = [:]
 
     public init(eventId: UUID, context: AppContext, container: DependencyContainer) {
         self.eventId = eventId
@@ -168,10 +174,12 @@ public struct EventDetailView: View {
         .task {
             await store.load(eventId: eventId, context: context)
             await loadEventActivity()
+            await loadLinkedReservations()
         }
         .refreshable {
             await store.load(eventId: eventId, context: context)
             await loadEventActivity()
+            await loadLinkedReservations()
         }
         .actionErrorAlert(runner)
         .alert("Check-in registrado", isPresented: Binding(
@@ -298,6 +306,7 @@ public struct EventDetailView: View {
             heroSection(event)
             primaryActionSection(event)
             nextSessionSection(event)
+            linkedReservationsSection
             locationSection(event)
             participantsSection(event)
             relatedResourcesSection(event)
@@ -376,6 +385,79 @@ public struct EventDetailView: View {
             return true
         }
         return false
+    }
+
+    // MARK: - R.2T Recurso reservado (Section dedicada — link a Reserva via source_event_id)
+
+    /// Muestra los recursos reservados para este evento (caso Mundial: Palco
+    /// para los 5 partidos). Si no hay reservaciones linkeadas, no renderiza.
+    /// Tap → push ResourceDetailViewV2 (donde el usuario ya ve detalles del
+    /// recurso + linkedEvents de vuelta).
+    @ViewBuilder
+    private var linkedReservationsSection: some View {
+        if !linkedReservations.isEmpty {
+            Section {
+                ForEach(linkedReservations) { reservation in
+                    NavigationLink {
+                        ResourceDetailViewV2(
+                            resourceId: reservation.resourceId,
+                            context: context,
+                            container: container
+                        )
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(linkedResourceNames[reservation.resourceId] ?? "Recurso")
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                    .lineLimit(1)
+                                Text(linkedReservationRange(reservation))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                                    .lineLimit(1)
+                            }
+                        } icon: {
+                            Image(systemName: "calendar.badge.checkmark")
+                                .foregroundStyle(linkedReservationTint(reservation.status))
+                        }
+                    }
+                }
+            } header: {
+                Text(linkedReservations.count == 1 ? "Recurso reservado" : "Recursos reservados (\(linkedReservations.count))")
+            } footer: {
+                if let single = linkedReservations.first, linkedReservations.count == 1 {
+                    Text(linkedReservationStatusLabel(single.status))
+                }
+            }
+        }
+    }
+
+    private func linkedReservationRange(_ r: Reservation) -> String {
+        let start = r.startsAt.formatted(date: .abbreviated, time: .shortened)
+        let end = r.endsAt.formatted(date: .abbreviated, time: .shortened)
+        return "\(start) – \(end)"
+    }
+
+    private func linkedReservationStatusLabel(_ status: String) -> String {
+        switch status {
+        case "requested": return "Solicitada — pendiente de aprobación."
+        case "approved":  return "Aprobada — pendiente de confirmar."
+        case "confirmed": return "Confirmada para el evento."
+        case "cancelled": return "Cancelada."
+        case "completed": return "Completada."
+        case "rejected":  return "Rechazada."
+        default:          return "Estado: \(status)."
+        }
+    }
+
+    private func linkedReservationTint(_ status: String) -> Color {
+        switch status {
+        case "confirmed": return Theme.Tint.success
+        case "approved":  return Theme.Tint.info
+        case "requested": return Theme.Tint.warning
+        case "cancelled", "rejected": return Theme.Tint.critical
+        default: return Theme.Tint.primary
+        }
     }
 
     // MARK: - F.EVENT.11 Ubicación (Section dedicada — tap → Apple Maps)
@@ -1026,6 +1108,31 @@ public struct EventDetailView: View {
                 .sorted { ($0.occurredAt ?? .distantPast) > ($1.occurredAt ?? .distantPast) }
         } catch {
             eventActivity = []
+        }
+    }
+
+    /// R.2T — carga las reservaciones que apuntan a este evento vía
+    /// `source_event_id` + resuelve los display names de los recursos
+    /// involucrados. Silencioso ante errores (la section simplemente no
+    /// renderiza si quedó vacío).
+    private func loadLinkedReservations() async {
+        do {
+            let reservations = try await container.rpc.listReservationsByEvent(eventId: eventId)
+            linkedReservations = reservations
+            guard !reservations.isEmpty else {
+                linkedResourceNames = [:]
+                return
+            }
+            let resourceIds = Set(reservations.map(\.resourceId))
+            let contextResources = (try? await container.rpc.listContextResources(contextId: context.id)) ?? []
+            var names: [UUID: String] = [:]
+            for res in contextResources where resourceIds.contains(res.resourceId) {
+                names[res.resourceId] = res.displayName
+            }
+            linkedResourceNames = names
+        } catch {
+            linkedReservations = []
+            linkedResourceNames = [:]
         }
     }
 

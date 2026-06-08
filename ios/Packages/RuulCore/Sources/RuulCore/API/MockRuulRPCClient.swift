@@ -2267,6 +2267,13 @@ public actor MockRuulRPCClient: RuulRPCClient {
             .sorted { $0.startsAt < $1.startsAt }
     }
 
+    public func listReservationsByEvent(eventId: UUID) async throws -> [Reservation] {
+        try throwIfNeeded()
+        return reservations.values
+            .filter { $0.sourceEventId == eventId }
+            .sorted { $0.startsAt < $1.startsAt }
+    }
+
     public func listConflicts(resourceId: UUID) async throws -> [ReservationConflict] {
         try throwIfNeeded()
         return conflicts.values

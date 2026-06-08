@@ -208,6 +208,10 @@ public protocol RuulRPCClient: Sendable {
     func listReservations(resourceId: UUID) async throws -> [Reservation]
     /// Lectura PostgREST: reservaciones de un contexto.
     func listContextReservations(contextId: UUID) async throws -> [Reservation]
+    /// R.2T — Lectura PostgREST: reservaciones linkeadas a un evento vía
+    /// `source_event_id`. Usado para surfacear "Recurso reservado" en
+    /// EventDetailView (caso Mundial: 5 partidos → Palco).
+    func listReservationsByEvent(eventId: UUID) async throws -> [Reservation]
     /// Lectura PostgREST: conflictos abiertos de un recurso.
     func listConflicts(resourceId: UUID) async throws -> [ReservationConflict]
     /// `detect_reservation_conflicts(resource)` — equivalente RPC al list pero

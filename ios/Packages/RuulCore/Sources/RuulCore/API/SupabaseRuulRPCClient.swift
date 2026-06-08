@@ -1092,6 +1092,20 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func listReservationsByEvent(eventId: UUID) async throws -> [Reservation] {
+        do {
+            return try await client
+                .from("resource_reservations")
+                .select()
+                .eq("source_event_id", value: eventId.uuidString)
+                .order("starts_at", ascending: true)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func listConflicts(resourceId: UUID) async throws -> [ReservationConflict] {
         do {
             return try await client
