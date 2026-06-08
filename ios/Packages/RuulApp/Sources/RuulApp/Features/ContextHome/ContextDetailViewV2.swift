@@ -248,7 +248,7 @@ public struct ContextDetailViewV2: View {
         if d.conflicts.hasOpenConflicts {
             conflictsSection(summary: d.conflicts, list: conflictsList)
         }
-        let filteredWidgets = overviewDashboardWidgets(d.widgets)
+        let filteredWidgets = overviewDashboardWidgets(d.widgets, descriptor: d)
         if !filteredWidgets.isEmpty {
             dashboardSection(filteredWidgets)
         }
@@ -318,16 +318,30 @@ public struct ContextDetailViewV2: View {
         return chips
     }
 
-    // MARK: - Widget filtering (R.5V.3A)
+    // MARK: - Widget filtering (R.5V.3A + .fix)
     //
-    // next_event y cash_balance/budget_progress se renderizan como bloques
-    // dedicados — fuera del Dashboard scroll horizontal genérico.
+    // 1. Widgets que viven en bloques dedicados se excluyen del Dashboard:
+    //    next_event, cash_balance, budget_progress, recent_activity.
+    // 2. Widgets cuyas métricas ya viven en chips del Hero se excluyen:
+    //    member_count_summary, open_decisions, open_obligations.
+    // 3. Widgets con dato medible == 0 se ocultan (anti placeholder técnico):
+    //    settlement_status sin open_settlements.
+    //
+    // Si después del filtro la sección queda vacía, no se renderiza.
 
-    private func overviewDashboardWidgets(_ widgets: [ContextWidget]) -> [ContextWidget] {
+    private func overviewDashboardWidgets(_ widgets: [ContextWidget], descriptor d: ContextDetailDescriptor) -> [ContextWidget] {
         widgets.filter { w in
             switch w.widgetKey {
-            case "next_event", "cash_balance", "budget_progress":
+            case "next_event",
+                 "cash_balance",
+                 "budget_progress",
+                 "recent_activity",
+                 "member_count_summary",
+                 "open_decisions",
+                 "open_obligations":
                 return false
+            case "settlement_status":
+                return d.moneyPreview.openSettlements > 0
             default:
                 return true
             }
