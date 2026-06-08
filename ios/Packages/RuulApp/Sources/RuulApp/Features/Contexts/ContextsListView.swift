@@ -1,25 +1,26 @@
 import SwiftUI
 import RuulCore
 
-/// F.CONTEXT.2 + R.5V.X refactor 2026-06-08 — pantalla de Contextos Apple-native.
+/// R.5V.3A (2026-06-08) — pantalla de Contextos Apple-native refinada.
 ///
-/// Doctrina canónica firmada V.3/V.4/V.5: **la Section ES la card**. Cero VStack
-/// envueltos en `Theme.cardShape()`. List + Section grouped + Label native +
-/// NavigationLink (chevron auto).
+/// Founder UX refinement: jerarquía visual clara con Mi espacio como Hero
+/// principal, búsqueda integrada para escalabilidad, terminología visible
+/// ("espacios" en lugar de "contextos"), y Recientes condicional que no
+/// duplica información de "Todos los espacios".
 ///
 /// Estructura visual:
 /// ```
 /// List(.insetGrouped) {
-///   Section { "Mi espacio" row }                  // NavigationLink + Label icon
-///   Section "Favoritos" { carousel horizontal }   // .listRowInsets(.zero)
-///   Section "Recientes" { carousel horizontal }   // .listRowInsets(.zero)
-///   Section "Todos los contextos" { Label rows }  // chevron auto + favorite swipe
-///   Section { "Crear contexto" / "Unirse" Label rows }
+///   Section { RuulHeroCard "Mi espacio" }            // listRowInsets.zero — hero
+///   Section "Favoritos" { carousel horizontal }
+///   Section "Recientes" { carousel horizontal }      // solo si < all_contexts
+///   Section "Todos los espacios" { Label rows }
+///   Section "Acciones" { Crear espacio / Unirse }
 /// }
+/// .searchable(text: $searchText, prompt: "Buscar espacios")
 /// ```
 ///
-/// Cero break: NavigationStack path + sheets + navigationDestination + toolbar
-/// invitations badge se preservan idénticos.
+/// El backend sigue siendo "contexto" — solo el copy visible cambia.
 public struct ContextsListView: View {
     let container: DependencyContainer
 
@@ -29,6 +30,7 @@ public struct ContextsListView: View {
     @State private var isShowingInvitations = false
     @State private var settingsContext: AppContext?
     @State private var prefilledInviteCode: String?
+    @State private var searchText = ""
 
     public init(container: DependencyContainer, path: Binding<[AppContext]>) {
         self.container = container
@@ -43,10 +45,10 @@ public struct ContextsListView: View {
             Group {
                 switch contextStore.phase {
                 case .idle, .loading:
-                    SessionLoadingView(message: "Cargando tus contextos…")
+                    SessionLoadingView(message: "Cargando tus espacios…")
 
                 case .failed(let message):
-                    ErrorStateView(title: "No pudimos cargar tus contextos", message: message) {
+                    ErrorStateView(title: "No pudimos cargar tus espacios", message: message) {
                         Task { await contextStore.load() }
                     }
 
@@ -89,19 +91,28 @@ public struct ContextsListView: View {
         }
     }
 
-    // MARK: - Dashboard (Apple-native List + Section)
+    // MARK: - Dashboard (Apple-native List + Section + searchable)
 
     @ViewBuilder
     private var dashboard: some View {
         List {
-            miEspacioSection
-            favoritesSection
-            recentsSection
-            allContextsSection
-            actionsSection
+            if isSearching {
+                searchResultsSection
+            } else {
+                miEspacioHeroSection
+                favoritesSection
+                recentsSection
+                allContextsSection
+                actionsSection
+            }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Mis contextos")
+        .navigationTitle("Mis Contextos")
+        .searchable(
+            text: $searchText,
+            placement: .navigationBarDrawer(displayMode: .automatic),
+            prompt: "Buscar espacios"
+        )
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 if !container.invitationsStore.invitations.isEmpty {
@@ -142,30 +153,40 @@ public struct ContextsListView: View {
         }
     }
 
-    // MARK: - Mi espacio (Section row con NavigationLink — chevron auto)
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    // MARK: - Mi espacio Hero (RuulHeroCard inside listRowInsets.zero)
 
     @ViewBuilder
-    private var miEspacioSection: some View {
+    private var miEspacioHeroSection: some View {
         if let personal = contextStore.availableContexts.first(where: { $0.isPersonal }) {
             Section {
                 Button {
                     openContext(personal)
                 } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Mi espacio")
-                                .font(.callout.weight(.medium))
-                                .foregroundStyle(Theme.Text.primary)
-                            Text("Tu actividad, recursos y compromisos")
-                                .font(.caption)
-                                .foregroundStyle(Theme.Text.secondary)
-                                .lineLimit(2)
+                    RuulHeroCard(
+                        title: "Mi espacio",
+                        subtitle: "Tu actividad, recursos y compromisos",
+                        systemImage: personal.symbolName,
+                        tint: Theme.Tint.primary
+                    ) {
+                        HStack(spacing: 4) {
+                            Spacer()
+                            Text("Entrar")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.Tint.primary)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Theme.Tint.primary)
                         }
-                    } icon: {
-                        Image(systemName: personal.symbolName)
-                            .foregroundStyle(Theme.Tint.primary)
                     }
                 }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
     }
@@ -197,15 +218,16 @@ public struct ContextsListView: View {
         }
     }
 
-    // MARK: - Recientes (carousel)
+    // MARK: - Recientes (solo si recents > 0 y recents < all_contexts)
 
     @ViewBuilder
     private var recentsSection: some View {
         let favoriteIds = Set(preferencesStore.favorites.map(\.contextActorId))
+        let allRootsCount = contextStore.availableContexts.filter { $0.isRoot && !$0.isPersonal }.count
         let recents = resolveContexts(ids: preferencesStore.recents.map(\.contextActorId))
             .filter { $0.isRoot && !$0.isPersonal && !favoriteIds.contains($0.id) }
             .prefix(8)
-        if !recents.isEmpty {
+        if !recents.isEmpty && recents.count < allRootsCount {
             Section {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
@@ -225,7 +247,7 @@ public struct ContextsListView: View {
         }
     }
 
-    // MARK: - Todos los contextos (Label rows nativos con favorite swipe action)
+    // MARK: - Todos los espacios (Label rows nativos con favorite swipe action)
 
     @ViewBuilder
     private var allContextsSection: some View {
@@ -255,7 +277,40 @@ public struct ContextsListView: View {
                     }
                 }
             } header: {
-                Text("Todos los contextos (\(allRoots.count))")
+                Text("Todos los espacios (\(allRoots.count))")
+            }
+        }
+    }
+
+    // MARK: - Search results (cuando hay texto en searchable)
+
+    @ViewBuilder
+    private var searchResultsSection: some View {
+        let needle = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        let matches = contextStore.availableContexts.filter { ctx in
+            guard ctx.isRoot else { return false }
+            if ctx.displayName.lowercased().contains(needle) { return true }
+            if let sub = subtypeLabel(ctx)?.lowercased(), sub.contains(needle) { return true }
+            return false
+        }
+        if matches.isEmpty {
+            Section {
+                ContentUnavailableView.search(text: searchText)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+        } else {
+            let favoriteIds = Set(preferencesStore.favorites.map(\.contextActorId))
+            Section {
+                ForEach(matches) { ctx in
+                    Button {
+                        openContext(ctx)
+                    } label: {
+                        contextRowLabel(ctx, isFavorite: favoriteIds.contains(ctx.id))
+                    }
+                }
+            } header: {
+                Text("Resultados (\(matches.count))")
             }
         }
     }
@@ -265,7 +320,7 @@ public struct ContextsListView: View {
         Label {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text(ctx.displayName)
+                    Text(ctx.isPersonal ? "Mi espacio" : ctx.displayName)
                         .font(.callout.weight(.medium))
                         .foregroundStyle(Theme.Text.primary)
                     if isFavorite {
@@ -303,7 +358,7 @@ public struct ContextsListView: View {
             Button {
                 isShowingCreateContext = true
             } label: {
-                Label("Crear contexto", systemImage: "rectangle.split.2x1.fill")
+                Label("Crear espacio", systemImage: "rectangle.split.2x1.fill")
             }
             Button {
                 isShowingJoinByCode = true
@@ -311,7 +366,7 @@ public struct ContextsListView: View {
                 Label("Unirse con código", systemImage: "key.fill")
             }
         } header: {
-            Text("Espacio nuevo")
+            Text("Acciones")
         }
     }
 
@@ -431,7 +486,7 @@ private struct ContextHomeContainer: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Cambiar contexto. Actual: \(context.displayName)")
+                    .accessibilityLabel("Cambiar espacio. Actual: \(context.displayName)")
                 }
                 if !context.isPersonal {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -440,7 +495,7 @@ private struct ContextHomeContainer: View {
                         } label: {
                             Image(systemName: "gearshape")
                         }
-                        .accessibilityLabel("Configuración del contexto")
+                        .accessibilityLabel("Configuración del espacio")
                     }
                 }
             }

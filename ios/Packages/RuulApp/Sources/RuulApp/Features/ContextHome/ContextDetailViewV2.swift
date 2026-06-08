@@ -227,17 +227,36 @@ public struct ContextDetailViewV2: View {
         }
     }
 
-    // MARK: - Overview tab
+    // MARK: - Overview tab (R.5V.3A — jerarquía firmada)
+    //
+    // Orden obligatorio:
+    //   1. Hero          (RuulDetailHero con métricas como chips)
+    //   2. Atención      (domina visualmente cuando hay items)
+    //   3. Conflicts     (R.5B)
+    //   4. Dashboard     (widgets filtrados — sin next_event/balance)
+    //   5. Próximo evento (bloque dedicado, fuera del Dashboard)
+    //   6. Balance        (bloque dedicado, fuera del Dashboard)
+    //   7. Espacios hijos (carousel)
+    //   8. Actividad reciente (máximo 3)
+    //
+    // resumenSection se elimina: las métricas viven en chips del Hero.
 
     @ViewBuilder
     private func overviewSections(_ d: ContextDetailDescriptor) -> some View {
+        heroSection(d)
         attentionSection
         if d.conflicts.hasOpenConflicts {
             conflictsSection(summary: d.conflicts, list: conflictsList)
         }
-        resumenSection(d.metrics)
-        if !d.widgets.isEmpty {
-            dashboardSection(d.widgets)
+        let filteredWidgets = overviewDashboardWidgets(d.widgets)
+        if !filteredWidgets.isEmpty {
+            dashboardSection(filteredWidgets)
+        }
+        if hasNextEventWidget(d.widgets) {
+            nextEventSection
+        }
+        if !d.moneyPreview.myBalanceByCurrency.isEmpty {
+            balanceSection(d.moneyPreview)
         }
         if !d.childContextsPreview.isEmpty {
             childrenSection(d.childContextsPreview)
@@ -245,6 +264,78 @@ public struct ContextDetailViewV2: View {
         if !d.activityPreview.isEmpty {
             activitySection(d.activityPreview)
         }
+    }
+
+    // MARK: - Hero (R.5V.3A)
+
+    @ViewBuilder
+    private func heroSection(_ d: ContextDetailDescriptor) -> some View {
+        Section {
+            RuulDetailHero(
+                title: context.isPersonal ? "Mi espacio" : (d.contextDisplayName ?? context.displayName),
+                subtitle: heroSubtitle(d),
+                systemImage: context.symbolName,
+                tint: Theme.Tint.primary,
+                chips: heroChips(d.metrics)
+            )
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
+
+    private func heroSubtitle(_ d: ContextDetailDescriptor) -> String? {
+        if context.isPersonal { return "Tu actividad, recursos y compromisos" }
+        return contextSubtypeLabel(context.subtype)
+    }
+
+    private func contextSubtypeLabel(_ subtype: String) -> String {
+        switch subtype {
+        case "family":       return "Familia"
+        case "community":    return "Comunidad"
+        case "trip":         return "Viaje"
+        case "project":      return "Proyecto"
+        case "trust":        return "Fideicomiso"
+        case "friend_group": return "Grupo"
+        case "company":      return "Empresa"
+        default:             return subtype.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    private func heroChips(_ m: ContextMetrics) -> [String] {
+        var chips: [String] = []
+        if m.memberCount > 0 {
+            chips.append("\(m.memberCount) \(m.memberCount == 1 ? "miembro" : "miembros")")
+        }
+        let resourceTotal = m.resourceCountByClass.values.reduce(0, +)
+        if resourceTotal > 0 {
+            chips.append("\(resourceTotal) \(resourceTotal == 1 ? "recurso" : "recursos")")
+        }
+        let pending = m.openObligations + m.pendingDecisions
+        if pending > 0 {
+            chips.append("\(pending) \(pending == 1 ? "pendiente" : "pendientes")")
+        }
+        return chips
+    }
+
+    // MARK: - Widget filtering (R.5V.3A)
+    //
+    // next_event y cash_balance/budget_progress se renderizan como bloques
+    // dedicados — fuera del Dashboard scroll horizontal genérico.
+
+    private func overviewDashboardWidgets(_ widgets: [ContextWidget]) -> [ContextWidget] {
+        widgets.filter { w in
+            switch w.widgetKey {
+            case "next_event", "cash_balance", "budget_progress":
+                return false
+            default:
+                return true
+            }
+        }
+    }
+
+    private func hasNextEventWidget(_ widgets: [ContextWidget]) -> Bool {
+        widgets.contains { $0.widgetKey == "next_event" }
     }
 
     // MARK: - Attention
@@ -382,53 +473,6 @@ public struct ContextDetailViewV2: View {
         }
     }
 
-    // MARK: - Resumen (metrics — Apple Settings/Health pattern: Label + value bold)
-
-    @ViewBuilder
-    private func resumenSection(_ m: ContextMetrics) -> some View {
-        Section {
-            LabeledContent {
-                Text("\(m.memberCount)")
-                    .font(.body.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(Theme.Text.primary)
-            } label: {
-                Label("Miembros", systemImage: "person.2.fill")
-            }
-            LabeledContent {
-                Text("\(m.pendingDecisions)")
-                    .font(.body.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(m.pendingDecisions > 0 ? Theme.Tint.info : Theme.Text.primary)
-            } label: {
-                Label("Decisiones pendientes", systemImage: "questionmark.bubble.fill")
-            }
-            LabeledContent {
-                Text("\(m.openObligations)")
-                    .font(.body.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(m.openObligations > 0 ? Theme.Tint.warning : Theme.Text.primary)
-            } label: {
-                Label("Obligaciones abiertas", systemImage: "doc.text.below.ecg.fill")
-            }
-            if !m.resourceCountByClass.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(m.resourceCountByClass.sorted(by: { $0.value > $1.value }), id: \.key) { (key, count) in
-                            chipBadge(
-                                "\(count) \(resourceClassLabel(key))",
-                                tint: Theme.Tint.info
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-            }
-        } header: {
-            Text("Resumen")
-        }
-    }
-
     // MARK: - Dashboard (widgets)
 
     @ViewBuilder
@@ -484,16 +528,63 @@ public struct ContextDetailViewV2: View {
                 .foregroundStyle(Theme.Text.primary)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
-            if let src = widget.dataSourceKey {
-                Text(src)
-                    .font(.caption2)
-                    .foregroundStyle(Theme.Text.tertiary)
-                    .lineLimit(1)
-            }
         }
         .frame(width: 150, height: 130, alignment: .topLeading)
         .padding(14)
         .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    // MARK: - Próximo evento (R.5V.3A — bloque dedicado, fuera del Dashboard)
+
+    @ViewBuilder
+    private var nextEventSection: some View {
+        Section {
+            NavigationLink {
+                EventsListView(context: context, container: container)
+            } label: {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Ver próximos eventos")
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(Theme.Text.primary)
+                        Text("Calendario del espacio")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "calendar")
+                        .foregroundStyle(Theme.Tint.info)
+                }
+            }
+        } header: {
+            Text("Próximo evento")
+        }
+    }
+
+    // MARK: - Balance (R.5V.3A — bloque dedicado en Overview)
+
+    @ViewBuilder
+    private func balanceSection(_ money: ContextMoneyPreview) -> some View {
+        Section {
+            ForEach(money.myBalanceByCurrency.sorted(by: { $0.key < $1.key }), id: \.key) { (currency, net) in
+                NavigationLink {
+                    MoneyHomeView(context: context, container: container)
+                } label: {
+                    LabeledContent {
+                        Text(formatCurrency(net, currency: currency))
+                            .font(.callout.bold().monospacedDigit())
+                            .foregroundStyle(net >= 0 ? Theme.Tint.success : Theme.Tint.critical)
+                    } label: {
+                        Label(
+                            net >= 0 ? "Te deben" : "Debes",
+                            systemImage: net >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill"
+                        )
+                    }
+                }
+            }
+        } header: {
+            Text("Mi balance")
+        }
     }
 
     private func contextWidgetDestinationKey(_ key: String) -> String? {
@@ -622,7 +713,7 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func activitySection(_ events: [ActivityPreviewEvent]) -> some View {
         Section {
-            ForEach(events.prefix(5)) { ev in
+            ForEach(events.prefix(3)) { ev in
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(activityEventLabel(ev.eventType))
