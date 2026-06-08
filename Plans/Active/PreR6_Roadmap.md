@@ -22,21 +22,30 @@ Pregunta única que el founder firma al cierre:
 
 ---
 
-## 2. Orden de ejecución FIRMADO (congelado founder)
+## 2. Orden de ejecución FIRMADO (congelado founder 2026-06-07)
 
 ```
-1. ✅ R.5X.fix.A   — RPCErrorMapper mapper "Próximamente" (P0-01 D firmado)
-2. ✅ R.5X.fix.B   — intent.obligation en CreateIntentSheet (P0-02 Flow 4 Empresa unblock)
-3. ✅ R.5X.fix.C   — register_document emit canonical document.created (P0-03)
-4. ✅ R.5Y.A1      — Attention Center backend (settlement_open + resource_conflict_direct cross-context + payload enrichment)
-5. ✅ R.5Y.A2      — Attention Center iOS (AttentionDispatcher único + 3 switches duplicados eliminados)
-6. ⏳ Documents V2 — DocumentsListView + DocumentDetailView + QuickLook + supersedes (immutables + versions = nuevo doc)
-7. ⏳ Resource Subtype Picker — en CreateResourceView
-8. ⏳ R.5W.fix.*   — 3 P1 INCONSISTENT (cancel_decision dialog · roles section honest disabled · reservation row push)
-9. ⏳ R.6 Rule Engine 2.0
+1.  ✅ R.5X.fix.A   — RPCErrorMapper mapper "Próximamente" (P0-01 D firmado)
+2.  ✅ R.5X.fix.B   — intent.obligation en CreateIntentSheet (P0-02 Flow 4 Empresa unblock)
+3.  ✅ R.5X.fix.C   — register_document emit canonical document.created (P0-03)
+4.  ✅ R.5Y.A1      — Attention Center backend (settlement_open + resource_conflict_direct cross-context + payload enrichment)
+5.  ✅ R.5Y.A2      — Attention Center iOS (AttentionDispatcher único + 3 switches duplicados eliminados)
+6.  ⏳ R.5V.0a      — UX Doctrine (congela vocabulario: pantalla/acción/conflicto/documento/recurso/contexto/attention)
+7.  ⏳ R.5V.0       — UI Audit native vs custom (matriz)
+8.  ⏳ R.5V.1       — Design Tokens semantic (extender Theme.swift)
+9.  ⏳ R.5V.2       — Componentes canónicos Ruul* — cherry-pick 7 primero (HeroCard/ActionRow/StatusBadge/Empty/Error/Loading/AttentionCard)
+10. ⏳ Documents V2 — list/detail/QuickLook + supersedes (nace usando Ruul* desde el inicio)
+11. ⏳ Resource Subtype Picker — en CreateResourceView
+12. ⏳ R.5V.3–V.8   — Migrar HomeView/ContextV2/ResourceV2/forms/sheets + a11y (PARALELO a R.6, regla "R.6 backend NO se bloquea por UI")
+13. ⏳ R.5W.fix.*   — 3 P1 INCONSISTENT (cancel_decision dialog · roles section honest disabled · reservation row push)
+14. ⏳ R.6 Rule Engine 2.0
 ```
 
 Founder cita literal: **"el mayor faltante ya no es backend; es la capa de atención y descubrimiento de problemas."**
+
+R.5V (UI Consistency System · Apple Native UI Doctrine) entra como gatekeeper de calidad UI antes de cualquier nueva pantalla. **V.0a UX Doctrine** (founder recomendación 2026-06-07) precede V.0 para congelar el vocabulario antes de auditar UI — evita que R.6 termine con Rule Engine View / Violation View / Policy View / Automation View con UX inconsistente.
+
+**Regla de paralelización (founder firmada):** R.5V.3–V.8 corren en paralelo a R.6. R.6 backend (Rule Engine / Policies / Violations / Automations) NO se bloquea por UI.
 
 ---
 
@@ -54,13 +63,19 @@ Founder cita literal: **"el mayor faltante ya no es backend; es la capa de atenc
 
 Push a `main` y device install (iPhone JJ) confirmados en `bc8953c2..b1742389`.
 
-### Pending (3)
+### Pending (9 — R.5V.0a + R.5V.0–V.8 + Documents V2 + Subtype + R.5W.fix + R.6)
 
 | Slice | Bloqueante | ETA estimado |
 |---|---|---|
-| **Documents V2** | Founder priority #1 ("deuda evidente") | 3 views nuevas + RPC client + store + 5 wire-ups + Storage QuickLook |
-| **Resource Subtype Picker** | P1-11 R.5X firmado | iOS picker + CreateResourceView refactor + descriptor refresh |
+| **R.5V.0a** UX Doctrine | Single source vocabulario | doc ya redactado (`R5V_UXDoctrine.md`) — falta founder firma final |
+| **R.5V.0** UI Audit native vs custom | Doc-only · 1 inventario | rápido (1 sesión) → `R5V_NativeAuditMatrix.md` |
+| **R.5V.1** Theme tokens | Extender Theme.swift + remove hardcoded colors | iOS verde + 1 commit |
+| **R.5V.2** Componentes canónicos (7) | Cherry-pick founder firmado | ~440 LOC + iOS verde + 1-7 commits |
+| **Documents V2** | Founder priority #1 "deuda evidente" — usa Ruul* | 3 views + RPC + store + 5 wire-ups + QuickLook + supersedes |
+| **Subtype Picker** | P1-11 R.5X firmado | iOS picker + CreateResourceView refactor |
+| **R.5V.3–V.8** Migrar pantallas | PARALELO a R.6 OK | 6 sub-slices (HomeView/CtxV2/ResV2/forms/sheets/a11y) |
 | **R.5W.fix.* (3 P1)** | Cosméticos pero firmados | ~35 LOC iOS total |
+| **R.6 Rule Engine 2.0** | Final · no se bloquea por UI | scope TBD — Rule + Policy + Violation + Automation |
 
 ---
 
@@ -135,17 +150,19 @@ Cero. Los 3 P0 (mapper + obligation + emit canonical) están shipped.
 
 ## 6. Cierre conditions para R.6
 
-R.6 Rule Engine 2.0 arranca cuando los 5 puntos siguientes están cerrados:
+R.6 Rule Engine 2.0 arranca cuando los 7 puntos siguientes están cerrados:
 
 | # | Condición | Status |
 |---|---|---|
 | 1 | 3 P0 shipped + 2 R.5Y backend/iOS shipped | ✅ |
-| 2 | Documents V2 shipped (siguiente) | ⏳ |
-| 3 | Resource Subtype Picker shipped | ⏳ |
-| 4 | R.5W.fix.* (3 P1 cosméticos) shipped | ⏳ |
-| 5 | Smoke device founder firmado: "el producto es honesto, predecible, atención consolidada" | ⏳ |
+| 2 | R.5V.0+V.1+V.2 shipped (tokens + componentes canónicos) | ⏳ |
+| 3 | Documents V2 shipped (usa Ruul*) | ⏳ |
+| 4 | Resource Subtype Picker shipped | ⏳ |
+| 5 | R.5W.fix.* (3 P1 cosméticos) shipped | ⏳ |
+| 6 | R.5V.3–V.5 migradas (HomeView + ContextV2 + ResourceV2) | ⏳ |
+| 7 | Smoke device founder firmado: "el producto es honesto, predecible, atención consolidada, iOS-native feel" | ⏳ |
 
-P2/P3 NO bloquean R.6 — pueden ejecutar post-R.6 o en paralelo si surgen oportunidades.
+V.6–V.8 (forms/sheets/a11y) y P2/P3 NO bloquean R.6 — paralelizables.
 
 ---
 
@@ -153,8 +170,11 @@ P2/P3 NO bloquean R.6 — pueden ejecutar post-R.6 o en paralelo si surgen oport
 
 | Documento | Función |
 |---|---|
+| `Plans/Active/R5V_UXDoctrine.md` | **R.5V.0a** UX Doctrine (single source vocabulario — pantalla/acción/conflicto/documento/recurso/contexto/attention) |
+| `Plans/Active/R5V_UIConsistencyAppleNative.md` | **R.5V** sub-plan UI Consistency System (V.0–V.8) |
 | `Plans/Reports/R5X_AuditMatrix.md` | Matriz R.5X — 12 audits, capabilities/sections/widgets coverage, founder flows |
 | `Plans/Reports/R5W_UserDecisionTreeMatrix.md` | Matriz R.5W — 275 decision nodes inventariados, listas derivadas |
+| `Plans/Reports/R5V_NativeAuditMatrix.md` | Matriz R.5V.0 (a poblar al arrancar) — pantallas native/híbrido/custom |
 | `Plans/Archive/R5X_ProductCompletenessAudit.md` | Plan original R.5X (histórico) |
 | `Plans/Archive/R5Y_AttentionCenter.md` | Plan original R.5Y (histórico) |
 | `Plans/Archive/R5W_UserDecisionTreeConsistency.md` | Plan original R.5W (histórico) |
@@ -162,7 +182,8 @@ P2/P3 NO bloquean R.6 — pueden ejecutar post-R.6 o en paralelo si surgen oport
 | `project_r5x_CLOSED.md` · `project_r5x_fix_a/b/c_shipped.md` | R.5X audit + 3 P0 |
 | `project_r5x_founder_signed_full_backlog.md` | Founder decisions completas |
 | `project_r5y_a1_shipped.md` · `project_r5y_a2_shipped.md` | Attention Center |
-| **Doctrina founder (CLAUDE.md):** | Triada inmutable Actor/Context/Resource · descriptor-driven · backend = autoridad |
+| `project_r5w_audit_closed_and_plans_consolidated.md` | R.5W cerrado + consolidación |
+| **Doctrina founder (CLAUDE.md):** | Triada inmutable Actor/Context/Resource · descriptor-driven · backend = autoridad · native first |
 
 ---
 
@@ -178,12 +199,23 @@ P2/P3 NO bloquean R.6 — pueden ejecutar post-R.6 o en paralelo si surgen oport
 8. **Errores backend nunca llegan crudos.** `RPCErrorMapper` los traduce a `UserFacingError`. `0A000/not_implemented` → "Próximamente".
 9. **Activity events:** backend autoritativo. iOS no emite.
 10. **Documents inmutables**, versions = nuevo doc + `supersedes`.
+11. **Native first (R.5V).** Antes de crear un componente custom, revisar si existe equivalente nativo de Apple. Componentes Ruul* son wrappers de native, no reemplazos. No web dashboard.
 
 ---
 
 ## 9. Próxima acción
 
-**Documents V2.** Plan detallado se redacta al inicio del slice. Estructura tentativa:
+1. **R.5V.0a UX Doctrine** firmar (`Plans/Active/R5V_UXDoctrine.md` redactado, falta founder ack final de §1–§11).
+2. **R.5V.0 UI Audit** doc-only, sin código (~1 sesión, produce `R5V_NativeAuditMatrix.md`).
+3. **R.5V.1 Theme tokens** — extender Theme.swift, remove hardcoded colors.
+4. **R.5V.2 Componentes (7)** — cherry-pick founder firmado: HeroCard/ActionRow/StatusBadge/Empty/Error/Loading/AttentionCard.
+5. **Documents V2** — usa Ruul* desde el inicio.
+
+R.5V detallado en `Plans/Active/R5V_UIConsistencyAppleNative.md`. UX Doctrine en `Plans/Active/R5V_UXDoctrine.md`.
+
+### Documents V2 (post-R.5V.2)
+
+Plan detallado se redacta al inicio del slice. Estructura tentativa:
 
 - Mig backend: `archive_document` RPC SECURITY DEFINER (FQ-1).
 - iOS RPC client: `listContextDocuments(contextId:)`.
