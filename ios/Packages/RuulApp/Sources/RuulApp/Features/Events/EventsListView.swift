@@ -67,7 +67,7 @@ public struct EventsListView: View {
         } else {
             List {
                 if !store.upcoming.isEmpty {
-                    Section("Próximos") {
+                    Section("Próximos (\(store.upcoming.count))") {
                         ForEach(store.upcoming) { event in
                             eventRow(event)
                         }
@@ -81,6 +81,7 @@ public struct EventsListView: View {
                     }
                 }
             }
+            .listStyle(.insetGrouped)
         }
     }
 
@@ -89,40 +90,55 @@ public struct EventsListView: View {
         NavigationLink {
             EventDetailView(eventId: event.id, context: context, container: container)
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: event.type.symbolName)
-                    .foregroundStyle(.tint)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(event.title)
-                            .lineLimit(1)
-                        if event.isRecurring {
-                            Image(systemName: "repeat")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+            LabeledContent {
+                Text(statusLabel(event.status))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(statusTint(event.status))
+            } label: {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(event.title)
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                                .lineLimit(1)
+                            if event.isRecurring {
+                                Image(systemName: "repeat")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            }
+                        }
+                        if let starts = event.startsAt {
+                            Text(starts.formatted(date: .abbreviated, time: .shortened))
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.secondary)
                         }
                     }
-                    if let starts = event.startsAt {
-                        Text(starts.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                } icon: {
+                    Image(systemName: event.type.symbolName)
+                        .foregroundStyle(Theme.Tint.primary)
                 }
-                Spacer()
-                statusBadge(event)
             }
         }
     }
 
-    @ViewBuilder
-    private func statusBadge(_ event: CalendarEvent) -> some View {
-        switch event.status {
-        case "scheduled": StatusBadge("Programado", color: .blue)
-        case "completed": StatusBadge("Cerrado", color: .gray)
-        case "cancelled": StatusBadge("Cancelado", color: .red)
-        case "in_progress": StatusBadge("En curso", color: .green)
-        default: StatusBadge(event.status, color: .secondary)
+    private func statusLabel(_ status: String) -> String {
+        switch status {
+        case "scheduled":   return "Programado"
+        case "completed":   return "Cerrado"
+        case "cancelled":   return "Cancelado"
+        case "in_progress": return "En curso"
+        default:            return status
+        }
+    }
+
+    private func statusTint(_ status: String) -> Color {
+        switch status {
+        case "scheduled":   return Theme.Tint.info
+        case "completed":   return Theme.Text.tertiary
+        case "cancelled":   return Theme.Tint.critical
+        case "in_progress": return Theme.Tint.success
+        default:            return Theme.Text.secondary
         }
     }
 }

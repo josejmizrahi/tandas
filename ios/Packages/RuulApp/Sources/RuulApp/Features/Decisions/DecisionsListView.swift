@@ -69,7 +69,7 @@ public struct DecisionsListView: View {
         } else {
             List {
                 if !store.open.isEmpty {
-                    Section("Abiertas") {
+                    Section("Abiertas (\(store.open.count))") {
                         ForEach(store.open) { decision in
                             decisionRow(decision)
                         }
@@ -83,6 +83,7 @@ public struct DecisionsListView: View {
                     }
                 }
             }
+            .listStyle(.insetGrouped)
         }
     }
 
@@ -91,19 +92,26 @@ public struct DecisionsListView: View {
         NavigationLink {
             DecisionDetailView(decisionId: decision.id, context: context, container: container)
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "checkmark.seal")
-                    .foregroundStyle(.tint)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(decision.title)
-                        .lineLimit(2)
-                    Text(decision.type.label + " · " + store.displayName(for: decision.createdByActorId))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            LabeledContent {
+                Text(decision.statusLabel)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(statusColor(decision.status))
+            } label: {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(decision.title)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(Theme.Text.primary)
+                            .lineLimit(2)
+                        Text(decision.type.label + " · " + store.displayName(for: decision.createdByActorId))
+                            .font(.caption)
+                            .foregroundStyle(Theme.Text.secondary)
+                            .lineLimit(1)
+                    }
+                } icon: {
+                    Image(systemName: "checkmark.seal")
+                        .foregroundStyle(Theme.Tint.primary)
                 }
-                Spacer()
-                StatusBadge(decision.statusLabel, color: statusColor(decision.status))
             }
         }
     }
