@@ -1074,7 +1074,7 @@ public struct ContextDetailViewV2: View {
         switch sectionKey {
         case "calendar":   EventsListView(context: context, container: container)
         case "governance": DecisionsListView(context: context, container: container)
-        case "documents":  ActivityFeedView(context: context, container: container)  // sin lista dedicada todavía
+        case "documents":  ContextDocumentsListView(context: context, container: container)  // Documents V2 D.6 — cierra fallback ActivityFeedView
         case "activity":   ActivityFeedView(context: context, container: container)
         case "settings":   ContextSettingsView(context: context, container: container)
         default:           ActivityFeedView(context: context, container: container)

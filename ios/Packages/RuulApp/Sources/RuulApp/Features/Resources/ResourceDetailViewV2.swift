@@ -184,6 +184,10 @@ public struct ResourceDetailViewV2: View {
                 linkedEventsCard(d.linkedEvents)
                 linkedObligationsCard(d.linkedObligations)
                 linkedDecisionsCard(d.linkedDecisions)
+                // Documents V2 D.5 — antes era dead struct (descriptor.linkedDocuments
+                // decoded but never rendered). Card hace su propio fetch para tener
+                // Documents completos con storage_path para tap → DocumentDetailView.
+                ResourceLinkedDocumentsCard(resourceId: resourceId, context: context, container: container)
                 if !d.activityPreview.isEmpty { activityCard(d.activityPreview) }
                 Spacer(minLength: Theme.Spacing.xl)
             }
