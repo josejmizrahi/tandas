@@ -95,6 +95,52 @@ public enum Theme {
         public static let subtleOpacity: Double  = 0.08
     }
 
+    // MARK: - Semantic Tokens (R.5V.1 — founder firma 2026-06-07)
+    //
+    // 11 tokens canónicos para CUALQUIER pantalla nueva. Las anti-reglas
+    // del UX Doctrine §V.1 prohíben hex literal, Color(red:green:blue:),
+    // y scales tailwind-style. Apple resuelve el resto vía Dynamic Color.
+    //
+    // Los componentes Ruul* V.2 consumen ESTOS tokens. Los componentes
+    // legacy que usan `Theme.Surface.*`, `Theme.Status.*`, `.accentColor`,
+    // `.primary/.secondary` permanecen válidos (zero break).
+
+    /// 5 semantic tints — uso semántico, no decorativo.
+    /// - `primary` = CTA principal · selección · accent.
+    /// - `success` = estado positivo (active/completed/approved).
+    /// - `warning` = atención no crítica (pending/archived/warning conflict).
+    /// - `critical` = error/crítico (cancelled/dangerous/critical conflict).
+    /// - `info`    = información neutral (invitation/in-progress).
+    public enum Tint {
+        public static let primary:  Color = .accentColor
+        public static let success:  Color = .green
+        public static let warning:  Color = .orange
+        public static let critical: Color = .red
+        public static let info:     Color = .blue
+    }
+
+    /// 3 backgrounds semánticos (Apple system colors).
+    /// - `primary`  = pantallas plain (auth, modales custom).
+    /// - `secondary` = sticky bars sobre primary.
+    /// - `grouped`  = Forms y listas agrupadas (detrás de cards).
+    /// Alias con `Theme.Surface.*` para compat:
+    /// `Tint.primary` ≡ `Surface.appBackground` · `Tint.secondary` ≡ `Surface.secondaryBackground` · `Tint.grouped` ≡ `Surface.background`.
+    public enum Background {
+        public static let primary:   Color = Color(uiColor: .systemBackground)
+        public static let secondary: Color = Color(uiColor: .secondarySystemBackground)
+        public static let grouped:   Color = Color(uiColor: .systemGroupedBackground)
+    }
+
+    /// 3 text colors (Apple semantic labels).
+    /// - `primary`   = texto principal (titles, body).
+    /// - `secondary` = subtítulos, captions, hints.
+    /// - `tertiary`  = metadata, chevrons, placeholders.
+    public enum Text {
+        public static let primary:   Color = .primary
+        public static let secondary: Color = .secondary
+        public static let tertiary:  Color = Color(uiColor: .tertiaryLabel)
+    }
+
     // MARK: - Status tints (semántica por dominio)
 
     /// Tints semánticos por dominio. La misma palabra ("approved", "open") tiene
