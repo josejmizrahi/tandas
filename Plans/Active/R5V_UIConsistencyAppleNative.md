@@ -245,7 +245,7 @@ V.2 segunda ola (RuulScreenHeader/RuulMetricPill/RuulSectionCard) viene después
 
 | Slice | Status | Notes |
 |---|---|---|
-| V.0a UX Doctrine | 🟡 IN PROGRESS | `Plans/Active/R5V_UXDoctrine.md` redactado, falta founder firma final |
+| V.0a UX Doctrine | ✅ FROZEN 2026-06-07 | `Plans/Active/R5V_UXDoctrine.md` firmado founder |
 | V.0 UI Audit | ⏳ | Doc-only, produce `Plans/Reports/R5V_NativeAuditMatrix.md` |
 | V.1 Tokens | ⏳ | Extender `Theme.swift` + remove hardcoded colors |
 | V.2 Componentes (7) | ⏳ | Cherry-pick founder firmado |

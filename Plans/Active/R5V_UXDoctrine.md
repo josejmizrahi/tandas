@@ -1,7 +1,7 @@
 # R.5V.0a — UX Doctrine (single source of truth)
 
 **Fecha:** 2026-06-07
-**Status:** 🟡 IN PROGRESS — congelando definiciones antes de V.0 audit
+**Status:** ✅ **FROZEN** — founder firmó 2026-06-07. No edits sin firma adicional.
 **Bloquea:** R.5V.0 (UI Audit) · R.5V.1 (Tokens) · R.5V.2 (Componentes Ruul*) · Documents V2 · R.6 Rule Engine
 **Founder rationale:** "Si no congelas esta doctrina ahora, en R.6 vas a terminar con Rule Engine View, Violation View, Policy View, Automation View — cada una con UX ligeramente distinta."
 

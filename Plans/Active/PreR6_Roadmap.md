@@ -30,7 +30,7 @@ Pregunta única que el founder firma al cierre:
 3.  ✅ R.5X.fix.C   — register_document emit canonical document.created (P0-03)
 4.  ✅ R.5Y.A1      — Attention Center backend (settlement_open + resource_conflict_direct cross-context + payload enrichment)
 5.  ✅ R.5Y.A2      — Attention Center iOS (AttentionDispatcher único + 3 switches duplicados eliminados)
-6.  ⏳ R.5V.0a      — UX Doctrine (5 anclas inmutables: jerarquía nav · patrón Detail · 6 states universales · 5 action states · 4 attention priorities)
+6.  ✅ R.5V.0a      — UX Doctrine FROZEN 2026-06-07 (5 anclas inmutables firmadas + §1-§11 vocabulario)
 7.  ⏳ R.5V.0       — UI Audit native vs custom (matriz)
 8.  ⏳ R.5V.1       — Design Tokens semantic SIMPLE (11 tokens fijos, NO scale tailwind-style)
 9.  ⏳ R.5V.2       — Componentes canónicos Ruul* — cherry-pick 8 primera ola (RuulDetailHero + HeroCard + ActionRow + StatusBadge + Empty/Error/Loading + AttentionCard)
