@@ -33,40 +33,45 @@ public struct MyTrustNetworkView: View {
                 } else if let net = network {
                     List {
                         if !net.outgoing.isEmpty {
-                            Section("Confías en") {
+                            Section("Confías en (\(net.outgoing.count))") {
                                 ForEach(net.outgoing) { edge in
-                                    HStack(spacing: 12) {
-                                        Image(systemName: "arrow.right.circle.fill")
-                                            .foregroundStyle(.tint)
-                                            .frame(width: 28)
+                                    Label {
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(edge.targetDisplayName ?? "Persona").font(.callout.weight(.medium))
+                                            Text(edge.targetDisplayName ?? "Persona")
+                                                .font(.callout.weight(.medium))
+                                                .foregroundStyle(Theme.Text.primary)
                                             Text("\(edge.trustType.label) · nivel \(edge.trustLevel)")
                                                 .font(.caption)
-                                                .foregroundStyle(.secondary)
+                                                .foregroundStyle(Theme.Text.secondary)
                                         }
+                                    } icon: {
+                                        Image(systemName: "arrow.right.circle.fill")
+                                            .foregroundStyle(Theme.Tint.primary)
                                     }
                                 }
                             }
                         }
                         if !net.incoming.isEmpty {
-                            Section("Confían en ti") {
+                            Section("Confían en ti (\(net.incoming.count))") {
                                 ForEach(net.incoming) { edge in
-                                    HStack(spacing: 12) {
-                                        Image(systemName: "arrow.left.circle.fill")
-                                            .foregroundStyle(.indigo)
-                                            .frame(width: 28)
+                                    Label {
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(edge.sourceDisplayName ?? "Persona").font(.callout.weight(.medium))
+                                            Text(edge.sourceDisplayName ?? "Persona")
+                                                .font(.callout.weight(.medium))
+                                                .foregroundStyle(Theme.Text.primary)
                                             Text("\(edge.trustType.label) · nivel \(edge.trustLevel)")
                                                 .font(.caption)
-                                                .foregroundStyle(.secondary)
+                                                .foregroundStyle(Theme.Text.secondary)
                                         }
+                                    } icon: {
+                                        Image(systemName: "arrow.left.circle.fill")
+                                            .foregroundStyle(.indigo)
                                     }
                                 }
                             }
                         }
                     }
+                    .listStyle(.insetGrouped)
                 }
             }
         }

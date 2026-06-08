@@ -30,10 +30,15 @@ public struct MySubscriptionsView: View {
                     )
                 } else {
                     List {
-                        ForEach(store.subscriptions) { sub in
-                            row(sub)
+                        Section {
+                            ForEach(store.subscriptions) { sub in
+                                row(sub)
+                            }
+                        } header: {
+                            Text("\(store.subscriptions.count) suscripción\(store.subscriptions.count == 1 ? "" : "es")")
                         }
                     }
+                    .listStyle(.insetGrouped)
                 }
             }
         }
@@ -45,21 +50,18 @@ public struct MySubscriptionsView: View {
 
     @ViewBuilder
     private func row(_ sub: Subscription) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbol(for: sub.targetType))
-                .foregroundStyle(.tint)
-                .frame(width: 28)
+        Label {
             VStack(alignment: .leading, spacing: 2) {
                 Text(sub.targetDisplayName ?? targetTypeLabel(sub.targetType))
                     .font(.callout.weight(.medium))
-                HStack(spacing: 6) {
-                    Text(targetTypeLabel(sub.targetType))
-                    Text("·")
-                    Text(sub.subscriptionType.label)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.Text.primary)
+                Text("\(targetTypeLabel(sub.targetType)) · \(sub.subscriptionType.label)")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
             }
+        } icon: {
+            Image(systemName: symbol(for: sub.targetType))
+                .foregroundStyle(Theme.Tint.primary)
         }
     }
 

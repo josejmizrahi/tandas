@@ -38,32 +38,36 @@ public struct MyResourcesView: View {
                     )
                 } else if let world {
                     List {
-                        ForEach(world.resources) { r in
-                            Button {
-                                openResource(r)
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: (ResourceType(rawValue: r.resourceType) ?? .other).symbolName)
-                                        .foregroundStyle(.tint)
-                                        .frame(width: 28)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(r.displayName).font(.callout.weight(.medium))
-                                        if !r.reasons.isEmpty {
-                                            Text(r.reasons.joined(separator: " · "))
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                                .lineLimit(2)
+                        Section {
+                            ForEach(world.resources) { r in
+                                Button {
+                                    openResource(r)
+                                } label: {
+                                    Label {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(r.displayName)
+                                                .font(.callout.weight(.medium))
+                                                .foregroundStyle(Theme.Text.primary)
+                                            if !r.reasons.isEmpty {
+                                                Text(r.reasons.joined(separator: " · "))
+                                                    .font(.caption)
+                                                    .foregroundStyle(Theme.Text.secondary)
+                                                    .lineLimit(2)
+                                            }
                                         }
+                                    } icon: {
+                                        Image(systemName: (ResourceType(rawValue: r.resourceType) ?? .other).symbolName)
+                                            .foregroundStyle(Theme.Tint.primary)
                                     }
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.tertiary)
                                 }
                             }
-                            .buttonStyle(.plain)
+                        } header: {
+                            Text("\(world.resources.count) recurso\(world.resources.count == 1 ? "" : "s")")
+                        } footer: {
+                            Text("Recursos que puedes ver desde cualquiera de tus contextos.")
                         }
                     }
+                    .listStyle(.insetGrouped)
                 }
             }
         }
