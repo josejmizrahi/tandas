@@ -29,6 +29,63 @@ Unificar la UI de Ruul manteniendo **experiencia Apple-native**. No queremos una
 
 ---
 
+## Patrón canónico Detail View (Apple-native · founder firma 2026-06-07)
+
+**Toda Detail View** (Document, Resource, Decision, Event, Obligation, etc.) usa
+`List` con `.listStyle(.insetGrouped)` + `Section`s. **NO custom cards.** Apple maneja
+background, padding, dividers, highlights, dark mode, Dynamic Type — todo gratis.
+
+### Esqueleto canónico
+
+```swift
+List {
+    Section { heroRow }                              // Hero como row alto (icon+title+status)
+    Section("Información") { metadataRows }          // LabeledContent native
+    Section("Asociado a") { NavigationLinks }        // Linked entities
+    Section("Acciones") {                            // Acciones primarias enabled
+        Button { } label: { Label("...", systemImage: "...") }
+        Button(role: .destructive) { } label: { ... } // Dangerous con role
+    }
+    Section {                                        // Coming soon section
+        Label(...)
+        ...
+    } header: { Text("Próximamente") }
+     footer: { Text("Funciones modeladas pero no disponibles aún") }
+}
+.listStyle(.insetGrouped)
+```
+
+### Reglas
+
+- **Metadata rows:** `LabeledContent("Label", value: "Value")` — nativo iOS 16+.
+- **Linked entities:** `NavigationLink(value: target) { Label(...) }`.
+- **Actions enabled:** `Button { } label: { Label(...) }`. Apple lo trata como row.
+- **Actions dangerous:** `Button(role: .destructive)` o `.foregroundStyle(.red)` solo en label.
+- **Actions disabled:** `.disabled(true)` — sistema dim automático (no inventar tints).
+- **Coming soon:** Section separada `header: "Próximamente"` + `footer:` honesto explicando.
+  Rows son `Label` (no Button — no es ejecutable). NO trailing capsules custom.
+- **Section headers:** texto plano sin custom font weights. Apple maneja.
+
+### Anti-patrones (NO hacer)
+
+- ❌ `VStack` envuelto en `Theme.cardShape()` con rows adentro — dashboard web style
+- ❌ Trailing capsules custom "Próximamente" — la Section header + dim del sistema bastan
+- ❌ Triangle warning icons en dangerous — `role: .destructive` o tint red basta
+- ❌ Chevrons manuales — NavigationLink/Button automáticamente los muestran
+- ❌ Dividers manuales — List/Section los pinta
+- ❌ Padding manual entre rows — sistema lo maneja
+
+### Aplicación
+
+- ✅ `DocumentDetailView` (Documents V2 D.4) — primera prueba, firmada founder
+- ⏳ `ResourceDetailViewV2` (V.5) — refactor actionsCard → List + Section
+- ⏳ `ObligationDetailView` (V.5)
+- ⏳ `DecisionDetailView` (V.5)
+- ⏳ `ContextSettingsView` (V.6 — ya usa Form, validar)
+- ⏳ `ResourceSettingsView` (V.6)
+
+---
+
 ## Componentes nativos a usar
 
 `NavigationStack` · `List` · `Section` · `Form` · `toolbar` · `confirmationDialog` · `alert` · `sheet` · `Menu` · `contextMenu` · `swipeActions` · `searchable` · `Picker` · `DatePicker` · `Toggle` · `Stepper` · `ShareLink` · `QuickLook` · `PhotosPicker` · `documentImporter` · `SF Symbols` · `Dynamic Type` · semantic colors · materials.

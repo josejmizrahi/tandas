@@ -4,14 +4,29 @@ import RuulCore
 
 /// Documents V2 · D.4 — Detail View de un documento.
 ///
-/// UX Doctrine §0.2 Patrón Detail: Hero → (Attention n/a) → Widgets (size,type) →
-/// Sections (metadata, linked entities, versions) → Actions → Activity (preview).
+/// **Apple-native pattern (founder firma 2026-06-07):**
+/// Usa `List` con `.listStyle(.insetGrouped)` + `Section`s para TODO el detail.
+/// NO custom cards. Apple maneja background, padding, dividers, highlights.
+///
+/// Patrón canónico Ruul Detail View:
+/// ```
+/// List {
+///   Section { heroRow }                            // Hero como row alto
+///   Section("Información") { metadataRows }
+///   Section("Asociado a") { linked rows }
+///   Section("Acciones") {                          // Acciones primarias
+///     Button { } label: { Label }                  // Native iOS row
+///     Button(role: .destructive) { } label: { }    // Dangerous con role
+///   }
+///   Section { commingSoonRows }.disabled(true)    // System dimming automático
+/// }
+/// .listStyle(.insetGrouped)
+/// ```
 ///
 /// UX Doctrine §4: documento inmutable. Acciones lectura + share + archive (FQ-1).
-/// Sign/Approve/Versions están como `.comingSoon` (FQ-2/FQ-4 deferred).
+/// Sign/Approve/Versions están coming soon (FQ-2/FQ-4 deferred).
 ///
 /// QuickLook preview vía `.quickLookPreview($previewURL)` nativo (iOS 15+).
-/// El signed URL se descarga a tmp dir on-demand para soportar TTL expiration.
 public struct DocumentDetailView: View {
     let document: Document
     let context: AppContext
@@ -35,18 +50,14 @@ public struct DocumentDetailView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Spacing.xl) {
-                hero
-                metadataSection
-                linkedSection
-                actionsSection
-            }
-            .padding(.horizontal, Theme.Spacing.lg)
-            .padding(.top, Theme.Spacing.sm)
-            .padding(.bottom, Theme.Spacing.xxl)
+        List {
+            heroSection
+            metadataSection
+            linkedSection
+            actionsSection
+            comingSoonSection
         }
-        .background(Theme.Background.grouped)
+        .listStyle(.insetGrouped)
         .navigationTitle("Documento")
         .navigationBarTitleDisplayMode(.inline)
         .quickLookPreview($previewURL)
@@ -68,22 +79,50 @@ public struct DocumentDetailView: View {
                ),
                actions: { Button("OK", role: .cancel) {} },
                message: { Text(archiveError ?? "") })
+        .alert("No se pudo abrir",
+               isPresented: Binding(
+                   get: { loadError != nil },
+                   set: { if !$0 { loadError = nil } }
+               ),
+               actions: { Button("OK", role: .cancel) {} },
+               message: { Text(loadError ?? "") })
         .onChange(of: didArchive) { _, archived in
             if archived { dismiss() }
         }
+        .sheet(item: $shareURL) { url in
+            ShareSheet(url: url)
+        }
     }
 
-    // MARK: - Hero (§0.2)
+    // MARK: - Hero section (apple-native row)
 
     @ViewBuilder
-    private var hero: some View {
-        RuulDetailHero(
-            title: document.title,
-            subtitle: heroSubtitle,
-            systemImage: document.documentType.symbolName,
-            tint: documentTint,
-            status: document.isArchived ? .archived : .active
-        )
+    private var heroSection: some View {
+        Section {
+            HStack(alignment: .top, spacing: Theme.Spacing.md) {
+                Image(systemName: document.documentType.symbolName)
+                    .font(.system(size: 32))
+                    .foregroundStyle(documentTint)
+                    .frame(width: 56, height: 56)
+                    .background(documentTint.badgeFill, in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(document.title)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Theme.Text.primary)
+                        .lineLimit(2)
+                    Text(heroSubtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.Text.secondary)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 0)
+                if document.isArchived {
+                    RuulStatusBadge(.archived)
+                }
+            }
+            .padding(.vertical, 6)
+        }
     }
 
     private var heroSubtitle: String {
@@ -97,91 +136,48 @@ public struct DocumentDetailView: View {
         return parts.joined(separator: " · ")
     }
 
-    // MARK: - Metadata section
+    // MARK: - Metadata section (LabeledContent nativo)
 
     @ViewBuilder
     private var metadataSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            sectionHeader("Información")
-            VStack(spacing: 0) {
-                metadataRow(label: "Tipo", value: document.documentType.label)
-                Divider().padding(.leading, Theme.Spacing.lg)
-                if let mime = document.mimeType {
-                    metadataRow(label: "Formato", value: mime)
-                    Divider().padding(.leading, Theme.Spacing.lg)
-                }
-                if let size = document.fileSizeLabel {
-                    metadataRow(label: "Tamaño", value: size)
-                    Divider().padding(.leading, Theme.Spacing.lg)
-                }
-                if let created = document.createdAt {
-                    metadataRow(label: "Creado", value: absoluteDate(created))
-                }
-                if let archived = document.archivedAt {
-                    Divider().padding(.leading, Theme.Spacing.lg)
-                    metadataRow(label: "Archivado", value: absoluteDate(archived))
-                }
+        Section("Información") {
+            LabeledContent("Tipo", value: document.documentType.label)
+            if let mime = document.mimeType {
+                LabeledContent("Formato", value: mime)
             }
-            .background(Theme.Background.secondary, in: Theme.cardShape())
+            if let size = document.fileSizeLabel {
+                LabeledContent("Tamaño", value: size)
+            }
+            if let created = document.createdAt {
+                LabeledContent("Creado", value: absoluteDate(created))
+            }
+            if let archived = document.archivedAt {
+                LabeledContent("Archivado", value: absoluteDate(archived))
+            }
         }
     }
 
-    @ViewBuilder
-    private func metadataRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(Theme.Text.secondary)
-            Spacer()
-            Text(value)
-                .font(.subheadline)
-                .foregroundStyle(Theme.Text.primary)
-        }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.md)
-    }
-
-    // MARK: - Linked entities
+    // MARK: - Linked entities (NavigationLink nativo)
 
     @ViewBuilder
     private var linkedSection: some View {
-        if document.resourceId != nil || document.eventId != nil {
-            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                sectionHeader("Asociado a")
-                VStack(spacing: 0) {
-                    if let resourceId = document.resourceId {
-                        NavigationLink(value: resourceId) {
-                            HStack(spacing: Theme.Spacing.md) {
-                                Image(systemName: "shippingbox.fill")
-                                    .foregroundStyle(Theme.Tint.primary)
-                                    .frame(width: Theme.IconSize.sm)
-                                VStack(alignment: .leading) {
-                                    Text(document.resourceDisplayName ?? "Recurso")
-                                        .font(.body)
-                                        .foregroundStyle(Theme.Text.primary)
-                                    Text("Recurso")
-                                        .font(.caption)
-                                        .foregroundStyle(Theme.Text.secondary)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(Theme.Text.tertiary)
+        if document.resourceId != nil {
+            Section("Asociado a") {
+                if let resourceId = document.resourceId {
+                    NavigationLink(value: resourceId) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(document.resourceDisplayName ?? "Recurso")
+                                Text("Recurso")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
                             }
-                            .padding(.horizontal, Theme.Spacing.lg)
-                            .padding(.vertical, Theme.Spacing.md)
-                            .contentShape(Rectangle())
+                        } icon: {
+                            Image(systemName: "shippingbox.fill")
+                                .foregroundStyle(Theme.Tint.primary)
                         }
-                        .buttonStyle(.plain)
-                    }
-                    if document.eventId != nil {
-                        if document.resourceId != nil {
-                            Divider().padding(.leading, Theme.Spacing.lg)
-                        }
-                        metadataRow(label: "Evento", value: "Vincular pronto…")
                     }
                 }
-                .background(Theme.Background.secondary, in: Theme.cardShape())
             }
             .navigationDestination(for: UUID.self) { resourceId in
                 ResourceDetailViewV2(resourceId: resourceId, context: context, container: container)
@@ -189,79 +185,65 @@ public struct DocumentDetailView: View {
         }
     }
 
-    // MARK: - Actions
+    // MARK: - Actions section (Button rows nativos)
+    //
+    // Apple HIG: usar Button con Label dentro de List/Section.
+    // Dangerous: `role: .destructive` o `.foregroundStyle(.red)` solo en label.
+    // Disabled: `.disabled(true)` — sistema dim automático.
 
     @ViewBuilder
     private var actionsSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            sectionHeader("Acciones")
-            VStack(spacing: 0) {
-                RuulActionRow(
-                    "Ver completo",
-                    systemImage: "eye.fill",
-                    state: document.storagePath == nil ? .disabled(reason: "Sin archivo adjunto") : .enabled
-                ) {
-                    Task { await openPreview() }
-                }
-                Divider().padding(.leading, Theme.Spacing.lg)
-                RuulActionRow(
-                    "Compartir",
-                    systemImage: "square.and.arrow.up",
-                    state: document.storagePath == nil ? .disabled(reason: "Sin archivo adjunto") : .enabled
-                ) {
-                    Task { await prepareShare() }
-                }
-                Divider().padding(.leading, Theme.Spacing.lg)
-                RuulActionRow(
-                    document.isArchived ? "Ya archivado" : "Archivar",
-                    systemImage: "archivebox",
-                    state: document.isArchived ? .comingSoon : .dangerous
-                ) {
-                    isConfirmingArchive = true
-                }
-                Divider().padding(.leading, Theme.Spacing.lg)
-                RuulActionRow(
-                    "Firmar documento",
-                    systemImage: "signature",
-                    state: .comingSoon
-                ) {}
-                Divider().padding(.leading, Theme.Spacing.lg)
-                RuulActionRow(
-                    "Pedir aprobación",
-                    systemImage: "checkmark.seal",
-                    state: .comingSoon
-                ) {}
-                Divider().padding(.leading, Theme.Spacing.lg)
-                RuulActionRow(
-                    "Subir nueva versión",
-                    systemImage: "arrow.up.doc",
-                    state: .comingSoon
-                ) {}
+        Section("Acciones") {
+            Button {
+                Task { await openPreview() }
+            } label: {
+                Label("Ver completo", systemImage: "eye.fill")
             }
-            .background(Theme.Background.secondary, in: Theme.cardShape())
+            .disabled(document.storagePath == nil)
 
-            if isLoadingPreview {
-                ProgressView("Preparando vista previa…")
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, Theme.Spacing.sm)
+            Button {
+                Task { await prepareShare() }
+            } label: {
+                Label("Compartir", systemImage: "square.and.arrow.up")
             }
-            if let loadError {
-                Text(loadError)
-                    .font(.caption)
-                    .foregroundStyle(Theme.Tint.critical)
-                    .padding(.top, Theme.Spacing.xs)
+            .disabled(document.storagePath == nil)
+
+            if !document.isArchived {
+                Button(role: .destructive) {
+                    isConfirmingArchive = true
+                } label: {
+                    Label("Archivar", systemImage: "archivebox")
+                }
             }
-        }
-        .sheet(item: $shareURL) { url in
-            ShareSheet(url: url)
         }
     }
 
-    private func sectionHeader(_ text: String) -> some View {
-        Text(text)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Theme.Text.secondary)
-            .padding(.leading, Theme.Spacing.xs)
+    // MARK: - Coming soon section (deferred FQ-2/FQ-4)
+    //
+    // Apple pattern: Section header + .disabled() global. Cada row es un Label
+    // (no Button — no es ejecutable). El "Próximamente" va como
+    // trailing detail via Label custom o LabeledContent.
+
+    @ViewBuilder
+    private var comingSoonSection: some View {
+        Section {
+            comingSoonRow("Firmar documento", systemImage: "signature")
+            comingSoonRow("Pedir aprobación", systemImage: "checkmark.seal")
+            comingSoonRow("Subir nueva versión", systemImage: "arrow.up.doc")
+        } header: {
+            Text("Próximamente")
+        } footer: {
+            Text("Funciones que ya están modeladas en Ruul, pero todavía no están disponibles.")
+        }
+    }
+
+    @ViewBuilder
+    private func comingSoonRow(_ label: String, systemImage: String) -> some View {
+        HStack {
+            Label(label, systemImage: systemImage)
+            Spacer()
+        }
+        .foregroundStyle(Theme.Text.tertiary)
     }
 
     // MARK: - Tint por tipo
@@ -280,8 +262,8 @@ public struct DocumentDetailView: View {
     // MARK: - Preview / Share
 
     /// Descarga el blob a tmp dir y dispara QuickLook nativo.
-    /// Re-genera signed URL on-demand (founder rationale: TTL 3600s puede expirar
-    /// si el usuario abre el detail tarde — no cachear URL).
+    /// Re-genera signed URL on-demand (TTL 3600s puede expirar si el usuario
+    /// abre el detail tarde — no cachear URL).
     private func openPreview() async {
         loadError = nil
         isLoadingPreview = true
@@ -307,27 +289,24 @@ public struct DocumentDetailView: View {
     }
 
     private func downloadTemp() async throws -> URL {
-        guard let path = document.storagePath else {
+        guard document.storagePath != nil else {
             throw RuulError.unexpected(message: "Documento sin archivo adjunto.")
         }
         guard let signed = try await store.signedURL(for: document) else {
             throw RuulError.unexpected(message: "No se pudo obtener URL del archivo.")
         }
-        _ = path  // path reservado para metadata futura
         let (data, _) = try await URLSession.shared.data(from: signed)
-        // Filename sanitario para QuickLook
         let ext = (document.mimeType.flatMap(mimeExtension) ?? "")
         let safeTitle = document.title.replacingOccurrences(of: "/", with: "_")
         let suffix = ext.isEmpty ? "" : ".\(ext)"
         let local = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(document.id.uuidString)-\(safeTitle)\(suffix)")
-        try? FileManager.default.removeItem(at: local) // overwrite if existed
+        try? FileManager.default.removeItem(at: local)
         try data.write(to: local)
         return local
     }
 
     private func mimeExtension(_ mime: String) -> String? {
-        // Mapping mínimo de MIMEs comunes en Ruul (PDF/img/text/CSV).
         switch mime.lowercased() {
         case "application/pdf":  return "pdf"
         case "image/jpeg",
