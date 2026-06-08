@@ -590,27 +590,37 @@ public struct ResourceDetailViewV2: View {
         store.descriptor?.form(for: action.actionKey)
     }
 
-    /// P0 fix 2026-06-08 — toolbar Menu con acciones descriptor-driven del recurso.
-    /// Solo enabled actions, ordenadas con las más comunes primero (attach_document /
-    /// grant_right / edit_resource antes que las destructivas).
+    /// P0 fix 2026-06-08 — toolbar Menu con acciones descriptor-driven del recurso,
+    /// AGRUPADAS por descriptor.section (Documentos / Permisos / Edición / etc.).
+    /// Apple HIG: Menu con Sections para clusters semánticos. Dangerous actions
+    /// (archivar / desligar) usan `role: .destructive`.
     @ViewBuilder
     private func resourceQuickActionsMenu(actions: [ResourceDescriptorAction], descriptor: ResourceDetailDescriptor) -> some View {
         let enabledActions = actions.filter { $0.enabled }
         if !enabledActions.isEmpty {
+            let grouped = Dictionary(grouping: enabledActions, by: { $0.section })
+            let orderedSections = grouped.keys.sorted(by: { resourceActionSectionOrder($0) < resourceActionSectionOrder($1) })
+
             Menu {
-                ForEach(enabledActions) { action in
-                    let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
-                    if action.dangerous {
-                        Button(role: .destructive) {
-                            handleActionTap(action)
-                        } label: {
-                            Label(action.label, systemImage: presentation.symbolName)
-                        }
-                    } else {
-                        Button {
-                            handleActionTap(action)
-                        } label: {
-                            Label(action.label, systemImage: presentation.symbolName)
+                ForEach(orderedSections, id: \.self) { sectionKey in
+                    if let sectionActions = grouped[sectionKey], !sectionActions.isEmpty {
+                        Section(resourceActionSectionLabel(sectionKey)) {
+                            ForEach(sectionActions.sorted(by: { $0.label < $1.label })) { action in
+                                let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
+                                if action.dangerous {
+                                    Button(role: .destructive) {
+                                        handleActionTap(action)
+                                    } label: {
+                                        Label(action.label, systemImage: presentation.symbolName)
+                                    }
+                                } else {
+                                    Button {
+                                        handleActionTap(action)
+                                    } label: {
+                                        Label(action.label, systemImage: presentation.symbolName)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -619,6 +629,39 @@ public struct ResourceDetailViewV2: View {
                     .font(.title3)
             }
             .accessibilityLabel("Acciones del recurso")
+        }
+    }
+
+    /// Orden estable de sections del resource_detail_descriptor.actions.
+    private func resourceActionSectionOrder(_ section: String) -> Int {
+        switch section {
+        case "general":      return 0
+        case "ownership":    return 1
+        case "rights":       return 2
+        case "documents":    return 3
+        case "reservations": return 4
+        case "monetary",
+             "money":        return 5
+        case "maintenance":  return 6
+        case "relations":    return 7
+        case "settings":     return 9
+        default:             return 8
+        }
+    }
+
+    /// Friendly label para sections del Menu.
+    private func resourceActionSectionLabel(_ section: String) -> String {
+        switch section {
+        case "general":      return "General"
+        case "ownership":    return "Propiedad"
+        case "rights":       return "Derechos"
+        case "documents":    return "Documentos"
+        case "reservations": return "Reservaciones"
+        case "monetary", "money": return "Dinero"
+        case "maintenance":  return "Mantenimiento"
+        case "relations":    return "Relaciones"
+        case "settings":     return "Configuración"
+        default:             return section.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
