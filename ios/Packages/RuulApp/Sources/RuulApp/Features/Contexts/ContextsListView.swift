@@ -31,6 +31,8 @@ public struct ContextsListView: View {
     @State private var settingsContext: AppContext?
     @State private var prefilledInviteCode: String?
     @State private var searchText = ""
+    /// R.5V.Zoom — Namespace para `matchedTransitionSource` + `.navigationTransition(.zoom)`.
+    @Namespace private var zoomNamespace
 
     public init(container: DependencyContainer, path: Binding<[AppContext]>) {
         self.container = container
@@ -150,6 +152,8 @@ public struct ContextsListView: View {
                 path.removeAll()
                 path.append(target)
             })
+            // R.5V.Zoom — zoom transition desde el card source matcheado por ctx.id.
+            .navigationTransition(.zoom(sourceID: context.id, in: zoomNamespace))
         }
     }
 
@@ -407,6 +411,7 @@ public struct ContextsListView: View {
             .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
+        .matchedTransitionSource(id: ctx.id, in: zoomNamespace)
     }
 
     private func cardCaption(_ ctx: AppContext) -> String {

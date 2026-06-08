@@ -8,6 +8,8 @@ public struct EventsListView: View {
 
     @State private var store: EventsStore
     @State private var isShowingCreate = false
+    /// R.5V.Zoom — Namespace para matched transition source → destination zoom.
+    @Namespace private var zoomNamespace
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -89,6 +91,7 @@ public struct EventsListView: View {
     private func eventRow(_ event: CalendarEvent) -> some View {
         NavigationLink {
             EventDetailView(eventId: event.id, context: context, container: container)
+                .navigationTransition(.zoom(sourceID: event.id, in: zoomNamespace))
         } label: {
             LabeledContent {
                 Text(statusLabel(event.status))
@@ -120,6 +123,7 @@ public struct EventsListView: View {
                 }
             }
         }
+        .matchedTransitionSource(id: event.id, in: zoomNamespace)
     }
 
     private func statusLabel(_ status: String) -> String {

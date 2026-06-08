@@ -8,6 +8,8 @@ public struct ResourcesListView: View {
 
     @State private var store: ResourcesStore
     @State private var isShowingCreate = false
+    /// R.5V.Zoom — Namespace para matched transition source → destination zoom.
+    @Namespace private var zoomNamespace
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -83,6 +85,7 @@ public struct ResourcesListView: View {
                     ForEach(store.personalResources) { resource in
                         NavigationLink {
                             ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
+                                .navigationTransition(.zoom(sourceID: resource.resourceId, in: zoomNamespace))
                         } label: {
                             Label {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -99,6 +102,7 @@ public struct ResourcesListView: View {
                                     .foregroundStyle(Theme.Tint.primary)
                             }
                         }
+                        .matchedTransitionSource(id: resource.resourceId, in: zoomNamespace)
                     }
                 }
             }
@@ -128,6 +132,7 @@ public struct ResourcesListView: View {
                     ForEach(store.resources) { resource in
                         NavigationLink {
                             ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
+                                .navigationTransition(.zoom(sourceID: resource.resourceId, in: zoomNamespace))
                         } label: {
                             HStack {
                                 Label {
@@ -152,6 +157,7 @@ public struct ResourcesListView: View {
                                 }
                             }
                         }
+                        .matchedTransitionSource(id: resource.resourceId, in: zoomNamespace)
                     }
                 } header: {
                     Text("Recursos (\(store.resources.count))")

@@ -8,6 +8,8 @@ public struct DecisionsListView: View {
 
     @State private var store: DecisionsStore
     @State private var isShowingCreate = false
+    /// R.5V.Zoom — Namespace para matched transition source → destination zoom.
+    @Namespace private var zoomNamespace
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -91,6 +93,7 @@ public struct DecisionsListView: View {
     private func decisionRow(_ decision: Decision) -> some View {
         NavigationLink {
             DecisionDetailView(decisionId: decision.id, context: context, container: container)
+                .navigationTransition(.zoom(sourceID: decision.id, in: zoomNamespace))
         } label: {
             LabeledContent {
                 Text(decision.statusLabel)
@@ -114,6 +117,7 @@ public struct DecisionsListView: View {
                 }
             }
         }
+        .matchedTransitionSource(id: decision.id, in: zoomNamespace)
     }
 
     private func statusColor(_ status: String) -> Color {
