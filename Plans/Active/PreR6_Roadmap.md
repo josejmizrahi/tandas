@@ -34,7 +34,7 @@ Pregunta única que el founder firma al cierre:
 7.  ✅ R.5V.0       — UI Audit CLOSED 2026-06-07 — 64 pantallas (48✅/10🟡/0❌) · 0 hardcoded colors · matriz en `Plans/Reports/R5V_NativeAuditMatrix.md`
 8.  ✅ R.5V.1       — Theme.Tint/Background/Text (11 semantic tokens) shipped 2026-06-07 · build verde 15.8s
 9.  ✅ R.5V.2       — Componentes canónicos Ruul* (8 cherry-pick) shipped 2026-06-07 · build verde 6.2s
-10. ⏳ Documents V2 — list/detail/QuickLook + supersedes (nace usando Ruul* desde el inicio)
+10. ✅ Documents V2 — shipped 2026-06-07 (2 migs + 3 views + supersedes seeds + QuickLook + ShareSheet + archive). DocumentDetailView refactor Apple-native (List+Section) firmado founder. Founder priority #1 "deuda evidente" cerrado.
 11. ⏳ Resource Subtype Picker — en CreateResourceView
 12. ⏳ R.5V.3–V.8   — Migrar HomeView/ContextV2/ResourceV2/forms/sheets + a11y (PARALELO a R.6, regla "R.6 backend NO se bloquea por UI")
 13. ⏳ R.5W.fix.*   — 3 P1 INCONSISTENT (cancel_decision dialog · roles section honest disabled · reservation row push)
