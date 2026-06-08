@@ -300,7 +300,74 @@ Ejemplo: rule "casa Mizrahi requiere 7 días de antelación para reservar" (scop
 
 ## §12 — Status del doc
 
-- **2026-06-07:** DRAFT inicial. Track B paralelo a Track A (R.5V.3+V.4+V.5).
+- **2026-06-07 (draft):** Track B paralelo a Track A (R.5V.3+V.4+V.5).
+- **2026-06-07 (post-audit):** §13 agregado — backend audit reveló que **mucho ya está shipped en MVP2**. Plan R.6.A reframed (no se construye desde cero, se extiende).
 - **Founder firma:** ⏳ pendiente.
-- **Bloquea:** R.6.A schema migration (no se aplica hasta Q1-6 firmados).
-- **No bloquea:** R.5V.3+V.4+V.5 — Track A puede avanzar sabiendo que los slots de R.6 están reservados en §8.
+- **Bloquea:** R.6.A migration (no se aplica hasta Q1-6 firmados + Q7 nueva).
+- **No bloquea:** R.5V.3+V.4+V.5 — Track A puede avanzar (ya shipped 2026-06-07).
+
+---
+
+## §13 — Estado actual MVP2 (audit 2026-06-07 post-V.5)
+
+**Hallazgo:** el rule engine v1 ya existe parcialmente en producción. R.6 NO se construye desde cero — se EXTIENDE.
+
+### 13.1 Lo que YA existe en MVP2
+
+| Componente | Estado | Notas |
+|---|---|---|
+| `rules` table | ✅ shipped | `context_actor_id`, `title`, `body`, `rule_type`, `severity`, `status`, `trigger_event_type`, `condition_tree jsonb`, `consequences jsonb`, `target_scope`, `target_filter jsonb`, `created_by_actor_id`, `archived_at` |
+| `rule_evaluations` table | ✅ shipped | `rule_id`, `context_actor_id`, `triggering_event_type/object_type/object_id`, `outcome`, `consequences_emitted jsonb`, `evaluated_at`, `metadata jsonb`. **Falta `idempotency_key`.** |
+| `create_rule` / `update_rule` RPCs | ✅ shipped | Funcionan |
+| `evaluate_rules_for_event(context_actor_id, trigger_event_type, subject_actor_id, payload, source_event_id)` | ✅ shipped | Selecciona rules activas por context + trigger + target_filter; evalúa `_eval_condition(condition_tree, payload)`; INSERT en `rule_evaluations`; ejecuta sinks. |
+| `_rule_target_matches(target_filter, payload)` helper | ✅ shipped | Maneja scope precedence |
+| `_eval_condition(condition_tree, payload)` helper | ✅ shipped | DSL condition evaluator |
+| Sink: `fine` + `create_obligation` | ✅ shipped | Crea row en `obligations` + emite `obligation.created` / `fine.created` activity |
+| Activity emit: `rule.evaluated` | ✅ shipped | Cada evaluación lo emite |
+| RulesListView + RuleDetailView + CreateRuleWizard + EditRuleView iOS | ✅ shipped | MVP2 ya tiene builder UX (calidad por validar) |
+| Trigger automático: check-in + cancel calendar events | ✅ shipped | `check_in_participant` / `cancel_participation` invocan `evaluate_rules_for_event` |
+| Smokes existentes | ✅ shipped | `_smoke_mvp2_r2e_rules_dod`, `_smoke_mvp2_r2s_rule_targeting`, `_smoke_mvp2_m8_rules` |
+
+### 13.2 Lo que FALTA para R.6 doctrine completa
+
+| Gap | Severidad | Mig propuesta |
+|---|---|---|
+| 1. `idempotency_key text UNIQUE` en `rule_evaluations` | **Crítico** | R.6.A |
+| 2. Sink `emit_attention` (cierra loop con R.5Y AttentionDispatcher) | **Crítico** — desbloquea el use case más visible | R.6.A |
+| 3. Sinks adicionales: `flag_conflict`, `open_decision`, `resource_action`, `membership_action`, `emit_notification`, `schedule_followup` | Medio | R.6.B (incremental) |
+| 4. Triggers automáticos para event types nuevos (resource.created, obligation.created, member.joined, document.created, etc.) | Medio — sin ellos las rules sólo disparan en eventos calendario | R.6.B/C |
+| 5. Cron-tick virtual events (`obligation.overdue`, `document.expiring`, `reservation.starting_soon`, `maintenance.due`, `right.expiring`) | Medio | R.6.C |
+| 6. DSL closed-grammar validador (§3 R.6.0 doc — operadores/variables tipados) | Bajo — el actual acepta jsonb libre | R.6.D |
+| 7. Builder UX iOS audit + refactor Apple-native (`CreateRuleWizard` + `RuleDetailView` con List+Section §V.5 pattern) | Bajo | R.6.E |
+| 8. Seeds: 3 rules ejemplo founder firma | Bajo | R.6.F |
+
+### 13.3 Plan R.6 reframed (slices)
+
+| Slice | Scope | Tamaño |
+|---|---|---|
+| **R.6.A** | **Mig**: `rule_evaluations.idempotency_key` + UNIQUE + helper `_r6_compute_idempotency_key`. Refactor `evaluate_rules_for_event` para usar idempotency. **Sink nuevo**: `emit_attention` (consequence type=`emit_attention` → crea row en `attention_inbox` consumida por R.5Y.A2 dispatcher → kind `rule_violation` / custom). Smoke nuevo. | Pequeño (~150 LOC SQL) |
+| **R.6.B** | **Mig**: Triggers automáticos en RPCs faltantes (resource.created, obligation.created, member.joined, document.created, decision.executed, etc) — cada uno invoca `evaluate_rules_for_event`. Smoke por trigger. | Medio |
+| **R.6.C** | **Mig**: Cron-tick edge function `r6-virtual-events-tick.ts` (Supabase edge) que emite virtual events cada N min: `obligation.overdue`, `document.expiring`, `reservation.starting_soon`, `maintenance.due`, `right.expiring`. Schedule via pg_cron o Supabase scheduled functions. | Medio |
+| **R.6.D** | **Mig opcional**: DSL closed-grammar validator en `create_rule` / `update_rule` (rechaza shapes no enumerados). Builder UX ya constrains; backend lock. | Pequeño |
+| **R.6.E** | **iOS**: RulesListView + CreateRuleWizard + RuleDetailView refactor Apple-native (List+Section §V.5 pattern). Wire emit_attention preview. | Medio (paralelizable con R.6.A/B/C) |
+| **R.6.F** | **Seeds**: 3 rules ejemplo seedeadas (founder firma cuáles — sugerencia: "casa Mizrahi requiere 7 días antelación", "obligación pagada antes de vencer = thumbs up", "reservación cancelada con menos de 24h emite multa"). | Pequeño |
+| **R.6.G** | **Smoke device**: founder valida 3 rules end-to-end (crear → trigger → emit_attention → tap → destino). | Founder |
+| **R.6.H** | **CLOSE** + founder firma "Ruul ya tiene reglas que funcionan, no es teatro". | — |
+
+### 13.4 Quick win priority orden firmado
+
+**R.6.A es el más alto valor** porque cierra loop con R.5Y.A2 (Attention Center ya shipped + visible). Con sólo R.6.A:
+- Cualquier rule emite `emit_attention` consequence → row en `attention_inbox` → R.5Y.A2 dispatcher lo lleva al destino correcto
+- Builder UX iOS existente puede usarse para crear rules con consequence type=`emit_attention`
+- Idempotency cierra el bug F5 heredado de MVP1 (consequences duplicadas en retry)
+- Cero break: sinks existentes (`fine`/`create_obligation`) siguen funcionando
+
+R.6.B y R.6.C son iterables después de que founder pruebe R.6.A.
+
+### 13.5 Q7 nueva — founder firma
+
+| Q | Decisión esperada |
+|---|---|
+| 7. ¿R.6.A reframed (idempotency_key + emit_attention sink en una mig) es el quick win correcto antes de R.6.B/C/D/E? | ⏳ — quiebra la promesa de "no aplicar mig hasta Q1-6 firmadas"; pide que founder firme orden ahora |
+
+**Sugerencia agente:** firmar Q7 y aplicar R.6.A inmediatamente porque cierra el loop más visible con cero break. Q1-6 pueden firmarse en paralelo (no bloquean R.6.A).
