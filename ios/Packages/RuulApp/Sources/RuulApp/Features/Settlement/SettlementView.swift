@@ -110,6 +110,7 @@ public struct SettlementView: View {
                 }
             }
         }
+        .listStyle(.insetGrouped)
     }
 
     @ViewBuilder
@@ -126,9 +127,13 @@ public struct SettlementView: View {
                 Text(batch.createdAt?.formatted(date: .abbreviated, time: .shortened) ?? "Settlement")
                 Spacer()
                 if batch.isFinalized {
-                    StatusBadge("Liquidado", color: .green)
+                    Text("Liquidado")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.Tint.success)
                 } else {
-                    StatusBadge("\(pendingCount) pendientes", color: .orange)
+                    Text("\(pendingCount) pendiente\(pendingCount == 1 ? "" : "s")")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Theme.Tint.warning)
                 }
             }
         }
@@ -141,15 +146,17 @@ public struct SettlementView: View {
                 HStack(spacing: 6) {
                     Text(store.displayName(for: item.fromActorId))
                         .font(.callout.weight(.medium))
+                        .foregroundStyle(Theme.Text.primary)
                     Image(systemName: "arrow.right")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.Text.secondary)
                     Text(store.displayName(for: item.toActorId))
                         .font(.callout.weight(.medium))
+                        .foregroundStyle(Theme.Text.primary)
                 }
                 Text(item.amount.currencyLabel(item.currency))
-                    .font(.title3.bold())
-                    .foregroundStyle(item.isPaid ? .secondary : .primary)
+                    .font(.title3.bold().monospacedDigit())
+                    .foregroundStyle(item.isPaid ? Theme.Text.secondary : Theme.Text.primary)
             }
 
             Spacer()
@@ -157,10 +164,9 @@ public struct SettlementView: View {
             if item.isPaid {
                 Label("Pagado", systemImage: "checkmark.circle.fill")
                     .font(.callout)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(Theme.Tint.success)
                     .labelStyle(.titleAndIcon)
             } else if store.canMarkPaid(item, context: context, myActorId: myActorId) {
-                // MarkPaidButton
                 Button {
                     Task { await markPaid(item) }
                 } label: {
@@ -171,7 +177,9 @@ public struct SettlementView: View {
                 .controlSize(.small)
                 .disabled(runner.isRunning)
             } else {
-                StatusBadge("Pendiente", color: .orange)
+                Text("Pendiente")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.Tint.warning)
             }
         }
         .padding(.vertical, 4)

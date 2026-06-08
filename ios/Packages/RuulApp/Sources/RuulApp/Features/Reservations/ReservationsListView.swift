@@ -141,7 +141,7 @@ public struct ReservationsListView: View {
             }
 
             if !store.upcoming.isEmpty {
-                Section("Próximas") {
+                Section("Próximas (\(store.upcoming.count))") {
                     ForEach(store.upcoming) { reservation in
                         reservationRow(reservation)
                     }
@@ -156,22 +156,29 @@ public struct ReservationsListView: View {
                 }
             }
         }
+        .listStyle(.insetGrouped)
     }
 
     @ViewBuilder
     private func reservationRow(_ reservation: Reservation) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "calendar")
-                .foregroundStyle(.tint)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(store.displayName(for: reservation.reservedForActorId ?? reservation.requestedByActorId))
-                Text(rangeText(reservation))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        LabeledContent {
+            Text(reservation.statusLabel)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(statusColor(reservation.status))
+        } label: {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(store.displayName(for: reservation.reservedForActorId ?? reservation.requestedByActorId))
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(Theme.Text.primary)
+                    Text(rangeText(reservation))
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+            } icon: {
+                Image(systemName: "calendar")
+                    .foregroundStyle(Theme.Tint.primary)
             }
-            Spacer()
-            StatusBadge(reservation.statusLabel, color: statusColor(reservation.status))
         }
         .swipeActions(edge: .trailing) {
             swipeActions(reservation)

@@ -85,29 +85,38 @@ public struct ObligationDetailView: View {
 
     @ViewBuilder
     private func detailList(_ detail: ObligationDetail) -> some View {
+        // R.5V.X 2026-06-08 — Apple-native canonical Detail pattern (V.4/V.5).
         List {
+            // Hero
             Section {
-                HStack(spacing: 12) {
+                HStack(spacing: 14) {
                     Image(systemName: kindSymbol(detail.kind))
-                        .foregroundStyle(.tint)
-                        .font(.title2)
-                        .frame(width: 32)
-                    VStack(alignment: .leading, spacing: 2) {
-                        if let title = detail.title, !title.isEmpty {
-                            Text(title).font(.headline)
-                        } else {
-                            Text(kindLabel(detail.kind)).font(.headline)
-                        }
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(Theme.Tint.primary)
+                        .frame(width: 56, height: 56)
+                        .background(Theme.Tint.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(detail.title?.isEmpty == false ? detail.title! : kindLabel(detail.kind))
+                            .font(.title3.bold())
+                            .foregroundStyle(Theme.Text.primary)
+                            .lineLimit(2)
                         Text(kindLabel(detail.kind))
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.Text.secondary)
                     }
-                    Spacer()
-                    StatusBadge(statusLabel(detail.status), color: statusColor(detail.status))
+                    Spacer(minLength: 0)
+                    Text(statusLabel(detail.status))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(statusColor(detail.status))
                 }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
 
                 if let description = detail.description, !description.isEmpty {
-                    Text(description).font(.callout)
+                    Text(description)
+                        .font(.callout)
+                        .foregroundStyle(Theme.Text.primary)
                 }
             }
 
@@ -117,64 +126,52 @@ public struct ObligationDetailView: View {
                 store: container.subscriptionsStore
             )
 
-            Section("Partes") {
-                InfoRow(
-                    symbolName: "person.fill",
-                    title: "Deudor",
-                    value: memberNamesById[detail.debtorActorId] ?? "—"
-                )
-                InfoRow(
-                    symbolName: "person",
-                    title: "Acreedor",
-                    value: memberNamesById[detail.creditorActorId] ?? "—"
-                )
+            Section {
+                LabeledContent("Deudor", value: memberNamesById[detail.debtorActorId] ?? "—")
+                LabeledContent("Acreedor", value: memberNamesById[detail.creditorActorId] ?? "—")
                 if let dueAt = detail.dueAt {
-                    InfoRow(
-                        symbolName: "calendar.badge.clock",
-                        title: "Vence",
+                    LabeledContent(
+                        "Vence",
                         value: dueAt.formatted(date: .abbreviated, time: .shortened)
                     )
                 }
                 // F.2X.5 — sin branch por `detail.kind == "money"`. La invariante
-                // backend es que `amount` sólo existe en obligaciones monetarias;
-                // mostrar el row si está presente es equivalente y respeta doctrina
-                // intent-first (no decidir UI por tipo de primitiva).
+                // backend es que `amount` sólo existe en obligaciones monetarias.
                 if let amount = detail.amount {
-                    InfoRow(
-                        symbolName: "banknote",
-                        title: "Monto",
-                        value: amount.currencyLabel(detail.currency)
-                    )
+                    LabeledContent("Monto", value: amount.currencyLabel(detail.currency))
                 }
+            } header: {
+                Text("Partes")
             }
 
             if let completed = detail.completedAt {
-                Section("Cumplimiento") {
-                    InfoRow(
-                        symbolName: "checkmark.seal.fill",
-                        title: "Cumplida",
+                Section {
+                    LabeledContent(
+                        "Cumplida",
                         value: completed.formatted(date: .abbreviated, time: .shortened)
                     )
                     if let byId = detail.completedByActorId {
-                        InfoRow(
-                            symbolName: "person.crop.circle.badge.checkmark",
-                            title: "Por",
-                            value: memberNamesById[byId] ?? "—"
-                        )
+                        LabeledContent("Por", value: memberNamesById[byId] ?? "—")
                     }
                     if let notes = detail.completionNotes, !notes.isEmpty {
-                        Text(notes).font(.callout)
+                        Text(notes)
+                            .font(.callout)
+                            .foregroundStyle(Theme.Text.primary)
                     }
+                } header: {
+                    Text("Cumplimiento")
                 }
             }
 
-            // R.2S — botones gateados por backend (forma canónica 7 campos).
+            // R.2S — botones gateados por backend.
             let actions = detail.availableActions.inSection("obligations")
             if !actions.isEmpty {
-                Section("Acciones") {
+                Section {
                     ForEach(actions) { action in
                         actionRow(action, detail: detail)
                     }
+                } header: {
+                    Text("Acciones")
                 }
             }
 
@@ -188,6 +185,7 @@ public struct ObligationDetailView: View {
                 .disabled(isLoadingWhy)
             }
         }
+        .listStyle(.insetGrouped)
     }
 
     private func loadWhy() async {
@@ -219,18 +217,11 @@ public struct ObligationDetailView: View {
             }
             .disabled(!action.enabled || runner.isRunning)
         default:
-            // Affordance read-only (pay/dispute/forgive/cancel se cablean cuando exista UI).
-            HStack {
-                Label(action.label, systemImage: actionSymbol(action.actionKey))
-                Spacer()
-                if !action.enabled {
-                    Image(systemName: "lock.fill")
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
-                }
-            }
-            .foregroundStyle(action.enabled ? .primary : .secondary)
-            .accessibilityHint(action.reason ?? "")
+            // Read-only affordance (pay/dispute/forgive/cancel se cablean cuando exista UI).
+            // `.disabled()` da el dim del sistema — sin lock.fill manual.
+            Label(action.label, systemImage: actionSymbol(action.actionKey))
+                .disabled(!action.enabled)
+                .accessibilityHint(action.reason ?? "")
         }
     }
 
