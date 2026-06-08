@@ -73,13 +73,22 @@ public struct RuulActionRow: View {
     }
 
     // MARK: - Derived visual state
+    //
+    // Diseño post-device review (founder 2026-06-07):
+    // - No duplicar "Próximamente" en subtitle + capsule trailing. La capsule
+    //   trailing es suficiente (más prominente, más iOS-native).
+    // - Iconos comingSoon usan Theme.Text.secondary (no tertiary) — más legibles.
+    // - Dangerous NO usa triangle warning trailing — el tint rojo del label
+    //   ya comunica el riesgo. La confirmación dialog cubre la seguridad.
+    // - requiresDecision usa subtitle informativo (sin trailing badge) —
+    //   "Requiere decisión grupal" como hint.
 
     private var iconTint: Color {
         switch state {
         case .enabled:          return Theme.Tint.primary
         case .disabled:         return Theme.Text.tertiary
         case .requiresDecision: return Theme.Tint.info
-        case .comingSoon:       return Theme.Text.tertiary
+        case .comingSoon:       return Theme.Text.secondary
         case .dangerous:        return Theme.Tint.critical
         }
     }
@@ -89,17 +98,20 @@ public struct RuulActionRow: View {
         case .enabled:          return Theme.Text.primary
         case .disabled:         return Theme.Text.tertiary
         case .requiresDecision: return Theme.Text.primary
-        case .comingSoon:       return Theme.Text.tertiary
+        case .comingSoon:       return Theme.Text.secondary
         case .dangerous:        return Theme.Tint.critical
         }
     }
 
+    /// Subtitle SOLO cuando agrega información (reason para disabled,
+    /// hint para requiresDecision). NO en comingSoon (la capsule trailing
+    /// lo dice) ni en dangerous (el tint del label basta).
     private var subtitle: String? {
         switch state {
         case .enabled:                 return nil
         case .disabled(let reason):    return reason
         case .requiresDecision:        return "Requiere decisión grupal"
-        case .comingSoon:              return "Próximamente"
+        case .comingSoon:              return nil
         case .dangerous:               return nil
         }
     }
@@ -107,22 +119,14 @@ public struct RuulActionRow: View {
     @ViewBuilder
     private var trailing: some View {
         switch state {
-        case .requiresDecision:
-            Image(systemName: "checkmark.bubble.fill")
-                .font(.caption2)
-                .foregroundStyle(Theme.Tint.info)
         case .comingSoon:
             Text("Próximamente")
                 .font(.caption2.weight(.semibold))
                 .padding(.horizontal, Theme.Spacing.sm)
-                .padding(.vertical, 2)
+                .padding(.vertical, 3)
                 .background(Color(uiColor: .systemGray5), in: Capsule())
                 .foregroundStyle(Theme.Text.secondary)
-        case .dangerous:
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.caption2)
-                .foregroundStyle(Theme.Tint.critical)
-        case .enabled, .disabled:
+        case .enabled, .disabled, .requiresDecision, .dangerous:
             EmptyView()
         }
     }
