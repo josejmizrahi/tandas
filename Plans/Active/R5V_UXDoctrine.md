@@ -13,6 +13,82 @@ Congelar el **lenguaje conceptual** que sostiene toda la UI de Ruul. Toda pantal
 
 ---
 
+## 0. Las 5 anclas inmutables (founder firma 2026-06-07)
+
+Este doc debe responder explícitamente 5 preguntas. Cada respuesta es **inmutable** sin firma founder adicional.
+
+### 0.1 Jerarquía de navegación
+
+```
+Home
+ └─ Context
+      └─ Resource
+           └─ Action
+```
+
+**Ninguna pantalla puede romper esta lógica.** Toda interacción del usuario es navegable hacia abajo en este árbol y siempre retornable hacia arriba (NavigationStack back). Cualquier "atajo" cross-jerarquía (e.g. attention card en HomeView) NO violenta el modelo — sólo es navegación directa a un nivel inferior; el back stack se respeta.
+
+### 0.2 Patrón universal de Detail View
+
+**TODO Detail View** (sin excepción) tiene este orden vertical:
+
+```
+1. Hero
+2. Attention
+3. Widgets
+4. Sections
+5. Actions
+6. Activity
+```
+
+Aplica a Context · Resource · Document · Decision · Event · Actor (en orden alfabético). Cualquier pantalla nueva del R.6 (Rule · Policy · Violation · Automation) DEBE seguir este patrón. **No hay "Detail simplificado" ni "Detail rich" — un solo patrón.** Si una sección está vacía, se omite (no se renderiza), pero el orden no cambia.
+
+### 0.3 Estados universales del objeto Ruul
+
+Todo objeto Ruul (Context · Resource · Decision · Reservation · Obligation · Conflict · Document · Event · Rule · Policy · Violation) soporta **exactamente** estos 6 estados con representación visual consistente:
+
+| State | Color/Tint | Symbol | Significado |
+|---|---|---|---|
+| **active** | green | `checkmark.circle.fill` | objeto vivo, operable |
+| **inactive** | gray | `circle.dashed` | pausado temporalmente, puede reactivarse |
+| **archived** | orange | `archivebox.fill` | soft-deleted, audit lineage preservado |
+| **pending** | yellow | `clock.fill` | esperando acción del viewer u otro actor |
+| **completed** | indigo | `checkmark.seal.fill` | terminal exitoso (no reabrible) |
+| **cancelled** | red | `xmark.octagon.fill` | terminal cancelado (no reabrible) |
+
+Subtypos legacy (open/approved/rejected/etc.) **se mapean** a estos 6 para presentación visual. Mapping table mantenido en `RuulStatusBadge.swift` (V.2).
+
+### 0.4 Estados de acción (exactamente 5)
+
+Toda acción visible está en **exactamente uno** de estos 5 estados. Nunca más, nunca menos.
+
+| State | UI tratamiento | Trigger backend |
+|---|---|---|
+| **enabled** | row tappable + chevron | `available_actions[].enabled = true` + RPC vivo en dispatch |
+| **disabled** | row `.disabled(true)` + `action.reason` visible | `available_actions[].enabled = false` con `reason` |
+| **requires_decision** | row tappable + badge "via decisión" | `execution_mode = 'request_decision'` + `decision_template_key` |
+| **coming_soon** | row `.disabled(true)` + badge "Próximamente" | catalog seedeado SIN RPC dispatch backend |
+| **dangerous** | row tappable + tint danger + confirmation alert post-tap | `dangerous = true` + `confirmation_required` |
+
+R.5X.fix.A (mapper "Próximamente") cubre `coming_soon`. R.5W.fix.* corrige inconsistencias del estado `disabled`. R.5V.2 `RuulActionRow` honra los 5 estados visual y semánticamente.
+
+### 0.5 Prioridades de Attention (exactamente 4)
+
+R.6 va a generar **miles** de alerts. La taxonomía queda fijada AHORA para evitar drift.
+
+| Priority | Tint | Comportamiento UI |
+|---|---|---|
+| **critical** | red | top of attention list · push notification (futuro) · cannot dismiss casual |
+| **high** | orange | top of attention list · visible always en HomeView attentionCard |
+| **normal** | blue | visible en attention list · puede caer por LIMIT 5 |
+| **low** | gray | visible sólo en AllAttentionView · NO en preview de 3-5 |
+
+Mapping kind → priority en iOS Domain `AttentionItem.derivedPriority` (R.5Y.A2). Backend futuro puede emitir `priority` explícito (override). Orden en attention list: `priority ASC, occurred_at DESC NULLS LAST`.
+
+---
+
+---
+
 ## 1. ¿Qué es una pantalla Ruul?
 
 Toda pantalla detail (Context, Resource, Document, Rule, Policy, Decision, etc.) sigue la **misma arquitectura ordenada**:

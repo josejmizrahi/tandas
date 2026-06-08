@@ -95,42 +95,63 @@ Inventariar TODAS las pantallas y marcar:
 
 V.0 produce `Plans/Reports/R5V_NativeAuditMatrix.md` con todas las pantallas clasificadas + lista de custom components actuales vs equivalente nativo.
 
-### V.1 Tokens mínimos sobre Apple semantic colors
+### V.1 Tokens mínimos sobre Apple semantic colors (founder scope SIMPLE)
 
-Centralizar en `Tandas/Packages/RuulApp/Sources/RuulApp/Theme/Theme.swift` (existente):
+**Founder firma 2026-06-07:** NO hacer 200 tokens. Lista canónica fija de **11 tokens**. Apple resuelve el resto.
 
-- `Theme.Tint` — `.success`, `.warning`, `.danger`, `.info`, `.neutral` (semantic, no hex hardcoded — derivados de Apple system colors)
-- `Theme.Surface` — `.card`, `.sectionGroup` (basados en `Color(uiColor: .systemBackground/.secondarySystemBackground/.systemGroupedBackground)`)
-- `Theme.Spacing` — `.xs/.sm/.md/.lg/.xl` (consistent rhythm)
-- `Theme.Status` — funciones derivadas para badges (decision/reservation/obligation/resource/conflict)
-- `Theme.cardShape()` — RoundedRectangle estandarizado
-- Materials: usar `.regularMaterial` / `.thickMaterial` por defecto
+| Token | Apple base | Uso |
+|---|---|---|
+| `Theme.primary` | `Color.accentColor` | tint primario · CTAs · selección |
+| `Theme.success` | `.green` | states active/completed positivos |
+| `Theme.warning` | `.orange` | conflict warning · pending · archived |
+| `Theme.critical` | `.red` | conflict critical · cancelled · dangerous |
+| `Theme.info` | `.blue` | información neutral · invitation |
+| `Theme.background` | `Color(uiColor: .systemBackground)` | fondo principal |
+| `Theme.secondaryBackground` | `Color(uiColor: .secondarySystemBackground)` | fondos de cards |
+| `Theme.groupedBackground` | `Color(uiColor: .systemGroupedBackground)` | List grouped style |
+| `Theme.primaryText` | `Color.primary` | texto principal |
+| `Theme.secondaryText` | `Color.secondary` | subtítulos · captions |
+| `Theme.tertiaryText` | `Color(uiColor: .tertiaryLabel)` | metadata · chevrons |
 
-V.1 produce 1 commit: extender `Theme.swift` + remove hardcoded colors de las pantallas (audit V.0 lista cuáles).
+**Anti-reglas:**
+- ❌ No agregar `Theme.success500`, `Theme.warning400`, etc. (no scale Tailwind-style)
+- ❌ No hex hardcoded (`#FF6600`)
+- ❌ No `Color(red: 0.5, green: ...)` literal en views
+- ❌ No depender de paleta Sentry/HumanLayer/etc. (semantic Apple-first)
 
-### V.2 Componentes canónicos Ruul — cherry-pick 7 primero (founder firmado)
+Mantener helpers existentes utilitarios (`Theme.Spacing.xs/.sm/.md/.lg/.xl`, `Theme.cardShape()`, materials) — son rhythm, no colores. V.1 NO los altera.
 
-**Founder scope (2026-06-07):** primera ola = 7 componentes que impactan inmediatamente Home/Attention/ContextDetail/ResourceDetail/DocumentsV2. Segunda ola = 3 más cosméticos, deferred.
+V.1 produce 1 commit: extender `Theme.swift` con los 11 tokens + remove hardcoded colors de las pantallas (audit V.0 lista cuáles).
 
-#### Primera ola (~440 LOC, build verde)
+### V.2 Componentes canónicos Ruul — cherry-pick 8 primera ola (founder firmado)
+
+**Founder scope (2026-06-07):** primera ola = 8 componentes que impactan inmediatamente Home/Attention/ContextDetail/ResourceDetail/DocumentDetail/DocumentsV2. Segunda ola = 2 más cosméticos, deferred.
+
+**Founder cita literal:** *"agregaría `RuulDetailHero` porque hoy Context/Resource/Document/Decision Detail van a terminar necesitando el mismo encabezado. Ese componente se va a reutilizar muchísimo."*
+
+#### Primera ola (~540 LOC, build verde)
 
 | File | Encapsula | LOC est. | Impacta |
 |---|---|---|---|
-| `RuulHeroCard.swift` | VStack + materials hero | 100 | Resource/Context/Document detail headers |
-| `RuulActionRow.swift` | Button/NavLink + Label + chevron + disabled honor | 80 | Cualquier row tappable + actions list |
-| `RuulStatusBadge.swift` | Capsule + tint semántico + Status enum | 50 | Active/archived/pending/completed/conflict |
+| **`RuulDetailHero.swift`** | NavigationStack toolbar + icon + title + statusBadge + subtitle + chips | 100 | **Context · Resource · Document · Decision · Event · Actor detail headers** — el más reusado |
+| `RuulHeroCard.swift` | VStack + materials hero (para listas/cards de hero) | 100 | Hero secundarios (HomeView greeting, EmptyState rich, etc.) |
+| `RuulActionRow.swift` | Button/NavLink + Label + chevron + 5 action states (UX Doctrine §0.4) | 80 | Cualquier row tappable + actions list |
+| `RuulStatusBadge.swift` | Capsule + tint semántico + 6 universal states (UX Doctrine §0.3) | 50 | active/inactive/archived/pending/completed/cancelled |
 | `RuulEmptyState.swift` | `ContentUnavailableView` wrapper | 40 | Lista vacía consistente |
 | `RuulErrorState.swift` | `ContentUnavailableView` + retry button | 50 | Error con retry |
 | `RuulLoadingState.swift` | `ProgressView` + label | 30 | Loading consistente |
-| `RuulAttentionCard.swift` | Card que delega a AttentionDispatcher (R.5Y.A2) | 90 | HomeView + ContextDetailV2 |
+| `RuulAttentionCard.swift` | Card que delega a AttentionDispatcher (R.5Y.A2) + 4 priorities (§0.5) | 90 | HomeView + ContextDetailV2 |
+
+**Diferencia HeroCard vs DetailHero:**
+- `RuulDetailHero` = top de toda `Detail View`. Single source para Context/Resource/Document/Decision/Event/Actor. Reusable masivo.
+- `RuulHeroCard` = greeting cards, banners, callouts dentro de scroll (no es el top de la pantalla).
 
 #### Segunda ola (deferred, post-Documents V2)
 
-| File | Encapsula | Razón deferred |
-|---|---|---|
-| `RuulScreenHeader.swift` | NavigationStack toolbar + hero | Más cosmético — pantallas funcionan con toolbar nativo + RuulHeroCard |
-| `RuulMetricPill.swift` | HStack icon + value + label | KPIs en metrics — cosmético sobre HStack actual |
-| `RuulSectionCard.swift` | Section wrapper | Section nativo ya cubre — la card visual es marginal |
+| File | Razón deferred |
+|---|---|
+| `RuulMetricPill.swift` | KPIs en metrics — HStack existente cubre |
+| `RuulSectionCard.swift` | Section nativo ya cubre |
 
 V.2 ship por commits separados (1 commit por componente) o batch (1 commit). **Cero romper screens existentes** — sólo añadir disponibles para migrate en V.3+.
 
