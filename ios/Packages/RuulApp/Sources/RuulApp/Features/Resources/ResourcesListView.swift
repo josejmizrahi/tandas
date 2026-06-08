@@ -52,7 +52,9 @@ public struct ResourcesListView: View {
             }
         }
         .sheet(isPresented: $isShowingCreate) {
-            CreateResourceView(context: context, store: store, container: container)
+            // P1 fix 2026-06-08: usar CreateResourceFlow (Subtype Picker UX D shipped)
+            // en vez del legacy CreateResourceView que tenía bugs en el path 10-arg.
+            CreateResourceFlow(context: context, store: store, container: container)
         }
     }
 
@@ -77,18 +79,30 @@ public struct ResourcesListView: View {
             )
         } else {
             List {
-                ForEach(store.personalResources) { resource in
-                    NavigationLink {
-                        ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
-                    } label: {
-                        InfoRow(
-                            symbolName: (ResourceType(rawValue: resource.resourceType) ?? .other).symbolName,
-                            title: resource.displayName,
-                            subtitle: resource.reasons.joined(separator: " · ")
-                        )
+                Section {
+                    ForEach(store.personalResources) { resource in
+                        NavigationLink {
+                            ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
+                        } label: {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(resource.displayName)
+                                        .font(.callout.weight(.medium))
+                                        .foregroundStyle(Theme.Text.primary)
+                                    Text(resource.reasons.joined(separator: " · "))
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.secondary)
+                                        .lineLimit(2)
+                                }
+                            } icon: {
+                                Image(systemName: (ResourceType(rawValue: resource.resourceType) ?? .other).symbolName)
+                                    .foregroundStyle(Theme.Tint.primary)
+                            }
+                        }
                     }
                 }
             }
+            .listStyle(.insetGrouped)
         }
     }
 
@@ -106,24 +120,44 @@ public struct ResourcesListView: View {
                     .listRowBackground(Color.clear)
                 }
             }
+            .listStyle(.insetGrouped)
         } else {
             List {
                 reservationsEntry
-                Section("Recursos") {
+                Section {
                     ForEach(store.resources) { resource in
                         NavigationLink {
                             ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
                         } label: {
-                            InfoRow(
-                                symbolName: resource.type.symbolName,
-                                title: resource.displayName,
-                                subtitle: rightsSummary(resource),
-                                value: resource.estimatedValue.map { $0.currencyLabel(resource.currency) }
-                            )
+                            HStack {
+                                Label {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(resource.displayName)
+                                            .font(.callout.weight(.medium))
+                                            .foregroundStyle(Theme.Text.primary)
+                                        Text(rightsSummary(resource))
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.Text.secondary)
+                                            .lineLimit(1)
+                                    }
+                                } icon: {
+                                    Image(systemName: resource.type.symbolName)
+                                        .foregroundStyle(Theme.Tint.primary)
+                                }
+                                Spacer()
+                                if let value = resource.estimatedValue {
+                                    Text(value.currencyLabel(resource.currency))
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(Theme.Text.tertiary)
+                                }
+                            }
                         }
                     }
+                } header: {
+                    Text("Recursos (\(store.resources.count))")
                 }
             }
+            .listStyle(.insetGrouped)
         }
     }
 
