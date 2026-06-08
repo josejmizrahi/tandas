@@ -62,39 +62,47 @@ public struct RulesListView: View {
                 message: "Las reglas convierten acuerdos en consecuencias automáticas: llegar tarde → multa, cancelar el mismo día → multa."
             )
         } else {
+            // R.6.E.2 — Apple-native List: Section header + Label nativo (chevron
+            // auto via NavigationLink) + status como trailing texto, sin custom HStack.
             List {
-                ForEach(store.rules) { rule in
-                    NavigationLink {
-                        RuleDetailView(
-                            rule: rule,
-                            context: context,
-                            container: container,
-                            canManage: store.canManage(in: context),
-                            onChanged: { Task { await store.load(context: context) } }
-                        )
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "ruler.fill")
-                                .foregroundStyle(.tint)
-                                .frame(width: 28)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(rule.title)
-                                    .lineLimit(1)
-                                Text(rule.conditionDescription + " → " + rule.consequenceDescription)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                            }
-                            Spacer()
-                            if rule.isActive {
-                                StatusBadge("Activa", color: .green)
-                            } else {
-                                StatusBadge("Pausada", color: .gray)
+                Section {
+                    ForEach(store.rules) { rule in
+                        NavigationLink {
+                            RuleDetailView(
+                                rule: rule,
+                                context: context,
+                                container: container,
+                                canManage: store.canManage(in: context),
+                                onChanged: { Task { await store.load(context: context) } }
+                            )
+                        } label: {
+                            LabeledContent {
+                                Text(rule.isActive ? "Activa" : "Pausada")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(rule.isActive ? Theme.Tint.success : Theme.Text.tertiary)
+                            } label: {
+                                Label {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(rule.title).lineLimit(1)
+                                        Text(rule.conditionDescription + " → " + rule.consequenceDescription)
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.Text.secondary)
+                                            .lineLimit(2)
+                                    }
+                                } icon: {
+                                    Image(systemName: "ruler.fill")
+                                        .foregroundStyle(Theme.Tint.primary)
+                                }
                             }
                         }
                     }
+                } header: {
+                    Text("\(store.rules.count) regla\(store.rules.count == 1 ? "" : "s")")
+                } footer: {
+                    Text("Las reglas se evalúan automáticamente cada vez que ocurre el evento. Las multas aparecen como obligaciones; las alertas aparecen en \"Atención\".")
                 }
             }
+            .listStyle(.insetGrouped)
         }
     }
 }

@@ -37,63 +37,84 @@ public struct RuleDetailView: View {
     }
 
     public var body: some View {
+        // R.6.E.3 — Apple-native pattern firmada V.4/V.5: Section { hero row } +
+        // Label native con icon/title/subtitle para "Cómo funciona" + LabeledContent
+        // para "Información" + RuulStatusBadge V.2 + Theme tokens.
         List {
             Section {
-                HStack(spacing: 16) {
+                HStack(spacing: 14) {
                     Image(systemName: "ruler.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.tint)
-                        .frame(width: 52, height: 52)
-                        .background(Color.accentColor.badgeFillSubtle, in: Circle())
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(Theme.Tint.primary)
+                        .frame(width: 56, height: 56)
+                        .background(Theme.Tint.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     VStack(alignment: .leading, spacing: 4) {
                         Text(rule.title)
-                            .font(.headline)
-                        StatusBadge(
-                            rule.isActive ? "Activa" : "Pausada",
-                            color: rule.isActive ? .green : .gray
-                        )
+                            .font(.title3.bold())
+                            .foregroundStyle(Theme.Text.primary)
+                            .lineLimit(2)
+                        RuulStatusBadge(rule.isActive ? .active : .inactive)
                     }
+                    Spacer(minLength: 0)
                 }
-                .padding(.vertical, 4)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
             }
 
             if let body = rule.body, !body.isEmpty {
-                Section("Acuerdo") {
+                Section {
                     Text(body)
+                } header: {
+                    Text("Acuerdo")
                 }
             }
 
             if rule.triggerEventType != nil {
-                Section("Cómo funciona") {
-                    InfoRow(
-                        symbolName: "bolt.fill",
-                        title: "Cuándo",
-                        subtitle: triggerLabel
-                    )
-                    InfoRow(
-                        symbolName: "questionmark.circle.fill",
-                        title: "Si",
-                        subtitle: rule.conditionDescription
-                    )
-                    InfoRow(
-                        symbolName: "arrow.right.circle.fill",
-                        title: "Entonces",
-                        subtitle: rule.consequenceDescription
-                    )
+                Section {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Cuándo").font(.callout)
+                            Text(triggerLabel).font(.caption).foregroundStyle(Theme.Text.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "bolt.fill").foregroundStyle(Theme.Tint.warning)
+                    }
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Si").font(.callout)
+                            Text(rule.conditionDescription).font(.caption).foregroundStyle(Theme.Text.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "questionmark.circle.fill").foregroundStyle(Theme.Tint.info)
+                    }
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Entonces").font(.callout)
+                            Text(rule.consequenceDescription).font(.caption).foregroundStyle(Theme.Text.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: "arrow.right.circle.fill").foregroundStyle(Theme.Tint.success)
+                    }
+                } header: {
+                    Text("Cómo funciona")
                 }
             }
 
-            Section("Información") {
-                InfoRow(
-                    symbolName: "tag",
-                    title: "Tipo",
-                    value: rule.ruleType == "automation" ? "Automatización" : (rule.ruleType == "norm" ? "Norma" : "Política")
+            Section {
+                LabeledContent(
+                    "Tipo",
+                    value: rule.ruleType == "automation" ? "Automatización"
+                        : (rule.ruleType == "norm" ? "Norma" : "Política")
                 )
                 if let created = rule.createdAt {
-                    InfoRow(symbolName: "calendar", title: "Creada", value: created.formatted(date: .abbreviated, time: .omitted))
+                    LabeledContent("Creada", value: created.formatted(date: .abbreviated, time: .omitted))
                 }
+            } header: {
+                Text("Información")
             }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

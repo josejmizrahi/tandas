@@ -153,7 +153,10 @@ public enum RuleTrigger: String, Codable, Sendable, CaseIterable, Identifiable {
     case checkedIn = "event.checked_in"
     case participationCancelled = "event.participation_cancelled"
     case reservationCancelled = "reservation.cancelled"
-    case moneyExpenseRecorded = "money.expense_recorded"
+    // R.6.E fix 2026-06-08: el activity_event real emitido por `record_expense` es
+    // `expense.recorded` (sin prefijo "money."). Reglas creadas con la raw value
+    // anterior nunca disparaban porque el catálogo no contiene `money.expense_recorded`.
+    case moneyExpenseRecorded = "expense.recorded"
 
     public var id: String { rawValue }
 
