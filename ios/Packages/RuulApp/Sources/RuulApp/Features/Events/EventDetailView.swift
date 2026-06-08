@@ -70,8 +70,17 @@ public struct EventDetailView: View {
             if !items.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        ForEach(items) { item in
-                            moreActionButton(for: item)
+                        // P0 fix 2026-06-08 — moreActions agrupadas por section
+                        // semántica (Apple HIG: Menu con Sections para clusters).
+                        ForEach(MoreActionSection.allCases, id: \.self) { section in
+                            let sectionItems = items.filter { moreActionSection($0.kind) == section }
+                            if !sectionItems.isEmpty {
+                                Section(section.label) {
+                                    ForEach(sectionItems) { item in
+                                        moreActionButton(for: item)
+                                    }
+                                }
+                            }
                         }
                     } label: {
                         Image(systemName: "plus")
@@ -96,6 +105,36 @@ public struct EventDetailView: View {
             } label: {
                 Label(item.label, systemImage: item.symbol)
             }
+        }
+    }
+
+    /// P0 fix 2026-06-08 — clasificación semántica de MoreActionKind para
+    /// agrupar en el Menu toolbar.
+    private enum MoreActionSection: CaseIterable {
+        case registrar
+        case editar
+        case anfitrion
+        case estado
+        case cancelar
+
+        var label: String {
+            switch self {
+            case .registrar: return "Registrar"
+            case .editar:    return "Editar"
+            case .anfitrion: return "Anfitrión"
+            case .estado:    return "Estado"
+            case .cancelar:  return "Cancelar"
+            }
+        }
+    }
+
+    private func moreActionSection(_ kind: MoreActionKind) -> MoreActionSection {
+        switch kind {
+        case .recordExpense, .createDecision:         return .registrar
+        case .editEvent:                              return .editar
+        case .changeNextHost, .configureHostRotation: return .anfitrion
+        case .closeEvent:                             return .estado
+        case .cancelParticipation:                    return .cancelar
         }
     }
 
