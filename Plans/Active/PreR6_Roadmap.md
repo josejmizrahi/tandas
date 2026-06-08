@@ -40,7 +40,7 @@ Pregunta única que el founder firma al cierre:
 13. ⏳ R.5W.fix.*   — DEFERRED por founder ("son cosméticos y no cambian la capacidad del producto")
 14. ✅ R.6.0        — Rule Engine Architecture doc shipped 2026-06-07 (Track B documental, sin código). 6 Qs founder firma pendientes.
 15. ⏳ R.5Z         — Founder Flows Validation (10 flows end-to-end en iPhone JJ device)
-16. 🟡 R.6 Rule Engine 2.0 implementación — **R.6.A** ✅ `8703ee2a` idempotency + emit_attention sink. **R.6.B** ✅ `0de668db` auto-dispatch trigger (+ post-fixes `1f2f8b92`: RLS bypass + obligations FK defensive). **P0 fix** create_resource broken Subtype Picker (`0de668db`). **R.6.F** ✅ `1f2f8b92` 2 seeds demoables firing end-to-end. **R.6.E** ✅ `d3df75d5` iOS Rules Apple-native (RulesListView/RuleDetailView refactored List+Section + Label+LabeledContent + RuulStatusBadge V.2) + P0 fix RuleTrigger.moneyExpenseRecorded raw value. R.6.C/D/G pendientes.
+16. 🟢 R.6 Rule Engine 2.0 implementación — **A** ✅ `8703ee2a` idempotency + emit_attention sink. **B** ✅ `0de668db` auto-dispatch trigger (+ post-fixes `1f2f8b92`: RLS + FK defensive). **F** ✅ `1f2f8b92` 2 seeds demoables firing. **E** ✅ `d3df75d5` iOS Rules Apple-native + RuleTrigger P0 fix. **C** ✅ `04b48c95` pg_cron + obligation.overdue detector + schedule + seed. Loop completo: RPC | cron-tick → activity_event → trigger → rule → consequence → iOS attention. **D** DSL validator + **G** founder smoke device pendientes.
 ```
 
 Founder cita literal: **"el mayor faltante ya no es backend; es la capa de atención y descubrimiento de problemas."**
