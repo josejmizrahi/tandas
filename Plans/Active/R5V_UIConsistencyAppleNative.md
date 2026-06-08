@@ -248,7 +248,7 @@ V.2 segunda ola (RuulScreenHeader/RuulMetricPill/RuulSectionCard) viene después
 | V.0a UX Doctrine | ✅ FROZEN 2026-06-07 | `Plans/Active/R5V_UXDoctrine.md` firmado founder |
 | V.0 UI Audit | ✅ CLOSED 2026-06-07 | 64 pantallas (48✅/10🟡/0❌) · 0 hardcoded colors · `Plans/Reports/R5V_NativeAuditMatrix.md` |
 | V.1 Tokens | ✅ shipped 2026-06-07 | `Theme.Tint/.Background/.Text` (11 semantic) en `Theme.swift` · build verde 15.8s |
-| V.2 Componentes (7) | ⏳ | Cherry-pick founder firmado |
+| V.2 Componentes (8) | ✅ shipped 2026-06-07 | 8 cherry-pick (RuulDetailHero/HeroCard/ActionRow/StatusBadge/Empty/Error/Loading/AttentionCard) · build verde 6.2s · ~660 LOC |
 | V.3 HomeView | ⏳ | Paralelo a R.6 OK |
 | V.4 ContextDetailViewV2 | ⏳ | Paralelo a R.6 OK |
 | V.5 ResourceDetailViewV2 | ⏳ | Paralelo a R.6 OK |

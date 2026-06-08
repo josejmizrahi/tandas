@@ -33,7 +33,7 @@ Pregunta única que el founder firma al cierre:
 6.  ✅ R.5V.0a      — UX Doctrine FROZEN 2026-06-07 (5 anclas inmutables firmadas + §1-§11 vocabulario)
 7.  ✅ R.5V.0       — UI Audit CLOSED 2026-06-07 — 64 pantallas (48✅/10🟡/0❌) · 0 hardcoded colors · matriz en `Plans/Reports/R5V_NativeAuditMatrix.md`
 8.  ✅ R.5V.1       — Theme.Tint/Background/Text (11 semantic tokens) shipped 2026-06-07 · build verde 15.8s
-9.  ⏳ R.5V.2       — Componentes canónicos Ruul* — cherry-pick 8 primera ola (RuulDetailHero + HeroCard + ActionRow + StatusBadge + Empty/Error/Loading + AttentionCard)
+9.  ✅ R.5V.2       — Componentes canónicos Ruul* (8 cherry-pick) shipped 2026-06-07 · build verde 6.2s
 10. ⏳ Documents V2 — list/detail/QuickLook + supersedes (nace usando Ruul* desde el inicio)
 11. ⏳ Resource Subtype Picker — en CreateResourceView
 12. ⏳ R.5V.3–V.8   — Migrar HomeView/ContextV2/ResourceV2/forms/sheets + a11y (PARALELO a R.6, regla "R.6 backend NO se bloquea por UI")
