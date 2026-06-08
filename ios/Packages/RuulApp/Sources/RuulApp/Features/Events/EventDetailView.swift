@@ -59,6 +59,8 @@ public struct EventDetailView: View {
     /// R.2T — map `resourceId → displayName` resuelto vía `listContextResources`
     /// para mostrar nombres reales en lugar de UUIDs.
     @State private var linkedResourceNames: [UUID: String] = [:]
+    /// R.2T — sheet "Reservar recurso para este evento".
+    @State private var isShowingReserveResourceFlow = false
 
     public init(eventId: UUID, context: AppContext, container: DependencyContainer) {
         self.eventId = eventId
@@ -136,7 +138,7 @@ public struct EventDetailView: View {
 
     private func moreActionSection(_ kind: MoreActionKind) -> MoreActionSection {
         switch kind {
-        case .recordExpense, .createDecision:         return .registrar
+        case .recordExpense, .createDecision, .reserveResource: return .registrar
         case .editEvent:                              return .editar
         case .changeNextHost, .configureHostRotation: return .anfitrion
         case .closeEvent:                             return .estado
@@ -244,6 +246,10 @@ public struct EventDetailView: View {
         .sheet(isPresented: $isShowingNextHostPicker) { nextHostPickerSheetContent() }
         // F.EVENT.10 — sheet de configurar el orden de rotación.
         .sheet(isPresented: $isShowingRotationOrder) { hostRotationOrderSheetContent() }
+        // R.2T — sheet "Reservar recurso para este evento".
+        .sheet(isPresented: $isShowingReserveResourceFlow) {
+            reserveResourceFlowSheet()
+        }
         .alert("Próximo anfitrión", isPresented: Binding(
             get: { nextHostNotice != nil },
             set: { if !$0 { nextHostNotice = nil } }
@@ -289,6 +295,24 @@ public struct EventDetailView: View {
             },
             onClear: {
                 await clearHostRotationOrder()
+            }
+        )
+    }
+
+    /// R.2T — Sheet "Reservar recurso para este evento". Flow de 2 pasos en
+    /// NavigationStack interno: ResourcePicker → RequestReservationView
+    /// con `preselectedEventId` ya pasado. Al terminar, recarga
+    /// `linkedReservations` para que el cambio se vea en la Section.
+    @ViewBuilder
+    private func reserveResourceFlowSheet() -> some View {
+        ReserveResourceForEventSheet(
+            event: store.event,
+            eventId: eventId,
+            context: context,
+            container: container,
+            onDone: {
+                isShowingReserveResourceFlow = false
+                Task { await loadLinkedReservations() }
             }
         )
     }
@@ -973,6 +997,8 @@ public struct EventDetailView: View {
         case changeNextHost
         /// F.EVENT.10 — configurar el ciclo de rotación de host.
         case configureHostRotation
+        /// R.2T — reservar un recurso del contexto para este evento.
+        case reserveResource
     }
 
     private struct MoreActionItem: Identifiable {
@@ -1041,6 +1067,15 @@ public struct EventDetailView: View {
                 ))
             }
         }
+        // R.2T — "Reservar recurso" sólo cuando el evento está activo
+        // (scheduled o in_progress). El backend valida permisos en
+        // request_resource_reservation; iOS sólo gatea por estado del evento.
+        if event.isScheduled || event.status == "in_progress" {
+            out.append(MoreActionItem(
+                kind: .reserveResource, label: "Reservar recurso",
+                symbol: "calendar.badge.checkmark", isDestructive: false
+            ))
+        }
         return out
     }
 
@@ -1053,6 +1088,7 @@ public struct EventDetailView: View {
         case .editEvent:               isShowingEdit = true
         case .changeNextHost:          isShowingNextHostPicker = true
         case .configureHostRotation:   isShowingRotationOrder = true
+        case .reserveResource:         isShowingReserveResourceFlow = true
         }
     }
 
@@ -1300,6 +1336,144 @@ private extension String {
     var capitalizedFirstLetter: String {
         guard let first = first else { return self }
         return first.uppercased() + dropFirst()
+    }
+}
+
+// MARK: - R.2T Reserve Resource for Event Sheet
+//
+// Flow: NavigationStack root es ResourcePicker (List de context resources),
+// tap en uno empuja RequestReservationView con `preselectedEventId`.
+
+private struct ReserveResourceForEventSheet: View {
+    let event: CalendarEvent?
+    let eventId: UUID
+    let context: AppContext
+    let container: DependencyContainer
+    let onDone: () -> Void
+
+    @State private var resources: [ContextResource] = []
+    @State private var isLoading = true
+    @State private var loadError: String?
+    @State private var reservationsStore = ReservationsStore(rpc: MockRuulRPCClient.demo())
+    @State private var hasInitializedStore = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isLoading {
+                    LoadingStateView()
+                } else if let loadError {
+                    ErrorStateView(message: loadError) {
+                        Task { await load() }
+                    }
+                } else if resources.isEmpty {
+                    ContentUnavailableView(
+                        "Sin recursos",
+                        systemImage: "shippingbox",
+                        description: Text("Este contexto no tiene recursos para reservar.")
+                    )
+                } else {
+                    pickerList
+                }
+            }
+            .navigationTitle("Elegir recurso")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                }
+            }
+            .task {
+                if !hasInitializedStore {
+                    reservationsStore = ReservationsStore(rpc: container.rpc)
+                    hasInitializedStore = true
+                }
+                await load()
+            }
+        }
+        .ruulSheet()
+    }
+
+    @ViewBuilder
+    private var pickerList: some View {
+        List {
+            Section {
+                ForEach(resources) { r in
+                    NavigationLink {
+                        RequestReservationView(
+                            resource: resourceFromContextResource(r),
+                            context: context,
+                            preselectedEventId: eventId,
+                            store: reservationsStore,
+                            container: container
+                        )
+                        .onDisappear {
+                            // Cuando la view de request se cierra (por dismiss interno
+                            // del Form), no podemos distinguir success vs cancel —
+                            // llamamos onDone para refrescar de todas formas.
+                            onDone()
+                        }
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(r.displayName)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                Text(resourceTypeLabel(r.resourceType))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: resourceTypeIcon(r.resourceType))
+                                .foregroundStyle(Theme.Tint.primary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Recursos del contexto (\(resources.count))")
+            } footer: {
+                if let event {
+                    Text("La reserva quedará asociada a “\(event.title)”.")
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    private func resourceFromContextResource(_ r: ContextResource) -> Resource {
+        Resource(
+            id: r.resourceId,
+            resourceType: r.resourceType,
+            displayName: r.displayName,
+            status: r.status,
+            estimatedValue: r.estimatedValue,
+            currency: r.currency,
+            canonicalOwnerActorId: r.canonicalOwnerActorId
+        )
+    }
+
+    private func resourceTypeIcon(_ raw: String) -> String {
+        ResourceType(rawValue: raw)?.symbolName ?? "shippingbox.fill"
+    }
+
+    private func resourceTypeLabel(_ raw: String) -> String {
+        ResourceType(rawValue: raw)?.label ?? raw.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func load() async {
+        isLoading = true
+        loadError = nil
+        do {
+            let list = try await container.rpc.listContextResources(contextId: context.id)
+            resources = list
+                .filter { $0.status == "active" }
+                .sorted { $0.displayName.localizedCompare($1.displayName) == .orderedAscending }
+            await reservationsStore.loadByContext(context: context)
+        } catch {
+            loadError = UserFacingError.from(error).message
+        }
+        isLoading = false
     }
 }
 
