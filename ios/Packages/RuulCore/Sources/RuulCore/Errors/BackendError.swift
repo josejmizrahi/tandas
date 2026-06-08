@@ -16,6 +16,9 @@ public enum BackendError: Sendable, Equatable {
     case reservationOverlap
     /// `invite …` inválido/expirado/agotado.
     case invalidInvite(message: String)
+    /// Acción del catálogo sin dispatch backend (R.5A.B.8 raise `0A000 not_implemented`
+    /// / `action_not_wired`). `actionKey` cuando el raise lo expone.
+    case notImplemented(actionKey: String?)
     /// Cualquier otro raise no catalogado.
     case unknown(message: String)
 }
@@ -59,6 +62,11 @@ public struct UserFacingError: Sendable, Equatable {
             return UserFacingError(title: "Fechas ocupadas", message: "Ese rango ya tiene una reservación aprobada.")
         case .invalidInvite:
             return UserFacingError(title: "Invitación inválida", message: "El código no existe, expiró o ya se agotó.")
+        case .notImplemented:
+            return UserFacingError(
+                title: "Próximamente",
+                message: "Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible."
+            )
         case .unknown(let message):
             return UserFacingError(message: message)
         }

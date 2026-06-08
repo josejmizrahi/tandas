@@ -44,6 +44,10 @@ public enum RPCErrorMapper {
             || s.contains("exhausted") || s.contains("revoked") || s.contains("invalid")) {
             return .invalidInvite(message: raw)
         }
+        if code == "0A000" || s.contains("not_implemented") || s.contains("not implemented")
+            || s.contains("action_not_wired") {
+            return .notImplemented(actionKey: extractNotImplementedActionKey(from: raw))
+        }
         if code == "22023" || s.contains("must be positive") || s.contains("is required")
             || s.contains("invalid") || s.contains("must sum to") || s.contains("duplicate") {
             return .validation(message: raw)
@@ -53,5 +57,21 @@ public enum RPCErrorMapper {
 
     private static func lastWord(of raw: String) -> String? {
         raw.split(separator: " ").last.map(String.init)
+    }
+
+    /// Best-effort para sacar `action_key` de mensajes como
+    /// `"action 'record_contribution' not_implemented"` o
+    /// `"action_not_wired: record_contribution"`. Devuelve `nil` si no es claro.
+    private static func extractNotImplementedActionKey(from raw: String) -> String? {
+        if let quoted = raw.range(of: #"'([a-zA-Z_][a-zA-Z0-9_]*)'"#, options: .regularExpression) {
+            let inside = raw[quoted].trimmingCharacters(in: CharacterSet(charactersIn: "'\""))
+            if !inside.isEmpty { return inside }
+        }
+        if let colon = raw.range(of: ":") {
+            let tail = raw[colon.upperBound...].trimmingCharacters(in: .whitespaces)
+            let token = tail.split(whereSeparator: { !($0.isLetter || $0.isNumber || $0 == "_") }).first.map(String.init)
+            if let token, !token.isEmpty { return token }
+        }
+        return nil
     }
 }

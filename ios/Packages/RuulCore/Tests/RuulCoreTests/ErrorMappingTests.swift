@@ -72,6 +72,57 @@ struct ErrorMappingTests {
         #expect(error == .unknown(message: "algo totalmente nuevo"))
     }
 
+    @Test("not_implemented por código 0A000 (R.5A.B.8 dispatcher)")
+    func notImplementedByCode() {
+        let error = RPCErrorMapper.parse(message: "not_implemented", code: "0A000")
+        #expect(error == .notImplemented(actionKey: nil))
+    }
+
+    @Test("not_implemented por mensaje aunque code sea nil")
+    func notImplementedByMessage() {
+        let error = RPCErrorMapper.parse(message: "not_implemented", code: nil)
+        #expect(error == .notImplemented(actionKey: nil))
+    }
+
+    @Test("not_implemented extrae action_key entre comillas simples")
+    func notImplementedExtractsQuotedActionKey() {
+        let error = RPCErrorMapper.parse(
+            message: "action 'record_contribution' not_implemented",
+            code: "0A000"
+        )
+        #expect(error == .notImplemented(actionKey: "record_contribution"))
+    }
+
+    @Test("action_not_wired también mapea a notImplemented")
+    func actionNotWired() {
+        let error = RPCErrorMapper.parse(message: "action_not_wired: convert_to_settlement", code: "0A000")
+        #expect(error == .notImplemented(actionKey: "convert_to_settlement"))
+    }
+
+    @Test("not_implemented copy oficial founder-signed (R.5X.fix.A)")
+    func notImplementedUserCopy() {
+        let ufe = UserFacingError.from(BackendError.notImplemented(actionKey: "record_contribution"))
+        #expect(ufe.title == "Próximamente")
+        #expect(ufe.message == "Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible.")
+    }
+
+    @Test("not_implemented sin action_key reusa la misma copia")
+    func notImplementedNilActionKeyCopy() {
+        let ufe = UserFacingError.from(BackendError.notImplemented(actionKey: nil))
+        #expect(ufe.title == "Próximamente")
+        #expect(ufe.message == "Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible.")
+    }
+
+    @Test("not_implemented no se traga validaciones con 'invalid' en el mensaje")
+    func notImplementedDoesNotShadowValidation() {
+        // El parser tiene un check de "invalid" para .validation. Confirma que
+        // un mensaje con "invalid" + sin not_implemented sigue cayendo en validation.
+        let error = RPCErrorMapper.parse(message: "amount is invalid", code: "22023")
+        if case .validation = error { /* ok */ } else {
+            Issue.record("Se esperaba validation, fue \(error)")
+        }
+    }
+
     @Test("copy en español para UI")
     func userFacingCopy() {
         #expect(UserFacingError.from(BackendError.unauthenticated).title == "Inicia sesión")
