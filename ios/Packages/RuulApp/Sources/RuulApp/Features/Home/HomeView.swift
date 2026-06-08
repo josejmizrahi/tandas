@@ -1,26 +1,31 @@
 import SwiftUI
 import RuulCore
 
-/// F.NAV.10 — Home rebuild segundo pase con prioridad founder.
+/// R.5V.3 — Home Apple-native (List + Section). Refactor del scroll + cards custom
+/// del F.NAV.10 anterior. Doctrina canónica firmada por founder 2026-06-07:
+/// **la Section ES la card** — sin VStack envueltos en `Theme.cardShape()`.
 ///
-/// Cambios doctrinales vs F.NAV.9:
-/// - Sin nav title "Ruul" (el greeting es el único header).
-/// - Atención SIEMPRE visible (empty state ✓ dentro de la card) para que
-///   la estructura no cambie cuando llega un pendiente nuevo.
-/// - Orden: Greeting → Atención → Continuar → Actividad reciente → Herramientas.
-/// - Crear se elimina del grid: vive sólo en el tab central de la TabView.
-/// - Herramientas = sólo Buscar / Preguntar a Ruul / Escanear, todas con
-///   "Próximamente". Cero mezcla de enabled+disabled en el mismo grid.
-/// - Actividad inline (3 items recientes) + "Ver todo →".
+/// Estructura:
+/// ```
+/// List(.insetGrouped) {
+///   Section { hero greeting }              // .clear bg + no separator
+///   Section("Atención") { rows }           // empty row OR up to 3 + "ver más"
+///   Section("Continuar") { carousel row }  // horizontal scroll inside row
+///   Section("Actividad reciente") { rows + "ver toda" link }
+///   Section("Herramientas") { disabled labels } footer "Próximamente"
+/// }
+/// ```
+///
+/// Las acciones de atención delegan a `AttentionDispatcher` (R.5Y.A2) sin cambios.
+/// Las Reglas (R.6.0 futuro) emitirán `emit_attention` → ya cae en la sección de
+/// Atención sin cambios estructurales aquí.
 public struct HomeView: View {
     let container: DependencyContainer
     let jumpToContext: (AppContext) -> Void
     let onTriggerCreate: () -> Void
 
-    // R.5Y.A2 — Único state que captura la intención del dispatcher.
     @State private var presentedAttention: AttentionDestination?
     @State private var isShowingAllAttention = false
-    /// F.NAV.10 — preview inline de actividad reciente.
     @State private var activityStore: ActivityFeedStore
 
     public init(container: DependencyContainer, jumpToContext: @escaping (AppContext) -> Void, onTriggerCreate: @escaping () -> Void) {
@@ -32,18 +37,14 @@ public struct HomeView: View {
 
     public var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 28) {
-                    heroSection
-                    attentionSection
-                    continueSection
-                    activitySection
-                    toolsSection
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom, 32)
+            List {
+                heroSection
+                attentionSection
+                continueSection
+                activitySection
+                toolsSection
             }
+            .listStyle(.insetGrouped)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .task {
@@ -72,19 +73,23 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - 1. Hero greeting (sin "Ruul")
+    // MARK: - 1. Hero greeting
 
     @ViewBuilder
     private var heroSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(greeting + ",")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text(container.currentActorStore.actor?.displayName ?? "Hola")
-                .font(.largeTitle.weight(.bold))
+        Section {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(greeting + ",")
+                    .font(.title2)
+                    .foregroundStyle(Theme.Text.secondary)
+                Text(container.currentActorStore.actor?.displayName ?? "Hola")
+                    .font(.largeTitle.weight(.bold))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 16, leading: 4, bottom: 8, trailing: 4))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 8)
     }
 
     private var greeting: String {
@@ -96,87 +101,74 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - 2. Atención (SIEMPRE visible)
+    // MARK: - 2. Atención
 
     @ViewBuilder
     private var attentionSection: some View {
         let items = container.attentionInboxStore.items
-        if items.isEmpty {
-            // Empty state dentro de la misma card → estructura estable.
-            HStack(spacing: 12) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(.green)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Atención")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Todo está al día")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .padding(16)
-            .background(Theme.Surface.card, in: Theme.cardShape())
-        } else {
-            Button {
-                if items.count == 1 {
-                    presentedAttention = AttentionDispatcher.destination(for: items[0])
-                } else {
-                    isShowingAllAttention = true
-                }
-            } label: {
-                VStack(spacing: 0) {
-                    HStack {
-                        Label("Requiere tu atención", systemImage: "exclamationmark.circle.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.orange)
-                        Spacer()
-                        Text(items.count == 1 ? "Ver \(Image(systemName: "chevron.right"))" : "Ver \(items.count) \(Image(systemName: "chevron.right"))")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
+        Section {
+            if items.isEmpty {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Todo al día").font(.callout.weight(.medium))
+                        Text("Sin pendientes en este momento")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Text.secondary)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12)
-
-                    Divider().padding(.leading, 16)
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(items.prefix(3)) { item in
-                            HStack(spacing: 10) {
-                                Image(systemName: AttentionPresentation.symbol(for: item.kind))
-                                    .font(.callout)
-                                    .foregroundStyle(AttentionPresentation.tint(for: item.kind))
-                                    .frame(width: 22)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(item.title)
-                                        .font(.callout)
-                                        .foregroundStyle(.primary)
-                                        .lineLimit(1)
-                                    Text(item.contextDisplayName)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                            }
-                        }
-                        if items.count > 3 {
-                            Text("+ \(items.count - 3) más")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                                .padding(.leading, 32)
-                        }
-                    }
-                    .padding(16)
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.Tint.success)
                 }
-                .background(Theme.Surface.card, in: Theme.cardShape())
+            } else {
+                ForEach(items.prefix(3)) { item in
+                    Button {
+                        presentedAttention = AttentionDispatcher.destination(for: item)
+                    } label: {
+                        attentionRow(item)
+                    }
+                }
+                if items.count > 3 {
+                    Button {
+                        isShowingAllAttention = true
+                    } label: {
+                        Label("Ver todos los pendientes (\(items.count))", systemImage: "list.bullet")
+                    }
+                }
             }
-            .buttonStyle(.plain)
+        } header: {
+            Text("Atención")
         }
     }
 
-    // MARK: - 3. Continuar (carrusel horizontal)
+    @ViewBuilder
+    private func attentionRow(_ item: AttentionItem) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: AttentionPresentation.symbol(for: item.kind))
+                .foregroundStyle(priorityTint(item.derivedPriority))
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.callout)
+                    .foregroundStyle(Theme.Text.primary)
+                    .lineLimit(1)
+                Text(item.contextDisplayName)
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+            Spacer()
+        }
+    }
+
+    private func priorityTint(_ priority: AttentionPriority) -> Color {
+        switch priority {
+        case .critical: return Theme.Tint.critical
+        case .high:     return Theme.Tint.warning
+        case .normal:   return Theme.Tint.info
+        case .low:      return Theme.Text.tertiary
+        }
+    }
+
+    // MARK: - 3. Continuar (carrusel horizontal embebido en row)
 
     @ViewBuilder
     private var continueSection: some View {
@@ -185,17 +177,20 @@ public struct HomeView: View {
             container.contextStore.availableContexts.first { $0.id == pref.contextActorId }
         }
         if !resolved.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Continuar")
-                    .font(.title3.weight(.semibold))
+            Section {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(resolved) { ctx in
                             continueCard(ctx)
                         }
                     }
-                    .padding(.bottom, 4) // espacio para shadow
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
                 }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            } header: {
+                Text("Continuar")
             }
         }
     }
@@ -208,77 +203,53 @@ public struct HomeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: ctx.symbolName)
                     .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(Theme.Tint.primary)
                     .frame(width: 40, height: 40)
-                    .background(Color.accentColor.badgeFill, in: Circle())
+                    .background(Theme.Tint.primary.opacity(0.12), in: Circle())
                 Spacer(minLength: 0)
                 Text(ctx.displayName)
                     .font(.callout.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Theme.Text.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                if ctx.isPersonal {
-                    Text("Personal")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("\(ctx.memberCount) miembros")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                Text(ctx.isPersonal ? "Personal" : "\(ctx.memberCount) miembros")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.Text.secondary)
             }
-            .frame(width: 160, height: 160, alignment: .topLeading)
-            .padding(16)
-            .background(Theme.Surface.card, in: Theme.cardShape(Theme.Radius.cardHero))
-            .overlay(
-                Theme.cardShape(Theme.Radius.cardHero)
-                    .strokeBorder(Color.secondary.opacity(0.12), lineWidth: 0.5)
-            )
+            .frame(width: 160, height: 140, alignment: .topLeading)
+            .padding(14)
+            .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - 4. Actividad reciente (inline preview)
+    // MARK: - 4. Actividad reciente
 
     @ViewBuilder
     private var activitySection: some View {
-        let items = activityStore.items.prefix(3)
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Actividad reciente")
-                    .font(.title3.weight(.semibold))
-                Spacer()
+        let items = Array(activityStore.items.prefix(3))
+        Section {
+            if activityStore.phase.isLoading && activityStore.items.isEmpty {
+                HStack {
+                    ProgressView()
+                    Text("Cargando…").foregroundStyle(Theme.Text.secondary)
+                }
+            } else if items.isEmpty {
+                Text("Sin actividad reciente.")
+                    .font(.callout)
+                    .foregroundStyle(Theme.Text.secondary)
+            } else {
+                ForEach(items, id: \.id) { item in
+                    activityRow(item)
+                }
                 NavigationLink {
                     MyActivityFeedView(container: container)
                 } label: {
-                    Text("Ver todo \(Image(systemName: "chevron.right"))")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                    Label("Ver toda la actividad", systemImage: "list.bullet")
                 }
             }
-            VStack(spacing: 0) {
-                if activityStore.phase.isLoading && activityStore.items.isEmpty {
-                    HStack {
-                        ProgressView()
-                        Text("Cargando…").foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity).padding()
-                } else if items.isEmpty {
-                    Text("Sin actividad reciente.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                } else {
-                    ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
-                        activityRow(item)
-                        if idx < items.count - 1 {
-                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
-                        }
-                    }
-                }
-            }
-            .background(Theme.Surface.card, in: Theme.cardShape())
+        } header: {
+            Text("Actividad reciente")
         }
     }
 
@@ -287,7 +258,7 @@ public struct HomeView: View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(sourceColor(item.source).badgeFill)
+                    .fill(sourceColor(item.source).opacity(0.12))
                     .frame(width: 32, height: 32)
                 Image(systemName: item.asActivityEvent.symbolName)
                     .font(.callout)
@@ -296,7 +267,7 @@ public struct HomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.asActivityEvent.friendlyTitle(currentActorId: container.currentActorStore.actorId))
                     .font(.callout)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Theme.Text.primary)
                     .lineLimit(2)
                 HStack(spacing: 4) {
                     if let ctxName = contextName(for: item.contextActorId) {
@@ -308,12 +279,10 @@ public struct HomeView: View {
                     }
                 }
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.Text.secondary)
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     private func sourceColor(_ source: FeedSource) -> Color {
@@ -325,56 +294,21 @@ public struct HomeView: View {
         return container.contextStore.availableContexts.first { $0.id == id }?.displayName
     }
 
-    // MARK: - 5. Herramientas (sólo Próximamente)
+    // MARK: - 5. Herramientas (Próximamente)
 
     @ViewBuilder
     private var toolsSection: some View {
-        let columns = [
-            GridItem(.flexible(), spacing: 12),
-            GridItem(.flexible(), spacing: 12)
-        ]
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Herramientas")
-                    .font(.title3.weight(.semibold))
-                Spacer()
-                Text("Próximamente")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            LazyVGrid(columns: columns, spacing: 12) {
-                toolTile(label: "Buscar", icon: "magnifyingglass")
-                toolTile(label: "Preguntar a Ruul", icon: "sparkles")
-                toolTile(label: "Escanear", icon: "qrcode.viewfinder")
-            }
+        Section {
+            Label("Buscar", systemImage: "magnifyingglass")
+            Label("Preguntar a Ruul", systemImage: "sparkles")
+            Label("Escanear", systemImage: "qrcode.viewfinder")
+        } header: {
+            Text("Herramientas")
+        } footer: {
+            Text("Funciones que estamos desarrollando.")
         }
+        .disabled(true)
     }
-
-    @ViewBuilder
-    private func toolTile(label: String, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text(label)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
-        .padding(14)
-        .background(Theme.Surface.card, in: Theme.cardShape())
-        .opacity(0.7)
-    }
-
-    // MARK: - Routing de atención (R.5Y.A2: delegado al AttentionDispatcher)
-    //
-    // El handleTap / attentionDestination / attentionSymbol / attentionTint
-    // que vivían aquí fueron reemplazados por:
-    //   - AttentionDispatcher.destination(for: item) → AttentionDestination
-    //   - AttentionDestinationSheet(destination:, container:)
-    //   - AttentionPresentation.symbol(for:) / .tint(for:)
-    // Esto unifica el routing entre HomeView, ContextDetailViewV2 y ContextHomeView.
 }
 
 // MARK: - Sheet "Todos los pendientes"
@@ -398,17 +332,18 @@ private struct AllAttentionView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.title).font(.callout.weight(.medium))
                             Text("\(item.contextDisplayName) · \(item.reason)")
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                .font(.caption).foregroundStyle(Theme.Text.secondary).lineLimit(2)
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.Text.tertiary)
                     }
                 }
                 .buttonStyle(.plain)
             }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle("Pendientes")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -417,7 +352,6 @@ private struct AllAttentionView: View {
             }
         }
     }
-
 }
 
 #Preview("Home (demo)") {
