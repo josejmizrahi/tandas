@@ -1025,6 +1025,37 @@ public actor MockRuulRPCClient: RuulRPCClient {
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
     }
 
+    public func listContextDocuments(contextId: UUID, includeArchived: Bool) async throws -> [Document] {
+        try throwIfNeeded()
+        return documents.values
+            .filter { $0.contextActorId == contextId }
+            .filter { includeArchived || $0.archivedAt == nil }
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+    }
+
+    public func archiveDocument(documentId: UUID) async throws {
+        try throwIfNeeded()
+        guard let doc = documents[documentId], doc.archivedAt == nil else { return }
+        documents[documentId] = Document(
+            id: doc.id,
+            ownerActorId: doc.ownerActorId,
+            contextActorId: doc.contextActorId,
+            title: doc.title,
+            documentType: doc.documentType,
+            storagePath: doc.storagePath,
+            mimeType: doc.mimeType,
+            fileSizeBytes: doc.fileSizeBytes,
+            resourceId: doc.resourceId,
+            decisionId: doc.decisionId,
+            eventId: doc.eventId,
+            createdAt: doc.createdAt,
+            ownerDisplayName: doc.ownerDisplayName,
+            resourceDisplayName: doc.resourceDisplayName,
+            archivedAt: Date(),
+            metadata: doc.metadata
+        )
+    }
+
     public func uploadDocumentFile(path: String, data: Data, contentType: String) async throws {
         try throwIfNeeded()
         documentBlobs[path] = data

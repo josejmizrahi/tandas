@@ -9,6 +9,9 @@ import Observation
 public final class DocumentsStore {
     public private(set) var documents: [Document] = []
     public private(set) var phase: StorePhase = .idle
+    /// Documents V2 (D.2) — lista por contexto (separado de `documents` que es por recurso).
+    public private(set) var contextDocuments: [Document] = []
+    public private(set) var contextPhase: StorePhase = .idle
 
     private let rpc: any RuulRPCClient
 
@@ -30,6 +33,32 @@ public final class DocumentsStore {
             phase = .loaded
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+
+    /// Documents V2 (D.2) — carga documentos del contexto (cross-resource).
+    /// Vía `list_context_documents` RPC con joins enriquecidos (owner/resource display_name).
+    public func loadContextDocuments(contextId: UUID, includeArchived: Bool = false) async {
+        if contextDocuments.isEmpty { contextPhase = .loading }
+        do {
+            contextDocuments = try await rpc.listContextDocuments(
+                contextId: contextId,
+                includeArchived: includeArchived
+            )
+            contextPhase = .loaded
+        } catch {
+            contextPhase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+
+    /// Documents V2 (D.0) — soft delete vía `archive_document` RPC.
+    /// Refresh granular: si el doc estaba en contextDocuments lo marca archived inline
+    /// (evita full reload). El caller decide si recarga lista completa.
+    public func archive(documentId: UUID, contextId: UUID? = nil) async throws {
+        try await rpc.archiveDocument(documentId: documentId)
+        // Refresh contexto si lo tenemos cargado.
+        if let contextId, !contextDocuments.isEmpty {
+            await loadContextDocuments(contextId: contextId, includeArchived: false)
         }
     }
 

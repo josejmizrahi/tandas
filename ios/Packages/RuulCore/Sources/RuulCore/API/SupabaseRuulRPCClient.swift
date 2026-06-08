@@ -435,6 +435,29 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func listContextDocuments(contextId: UUID, includeArchived: Bool) async throws -> [Document] {
+        struct Params: Encodable {
+            let pContextActorId: UUID
+            let pIncludeArchived: Bool
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pIncludeArchived = "p_include_archived"
+            }
+        }
+        return try await call("list_context_documents", params: Params(
+            pContextActorId: contextId,
+            pIncludeArchived: includeArchived
+        ))
+    }
+
+    public func archiveDocument(documentId: UUID) async throws {
+        struct Params: Encodable {
+            let pDocumentId: UUID
+            enum CodingKeys: String, CodingKey { case pDocumentId = "p_document_id" }
+        }
+        try await callVoid("archive_document", params: Params(pDocumentId: documentId))
+    }
+
     public func uploadDocumentFile(path: String, data: Data, contentType: String) async throws {
         do {
             _ = try await client.storage

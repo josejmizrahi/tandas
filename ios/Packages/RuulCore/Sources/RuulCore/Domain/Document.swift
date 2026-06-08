@@ -51,6 +51,16 @@ public struct Document: Decodable, Sendable, Equatable, Identifiable {
     public let eventId: UUID?
     public let createdAt: Date?
 
+    // Documents V2 (D.1) — joins enriquecidos del `list_context_documents` RPC.
+    /// Display name del owner (join en backend). Opcional en lecturas PostgREST directas.
+    public let ownerDisplayName: String?
+    /// Display name del resource asociado (si aplica).
+    public let resourceDisplayName: String?
+    /// Soft delete timestamp (FQ-1 founder firma: immutable + archived_at).
+    public let archivedAt: Date?
+    /// Metadata jsonb del documento (versionables, OCR future, etc.).
+    public let metadata: JSONValue?
+
     enum CodingKeys: String, CodingKey {
         case id
         case ownerActorId = "owner_actor_id"
@@ -64,6 +74,10 @@ public struct Document: Decodable, Sendable, Equatable, Identifiable {
         case decisionId = "decision_id"
         case eventId = "event_id"
         case createdAt = "created_at"
+        case ownerDisplayName = "owner_display_name"
+        case resourceDisplayName = "resource_display_name"
+        case archivedAt = "archived_at"
+        case metadata
     }
 
     public init(from decoder: Decoder) throws {
@@ -81,6 +95,10 @@ public struct Document: Decodable, Sendable, Equatable, Identifiable {
         self.decisionId = try c.decodeIfPresent(UUID.self, forKey: .decisionId)
         self.eventId = try c.decodeIfPresent(UUID.self, forKey: .eventId)
         self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        self.ownerDisplayName = try c.decodeIfPresent(String.self, forKey: .ownerDisplayName)
+        self.resourceDisplayName = try c.decodeIfPresent(String.self, forKey: .resourceDisplayName)
+        self.archivedAt = try c.decodeIfPresent(Date.self, forKey: .archivedAt)
+        self.metadata = try c.decodeIfPresent(JSONValue.self, forKey: .metadata)
     }
 
     public init(
@@ -95,7 +113,11 @@ public struct Document: Decodable, Sendable, Equatable, Identifiable {
         resourceId: UUID? = nil,
         decisionId: UUID? = nil,
         eventId: UUID? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        ownerDisplayName: String? = nil,
+        resourceDisplayName: String? = nil,
+        archivedAt: Date? = nil,
+        metadata: JSONValue? = nil
     ) {
         self.id = id
         self.ownerActorId = ownerActorId
@@ -109,6 +131,10 @@ public struct Document: Decodable, Sendable, Equatable, Identifiable {
         self.decisionId = decisionId
         self.eventId = eventId
         self.createdAt = createdAt
+        self.ownerDisplayName = ownerDisplayName
+        self.resourceDisplayName = resourceDisplayName
+        self.archivedAt = archivedAt
+        self.metadata = metadata
     }
 
     /// Tamaño formateado humano-legible (e.g., "1.2 MB").
@@ -116,6 +142,9 @@ public struct Document: Decodable, Sendable, Equatable, Identifiable {
         guard let bytes = fileSizeBytes else { return nil }
         return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
+
+    /// UX Doctrine §4: documento archivado si `archived_at IS NOT NULL`.
+    public var isArchived: Bool { archivedAt != nil }
 }
 
 /// Input de `register_document`. Title es lo único obligatorio del backend;

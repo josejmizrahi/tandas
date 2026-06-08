@@ -322,6 +322,13 @@ public protocol RuulRPCClient: Sendable {
     func registerDocument(_ input: RegisterDocumentInput) async throws -> DocumentRegistered
     /// Lectura PostgREST: `documents` asociados a un recurso.
     func listResourceDocuments(resourceId: UUID) async throws -> [Document]
+    /// Documents V2 (D.1) — `list_context_documents(p_context_actor_id, p_include_archived)`.
+    /// RPC SECURITY DEFINER con gate `documents.view`. Devuelve docs con joins enriquecidos
+    /// (owner_display_name + resource_display_name).
+    func listContextDocuments(contextId: UUID, includeArchived: Bool) async throws -> [Document]
+    /// Documents V2 (D.0) — `archive_document(p_document_id)` SECURITY DEFINER.
+    /// Soft delete (sets `archived_at`). Gate: owner OR `documents.manage`. Idempotente.
+    func archiveDocument(documentId: UUID) async throws
     /// Sube el binario al bucket `documents` de Supabase Storage. iOS NO calcula
     /// el path — el caller decide la convención (ver `DocumentsStore.makeStoragePath`).
     /// El mock guarda el blob in-memory.
