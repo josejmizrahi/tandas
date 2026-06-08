@@ -40,7 +40,7 @@ Pregunta única que el founder firma al cierre:
 13. ⏳ R.5W.fix.*   — DEFERRED por founder ("son cosméticos y no cambian la capacidad del producto")
 14. ✅ R.6.0        — Rule Engine Architecture doc shipped 2026-06-07 (Track B documental, sin código). 6 Qs founder firma pendientes.
 15. ⏳ R.5Z         — Founder Flows Validation (10 flows end-to-end en iPhone JJ device)
-16. ⏳ R.6 Rule Engine 2.0 implementación (slices A-H propuestos en R6_RuleEngineArchitecture §9)
+16. 🟡 R.6 Rule Engine 2.0 implementación — **R.6.A** ✅ shipped 2026-06-08 (commit `8703ee2a`) idempotency_key + emit_attention sink + rule_attention_items table + attention_inbox extension. Smoke verde idempotente. R.6.B/C/D/E/F/G pendientes.
 ```
 
 Founder cita literal: **"el mayor faltante ya no es backend; es la capa de atención y descubrimiento de problemas."**
