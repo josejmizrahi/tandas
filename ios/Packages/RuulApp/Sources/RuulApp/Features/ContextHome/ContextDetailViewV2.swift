@@ -382,19 +382,40 @@ public struct ContextDetailViewV2: View {
         }
     }
 
-    // MARK: - Resumen (metrics)
+    // MARK: - Resumen (metrics — Apple Settings/Health pattern: Label + value bold)
 
     @ViewBuilder
     private func resumenSection(_ m: ContextMetrics) -> some View {
         Section {
-            LabeledContent("Miembros", value: "\(m.memberCount)")
-            LabeledContent("Decisiones pendientes", value: "\(m.pendingDecisions)")
-            LabeledContent("Obligaciones abiertas", value: "\(m.openObligations)")
+            LabeledContent {
+                Text("\(m.memberCount)")
+                    .font(.body.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.Text.primary)
+            } label: {
+                Label("Miembros", systemImage: "person.2.fill")
+            }
+            LabeledContent {
+                Text("\(m.pendingDecisions)")
+                    .font(.body.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(m.pendingDecisions > 0 ? Theme.Tint.info : Theme.Text.primary)
+            } label: {
+                Label("Decisiones pendientes", systemImage: "questionmark.bubble.fill")
+            }
+            LabeledContent {
+                Text("\(m.openObligations)")
+                    .font(.body.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(m.openObligations > 0 ? Theme.Tint.warning : Theme.Text.primary)
+            } label: {
+                Label("Obligaciones abiertas", systemImage: "doc.text.below.ecg.fill")
+            }
             if !m.resourceCountByClass.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         ForEach(m.resourceCountByClass.sorted(by: { $0.value > $1.value }), id: \.key) { (key, count) in
-                            chipBadge("\(count) \(key.replacingOccurrences(of: "_", with: " "))", tint: Theme.Tint.info)
+                            chipBadge(
+                                "\(count) \(resourceClassLabel(key))",
+                                tint: Theme.Tint.info
+                            )
                         }
                     }
                     .padding(.horizontal, 16)
@@ -541,11 +562,19 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func childDescriptorCardLabel(_ child: ContextChildPreview) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: childSymbolName(child))
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Theme.Tint.primary)
-                .frame(width: 40, height: 40)
-                .background(Theme.Tint.primary.opacity(0.12), in: Circle())
+            HStack(alignment: .top) {
+                Image(systemName: childSymbolName(child))
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(Theme.Tint.primary)
+                    .frame(width: 40, height: 40)
+                    .background(Theme.Tint.primary.opacity(0.15), in: Circle())
+                Spacer()
+                if child.visibility == "private" {
+                    Image(systemName: "lock.fill")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.Text.tertiary)
+                }
+            }
             Spacer(minLength: 0)
             Text(child.displayName)
                 .font(.callout.weight(.semibold))
@@ -557,7 +586,7 @@ public struct ContextDetailViewV2: View {
                 .foregroundStyle(Theme.Text.secondary)
                 .lineLimit(1)
         }
-        .frame(width: 140, height: 140, alignment: .topLeading)
+        .frame(width: 150, height: 150, alignment: .topLeading)
         .padding(14)
         .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
@@ -594,21 +623,20 @@ public struct ContextDetailViewV2: View {
     private func activitySection(_ events: [ActivityPreviewEvent]) -> some View {
         Section {
             ForEach(events.prefix(5)) { ev in
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: "bolt.circle")
-                        .foregroundStyle(Theme.Text.secondary)
-                        .frame(width: 22)
+                Label {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(ev.eventType.replacingOccurrences(of: ".", with: " · "))
+                        Text(activityEventLabel(ev.eventType))
                             .font(.callout)
                             .foregroundStyle(Theme.Text.primary)
                         if let when = ev.occurredAt {
-                            Text(when.formatted(date: .abbreviated, time: .shortened))
+                            Text(when.formatted(.relative(presentation: .named)))
                                 .font(.caption)
                                 .foregroundStyle(Theme.Text.tertiary)
                         }
                     }
-                    Spacer()
+                } icon: {
+                    Image(systemName: activityEventIcon(ev.eventType))
+                        .foregroundStyle(activityEventTint(ev.eventType))
                 }
             }
             NavigationLink {
@@ -618,6 +646,74 @@ public struct ContextDetailViewV2: View {
             }
         } header: {
             Text("Actividad reciente")
+        }
+    }
+
+    /// SF Symbol consistente por familia de event_type. Fallback a `bolt.circle`.
+    private func activityEventIcon(_ eventType: String) -> String {
+        if eventType.hasPrefix("resource.")  { return "shippingbox.fill" }
+        if eventType.hasPrefix("event.")     { return "calendar" }
+        if eventType.hasPrefix("decision.")  { return "checkmark.bubble.fill" }
+        if eventType.hasPrefix("obligation.") || eventType.hasPrefix("fine.") { return "doc.text.fill" }
+        if eventType.hasPrefix("expense.")   { return "dollarsign.circle.fill" }
+        if eventType.hasPrefix("settlement.") { return "creditcard.fill" }
+        if eventType.hasPrefix("reservation.") { return "calendar.badge.clock" }
+        if eventType.hasPrefix("document.")  { return "doc.text" }
+        if eventType.hasPrefix("right.")     { return "key.fill" }
+        if eventType.hasPrefix("invite.") || eventType.hasPrefix("membership.") { return "person.badge.plus" }
+        if eventType.hasPrefix("context.")   { return "rectangle.split.2x1.fill" }
+        if eventType.hasPrefix("rule.")      { return "ruler.fill" }
+        if eventType.hasPrefix("conflict.") || eventType.contains(".conflict_") { return "exclamationmark.triangle.fill" }
+        if eventType.hasPrefix("split.")     { return "divide.circle.fill" }
+        if eventType.hasPrefix("subscription.") { return "bookmark.fill" }
+        if eventType.hasPrefix("governance.") { return "checkmark.shield.fill" }
+        return "bolt.circle"
+    }
+
+    /// Tint semántico para activity icon: dinero/conflict/governance diferenciados.
+    private func activityEventTint(_ eventType: String) -> Color {
+        if eventType.hasPrefix("expense.") || eventType.hasPrefix("settlement.") ||
+           eventType.hasPrefix("split.") || eventType.contains("fine.") { return Theme.Tint.success }
+        if eventType.hasPrefix("conflict.") || eventType.contains(".conflict_") {
+            return Theme.Tint.warning
+        }
+        if eventType.hasPrefix("decision.") || eventType.hasPrefix("governance.") {
+            return .purple
+        }
+        if eventType.hasPrefix("rule.") { return Theme.Tint.info }
+        return Theme.Tint.primary
+    }
+
+    /// Label friendly para event_type (e.g. `resource.created` → `Recurso · creado`).
+    private func activityEventLabel(_ eventType: String) -> String {
+        let parts = eventType.split(separator: ".", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return eventType }
+        let domain = activityDomainLabel(parts[0])
+        let action = parts[1]
+            .replacingOccurrences(of: "_", with: " ")
+        return "\(domain) · \(action)"
+    }
+
+    private func activityDomainLabel(_ domain: String) -> String {
+        switch domain {
+        case "resource":     return "Recurso"
+        case "event":        return "Evento"
+        case "decision":     return "Decisión"
+        case "obligation":   return "Compromiso"
+        case "fine":         return "Multa"
+        case "expense":      return "Gasto"
+        case "settlement":   return "Liquidación"
+        case "reservation":  return "Reserva"
+        case "document":     return "Documento"
+        case "right":        return "Derecho"
+        case "invite":       return "Invitación"
+        case "membership":   return "Membresía"
+        case "context":      return "Contexto"
+        case "rule":         return "Regla"
+        case "split":        return "Split"
+        case "subscription": return "Suscripción"
+        case "governance":   return "Gobierno"
+        default:             return domain.capitalized
         }
     }
 
@@ -636,29 +732,38 @@ public struct ContextDetailViewV2: View {
                     } label: {
                         HStack(spacing: 12) {
                             Circle()
-                                .fill(Theme.Tint.primary.opacity(0.12))
-                                .frame(width: 32, height: 32)
+                                .fill(Theme.Tint.primary.opacity(0.15))
+                                .frame(width: 36, height: 36)
                                 .overlay(
                                     Text(m.displayName.first.map { String($0) } ?? "?")
                                         .font(.subheadline.bold())
                                         .foregroundStyle(Theme.Tint.primary)
                                 )
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(m.displayName).font(.callout).foregroundStyle(Theme.Text.primary)
-                                Text(m.membershipType).font(.caption).foregroundStyle(Theme.Text.secondary)
+                                Text(m.displayName)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                Text(membershipTypeLabel(m.membershipType))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
                             }
                             Spacer()
                         }
                     }
                 }
-                NavigationLink {
-                    MembersListView(context: context, container: container)
-                } label: {
-                    Label("Ver todos los miembros (\(d.metrics.memberCount))", systemImage: "person.3")
+                if d.metrics.memberCount > d.membersPreview.count {
+                    NavigationLink {
+                        MembersListView(context: context, container: container)
+                    } label: {
+                        Label(
+                            "Ver todos los miembros (\(d.metrics.memberCount))",
+                            systemImage: "person.3.fill"
+                        )
+                    }
                 }
             }
         } header: {
-            Text("Miembros")
+            Text("Miembros (\(d.metrics.memberCount))")
         }
 
         if !d.roles.isEmpty {
@@ -667,7 +772,13 @@ public struct ContextDetailViewV2: View {
                     NavigationLink {
                         MembersListView(context: context, container: container)
                     } label: {
-                        LabeledContent(role.displayName, value: "\(role.memberCount)")
+                        LabeledContent {
+                            Text("\(role.memberCount)")
+                                .font(.callout.weight(.semibold).monospacedDigit())
+                                .foregroundStyle(Theme.Text.primary)
+                        } label: {
+                            Label(role.displayName, systemImage: roleIcon(role.roleKey))
+                        }
                     }
                 }
             } header: {
@@ -676,20 +787,45 @@ public struct ContextDetailViewV2: View {
         }
     }
 
+    /// Friendly label para membership_type del descriptor.
+    private func membershipTypeLabel(_ type: String) -> String {
+        switch type {
+        case "member":   return "Miembro"
+        case "admin":    return "Administrador"
+        case "founder":  return "Fundador"
+        case "guest":    return "Invitado"
+        case "viewer":   return "Observador"
+        default:         return type.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    /// SF Symbol per role_key. Heurística por keyword.
+    private func roleIcon(_ roleKey: String) -> String {
+        let k = roleKey.lowercased()
+        if k.contains("founder") || k.contains("owner") { return "crown.fill" }
+        if k.contains("admin") { return "person.badge.key.fill" }
+        if k.contains("manager") || k.contains("custodian") { return "key.fill" }
+        if k.contains("guest") || k.contains("viewer") { return "eye.fill" }
+        if k.contains("treasurer") || k.contains("financ") { return "creditcard.fill" }
+        return "person.badge.shield.checkmark.fill"
+    }
+
     // MARK: - Resources tab
 
     @ViewBuilder
     private func resourcesSections(_ d: ContextDetailDescriptor) -> some View {
         if d.resourcesPreview.isEmpty {
             Section {
-                Label("Sin recursos en este contexto", systemImage: "cube")
+                Label("Sin recursos en este contexto", systemImage: "shippingbox")
                     .foregroundStyle(Theme.Text.secondary)
             } header: {
                 Text("Recursos")
             } footer: {
-                Text("Crea un recurso desde el botón ＋ del contexto.")
+                Text("Crea un recurso desde el botón ＋ del toolbar del contexto.")
             }
         } else {
+            // R.5A.B.0 class catalog (founder-seeded 17 classes). Header label
+            // user-friendly + icon de SF Symbols por class.
             let byClass = Dictionary(grouping: d.resourcesPreview) { $0.classKey ?? "generic" }
             ForEach(byClass.keys.sorted(), id: \.self) { classKey in
                 if let items = byClass[classKey] {
@@ -698,27 +834,81 @@ public struct ContextDetailViewV2: View {
                             NavigationLink {
                                 ResourceDetailViewV2(resourceId: r.resourceId, context: context, container: container)
                             } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "cube")
-                                        .foregroundStyle(Theme.Tint.primary)
-                                        .frame(width: 22)
+                                Label {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(r.displayName).font(.callout).foregroundStyle(Theme.Text.primary)
+                                        Text(r.displayName)
+                                            .font(.callout.weight(.medium))
+                                            .foregroundStyle(Theme.Text.primary)
+                                            .lineLimit(1)
                                         if let sub = r.subtypeKey {
-                                            Text(sub.replacingOccurrences(of: "_", with: " "))
+                                            Text(sub.replacingOccurrences(of: "_", with: " ").capitalized)
                                                 .font(.caption)
                                                 .foregroundStyle(Theme.Text.secondary)
+                                                .lineLimit(1)
                                         }
                                     }
-                                    Spacer()
+                                } icon: {
+                                    Image(systemName: resourceClassIcon(r.classKey ?? "generic"))
+                                        .foregroundStyle(Theme.Tint.primary)
                                 }
                             }
                         }
                     } header: {
-                        Text(classKey.replacingOccurrences(of: "_", with: " ").capitalized)
+                        Label(
+                            resourceClassLabel(classKey),
+                            systemImage: resourceClassIcon(classKey)
+                        )
                     }
                 }
             }
+        }
+    }
+
+    /// SF Symbol por R.5A.B.0 class_key (17 classes founder-seeded).
+    private func resourceClassIcon(_ classKey: String) -> String {
+        switch classKey {
+        case "real_estate":    return "house.fill"
+        case "vehicle":        return "car.fill"
+        case "equipment":      return "wrench.and.screwdriver.fill"
+        case "financial":      return "banknote.fill"
+        case "document":       return "doc.text.fill"
+        case "event":          return "calendar"
+        case "service":        return "bag.fill"
+        case "agreement":      return "doc.plaintext.fill"
+        case "digital_asset":  return "externaldrive.fill"
+        case "right":          return "key.fill"
+        case "membership":     return "person.crop.circle.fill"
+        case "space":          return "square.split.bottomrightquarter.fill"
+        case "money":          return "dollarsign.circle.fill"
+        case "obligation":     return "doc.text.below.ecg.fill"
+        case "decision":       return "checkmark.bubble.fill"
+        case "rule":           return "ruler.fill"
+        case "generic":        return "shippingbox.fill"
+        default:               return "shippingbox.fill"
+        }
+    }
+
+    /// Label friendly por class_key.
+    private func resourceClassLabel(_ classKey: String) -> String {
+        switch classKey {
+        case "real_estate":    return "Inmuebles"
+        case "vehicle":        return "Vehículos"
+        case "equipment":      return "Equipo"
+        case "financial":      return "Financiero"
+        case "document":       return "Documentos"
+        case "event":          return "Eventos"
+        case "service":        return "Servicios"
+        case "agreement":      return "Acuerdos"
+        case "digital_asset":  return "Activos digitales"
+        case "right":          return "Derechos"
+        case "membership":     return "Membresías"
+        case "space":          return "Espacios"
+        case "money":          return "Dinero"
+        case "obligation":     return "Compromisos"
+        case "decision":       return "Decisiones"
+        case "rule":           return "Reglas"
+        case "generic":        return "Generales"
+        default:               return classKey.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
@@ -729,16 +919,18 @@ public struct ContextDetailViewV2: View {
         if !d.moneyPreview.myBalanceByCurrency.isEmpty {
             Section {
                 ForEach(d.moneyPreview.myBalanceByCurrency.sorted(by: { $0.key < $1.key }), id: \.key) { (currency, net) in
-                    HStack {
-                        Text(currency).foregroundStyle(Theme.Text.secondary)
-                        Spacer()
+                    LabeledContent {
                         Text(formatCurrency(net, currency: currency))
-                            .font(.callout.bold())
+                            .font(.callout.bold().monospacedDigit())
                             .foregroundStyle(net >= 0 ? Theme.Tint.success : Theme.Tint.critical)
+                    } label: {
+                        Label(currency, systemImage: net >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
                     }
                 }
             } header: {
                 Text("Mi saldo")
+            } footer: {
+                Text("Saldo positivo = te deben. Saldo negativo = debes.")
             }
         }
 
@@ -746,41 +938,92 @@ public struct ContextDetailViewV2: View {
             NavigationLink {
                 SettlementView(context: context, container: container)
             } label: {
-                LabeledContent("Liquidaciones abiertas", value: "\(d.moneyPreview.openSettlements)")
+                LabeledContent {
+                    Text("\(d.moneyPreview.openSettlements)")
+                        .font(.callout.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(d.moneyPreview.openSettlements > 0 ? Theme.Tint.warning : Theme.Text.primary)
+                } label: {
+                    Label("Liquidaciones abiertas", systemImage: "creditcard.fill")
+                }
             }
         }
 
         Section {
             if d.obligationsPreview.isEmpty {
-                Label("Sin obligaciones pendientes", systemImage: "doc.text.below.ecg")
+                Label("Sin obligaciones pendientes", systemImage: "checkmark.circle")
                     .foregroundStyle(Theme.Text.secondary)
             } else {
                 ForEach(d.obligationsPreview) { o in
                     NavigationLink {
                         ObligationDetailView(obligationId: o.obligationId, context: context, container: container)
                     } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "doc.text")
-                                .foregroundStyle(Theme.Text.secondary)
-                                .frame(width: 22)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(o.kind ?? "Obligación").font(.callout).foregroundStyle(Theme.Text.primary)
-                                if let s = o.status {
-                                    Text(s).font(.caption).foregroundStyle(Theme.Text.tertiary)
+                        Label {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(obligationKindLabel(o.kind))
+                                        .font(.callout.weight(.medium))
+                                        .foregroundStyle(Theme.Text.primary)
+                                    if let s = o.status {
+                                        Text(obligationStatusLabel(s))
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.Text.tertiary)
+                                    }
+                                }
+                                Spacer()
+                                if let amount = o.amount, let cur = o.currency {
+                                    Text("\(Int(amount)) \(cur)")
+                                        .font(.callout.bold().monospacedDigit())
+                                        .foregroundStyle(Theme.Text.primary)
                                 }
                             }
-                            Spacer()
-                            if let amount = o.amount, let cur = o.currency {
-                                Text("\(Int(amount)) \(cur)")
-                                    .font(.callout.bold())
-                                    .foregroundStyle(Theme.Text.primary)
-                            }
+                        } icon: {
+                            Image(systemName: obligationKindIcon(o.kind))
+                                .foregroundStyle(Theme.Tint.primary)
                         }
                     }
                 }
             }
         } header: {
             Text("Obligaciones recientes")
+        }
+    }
+
+    private func obligationKindIcon(_ kind: String?) -> String {
+        switch kind {
+        case "money":       return "dollarsign.circle.fill"
+        case "action":      return "checklist"
+        case "approval":    return "checkmark.seal.fill"
+        case "delivery":    return "shippingbox.fill"
+        case "attendance":  return "person.crop.circle.badge.checkmark.fill"
+        case "document":    return "doc.text.fill"
+        case "reservation": return "calendar.badge.clock"
+        default:            return "doc.text.below.ecg.fill"
+        }
+    }
+
+    private func obligationKindLabel(_ kind: String?) -> String {
+        switch kind {
+        case "money":       return "Dinero"
+        case "action":      return "Acción"
+        case "approval":    return "Aprobación"
+        case "delivery":    return "Entrega"
+        case "attendance":  return "Asistencia"
+        case "document":    return "Documento"
+        case "reservation": return "Reservación"
+        default:            return "Compromiso"
+        }
+    }
+
+    private func obligationStatusLabel(_ status: String) -> String {
+        switch status {
+        case "open":        return "Abierta"
+        case "accepted":    return "Aceptada"
+        case "in_progress": return "En progreso"
+        case "completed":   return "Cumplida"
+        case "settled":     return "Liquidada"
+        case "cancelled":   return "Cancelada"
+        case "expired":     return "Vencida"
+        default:            return status.capitalized
         }
     }
 
