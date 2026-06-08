@@ -84,20 +84,28 @@ public struct ContextDetailViewV2: View {
 
     public var body: some View {
         Group {
-            switch store.phase {
-            case .idle, .loading:
-                LoadingStateView()
-            case .failed(let message):
-                ErrorStateView(message: message) {
-                    Task { await store.load(contextId: contextId) }
-                }
-            case .loaded:
-                if let d = store.descriptor {
-                    descriptorContent(d)
+            if context.isPersonal {
+                // P0 fix 2026-06-08: backend `context_detail_descriptor` raisea
+                // "context not found" para actores tipo person — el descriptor
+                // sólo aplica a contextos colectivos. Renderizamos un home
+                // personal dedicado con drill-downs a las vistas existentes.
+                personalSpaceContent
+            } else {
+                switch store.phase {
+                case .idle, .loading:
+                    LoadingStateView()
+                case .failed(let message):
+                    ErrorStateView(message: message) {
+                        Task { await store.load(contextId: contextId) }
+                    }
+                case .loaded:
+                    if let d = store.descriptor {
+                        descriptorContent(d)
+                    }
                 }
             }
         }
-        .navigationTitle(store.descriptor?.contextDisplayName ?? "Contexto")
+        .navigationTitle(context.isPersonal ? "Mi espacio" : (store.descriptor?.contextDisplayName ?? "Contexto"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
         .onChange(of: quickActionsRouter.lastOpened) { _, destination in
@@ -122,19 +130,18 @@ public struct ContextDetailViewV2: View {
             }
         }
         .task {
-            await store.load(contextId: contextId)
             await container.attentionInboxStore.load()
-            if !context.isPersonal {
-                await hierarchyStore.load(contextId: contextId)
-            }
+            // Personal context: backend descriptor no aplica — skip.
+            guard !context.isPersonal else { return }
+            await store.load(contextId: contextId)
+            await hierarchyStore.load(contextId: contextId)
             await loadContextConflictsIfNeeded()
         }
         .refreshable {
-            await store.load(contextId: contextId)
             await container.attentionInboxStore.load()
-            if !context.isPersonal {
-                await hierarchyStore.load(contextId: contextId)
-            }
+            guard !context.isPersonal else { return }
+            await store.load(contextId: contextId)
+            await hierarchyStore.load(contextId: contextId)
             await reloadContextConflicts()
         }
         .sheet(item: $presentedAttention) { destination in
@@ -168,7 +175,91 @@ public struct ContextDetailViewV2: View {
         ))
     }
 
-    // MARK: - Descriptor content (R.5V.4 — List + Section)
+    // MARK: - Personal space content (P0 fix 2026-06-08)
+    //
+    // Backend `context_detail_descriptor` raisea "context not found" para
+    // actores `person` (sólo aplica a contextos colectivos). Renderizamos un
+    // home personal con drill-downs a las vistas existentes de Profile.
+
+    @ViewBuilder
+    private var personalSpaceContent: some View {
+        List {
+            // Hero
+            Section {
+                HStack(spacing: 14) {
+                    Image(systemName: context.symbolName)
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(Theme.Tint.primary)
+                        .frame(width: 56, height: 56)
+                        .background(Theme.Tint.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Mi espacio")
+                            .font(.title3.bold())
+                            .foregroundStyle(Theme.Text.primary)
+                        Text("Tu actividad, recursos y compromisos")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
+            }
+
+            // Attention items para el actor personal (filtrados por contextActorId == personal actor).
+            let personalAttention = contextAttentionItems
+            if !personalAttention.isEmpty {
+                Section {
+                    ForEach(personalAttention.prefix(3)) { item in
+                        Button {
+                            presentedAttention = AttentionDispatcher.destination(for: item)
+                        } label: {
+                            attentionRow(item)
+                        }
+                    }
+                    if personalAttention.count > 3 {
+                        Button {
+                            isShowingAllAttention = true
+                        } label: {
+                            Label("Ver todos los pendientes (\(personalAttention.count))", systemImage: "list.bullet")
+                        }
+                    }
+                } header: {
+                    Text("Atención")
+                }
+            }
+
+            // Drill-downs a vistas personales.
+            Section {
+                NavigationLink {
+                    MyActivityFeedView(container: container)
+                } label: {
+                    Label("Mi actividad", systemImage: "antenna.radiowaves.left.and.right")
+                }
+                NavigationLink {
+                    MyResourcesView(container: container)
+                } label: {
+                    Label("Mis recursos", systemImage: "shippingbox.fill")
+                }
+                NavigationLink {
+                    MySubscriptionsView(container: container)
+                } label: {
+                    Label("Mis suscripciones", systemImage: "bookmark.fill")
+                }
+                NavigationLink {
+                    MyTrustNetworkView(container: container)
+                } label: {
+                    Label("Mi red de confianza", systemImage: "person.line.dotted.person")
+                }
+            } header: {
+                Text("Tus cosas")
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    // MARK: - Descriptor content (R.5V.4 — List + Section, contextos colectivos)
 
     @ViewBuilder
     private func descriptorContent(_ d: ContextDetailDescriptor) -> some View {
