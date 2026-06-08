@@ -36,10 +36,11 @@ Pregunta única que el founder firma al cierre:
 9.  ✅ R.5V.2       — Componentes canónicos Ruul* (8 cherry-pick) shipped 2026-06-07 · build verde 6.2s
 10. ✅ Documents V2 — shipped 2026-06-07 (2 migs + 3 views + supersedes seeds + QuickLook + ShareSheet + archive). DocumentDetailView refactor Apple-native (List+Section) firmado founder. Founder priority #1 "deuda evidente" cerrado.
 11. ✅ Resource Subtype Picker — shipped 2026-06-07 (UX D: ClassPicker → SubtypePicker → CreateResourceForm Apple-native; auto-skip step 2 en 11/17 classes; backend taxonomy T1+T2 + 2 RPCs + p_subtype_key). Commit `cbd6a249`.
-12. ⏳ R.5V.3–V.8   — Migrar HomeView/ContextV2/ResourceV2/forms/sheets + a11y (PARALELO a R.6, regla "R.6 backend NO se bloquea por UI")
-13. ⏳ R.5W.fix.*   — 3 P1 INCONSISTENT (cancel_decision dialog · roles section honest disabled · reservation row push)
-14. ⏳ R.5Z         — Founder Flows Validation (10 flows end-to-end en iPhone JJ device)
-15. ⏳ R.6 Rule Engine 2.0
+12. 🟡 R.5V.3–V.8   — V.3 HomeView ✅ (commit `99f600bf`) · V.4 ContextDetailViewV2 ✅ (commit `4477210b`) · V.5 ResourceDetailViewV2 ✅ (commit `8bdafc3a`) · V.6/V.7/V.8 pendientes (forms/sheets/a11y — paralelizables, no bloquean R.6)
+13. ⏳ R.5W.fix.*   — DEFERRED por founder ("son cosméticos y no cambian la capacidad del producto")
+14. ✅ R.6.0        — Rule Engine Architecture doc shipped 2026-06-07 (Track B documental, sin código). 6 Qs founder firma pendientes.
+15. ⏳ R.5Z         — Founder Flows Validation (10 flows end-to-end en iPhone JJ device)
+16. ⏳ R.6 Rule Engine 2.0 implementación (slices A-H propuestos en R6_RuleEngineArchitecture §9)
 ```
 
 Founder cita literal: **"el mayor faltante ya no es backend; es la capa de atención y descubrimiento de problemas."**
@@ -157,11 +158,11 @@ R.6 Rule Engine 2.0 arranca cuando los 8 puntos siguientes están cerrados:
 | # | Condición | Status |
 |---|---|---|
 | 1 | 3 P0 shipped + 2 R.5Y backend/iOS shipped | ✅ |
-| 2 | R.5V.0a UX Doctrine firmada + R.5V.0+V.1+V.2 shipped | ⏳ |
-| 3 | Documents V2 shipped (usa Ruul*) | ⏳ |
+| 2 | R.5V.0a UX Doctrine firmada + R.5V.0+V.1+V.2 shipped | ✅ |
+| 3 | Documents V2 shipped (usa Ruul*) | ✅ |
 | 4 | Resource Subtype Picker shipped | ✅ |
-| 5 | R.5W.fix.* (3 P1 cosméticos) shipped | ⏳ |
-| 6 | R.5V.3–V.5 migradas (HomeView + ContextV2 + ResourceV2) | ⏳ |
+| 5 | R.5W.fix.* (3 P1 cosméticos) shipped | ⏳ (deferred por founder — no bloquea R.6) |
+| 6 | R.5V.3–V.5 migradas (HomeView + ContextV2 + ResourceV2) | ✅ |
 | 7 | R.5Z Founder Flows Validation CLOSED (10/10 ✅ founder) | ⏳ |
 | 8 | Smoke device founder firmado: "puedo abrir Ruul un lunes y hacer cualquiera de estos 10 flujos sin pensar" | ⏳ |
 
