@@ -31,32 +31,51 @@ public struct MemberDetailView: View {
     private var isMe: Bool { member.actorId == myActorId }
 
     public var body: some View {
+        // R.5V.X 2026-06-08 — Apple-native canonical Detail pattern (V.4/V.5).
         List {
+            // Hero
             Section {
-                HStack(spacing: 16) {
+                HStack(spacing: 14) {
                     ActorInitialsView(name: member.displayName, size: 56)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(member.displayName)
-                            .font(.headline)
+                            .font(.title3.bold())
+                            .foregroundStyle(Theme.Text.primary)
+                            .lineLimit(2)
                         if let type = member.membershipType {
-                            Text(type == "founder" ? "Fundador" : "Miembro")
+                            Text(membershipTypeLabel(type))
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.Text.secondary)
                         }
                     }
+                    Spacer(minLength: 0)
+                    if isMe {
+                        Text("Tú")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Theme.Tint.primary)
+                    }
                 }
-                .padding(.vertical, 4)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
             }
 
-            Section("Información") {
+            Section {
                 if let joined = member.joinedAt {
-                    InfoRow(symbolName: "calendar", title: "Se unió", value: joined.formatted(date: .abbreviated, time: .omitted))
+                    LabeledContent {
+                        Text(joined.formatted(date: .abbreviated, time: .omitted))
+                    } label: {
+                        Label("Se unió", systemImage: "calendar")
+                    }
                 }
-                InfoRow(
-                    symbolName: "person.text.rectangle",
-                    title: "Roles",
-                    value: member.roles.isEmpty ? "Miembro" : member.roles.joined(separator: ", ")
-                )
+                LabeledContent {
+                    Text(member.roles.isEmpty ? "Miembro" : member.roles.joined(separator: ", "))
+                        .foregroundStyle(Theme.Text.primary)
+                } label: {
+                    Label("Roles", systemImage: "person.text.rectangle.fill")
+                }
+            } header: {
+                Text("Información")
             }
 
             // R.2R — compromisos donde participa este miembro
@@ -109,6 +128,7 @@ public struct MemberDetailView: View {
                 }
             }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle(member.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -169,36 +189,60 @@ public struct MemberDetailView: View {
     private var obligationsSection: some View {
         Section {
             if memberObligations.isEmpty {
-                Text("Sin compromisos pendientes")
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
+                Label("Sin compromisos pendientes", systemImage: "checkmark.circle")
+                    .foregroundStyle(Theme.Text.secondary)
             } else {
                 ForEach(memberObligations.prefix(5)) { obligation in
                     Button {
                         selectedObligationId = obligation.id
                     } label: {
-                        InfoRow(
-                            symbolName: obligationSymbol(obligation.obligationKind),
-                            title: obligation.title ?? obligation.kindLabel,
-                            subtitle: obligation.debtorActorId == member.actorId ? "Debe cumplir" : "Es acreedor",
-                            value: obligation.dueAt?.formatted(date: .abbreviated, time: .omitted)
-                        )
+                        Label {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(obligation.title ?? obligation.kindLabel)
+                                        .font(.callout.weight(.medium))
+                                        .foregroundStyle(Theme.Text.primary)
+                                        .lineLimit(1)
+                                    Text(obligation.debtorActorId == member.actorId ? "Debe cumplir" : "Es acreedor")
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.secondary)
+                                }
+                                Spacer()
+                                if let due = obligation.dueAt {
+                                    Text(due.formatted(date: .abbreviated, time: .omitted))
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(Theme.Text.tertiary)
+                                }
+                            }
+                        } icon: {
+                            Image(systemName: obligationSymbol(obligation.obligationKind))
+                                .foregroundStyle(Theme.Tint.primary)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
             }
             if !isMe {
                 Button {
                     isShowingCreateObligation = true
                 } label: {
-                    Label("Asignar compromiso", systemImage: "plus.circle")
-                        .font(.callout)
+                    Label("Asignar compromiso", systemImage: "plus.circle.fill")
                 }
             }
         } header: {
             Text("Compromisos")
         } footer: {
             Text("Compromisos de acción donde \(member.displayName) participa.")
+        }
+    }
+
+    private func membershipTypeLabel(_ type: String) -> String {
+        switch type {
+        case "founder": return "Fundador"
+        case "admin":   return "Administrador"
+        case "member":  return "Miembro"
+        case "guest":   return "Invitado"
+        case "viewer":  return "Observador"
+        default:        return type.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
@@ -241,13 +285,14 @@ public struct MemberDetailView: View {
 
     private func obligationSymbol(_ kind: String) -> String {
         switch kind {
-        case "action": return "checkmark.circle"
-        case "approval": return "checkmark.seal"
-        case "delivery": return "shippingbox"
-        case "attendance": return "person.crop.circle.badge.checkmark"
-        case "document": return "doc.text"
+        case "action":      return "checklist"
+        case "approval":    return "checkmark.seal.fill"
+        case "delivery":    return "shippingbox.fill"
+        case "attendance":  return "person.crop.circle.badge.checkmark.fill"
+        case "document":    return "doc.text.fill"
         case "reservation": return "calendar.badge.clock"
-        default: return "circle.dashed"
+        case "money":       return "dollarsign.circle.fill"
+        default:            return "circle.dashed"
         }
     }
 }
