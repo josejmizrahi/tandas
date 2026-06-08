@@ -34,7 +34,8 @@ public struct ContextHomeView: View {
     @State private var pushedActionDestination: QuickActionPush?
 
     // F.NAV.10 — atención filtrada por contexto
-    @State private var presentedAttention: AttentionItem?
+    // R.5Y.A2: state captura la intención del dispatcher único, no el item raw.
+    @State private var presentedAttention: AttentionDestination?
     @State private var isShowingAllAttention = false
     @State private var isShowingPendingInvitations = false
 
@@ -138,8 +139,9 @@ public struct ContextHomeView: View {
                 container.contextStore.switchTo(newCtx)
             }
         }
-        .sheet(item: $presentedAttention) { item in
-            attentionDestination(for: item)
+        // R.5Y.A2 — dispatcher único.
+        .sheet(item: $presentedAttention) { destination in
+            AttentionDestinationSheet(destination: destination, container: container)
         }
         .sheet(isPresented: $isShowingPendingInvitations) {
             PendingInvitationsView(container: container)
@@ -148,7 +150,7 @@ public struct ContextHomeView: View {
             NavigationStack {
                 AllContextAttentionView(items: attentionItemsForSheet) { item in
                     isShowingAllAttention = false
-                    handleAttentionTap(item)
+                    presentedAttention = AttentionDispatcher.destination(for: item)
                 }
             }
         }
@@ -335,7 +337,7 @@ public struct ContextHomeView: View {
         } else {
             Button {
                 if items.count == 1 {
-                    handleAttentionTap(items[0])
+                    presentedAttention = AttentionDispatcher.destination(for: items[0])
                 } else {
                     isShowingAllAttention = true
                 }
@@ -359,9 +361,9 @@ public struct ContextHomeView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(items.prefix(3)) { item in
                             HStack(spacing: 10) {
-                                Image(systemName: attentionSymbol(for: item.kind))
+                                Image(systemName: AttentionPresentation.symbol(for: item.kind))
                                     .font(.callout)
-                                    .foregroundStyle(attentionTint(for: item.kind))
+                                    .foregroundStyle(AttentionPresentation.tint(for: item.kind))
                                     .frame(width: 22)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(item.title)
@@ -369,7 +371,7 @@ public struct ContextHomeView: View {
                                         .foregroundStyle(.primary)
                                         .lineLimit(1)
                                     HStack(spacing: 3) {
-                                        Text(attentionCTALabel(for: item.kind))
+                                        Text(AttentionPresentation.ctaLabel(for: item.kind))
                                         Image(systemName: "chevron.right")
                                             .font(.caption2.weight(.bold))
                                     }
@@ -394,75 +396,11 @@ public struct ContextHomeView: View {
         }
     }
 
-    private func attentionSymbol(for kind: String) -> String {
-        switch kind {
-        case "reservation_conflict": return "exclamationmark.triangle.fill"
-        case "decision_vote":        return "hand.thumbsup.fill"
-        case "obligation_pay":       return "creditcard.fill"
-        case "obligation_complete":  return "checkmark.circle"
-        case "invitation":           return "envelope.fill"
-        default:                     return "circle.fill"
-        }
-    }
-
-    private func attentionTint(for kind: String) -> Color {
-        switch kind {
-        case "reservation_conflict": return .red
-        case "decision_vote":        return .purple
-        case "obligation_pay",
-             "obligation_complete":  return .green
-        case "invitation":           return .blue
-        default:                     return .secondary
-        }
-    }
-
-    private func attentionCTALabel(for kind: String) -> String {
-        switch kind {
-        case "reservation_conflict": return "Resolver"
-        case "decision_vote":        return "Votar"
-        case "obligation_pay":       return "Pagar"
-        case "obligation_complete":  return "Marcar como hecho"
-        case "invitation":           return "Aceptar"
-        default:                     return "Ver"
-        }
-    }
-
-    private func handleAttentionTap(_ item: AttentionItem) {
-        switch item.kind {
-        case "invitation":
-            isShowingPendingInvitations = true
-        case "reservation_conflict":
-            // El conflicto vive dentro del contexto — ya estamos aquí.
-            // Push directo si quieres; por ahora abrimos All para que el usuario vea.
-            isShowingAllAttention = true
-        case "decision_vote", "obligation_pay", "obligation_complete":
-            presentedAttention = item
-        default:
-            break
-        }
-    }
-
-    @ViewBuilder
-    private func attentionDestination(for item: AttentionItem) -> some View {
-        NavigationStack {
-            switch item.kind {
-            case "decision_vote":
-                DecisionDetailView(
-                    decisionId: item.ctaScopeId,
-                    context: context,
-                    container: container
-                )
-            case "obligation_pay", "obligation_complete":
-                ObligationDetailView(
-                    obligationId: item.ctaScopeId,
-                    context: context,
-                    container: container
-                )
-            default:
-                EmptyView()
-            }
-        }
-    }
+    // R.5Y.A2 — handleAttentionTap / attentionDestination / attentionSymbol /
+    // attentionTint / attentionCTALabel se eliminaron. AttentionDispatcher
+    // + AttentionPresentation + AttentionDestinationSheet en
+    // Components/AttentionDispatcher.swift cubren las 3 vistas (HomeView,
+    // ContextDetailViewV2, ContextHomeView).
 
     // MARK: - 3. Toolbar Menu (Quick Actions — F.CONTEXT.4)
 
@@ -1680,8 +1618,8 @@ private struct AllContextAttentionView: View {
                     onTap(item)
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: attentionSymbol(for: item.kind))
-                            .foregroundStyle(attentionTint(for: item.kind))
+                        Image(systemName: AttentionPresentation.symbol(for: item.kind))
+                            .foregroundStyle(AttentionPresentation.tint(for: item.kind))
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.title).font(.callout.weight(.medium))
@@ -1703,28 +1641,6 @@ private struct AllContextAttentionView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Cerrar") { dismiss() }
             }
-        }
-    }
-
-    private func attentionSymbol(for kind: String) -> String {
-        switch kind {
-        case "reservation_conflict": return "exclamationmark.triangle.fill"
-        case "decision_vote":        return "hand.thumbsup.fill"
-        case "obligation_pay":       return "creditcard.fill"
-        case "obligation_complete":  return "checkmark.circle"
-        case "invitation":           return "envelope.fill"
-        default:                     return "circle.fill"
-        }
-    }
-
-    private func attentionTint(for kind: String) -> Color {
-        switch kind {
-        case "reservation_conflict": return .red
-        case "decision_vote":        return .purple
-        case "obligation_pay",
-             "obligation_complete":  return .green
-        case "invitation":           return .blue
-        default:                     return .secondary
         }
     }
 }

@@ -21,6 +21,15 @@ public struct AttentionItem: Codable, Sendable, Equatable, Hashable, Identifiabl
     public let ctaScopeId: UUID
     public let occurredAt: Date?
 
+    // R.5Y.A1.1 — settlement_open enrichment: monto/moneda/contraparte top-level.
+    public let amount: Decimal?
+    public let currency: String?
+    public let counterpartyName: String?
+
+    // R.5Y.A1.2 — reservation_conflict + resource_conflict_direct emiten resource_id
+    // top-level para que el dispatcher pueda cargar la vista de detalle del recurso.
+    public let resourceId: UUID?
+
     enum CodingKeys: String, CodingKey {
         case kind
         case subjectId = "subject_id"
@@ -32,6 +41,10 @@ public struct AttentionItem: Codable, Sendable, Equatable, Hashable, Identifiabl
         case ctaScopeKind = "cta_scope_kind"
         case ctaScopeId = "cta_scope_id"
         case occurredAt = "occurred_at"
+        case amount
+        case currency
+        case counterpartyName = "counterparty_name"
+        case resourceId = "resource_id"
     }
 
     public init(
@@ -44,7 +57,11 @@ public struct AttentionItem: Codable, Sendable, Equatable, Hashable, Identifiabl
         ctaActionKey: String,
         ctaScopeKind: String,
         ctaScopeId: UUID,
-        occurredAt: Date? = nil
+        occurredAt: Date? = nil,
+        amount: Decimal? = nil,
+        currency: String? = nil,
+        counterpartyName: String? = nil,
+        resourceId: UUID? = nil
     ) {
         self.kind = kind
         self.subjectId = subjectId
@@ -56,6 +73,10 @@ public struct AttentionItem: Codable, Sendable, Equatable, Hashable, Identifiabl
         self.ctaScopeKind = ctaScopeKind
         self.ctaScopeId = ctaScopeId
         self.occurredAt = occurredAt
+        self.amount = amount
+        self.currency = currency
+        self.counterpartyName = counterpartyName
+        self.resourceId = resourceId
     }
 
     public init(from decoder: Decoder) throws {
@@ -70,9 +91,46 @@ public struct AttentionItem: Codable, Sendable, Equatable, Hashable, Identifiabl
         self.ctaScopeKind = try c.decode(String.self, forKey: .ctaScopeKind)
         self.ctaScopeId = try c.decode(UUID.self, forKey: .ctaScopeId)
         self.occurredAt = try c.decodeIfPresent(Date.self, forKey: .occurredAt)
+        self.amount = try c.decodeIfPresent(Decimal.self, forKey: .amount)
+        self.currency = try c.decodeIfPresent(String.self, forKey: .currency)
+        self.counterpartyName = try c.decodeIfPresent(String.self, forKey: .counterpartyName)
+        self.resourceId = try c.decodeIfPresent(UUID.self, forKey: .resourceId)
     }
 
     public var id: UUID { subjectId }
+}
+
+// MARK: - AttentionPriority
+
+/// R.5Y.A2 — Prioridad derivada por kind para sorting/visual emphasis.
+/// Por ahora computada client-side; futuro backend puede emitir `priority`
+/// explícito en el item.
+public enum AttentionPriority: Int, Sendable, Comparable {
+    case critical = 0
+    case high = 1
+    case normal = 2
+    case low = 3
+
+    public static func < (lhs: AttentionPriority, rhs: AttentionPriority) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
+extension AttentionItem {
+    /// R.5Y.A2 — Prioridad derivada por kind. Heurística single-source:
+    /// conflicts → critical · pagos/decisiones/compromisos → high · invitaciones → normal.
+    public var derivedPriority: AttentionPriority {
+        switch kind {
+        case "reservation_conflict", "resource_conflict_direct":
+            return .critical
+        case "decision_vote", "obligation_pay", "obligation_complete", "settlement_open":
+            return .high
+        case "invitation":
+            return .normal
+        default:
+            return .normal
+        }
+    }
 }
 
 // MARK: - ContextPreference

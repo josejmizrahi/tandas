@@ -25,9 +25,8 @@ public struct ContextDetailViewV2: View {
     @State private var pushedActionDestination: QuickActionPush?
     @State private var isShowingCreateChild = false
     /// R.5A wire — attention_inbox filtrado por este contexto (F.NAV.10).
-    @State private var presentedAttention: AttentionItem?
+    @State private var presentedAttention: AttentionDestination?
     @State private var isShowingAllAttention = false
-    @State private var isShowingPendingInvitations = false
     /// R.5B.5c — lista de conflicts del contexto (carga lazy cuando descriptor.conflicts.openCount>0).
     @State private var conflictsList: ContextConflictList = .empty
     @State private var didLoadConflictsForContext: UUID?
@@ -144,18 +143,15 @@ public struct ContextDetailViewV2: View {
             }
             await reloadContextConflicts()
         }
-        // Attention sheets
-        .sheet(item: $presentedAttention) { item in
-            attentionDestination(for: item)
-        }
-        .sheet(isPresented: $isShowingPendingInvitations) {
-            PendingInvitationsView(container: container)
+        // Attention sheets (R.5Y.A2 — dispatcher único)
+        .sheet(item: $presentedAttention) { destination in
+            AttentionDestinationSheet(destination: destination, container: container)
         }
         .sheet(isPresented: $isShowingAllAttention) {
             NavigationStack {
                 AllContextAttentionViewV2(items: contextAttentionItems) { item in
                     isShowingAllAttention = false
-                    handleAttentionTap(item)
+                    presentedAttention = AttentionDispatcher.destination(for: item)
                 }
             }
         }
@@ -430,7 +426,7 @@ public struct ContextDetailViewV2: View {
         } else {
             Button {
                 if items.count == 1 {
-                    handleAttentionTap(items[0])
+                    presentedAttention = AttentionDispatcher.destination(for: items[0])
                 } else {
                     isShowingAllAttention = true
                 }
@@ -457,9 +453,9 @@ public struct ContextDetailViewV2: View {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(items.prefix(3)) { item in
                             HStack(spacing: 10) {
-                                Image(systemName: attentionSymbol(for: item.kind))
+                                Image(systemName: AttentionPresentation.symbol(for: item.kind))
                                     .font(.callout)
-                                    .foregroundStyle(attentionTint(for: item.kind))
+                                    .foregroundStyle(AttentionPresentation.tint(for: item.kind))
                                     .frame(width: 22)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(item.title)
@@ -467,7 +463,7 @@ public struct ContextDetailViewV2: View {
                                         .foregroundStyle(.primary)
                                         .lineLimit(1)
                                     HStack(spacing: 3) {
-                                        Text(attentionCTALabel(for: item.kind))
+                                        Text(AttentionPresentation.ctaLabel(for: item.kind))
                                         Image(systemName: "chevron.right")
                                             .font(.caption2.weight(.bold))
                                     }
@@ -492,73 +488,10 @@ public struct ContextDetailViewV2: View {
         }
     }
 
-    private func attentionSymbol(for kind: String) -> String {
-        switch kind {
-        case "reservation_conflict": return "exclamationmark.triangle.fill"
-        case "decision_vote":        return "hand.thumbsup.fill"
-        case "obligation_pay":       return "creditcard.fill"
-        case "obligation_complete":  return "checkmark.circle"
-        case "invitation":           return "envelope.fill"
-        default:                     return "circle.fill"
-        }
-    }
-
-    private func attentionTint(for kind: String) -> Color {
-        switch kind {
-        case "reservation_conflict": return .red
-        case "decision_vote":        return .purple
-        case "obligation_pay",
-             "obligation_complete":  return .green
-        case "invitation":           return .blue
-        default:                     return .secondary
-        }
-    }
-
-    private func attentionCTALabel(for kind: String) -> String {
-        switch kind {
-        case "reservation_conflict": return "Resolver"
-        case "decision_vote":        return "Votar"
-        case "obligation_pay":       return "Pagar"
-        case "obligation_complete":  return "Marcar como hecho"
-        case "invitation":           return "Aceptar"
-        default:                     return "Ver"
-        }
-    }
-
-    private func handleAttentionTap(_ item: AttentionItem) {
-        switch item.kind {
-        case "invitation":
-            isShowingPendingInvitations = true
-        case "reservation_conflict":
-            isShowingAllAttention = true
-        case "decision_vote", "obligation_pay", "obligation_complete":
-            presentedAttention = item
-        default:
-            break
-        }
-    }
-
-    @ViewBuilder
-    private func attentionDestination(for item: AttentionItem) -> some View {
-        NavigationStack {
-            switch item.kind {
-            case "decision_vote":
-                DecisionDetailView(
-                    decisionId: item.ctaScopeId,
-                    context: context,
-                    container: container
-                )
-            case "obligation_pay", "obligation_complete":
-                ObligationDetailView(
-                    obligationId: item.ctaScopeId,
-                    context: context,
-                    container: container
-                )
-            default:
-                EmptyView()
-            }
-        }
-    }
+    // R.5Y.A2 — handleAttentionTap / attentionDestination / attentionSymbol /
+    // attentionTint / attentionCTALabel se eliminaron. Su trabajo lo hace
+    // AttentionDispatcher + AttentionPresentation + AttentionDestinationSheet
+    // (Components/AttentionDispatcher.swift).
 
     @ViewBuilder
     private func metricsCard(_ m: ContextMetrics) -> some View {
@@ -1394,8 +1327,8 @@ private struct AllContextAttentionViewV2: View {
                     onTap(item)
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: symbol(for: item.kind))
-                            .foregroundStyle(tint(for: item.kind))
+                        Image(systemName: AttentionPresentation.symbol(for: item.kind))
+                            .foregroundStyle(AttentionPresentation.tint(for: item.kind))
                             .frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.title).font(.callout.weight(.medium))
@@ -1417,28 +1350,6 @@ private struct AllContextAttentionViewV2: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Cerrar") { dismiss() }
             }
-        }
-    }
-
-    private func symbol(for kind: String) -> String {
-        switch kind {
-        case "reservation_conflict": return "exclamationmark.triangle.fill"
-        case "decision_vote":        return "hand.thumbsup.fill"
-        case "obligation_pay":       return "creditcard.fill"
-        case "obligation_complete":  return "checkmark.circle"
-        case "invitation":           return "envelope.fill"
-        default:                     return "circle.fill"
-        }
-    }
-
-    private func tint(for kind: String) -> Color {
-        switch kind {
-        case "reservation_conflict": return .red
-        case "decision_vote":        return .purple
-        case "obligation_pay",
-             "obligation_complete":  return .green
-        case "invitation":           return .blue
-        default:                     return .secondary
         }
     }
 }
