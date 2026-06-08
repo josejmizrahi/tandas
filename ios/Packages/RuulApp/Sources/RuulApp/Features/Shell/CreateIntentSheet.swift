@@ -39,6 +39,8 @@ public struct CreateIntentSheet: View {
                               detail: "Anotar un gasto o ingreso.")
                     intentRow(.decision,  icon: "checkmark.bubble.fill",   tint: .purple, label: "Crear propuesta",
                               detail: "Abrir una decisión para votar.")
+                    intentRow(.obligation, icon: "checklist",              tint: .indigo, label: "Asignar compromiso",
+                              detail: "Pedir una acción, aprobación o entrega a alguien.")
                     intentRow(.document,  icon: "paperclip",               tint: .secondary, label: "Subir documento",
                               detail: "Adjuntar un archivo a un recurso.")
                     intentRow(.resource,  icon: "shippingbox.fill",        tint: .orange, label: "Agregar recurso",
@@ -147,7 +149,7 @@ public struct CreateIntentSheet: View {
     // MARK: - Tipos
 
     enum Intent: Hashable {
-        case event, expense, decision, document, resource, reservation
+        case event, expense, decision, document, resource, reservation, obligation
     }
 
     enum Route: Hashable {
@@ -308,6 +310,9 @@ private struct FormDestination: View {
                         }
                     }
             }
+        case .obligation:
+            // CreateObligationView trae su propio NavigationStack interno.
+            CreateObligationView(context: context, container: container)
         }
     }
 }
