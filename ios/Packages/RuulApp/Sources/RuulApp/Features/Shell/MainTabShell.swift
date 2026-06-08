@@ -16,6 +16,10 @@ public struct MainTabShell: View {
     @State private var isShowingCreateSheet = false
     @State private var isShowingJoinByCode = false
     @State private var prefilledInviteCode: String?
+    /// R.5Y.A3 — Destination resuelto por `AttentionDispatcher` cuando el usuario
+    /// tapea el `tabViewBottomAccessory`. Sheet único globalmente; cualquier kind
+    /// presente o futuro (incluye R.6 rule_violation vía `.unsupported`).
+    @State private var presentedAttention: AttentionDestination?
     /// NavigationStack path del tab Contextos, levantado al shell para que
     /// `jumpToContext` desde Home/atención pueda empujar directo al
     /// ContextHome del target en vez de dejar al usuario en la lista.
@@ -85,11 +89,26 @@ public struct MainTabShell: View {
                 MeView(container: container, goToContexts: { selectedTab = .contexts })
             }
         }
+        // R.5Y.A3 — Attention Center cross-context pegado sobre el tab bar.
+        // Liquid Glass nativo. Cuando el inbox está vacío, el ViewBuilder
+        // colapsa a EmptyView y el accessory desaparece (iOS 26.0 baseline).
+        .tabViewBottomAccessory {
+            if let top = container.attentionInboxStore.topPriorityItem {
+                AttentionBottomAccessoryView(
+                    item: top,
+                    totalCount: container.attentionInboxStore.items.count,
+                    onTap: { presentedAttention = AttentionDispatcher.destination(for: top) }
+                )
+            }
+        }
         .sheet(isPresented: $isShowingCreateSheet) {
             CreateIntentSheet(container: container)
         }
         .sheet(isPresented: $isShowingJoinByCode, onDismiss: { prefilledInviteCode = nil }) {
             JoinByCodeView(container: container, prefilledCode: prefilledInviteCode)
+        }
+        .sheet(item: $presentedAttention) { destination in
+            AttentionDestinationSheet(destination: destination, container: container)
         }
         // F.NAV.1 — refrescar contextos + invitaciones al regresar del background.
         .onChange(of: scenePhase) { _, newPhase in
