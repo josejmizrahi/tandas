@@ -299,8 +299,9 @@ private struct FormDestination: View {
                     }
             }
         case .resource:
-            // CreateResourceView trae su propio NavigationStack interno.
-            CreateResourceView(context: context, store: resourcesStore, container: container)
+            // Subtype Picker UX D — wizard 3 pasos (class → subtype → form),
+            // founder-firmado 2026-06-07. Reemplaza el legacy CreateResourceView.
+            CreateResourceFlow(context: context, store: resourcesStore, container: container)
         case .reservation:
             NavigationStack {
                 ReservationIntentLanding(context: context, container: container, onClose: onClose)

@@ -106,6 +106,10 @@ public protocol RuulRPCClient: Sendable {
     /// capabilities, metadata esperada). El frontend NO hardcodea: el catálogo
     /// es la fuente de verdad para qué tipos existen y cómo presentarlos.
     func resourceTypeCatalog() async throws -> ResourceTypeCatalog
+    /// R.5A.B.0 — 17 classes top-level de la taxonomía de recursos.
+    func listResourceClasses() async throws -> [ResourceClass]
+    /// R.5A.B.0 — Subtypes filtrados por class (o todos si classKey=nil). 42 seeded.
+    func listResourceSubtypes(classKey: String?) async throws -> [ResourceSubtype]
     /// `resource_available_actions(resource, actor)` — refresca solo las
     /// available_actions sin pedir el `resource_detail` completo (útil tras
     /// `grant_right` / `revoke_right` para actualizar botones).
@@ -476,9 +480,13 @@ public struct CreateContextInput: Sendable, Equatable {
 /// Input de `create_resource`.
 public struct CreateResourceInput: Sendable, Equatable {
     public var contextId: UUID
-    /// type_key del catálogo. Aceptamos `String` (no enum) para soportar tipos
-    /// dinámicos del backend (R.2M `resource_type_catalog()`).
+    /// type_key del catálogo legacy R.2M (`resource_type_catalog`).
+    /// **Founder firma 2026-06-07**: usar `subtypeKey` cuando sea posible —
+    /// backend deriva el resource_type del subtype.
     public var resourceType: String
+    /// R.5A.B.0 — subtype_key explícito de `resource_subtypes` (42 subtypes).
+    /// Si se pasa, el backend ignora `resourceType` y deriva del subtype.
+    public var subtypeKey: String?
     public var displayName: String
     public var description: String?
     public var estimatedValue: Double?
@@ -496,10 +504,12 @@ public struct CreateResourceInput: Sendable, Equatable {
         estimatedValue: Double? = nil,
         currency: String? = nil,
         locationText: String? = nil,
-        clientId: String? = nil
+        clientId: String? = nil,
+        subtypeKey: String? = nil
     ) {
         self.contextId = contextId
         self.resourceType = resourceTypeKey
+        self.subtypeKey = subtypeKey
         self.displayName = displayName
         self.description = description
         self.estimatedValue = estimatedValue

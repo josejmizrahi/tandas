@@ -489,6 +489,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await call("resource_type_catalog")
     }
 
+    public func listResourceClasses() async throws -> [ResourceClass] {
+        try await call("list_resource_classes")
+    }
+
+    public func listResourceSubtypes(classKey: String?) async throws -> [ResourceSubtype] {
+        struct Params: Encodable, Sendable {
+            let pClassKey: String?
+            enum CodingKeys: String, CodingKey { case pClassKey = "p_class_key" }
+        }
+        return try await call("list_resource_subtypes", params: Params(pClassKey: classKey))
+    }
+
     public func resourceAvailableActions(resourceId: UUID, actorId: UUID) async throws -> [AvailableAction] {
         struct Params: Encodable, Sendable {
             let pResourceId: UUID
@@ -513,6 +525,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pCurrency: String?
             let pClientId: String?
             let pLocationText: String?
+            let pSubtypeKey: String?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pResourceType = "p_resource_type"
@@ -522,6 +535,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pCurrency = "p_currency"
                 case pClientId = "p_client_id"
                 case pLocationText = "p_location_text"
+                case pSubtypeKey = "p_subtype_key"
             }
         }
         let created: ResourceCreated = try await call("create_resource", params: Params(
@@ -532,7 +546,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pEstimatedValue: input.estimatedValue,
             pCurrency: input.currency,
             pClientId: input.clientId,
-            pLocationText: input.locationText
+            pLocationText: input.locationText,
+            pSubtypeKey: input.subtypeKey
         ))
         return created.resource
     }

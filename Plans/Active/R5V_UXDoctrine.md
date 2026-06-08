@@ -194,6 +194,21 @@ Tipo **canónico** (DocumentType enum):
 - ❌ NO renombrar archivos físicos en Storage.
 - ❌ NO permitir upload sin tipo seleccionado (forzar DocumentType en attach).
 
+### Duplicación conceptual cross-domain (founder firma 2026-06-07)
+
+Hay 3 pares donde un mismo nombre vive en dos lugares con significados distintos. **Esto es deliberado, no un bug.** La UI debe ser explícita sobre la diferencia para evitar confusión:
+
+| Concepto | Como Resource (`resource_class=...`) | Como tabla específica |
+|---|---|---|
+| **document** | Documento como **recurso compartido** con rights/capabilities (e.g. la escritura formal de la casa que tiene owners/users/govern). Subtypes: certificate, contract, policy, receipt, statement. | `documents` table (Documents V2 R.2N) = upload de archivos físicos (e.g. foto del contrato como evidencia, PDF subido). Tipos: contract/receipt/id/statement/photo/other. |
+| **event** | Evento como **recurso recurrente** del grupo (e.g. "Cena Semanal" como entidad compartida con rights). Subtypes: community_event, dinner, meeting, recurring_event. | `calendar_events` table = instancias específicas en el tiempo (e.g. "Cena del 7 de junio"). |
+| **obligation** | Obligación como **tipo de compromiso compartido** (e.g. "Cuotas mensuales del fondo" como recurso con rights de quién las administra). Subtypes: contribution, dues, fine, iou, loan. | `obligations` table (R.2R) = instancias individuales de compromisos (e.g. "Juan debe $500 a María"). |
+
+**Regla UX:**
+- `CreateResourceView` al elegir class `document/event/obligation` debe mostrar copy diferenciador (e.g. "Documento como recurso compartido — para subir archivos individuales usa 'Subir documento' en el tab Crear").
+- `CreateIntentSheet` mantiene los flujos primarios (`event`, `expense → obligation`, `document` upload) — son el path común.
+- `CreateResourceView` con class `document/event/obligation` es para use cases avanzados (modelar el tipo como entidad compartida).
+
 ---
 
 ## 5. ¿Qué es un recurso?

@@ -1091,6 +1091,93 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return ResourceTypeCatalog(entries: entries)
     }
 
+    public func listResourceClasses() async throws -> [ResourceClass] {
+        try throwIfNeeded()
+        // Espejo del seed live (17 classes) — para previews/tests.
+        return [
+            ResourceClass(classKey: "real_estate",  displayName: "Inmuebles",      description: "Casas, terrenos, propiedades comerciales", icon: "house.fill"),
+            ResourceClass(classKey: "vehicle",      displayName: "Vehículos",      description: "Autos, motocicletas, embarcaciones, aeronaves", icon: "car.fill"),
+            ResourceClass(classKey: "financial",    displayName: "Financiero",     description: "Fondos, cuentas, inversiones", icon: "banknote.fill"),
+            ResourceClass(classKey: "equipment",    displayName: "Equipo",         description: "Herramientas y equipos compartidos", icon: "wrench.and.screwdriver.fill"),
+            ResourceClass(classKey: "document",     displayName: "Documentos",     description: "Contratos, recibos, certificados", icon: "doc.fill"),
+            ResourceClass(classKey: "event",        displayName: "Eventos",        description: "Eventos recurrentes o únicos del grupo", icon: "calendar"),
+            ResourceClass(classKey: "obligation",   displayName: "Obligaciones",   description: "IOUs, multas, préstamos, contribuciones", icon: "creditcard.fill"),
+            ResourceClass(classKey: "project",      displayName: "Proyectos",      description: "Proyectos internos del contexto", icon: "rectangle.stack.fill"),
+            ResourceClass(classKey: "trip",         displayName: "Viajes",         description: "Viajes grupales", icon: "airplane"),
+            ResourceClass(classKey: "space",        displayName: "Espacios",       description: "Espacios físicos compartidos", icon: "building.2.fill"),
+            ResourceClass(classKey: "membership",   displayName: "Membresías",     description: "Membresías y suscripciones", icon: "person.badge.key.fill"),
+            ResourceClass(classKey: "service",      displayName: "Servicios",      description: "Servicios contratados o provistos", icon: "gearshape.fill"),
+            ResourceClass(classKey: "right",        displayName: "Derechos",       description: "Derechos de uso, paso, etc.", icon: "key.fill"),
+            ResourceClass(classKey: "agreement",    displayName: "Acuerdos",       description: "Acuerdos y compromisos", icon: "doc.text.fill"),
+            ResourceClass(classKey: "inventory",    displayName: "Inventario",     description: "Stock e inventario rastreable", icon: "shippingbox.fill"),
+            ResourceClass(classKey: "digital_asset",displayName: "Activo digital", description: "Criptos, dominios, propiedad intelectual", icon: "externaldrive.fill.badge.icloud"),
+            ResourceClass(classKey: "generic",      displayName: "Genérico",       description: "Cualquier recurso sin clase específica", icon: "tag.fill")
+        ]
+    }
+
+    public func listResourceSubtypes(classKey: String?) async throws -> [ResourceSubtype] {
+        try throwIfNeeded()
+        // Espejo del seed live post-fix T1+T2 (42 subtypes con motorcycle/boat/aircraft
+        // agregados y machine/tool movidos a equipment).
+        let all: [ResourceSubtype] = [
+            // real_estate (8)
+            .init(subtypeKey: "primary_residence",     classKey: "real_estate", displayName: "Residencia principal",  description: "Vivienda principal del actor o familia"),
+            .init(subtypeKey: "vacation_home",         classKey: "real_estate", displayName: "Casa vacacional",       description: "Casa de uso vacacional / reservable"),
+            .init(subtypeKey: "rental_property",       classKey: "real_estate", displayName: "Propiedad de renta",    description: "Inmueble dedicado a renta"),
+            .init(subtypeKey: "apartment",             classKey: "real_estate", displayName: "Departamento",          description: "Departamento residencial"),
+            .init(subtypeKey: "office",                classKey: "real_estate", displayName: "Oficina",               description: "Espacio de oficina"),
+            .init(subtypeKey: "land",                  classKey: "real_estate", displayName: "Terreno",               description: "Terreno sin construcción"),
+            .init(subtypeKey: "warehouse",             classKey: "real_estate", displayName: "Bodega",                description: "Bodega o nave industrial"),
+            .init(subtypeKey: "industrial_property",   classKey: "real_estate", displayName: "Propiedad industrial",  description: "Inmueble de uso industrial"),
+            // vehicle (5 post-T1)
+            .init(subtypeKey: "car",                   classKey: "vehicle", displayName: "Auto",         description: "Automóvil"),
+            .init(subtypeKey: "truck",                 classKey: "vehicle", displayName: "Camioneta",    description: "Camioneta o pickup"),
+            .init(subtypeKey: "motorcycle",            classKey: "vehicle", displayName: "Motocicleta",  description: "Motocicleta o scooter"),
+            .init(subtypeKey: "boat",                  classKey: "vehicle", displayName: "Embarcación",  description: "Lancha, yate o bote"),
+            .init(subtypeKey: "aircraft",              classKey: "vehicle", displayName: "Aeronave",     description: "Avión o helicóptero"),
+            // equipment (3 post-T2)
+            .init(subtypeKey: "generic_equipment",     classKey: "equipment", displayName: "Equipo genérico", description: "Equipo sin subtipo específico"),
+            .init(subtypeKey: "machine",               classKey: "equipment", displayName: "Maquinaria",     description: "Maquinaria pesada o de producción"),
+            .init(subtypeKey: "tool",                  classKey: "equipment", displayName: "Herramienta",    description: "Herramienta motorizada o de trabajo"),
+            // financial (5)
+            .init(subtypeKey: "money_pool",            classKey: "financial", displayName: "Fondo común",          description: "Pool de dinero compartido del contexto"),
+            .init(subtypeKey: "bank_account",          classKey: "financial", displayName: "Cuenta bancaria",      description: "Cuenta bancaria"),
+            .init(subtypeKey: "investment_account",    classKey: "financial", displayName: "Cuenta de inversión",  description: "Brokerage o cuenta de inversión"),
+            .init(subtypeKey: "crypto_wallet",         classKey: "financial", displayName: "Wallet de cripto",     description: "Wallet de criptomonedas"),
+            .init(subtypeKey: "trust_fund",            classKey: "financial", displayName: "Trust fund",           description: "Trust o vehículo legal"),
+            // document (5)
+            .init(subtypeKey: "contract",              classKey: "document", displayName: "Contrato",         description: "Contrato legal"),
+            .init(subtypeKey: "receipt",               classKey: "document", displayName: "Recibo",           description: "Recibo o comprobante"),
+            .init(subtypeKey: "statement",             classKey: "document", displayName: "Estado de cuenta", description: "Estado de cuenta o reporte financiero"),
+            .init(subtypeKey: "certificate",           classKey: "document", displayName: "Certificado",      description: "Certificado o constancia"),
+            .init(subtypeKey: "policy",                classKey: "document", displayName: "Póliza",           description: "Póliza de seguro u otra"),
+            // event (4)
+            .init(subtypeKey: "recurring_event",       classKey: "event", displayName: "Evento recurrente",  description: "Evento que se repite"),
+            .init(subtypeKey: "dinner",                classKey: "event", displayName: "Cena",               description: "Cena del grupo"),
+            .init(subtypeKey: "meeting",               classKey: "event", displayName: "Junta",              description: "Junta o reunión puntual"),
+            .init(subtypeKey: "community_event",       classKey: "event", displayName: "Evento comunitario", description: "Evento abierto a la comunidad"),
+            // obligation (5)
+            .init(subtypeKey: "iou",                   classKey: "obligation", displayName: "IOU",         description: "I owe you - deuda informal"),
+            .init(subtypeKey: "loan",                  classKey: "obligation", displayName: "Préstamo",    description: "Préstamo formal entre actores"),
+            .init(subtypeKey: "fine",                  classKey: "obligation", displayName: "Multa",       description: "Multa impuesta por regla"),
+            .init(subtypeKey: "contribution",          classKey: "obligation", displayName: "Aportación",  description: "Aportación esperada al fondo"),
+            .init(subtypeKey: "dues",                  classKey: "obligation", displayName: "Cuotas",      description: "Cuotas recurrentes"),
+            // 1-subtype classes
+            .init(subtypeKey: "internal_project",      classKey: "project",      displayName: "Proyecto interno", description: nil),
+            .init(subtypeKey: "group_trip",            classKey: "trip",         displayName: "Viaje grupal",     description: nil),
+            .init(subtypeKey: "generic_space",         classKey: "space",        displayName: "Espacio genérico", description: nil),
+            .init(subtypeKey: "generic_membership",    classKey: "membership",   displayName: "Membresía genérica", description: nil),
+            .init(subtypeKey: "generic_service",       classKey: "service",      displayName: "Servicio genérico", description: nil),
+            .init(subtypeKey: "generic_right",         classKey: "right",        displayName: "Derecho genérico", description: nil),
+            .init(subtypeKey: "generic_agreement",     classKey: "agreement",    displayName: "Acuerdo genérico", description: nil),
+            .init(subtypeKey: "inventory_item",        classKey: "inventory",    displayName: "Item de inventario", description: nil),
+            .init(subtypeKey: "generic_digital_asset", classKey: "digital_asset",displayName: "Activo digital genérico", description: nil),
+            .init(subtypeKey: "generic_resource",      classKey: "generic",      displayName: "Recurso genérico", description: nil)
+        ]
+        if let classKey { return all.filter { $0.classKey == classKey } }
+        return all
+    }
+
     /// Capabilities razonables para previews — NO es la verdad del backend.
     private static func mockCapabilities(for type: ResourceType) -> [String] {
         switch type {
