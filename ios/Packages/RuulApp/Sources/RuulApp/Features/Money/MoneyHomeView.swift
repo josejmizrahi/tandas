@@ -532,6 +532,7 @@ public struct MoneyHomeView: View {
             LabeledContent {
                 Text(balanceBruto.currencyLabel(currencyCode))
                     .font(.callout.weight(.semibold).monospacedDigit())
+                    .contentTransition(.numericText(value: balanceBruto))
             } label: {
                 Label("Balance bruto", systemImage: "scalemass.fill")
             }
@@ -539,6 +540,7 @@ public struct MoneyHomeView: View {
                 Text(iOwe.currencyLabel(currencyCode))
                     .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(iOwe > 0 ? Theme.Tint.critical : Theme.Text.primary)
+                    .contentTransition(.numericText(value: iOwe))
             } label: {
                 Label("Deuda total", systemImage: "arrow.down.right.circle.fill")
             }
@@ -546,12 +548,14 @@ public struct MoneyHomeView: View {
                 Text(owedToMe.currencyLabel(currencyCode))
                     .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(owedToMe > 0 ? Theme.Tint.success : Theme.Text.primary)
+                    .contentTransition(.numericText(value: owedToMe))
             } label: {
                 Label("Crédito total", systemImage: "arrow.up.right.circle.fill")
             }
             LabeledContent {
                 Text("\(openMoney.count)")
                     .font(.callout.weight(.semibold).monospacedDigit())
+                    .contentTransition(.numericText(value: Double(openMoney.count)))
             } label: {
                 Label("Obligaciones abiertas", systemImage: "doc.text.below.ecg.fill")
             }

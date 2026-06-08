@@ -27,6 +27,8 @@ public struct SubscribeSection: View {
                 HStack {
                     Label(sub.subscriptionType.label, systemImage: symbol(for: sub.subscriptionType))
                         .font(.callout)
+                        .symbolRenderingMode(.hierarchical)
+                        .contentTransition(.symbolEffect(.replace))
                     Spacer()
                     Menu {
                         ForEach(SubscriptionType.allCases, id: \.self) { type in

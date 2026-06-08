@@ -225,7 +225,13 @@ private struct ContextConflictRow: View {
                 HStack(spacing: Theme.Spacing.sm) {
                     Image(systemName: icon)
                         .font(.system(size: Theme.IconSize.sm))
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(tint)
+                        .symbolEffect(
+                            .pulse,
+                            options: .repeating,
+                            isActive: item.severity == "critical"
+                        )
                         .frame(width: 24)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.conflictTypeDisplay ?? item.conflictType)

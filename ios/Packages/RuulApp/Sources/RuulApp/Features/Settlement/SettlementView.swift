@@ -157,6 +157,7 @@ public struct SettlementView: View {
                 Text(item.amount.currencyLabel(item.currency))
                     .font(.title3.bold().monospacedDigit())
                     .foregroundStyle(item.isPaid ? Theme.Text.secondary : Theme.Text.primary)
+                    .contentTransition(.numericText(value: item.amount))
             }
 
             Spacer()

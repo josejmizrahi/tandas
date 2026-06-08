@@ -460,7 +460,10 @@ public struct DecisionDetailView: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: voteIconName(isCurrent: isCurrent, showsCheckmark: showsCheckmark))
                     .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
+                    .contentTransition(.symbolEffect(.replace))
+                    .symbolEffect(.bounce, value: isCurrent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.body.weight(isCurrent ? .semibold : .regular))

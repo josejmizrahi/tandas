@@ -61,8 +61,11 @@ public struct RuulStatusBadge: View {
         HStack(spacing: Theme.Spacing.xs) {
             Image(systemName: state.systemImage)
                 .font(.caption2.weight(.semibold))
+                .symbolRenderingMode(.hierarchical)
+                .contentTransition(.symbolEffect(.replace))
             Text(label ?? state.label)
                 .font(.caption.weight(.semibold))
+                .contentTransition(.opacity)
         }
         .padding(.horizontal, Theme.Spacing.sm)
         .padding(.vertical, 3)

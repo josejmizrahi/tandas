@@ -554,7 +554,13 @@ public struct ContextDetailViewV2: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: contextConflictSeverityIcon(item.severity))
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(contextConflictSeverityTint(item.severity))
+                        .symbolEffect(
+                            .pulse,
+                            options: .repeating,
+                            isActive: item.severity == "critical"
+                        )
                         .frame(width: 22)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.conflictTypeDisplay ?? item.conflictType)

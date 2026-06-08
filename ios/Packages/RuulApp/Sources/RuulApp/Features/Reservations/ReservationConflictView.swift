@@ -55,6 +55,7 @@ public struct ReservationConflictView: View {
                     Text("Dos solicitudes piden \(resource.displayName) en fechas que se traslapan. Elige cómo resolverlo.")
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.orange)
                 }
                 .font(.callout)
