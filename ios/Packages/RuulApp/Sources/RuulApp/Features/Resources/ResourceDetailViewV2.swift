@@ -225,7 +225,11 @@ public struct ResourceDetailViewV2: View {
             if !d.sections.isEmpty {
                 seccionesSection(d)
             }
-            actionsSections(d)
+            // 2026-06-08 founder option B — todas las acciones viven en el "+"
+            // del toolbar (resourceQuickActionsMenu). El body antes mostraba
+            // hasta 6-7 Sections "Acciones · <group>" lo que era visualmente
+            // pesado. Apple Wallet/Stocks-ish: el detail muestra info, las
+            // acciones viven en el toolbar.
             if !d.relations.outbound.isEmpty || !d.relations.inbound.isEmpty {
                 relacionesSection(d.relations)
             }
@@ -523,68 +527,13 @@ public struct ResourceDetailViewV2: View {
         Label(section.displayName, systemImage: section.icon ?? "circle")
     }
 
-    // MARK: - Acciones (grouped by descriptor section_key)
-
-    @ViewBuilder
-    private func actionsSections(_ d: ResourceDetailDescriptor) -> some View {
-        let bySection = Dictionary(grouping: d.actions) { $0.section }
-        let sectionOrder = bySection.keys.sorted()
-        ForEach(sectionOrder, id: \.self) { sectionKey in
-            if let actions = bySection[sectionKey], !actions.isEmpty {
-                Section {
-                    ForEach(actions) { action in
-                        actionButton(action)
-                    }
-                } header: {
-                    Text("Acciones · \(actionSectionLabel(sectionKey))")
-                }
-            }
-        }
-    }
-
-    private func actionSectionLabel(_ key: String) -> String {
-        switch key {
-        case "general":     return "General"
-        case "reservations": return "Reservaciones"
-        case "maintenance":  return "Mantenimiento"
-        case "documents":    return "Documentos"
-        case "relations":    return "Relaciones"
-        case "settings":     return "Configuración"
-        case "ownership":    return "Propiedad"
-        case "rights":       return "Derechos"
-        case "monetary":     return "Dinero"
-        default:             return key.replacingOccurrences(of: "_", with: " ").capitalized
-        }
-    }
-
-    @ViewBuilder
-    private func actionButton(_ action: ResourceDescriptorAction) -> some View {
-        let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
-        let role: ButtonRole? = action.dangerous ? .destructive : nil
-        Button(role: role) {
-            guard action.enabled else { return }
-            handleActionTap(action)
-        } label: {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(action.label)
-                    if action.isRequestDecision {
-                        Text("vía decisión")
-                            .font(.caption2)
-                            .foregroundStyle(.purple)
-                    }
-                    if !action.enabled, let reason = action.reason {
-                        Text(reason)
-                            .font(.caption)
-                            .foregroundStyle(Theme.Text.secondary)
-                    }
-                }
-            } icon: {
-                Image(systemName: presentation.symbolName)
-            }
-        }
-        .disabled(!action.enabled)
-    }
+    // MARK: - Acciones (toolbar-only, R.5V.X founder option B 2026-06-08)
+    //
+    // Anteriormente el body listaba todas las acciones en hasta 6-7 Sections
+    // "Acciones · <group>" — visualmente pesado. Ahora viven únicamente en el
+    // "+" Menu del toolbar (resourceQuickActionsMenu) agrupadas por section
+    // semántica. Patrón Apple Wallet / Stocks / Files: el Detail muestra info,
+    // el toolbar expone acciones.
 
     private func descriptorForm(for action: ResourceDescriptorAction) -> ResourceActionForm? {
         store.descriptor?.form(for: action.actionKey)
