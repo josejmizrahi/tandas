@@ -23,6 +23,9 @@ public struct MemberDetailView: View {
     /// Si `member.remove` viene con `mode=request_decision`, el flow de remove abre el
     /// sheet de governance en vez de invocar `remove_member` directo.
     @State private var memberActions: [AvailableAction] = []
+    /// R.7.F — flow genérico: la action seleccionada para el sheet de governance.
+    /// Driver del título/copy dinámico del confirmationDialog.
+    @State private var governanceAction: AvailableAction?
     /// R.7.E — sheet "Esta acción requiere aprobación" + push DecisionDetailView.
     @State private var isShowingGovernanceSheet = false
     @State private var governanceClientId: String = UUID().uuidString
@@ -117,8 +120,26 @@ public struct MemberDetailView: View {
                         }
                     }
 
+                    // R.7.F — promover a admin via governance (si action presente)
+                    if memberActions.contains(where: { $0.actionKey == "member.promote" && $0.enabled }) {
+                        Button {
+                            handleMemberAction("member.promote")
+                        } label: {
+                            Label("Promover a admin", systemImage: "person.badge.plus")
+                        }
+                    }
+
+                    // R.7.F — pausar miembro via governance (si action presente)
+                    if memberActions.contains(where: { $0.actionKey == "member.pause" && $0.enabled }) {
+                        Button {
+                            handleMemberAction("member.pause")
+                        } label: {
+                            Label("Pausar miembro", systemImage: "pause.circle")
+                        }
+                    }
+
                     Button(role: .destructive) {
-                        handleRemoveTap()
+                        handleMemberAction("member.remove")
                     } label: {
                         Label("Remover del contexto", systemImage: "person.badge.minus")
                     }
@@ -175,8 +196,24 @@ public struct MemberDetailView: View {
                             }
                         }
                         Section("Gestión") {
+                            // R.7.F — promote via governance
+                            if memberActions.contains(where: { $0.actionKey == "member.promote" && $0.enabled }) {
+                                Button {
+                                    handleMemberAction("member.promote")
+                                } label: {
+                                    Label("Promover a admin", systemImage: "person.badge.plus")
+                                }
+                            }
+                            // R.7.F — pause via governance
+                            if memberActions.contains(where: { $0.actionKey == "member.pause" && $0.enabled }) {
+                                Button {
+                                    handleMemberAction("member.pause")
+                                } label: {
+                                    Label("Pausar miembro", systemImage: "pause.circle")
+                                }
+                            }
                             Button(role: .destructive) {
-                                handleRemoveTap()
+                                handleMemberAction("member.remove")
                             } label: {
                                 Label("Remover del contexto", systemImage: "person.badge.minus")
                             }
@@ -223,18 +260,20 @@ public struct MemberDetailView: View {
         } message: {
             Text("Perderá acceso a todo el contexto: eventos, recursos, dinero y actividad.")
         }
-        // R.7.E — Governance sheet cuando member.remove requiere aprobación colectiva.
+        // R.7.E/F — Governance sheet genérico para member.remove / pause / promote.
         .confirmationDialog(
             "Esta acción requiere aprobación",
             isPresented: $isShowingGovernanceSheet,
             titleVisibility: .visible
         ) {
             Button("Crear decisión") {
-                Task { await requestGovernanceRemoval() }
+                Task { await requestGovernanceForSelectedAction() }
             }
-            Button("Cancelar", role: .cancel) {}
+            Button("Cancelar", role: .cancel) {
+                governanceAction = nil
+            }
         } message: {
-            Text("Remover a \(member.displayName) requiere votación colectiva. Se creará una decisión para que los miembros aprueben.")
+            Text(governanceMessage)
         }
         // R.7.E — push DecisionDetailView cuando request_governance_action devuelve decision_id.
         .sheet(item: Binding(
@@ -328,26 +367,41 @@ public struct MemberDetailView: View {
         }
     }
 
-    // MARK: - R.7.E governance
+    // MARK: - R.7.E/F governance (flow genérico para remove/pause/promote)
 
-    /// Tap del botón "Remover del contexto". Branch:
-    /// - Si `member_available_actions` reporta `member.remove` con `mode=request_decision`
-    ///   → abre el sheet de governance (catalog default o policy del contexto lo decidió).
-    /// - En caso contrario (mode=direct, sin action, sin container) → flow legacy de
-    ///   remove_member directo con confirmationDialog destructive.
-    private func handleRemoveTap() {
-        let removeAction = memberActions.first { $0.actionKey == "member.remove" }
-        if removeAction?.requiresDecision == true && container != nil {
-            // Reset clientId por cada tap fresco (cancelar + reintentar = nueva request).
+    /// Tap genérico sobre cualquier action canonical del catalog. Branch:
+    /// - Si la action reporta `mode=request_decision` → governance sheet.
+    /// - Si NO está en el descriptor (no governance) y es `member.remove` → flow
+    ///   legacy de remove_member directo con confirmationDialog destructive.
+    /// - Sino, no-op (defensa: actions sin governance ni legacy path no se renderizan).
+    private func handleMemberAction(_ actionKey: String) {
+        let action = memberActions.first { $0.actionKey == actionKey }
+        if action?.requiresDecision == true && container != nil {
+            governanceAction = action
             governanceClientId = UUID().uuidString
             isShowingGovernanceSheet = true
-        } else {
+        } else if actionKey == "member.remove" {
             isConfirmingRemove = true
         }
     }
 
-    /// Carga `member_available_actions` para decidir si el remove pasa por governance.
-    /// Fail-silent: si falla, queda el array vacío y handleRemoveTap usa el flow legacy.
+    /// Copy dinámico para el sheet de governance según la action seleccionada.
+    private var governanceMessage: String {
+        switch governanceAction?.actionKey {
+        case "member.remove":
+            return "Remover a \(member.displayName) requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+        case "member.pause":
+            return "Pausar a \(member.displayName) requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+        case "member.promote":
+            return "Promover a \(member.displayName) a admin requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+        default:
+            return "Esta acción requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+        }
+    }
+
+    /// Carga `member_available_actions` para decidir qué actions surface el descriptor
+    /// + cómo gatear cada tap. Fail-silent: si falla, queda empty → solo `member.remove`
+    /// queda accesible via flow legacy.
     private func loadMemberActions() async {
         guard let container, !context.isPersonal, let myId = myActorId else {
             memberActions = []
@@ -364,17 +418,26 @@ public struct MemberDetailView: View {
         }
     }
 
-    /// Invoca `request_governance_action` con clientId para idempotency.
-    /// Devuelve `decisionId` que dispara el sheet de DecisionDetailView.
-    private func requestGovernanceRemoval() async {
-        guard let container else { return }
+    /// Invoca `request_governance_action` con clientId idempotency para la action
+    /// actualmente seleccionada (governanceAction). Captura `decisionId` que dispara
+    /// el sheet de DecisionDetailView. Reset `governanceAction` al terminar.
+    private func requestGovernanceForSelectedAction() async {
+        guard let container, let action = governanceAction else { return }
+        let titlePrefix: String = {
+            switch action.actionKey {
+            case "member.remove":  return "Remover a"
+            case "member.pause":   return "Pausar a"
+            case "member.promote": return "Promover a admin a"
+            default:               return action.label + " —"
+            }
+        }()
         let input = RequestGovernanceActionInput(
             contextActorId: context.id,
-            actionKey: "member.remove",
+            actionKey: action.actionKey,
             targetType: "actor",
             targetId: member.actorId,
             payload: .object([:]),
-            title: "Remover a \(member.displayName)",
+            title: "\(titlePrefix) \(member.displayName)",
             closesAt: nil,
             clientId: governanceClientId
         )
@@ -383,6 +446,7 @@ public struct MemberDetailView: View {
             let result = try await container.rpc.requestGovernanceAction(input)
             capturedDecisionId = result.decisionId
         }
+        governanceAction = nil
         if success, let decisionId = capturedDecisionId {
             pendingDecisionId = decisionId
         }
