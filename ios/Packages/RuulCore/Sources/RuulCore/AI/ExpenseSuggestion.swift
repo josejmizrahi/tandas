@@ -14,7 +14,7 @@ import FoundationModels
 @available(iOS 26.0, *)
 @Generable
 public struct ExpenseSuggestion: Sendable, Equatable {
-    @Guide(description: "Descripción corta del gasto en español, 2-6 palabras. Ejemplos: Cena, Súper, Uber al aeropuerto.")
+    @Guide(description: "SOLO 1-3 palabras describiendo el concepto del gasto. Ejemplos válidos: Cena, Súper, Uber, Poker, Gasolina, Renta, Boletos avión. NUNCA escribas oraciones, frases ni incluyas montos ni nombres ni preposiciones. Si el usuario dice 'cena 500' pones 'Cena'; si dice 'Moshe me debe 100 del poker' pones 'Poker'.")
     public let description: String
 
     @Guide(description: "Monto numérico del gasto en la moneda. Si el usuario no especifica monto, devuelve 0.")

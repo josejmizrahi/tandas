@@ -110,14 +110,32 @@ public struct RecordExpenseView: View {
                 }
 
                 Section("Quién pagó") {
-                    Picker("Pagó", selection: $paidByActorId) {
-                        Text("Yo").tag(nil as UUID?)
+                    Menu {
+                        Button {
+                            paidByActorId = nil
+                        } label: {
+                            Label("Yo", systemImage: paidByActorId == nil ? "checkmark" : "")
+                        }
                         ForEach(visibleMembers) { member in
-                            Text(member.displayName).tag(member.actorId as UUID?)
+                            Button {
+                                paidByActorId = member.actorId
+                            } label: {
+                                Label(
+                                    member.displayName,
+                                    systemImage: paidByActorId == member.actorId ? "checkmark" : ""
+                                )
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(payerDisplayName)
+                                .foregroundStyle(Theme.Text.primary)
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption)
+                                .foregroundStyle(Theme.Text.secondary)
                         }
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
                 }
 
                 // SplitEditor
@@ -157,9 +175,11 @@ public struct RecordExpenseView: View {
                 }
             }
             .task {
-                if store.members.isEmpty {
-                    await store.load(context: context)
-                }
+                // R.6.AI.7.fix3 — Quitamos el guard isEmpty: necesitamos
+                // que members siempre esté fresco cuando AI aplica la
+                // sugerencia. Sin members, el split queda en cero filas
+                // y Registrar gasto disabled aunque AI armó todo bien.
+                await store.load(context: context)
             }
             .actionErrorAlert(runner)
             .alert("Gasto registrado", isPresented: Binding(
@@ -319,6 +339,13 @@ public struct RecordExpenseView: View {
             return store.displayName(for: paidByActorId)
         }
         return "ti"
+    }
+
+    /// R.6.AI.7.fix3 — Display name del pagador para el Menu label. Mismo
+    /// que payerName pero para uso en SwiftUI label (no en string interp).
+    private var payerDisplayName: String {
+        guard let paidByActorId else { return "Yo" }
+        return visibleMembers.first(where: { $0.actorId == paidByActorId })?.displayName ?? "Yo"
     }
 
     // MARK: - R.6.AI.7 — AI Hero (Apple Intelligence)
