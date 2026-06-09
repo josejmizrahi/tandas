@@ -102,8 +102,25 @@ public struct MembersListView: View {
                             .font(.caption)
                             .foregroundStyle(Theme.Text.secondary)
                     }
+                    // R.5W — badge "Sin app" para placeholders.
+                    if member.isPlaceholder {
+                        Text("Sin app")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Theme.Tint.info)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.Tint.info.opacity(0.15), in: Capsule())
+                    }
                 }
-                if let joined = member.joinedAt {
+                if member.isPlaceholder, let phone = member.contactPhone, !phone.isEmpty {
+                    Text(phone)
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                } else if member.isPlaceholder, let email = member.contactEmail, !email.isEmpty {
+                    Text(email)
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                } else if let joined = member.joinedAt {
                     Text("Desde \(joined.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
                         .foregroundStyle(Theme.Text.secondary)

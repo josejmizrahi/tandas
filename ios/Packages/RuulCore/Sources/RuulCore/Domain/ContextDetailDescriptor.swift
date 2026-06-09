@@ -178,12 +178,15 @@ public struct ContextMemberPreview: Codable, Sendable, Equatable, Identifiable {
     public let displayName: String
     public let membershipType: String
     public let joinedAt: Date?
+    /// R.5W — true cuando el miembro es un placeholder actor (sin app).
+    public let isPlaceholder: Bool
 
     enum CodingKeys: String, CodingKey {
         case actorId = "actor_id"
         case displayName = "display_name"
         case membershipType = "membership_type"
         case joinedAt = "joined_at"
+        case isPlaceholder = "is_placeholder"
     }
 
     public init(from decoder: Decoder) throws {
@@ -192,6 +195,7 @@ public struct ContextMemberPreview: Codable, Sendable, Equatable, Identifiable {
         self.displayName = try c.decodeIfPresent(String.self, forKey: .displayName) ?? "Miembro"
         self.membershipType = try c.decodeIfPresent(String.self, forKey: .membershipType) ?? "member"
         self.joinedAt = try c.decodeIfPresent(Date.self, forKey: .joinedAt)
+        self.isPlaceholder = try c.decodeIfPresent(Bool.self, forKey: .isPlaceholder) ?? false
     }
 
     public var id: UUID { actorId }

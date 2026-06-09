@@ -121,6 +121,14 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
     public let membershipType: String?
     public let joinedAt: Date?
     public let roles: [String]
+    /// R.5W — true cuando el miembro es un actor placeholder (creado por
+    /// otro miembro porque la persona no usa la app). Default false para
+    /// back-compat con descriptores que no mandan el campo.
+    public let isPlaceholder: Bool
+    /// R.5W — contacto opcional del placeholder (visible al member detail
+    /// para que un admin pueda compartir el link de invitación).
+    public let contactPhone: String?
+    public let contactEmail: String?
 
     enum CodingKeys: String, CodingKey {
         case actorId = "actor_id"
@@ -128,6 +136,9 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
         case membershipType = "membership_type"
         case joinedAt = "joined_at"
         case roles
+        case isPlaceholder = "is_placeholder"
+        case contactPhone = "contact_phone"
+        case contactEmail = "contact_email"
     }
 
     public init(
@@ -135,13 +146,19 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
         displayName: String,
         membershipType: String? = nil,
         joinedAt: Date? = nil,
-        roles: [String] = []
+        roles: [String] = [],
+        isPlaceholder: Bool = false,
+        contactPhone: String? = nil,
+        contactEmail: String? = nil
     ) {
         self.actorId = actorId
         self.displayName = displayName
         self.membershipType = membershipType
         self.joinedAt = joinedAt
         self.roles = roles
+        self.isPlaceholder = isPlaceholder
+        self.contactPhone = contactPhone
+        self.contactEmail = contactEmail
     }
 
     public init(from decoder: Decoder) throws {
@@ -151,6 +168,9 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
         self.membershipType = try c.decodeIfPresent(String.self, forKey: .membershipType)
         self.joinedAt = try c.decodeIfPresent(Date.self, forKey: .joinedAt)
         self.roles = try c.decodeIfPresent([String].self, forKey: .roles) ?? []
+        self.isPlaceholder = try c.decodeIfPresent(Bool.self, forKey: .isPlaceholder) ?? false
+        self.contactPhone = try c.decodeIfPresent(String.self, forKey: .contactPhone)
+        self.contactEmail = try c.decodeIfPresent(String.self, forKey: .contactEmail)
     }
 
     public var id: UUID { actorId }
