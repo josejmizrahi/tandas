@@ -28,6 +28,14 @@ public struct CreateRuleWizard: View {
     /// graceful degradation si Apple Intelligence no está disponible.
     @State private var suggestionService = RuleSuggestionService()
     @State private var aiPromptText = ""
+    /// R.6.AI.6 — Cuando el modelo aplica una sugerencia, los chips
+    /// "Datos considerados" se siguen mostrando como confirmación. El user
+    /// puede tocar "Pensar otra" para resetear y probar otro prompt.
+    @State private var lastConsidered: [RuulAIContext.Considered] = []
+    /// Picker manual queda colapsado por default — la primary action es AI.
+    /// Se expande automáticamente cuando llega una sugerencia para que el
+    /// user vea el template aplicado, o cuando el user lo abre a mano.
+    @State private var isShowingManualPicker = false
 
     private enum Template: String, CaseIterable, Identifiable {
         case lateFee
@@ -68,23 +76,29 @@ public struct CreateRuleWizard: View {
     public var body: some View {
         NavigationStack {
             Form {
-                aiSuggestionSection
+                aiHeroSection
 
-                Section("Tipo de regla") {
-                    ForEach(Template.allCases) { option in
-                        Button {
-                            template = option
-                        } label: {
-                            HStack {
-                                Label(option.label, systemImage: option.symbolName)
-                                    .foregroundStyle(.primary)
-                                Spacer()
-                                if template == option {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(.tint)
+                Section {
+                    DisclosureGroup(isExpanded: $isShowingManualPicker) {
+                        ForEach(Template.allCases) { option in
+                            Button {
+                                template = option
+                            } label: {
+                                HStack {
+                                    Label(option.label, systemImage: option.symbolName)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    if template == option {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.tint)
+                                            .contentTransition(.symbolEffect(.replace))
+                                    }
                                 }
                             }
                         }
+                    } label: {
+                        Label("Tipo de regla", systemImage: template.symbolName)
+                            .symbolRenderingMode(.hierarchical)
                     }
                 }
 
@@ -173,112 +187,185 @@ public struct CreateRuleWizard: View {
         }
     }
 
-    // MARK: - R.6.AI.1 — AI Suggestion (FoundationModels)
+    // MARK: - R.6.AI.6 — AI Hero (FoundationModels + pre-aggregation)
+    //
+    // Hero AI-first: el usuario describe la regla con sus palabras, Ruul la
+    // arma. Auto-apply al recibir sugerencia (sin tap "Aplicar" intermedio);
+    // el form de abajo queda pre-lleno y editable. Chips de ejemplos para
+    // arrancar rápido. Manual picker queda colapsado por default.
 
     @ViewBuilder
-    private var aiSuggestionSection: some View {
+    private var aiHeroSection: some View {
         Section {
-            TextField(
-                "Describe la regla con tus palabras…",
-                text: $aiPromptText,
-                axis: .vertical
-            )
-            .lineLimit(2...4)
-            .disabled(!suggestionService.isAvailable || isSuggesting)
-
-            switch suggestionService.phase {
-            case .idle, .loaded:
-                Button {
-                    Task {
-                        await suggestionService.suggest(
-                            prompt: aiPromptText,
-                            rpc: rpc,
-                            contextId: context.id
-                        )
-                    }
-                } label: {
-                    Label("Sugerir regla", systemImage: "sparkles")
-                        .symbolRenderingMode(.hierarchical)
-                        .frame(maxWidth: .infinity)
+            VStack(alignment: .leading, spacing: 12) {
+                heroHeadline
+                heroPromptField
+                examplePromptsRow
+                aiActionRow
+                if !lastConsidered.isEmpty,
+                   case .idle = suggestionService.phase {
+                    consideredSection
                 }
-                .disabled(
-                    aiPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || !suggestionService.isAvailable
-                )
-            case .loading:
-                HStack {
-                    ProgressView()
-                    Text("Pensando…")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-            case .unavailable(let reason):
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+            .listRowSeparator(.hidden)
+        } footer: {
+            if !suggestionService.isAvailable, case .unavailable(let reason) = suggestionService.phase {
                 Label(reason, systemImage: "sparkles.slash")
                     .symbolRenderingMode(.hierarchical)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            case .failed(let message):
+            } else if !lastConsidered.isEmpty {
+                Text("La regla ya está armada abajo. Ajústala si quieres y dale Crear.")
+            } else {
+                Text("Descríbela con tus palabras o elige un tipo manualmente más abajo.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var heroHeadline: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: "sparkles")
+                .font(.title2)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Theme.Tint.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Pídele a Ruul")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Theme.Text.primary)
+                Text("Describe la regla y la armamos por ti")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder
+    private var heroPromptField: some View {
+        TextField(
+            "Ej: si Aaron llega tarde, multa de 100",
+            text: $aiPromptText,
+            axis: .vertical
+        )
+        .lineLimit(3...6)
+        .textInputAutocapitalization(.sentences)
+        .submitLabel(.go)
+        .disabled(!suggestionService.isAvailable || isSuggesting)
+        .padding(12)
+        .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var examplePromptsRow: some View {
+        let examples = [
+            "El que llega tarde paga 100",
+            "Cancelar el mismo día = multa",
+            "Si gastamos más de 5000, alerta",
+            "Reservar y no usar = penalización"
+        ]
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(examples, id: \.self) { example in
+                    Button {
+                        aiPromptText = example
+                    } label: {
+                        Text(example)
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Theme.Tint.primary.opacity(0.12), in: Capsule())
+                            .foregroundStyle(Theme.Tint.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!suggestionService.isAvailable || isSuggesting)
+                }
+            }
+        }
+        .scrollClipDisabled()
+    }
+
+    @ViewBuilder
+    private var aiActionRow: some View {
+        switch suggestionService.phase {
+        case .idle:
+            Button {
+                Task { await suggest() }
+            } label: {
+                Label("Pensar regla", systemImage: "sparkles")
+                    .symbolRenderingMode(.hierarchical)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassProminent)
+            .disabled(
+                aiPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || !suggestionService.isAvailable
+            )
+
+        case .loading:
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Pensando…")
+                    .font(.callout)
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 6)
+
+        case .loaded:
+            // Phase will be auto-reset inside applySuggestion + lastConsidered
+            // captura el manifest, así que prácticamente no entramos acá.
+            EmptyView()
+
+        case .unavailable:
+            EmptyView()
+
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 8) {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .symbolRenderingMode(.hierarchical)
                     .font(.caption)
                     .foregroundStyle(Theme.Tint.critical)
-            }
-
-            if case .loaded(let suggestion, let considered) = suggestionService.phase {
-                suggestionPreview(suggestion, considered: considered)
-            }
-        } header: {
-            Label("Sugerencia con Apple Intelligence", systemImage: "sparkles")
-        } footer: {
-            if suggestionService.isAvailable {
-                Text("La sugerencia pre-llena el wizard. Tú decides si la creas tal cual o ajustas los valores antes.")
+                Button {
+                    Task { await suggest() }
+                } label: {
+                    Label("Reintentar", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
             }
         }
-    }
-
-    private var isSuggesting: Bool {
-        if case .loading = suggestionService.phase { return true }
-        return false
     }
 
     @ViewBuilder
-    private func suggestionPreview(
-        _ suggestion: RuleSuggestion,
-        considered: [RuulAIContext.Considered]
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(suggestion.title)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(Theme.Text.primary)
-            Text(suggestion.rationale)
-                .font(.caption)
-                .foregroundStyle(Theme.Text.secondary)
-        }
-
-        // R.6.AI.5 — Chips de los datos del contexto que se inyectaron al
-        // prompt (pre-aggregation). El founder ve qué miembros / recursos /
-        // reglas miró el modelo antes de proponer.
-        if !considered.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
+    private var consideredSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
                 Text("Datos considerados")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Theme.Text.tertiary)
                     .textCase(.uppercase)
-                ForEach(considered) { item in
-                    consideredChip(item)
+                Spacer()
+                Button {
+                    lastConsidered = []
+                    aiPromptText = ""
+                    suggestionService.reset()
+                } label: {
+                    Label("Pensar otra", systemImage: "arrow.clockwise")
+                        .font(.caption2.weight(.medium))
+                        .symbolRenderingMode(.hierarchical)
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.Tint.primary)
+            }
+            ForEach(lastConsidered) { item in
+                consideredChip(item)
             }
         }
-
-        Button {
-            applySuggestion(suggestion)
-            suggestionService.reset()
-        } label: {
-            Label("Aplicar sugerencia", systemImage: "checkmark.circle.fill")
-                .symbolRenderingMode(.hierarchical)
-                .frame(maxWidth: .infinity)
-        }
+        .padding(12)
+        .background(Theme.Tint.info.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     @ViewBuilder
@@ -296,10 +383,9 @@ public struct CreateRuleWizard: View {
                 Text(item.summary)
                     .font(.caption2)
                     .foregroundStyle(Theme.Text.secondary)
-                    .lineLimit(3)
+                    .lineLimit(2)
             }
         }
-        .padding(.vertical, 4)
     }
 
     private func consideredSymbol(_ id: String) -> String {
@@ -311,6 +397,27 @@ public struct CreateRuleWizard: View {
         case "obligations":  return "creditcard.fill"
         case "events":       return "calendar"
         default:             return "circle.dotted"
+        }
+    }
+
+    private var isSuggesting: Bool {
+        if case .loading = suggestionService.phase { return true }
+        return false
+    }
+
+    /// Pide sugerencia y, al recibir, auto-aplica al form + abre el picker
+    /// manual para que el user vea qué se eligió. Cero tap intermedio.
+    private func suggest() async {
+        await suggestionService.suggest(
+            prompt: aiPromptText,
+            rpc: rpc,
+            contextId: context.id
+        )
+        if case .loaded(let suggestion, let considered) = suggestionService.phase {
+            applySuggestion(suggestion)
+            lastConsidered = considered
+            isShowingManualPicker = true
+            suggestionService.reset()
         }
     }
 
