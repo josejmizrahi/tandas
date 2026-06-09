@@ -18,7 +18,9 @@ public struct EditEventView: View {
     @State private var endsAt: Date
     @State private var hasEndsAt: Bool
     @State private var locationText: String
-    @State private var isVirtual: Bool
+    /// R.5V.3A.event — 3 modos de ubicación. `.perHost` sólo disponible para
+    /// recurring semanal (doctrina F.EVENT.8). Espeja CreateEventView.
+    @State private var locationMode: LocationMode
     @State private var recurrence: Recurrence
     @State private var runner = ActionRunner()
     @State private var locationCompleter = LocationCompleter()
@@ -43,6 +45,39 @@ public struct EditEventView: View {
         }
     }
 
+    /// R.5V.3A.event — espeja CreateEventView.LocationMode.
+    private enum LocationMode: String, CaseIterable, Identifiable {
+        case physical, virtual, perHost
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .physical: return "En un lugar"
+            case .virtual:  return "Virtual"
+            case .perHost:  return "Por anfitrión"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .physical: return "mappin.and.ellipse"
+            case .virtual:  return "video.fill"
+            case .perHost:  return "person.crop.circle.badge.questionmark"
+            }
+        }
+
+        /// Deriva el modo inicial desde el evento. Si es recurring semanal,
+        /// sin location y sin virtual → es perHost. Si no, los flags clásicos
+        /// (virtual / physical).
+        static func from(event: CalendarEvent) -> LocationMode {
+            if event.isVirtual { return .virtual }
+            let hasLocation = (event.locationText ?? "").trimmingCharacters(in: .whitespaces).isEmpty == false
+            let isWeeklyRotating = event.isRecurring &&
+                (event.recurrenceRule?.lowercased() == "weekly" ||
+                 event.recurrenceRule?.lowercased().contains("freq=weekly") == true)
+            if !hasLocation && isWeeklyRotating { return .perHost }
+            return .physical
+        }
+    }
+
     public init(
         event: CalendarEvent,
         context: AppContext,
@@ -59,12 +94,20 @@ public struct EditEventView: View {
         _endsAt = State(initialValue: event.endsAt ?? event.startsAt?.addingTimeInterval(2 * 3600) ?? Date().addingTimeInterval(2 * 3600))
         _hasEndsAt = State(initialValue: event.endsAt != nil)
         _locationText = State(initialValue: event.locationText ?? "")
-        _isVirtual = State(initialValue: event.isVirtual)
+        _locationMode = State(initialValue: LocationMode.from(event: event))
         _recurrence = State(initialValue: Recurrence.from(event.recurrenceRule))
     }
 
     private var locationIsValid: Bool {
-        isVirtual || !locationText.trimmingCharacters(in: .whitespaces).isEmpty
+        switch locationMode {
+        case .physical: return !locationText.trimmingCharacters(in: .whitespaces).isEmpty
+        case .virtual:  return true
+        case .perHost:  return true
+        }
+    }
+
+    private var perHostAvailable: Bool {
+        recurrence == .weekly
     }
 
     private var canSubmit: Bool {
@@ -92,10 +135,18 @@ public struct EditEventView: View {
                 }
 
                 Section {
-                    Toggle(isOn: $isVirtual) {
-                        Label("Evento virtual", systemImage: "video.fill")
+                    Picker("Tipo de ubicación", selection: $locationMode) {
+                        ForEach(LocationMode.allCases) { mode in
+                            if mode == .perHost && !perHostAvailable {
+                                EmptyView()
+                            } else {
+                                Label(mode.label, systemImage: mode.symbol).tag(mode)
+                            }
+                        }
                     }
-                    if !isVirtual {
+                    .pickerStyle(.menu)
+
+                    if locationMode == .physical {
                         TextField("Dónde (dirección o lugar)", text: $locationText)
                             .textInputAutocapitalization(.words)
                             .autocorrectionDisabled()
@@ -135,10 +186,13 @@ public struct EditEventView: View {
                 } header: {
                     Text("Ubicación")
                 } footer: {
-                    if isVirtual {
+                    switch locationMode {
+                    case .physical:
+                        Text("Si esta es tu semana de hospedar, escribe aquí dónde reciben.")
+                    case .virtual:
                         Text("Sin ubicación física.")
-                    } else {
-                        Text("La ubicación es obligatoria si el evento no es virtual.")
+                    case .perHost:
+                        Text("El anfitrión actual decide dónde hospedar su semana. Cambia a “En un lugar” para fijar dirección de esta ocurrencia.")
                     }
                 }
 
@@ -146,6 +200,11 @@ public struct EditEventView: View {
                     Picker("Frecuencia", selection: $recurrence) {
                         ForEach(Recurrence.allCases) { freq in
                             Text(freq.label).tag(freq)
+                        }
+                    }
+                    .onChange(of: recurrence) { _, _ in
+                        if !perHostAvailable && locationMode == .perHost {
+                            locationMode = .physical
                         }
                     }
                 } header: {
@@ -187,20 +246,25 @@ public struct EditEventView: View {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         let trimmedDescription = description.trimmingCharacters(in: .whitespaces)
         let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
+        // R.5V.3A.event — payload por mode (espeja CreateEventView.create):
+        // - physical: location_text=texto, is_virtual=false
+        // - virtual:  location_text=nil,    is_virtual=true
+        // - perHost:  location_text=nil,    is_virtual=false (host decide)
+        let payloadLocation: String? = locationMode == .physical && !trimmedLocation.isEmpty
+            ? trimmedLocation
+            : nil
+        let payloadVirtual: Bool = locationMode == .virtual
         // F.EVENT.10.1 — mandamos los valores actuales del form siempre. El
         // backend ya usa `coalesce(nullif(btrim(...), ''), existing)` para
         // detectar no-ops + devuelve diff_keys vacío cuando nada cambió.
-        // Hacer el diff client-side abre la puerta a bugs sutiles (por
-        // ejemplo cuando MapKit recompone la dirección o cuando el usuario
-        // cambia capitalización), por eso preferimos delegarlo al backend.
         let input = UpdateEventInput(
             eventId: event.id,
             title: trimmedTitle,
             description: trimmedDescription,
             startsAt: startsAt,
             endsAt: hasEndsAt ? endsAt : nil,
-            locationText: isVirtual ? nil : trimmedLocation,
-            isVirtual: isVirtual,
+            locationText: payloadLocation,
+            isVirtual: payloadVirtual,
             recurrenceRule: recurrence.ruleValue
         )
         let success = await runner.run {
