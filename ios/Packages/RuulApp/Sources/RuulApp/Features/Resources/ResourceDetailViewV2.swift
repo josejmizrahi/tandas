@@ -106,29 +106,27 @@ public struct ResourceDetailViewV2: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Section("Explorar") {
-                        Button {
-                            isShowingEditResource = true
-                        } label: {
-                            Label("Editar recurso", systemImage: "pencil")
-                        }
+                    // R.5Z.fix.2.a (founder 2026-06-09) — Menu plano sin Sections
+                    // de 1 item. Apple HIG: usar Sections con headers solo cuando
+                    // hay ≥2 items o agrupación significativa. Divider entre
+                    // operacional y advanced.
+                    Button {
+                        isShowingEditResource = true
+                    } label: {
+                        Label("Editar recurso", systemImage: "pencil")
                     }
-                    // R.7.x — surface governance-routed transfer.
                     if !context.isPersonal, store.descriptor?.state.archived == false {
-                        Section("Gestión") {
-                            Button {
-                                Task { await openTransferPicker() }
-                            } label: {
-                                Label("Transferir propiedad", systemImage: "arrow.left.arrow.right")
-                            }
+                        Button {
+                            Task { await openTransferPicker() }
+                        } label: {
+                            Label("Transferir propiedad", systemImage: "arrow.left.arrow.right")
                         }
                     }
-                    Section("Avanzado") {
-                        Button {
-                            isShowingClassicSheet = true
-                        } label: {
-                            Label("Vista clásica", systemImage: "rectangle.stack")
-                        }
+                    Divider()
+                    Button {
+                        isShowingClassicSheet = true
+                    } label: {
+                        Label("Vista clásica", systemImage: "rectangle.stack")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")

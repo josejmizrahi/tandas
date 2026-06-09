@@ -151,7 +151,6 @@ public struct ResourcesListView: View {
     private var contextResourcesList: some View {
         if store.resources.isEmpty {
             List {
-                reservationsEntry
                 Section {
                     RuulEmptyState(
                         title: "Sin recursos",
@@ -168,7 +167,6 @@ public struct ResourcesListView: View {
                 .mapValues { $0.sorted { $0.displayName < $1.displayName } }
             List {
                 heroSectionContext(store.resources)
-                reservationsEntry
                 ForEach(ResourceClassGroup.displayOrder, id: \.self) { klass in
                     if let items = grouped[klass], !items.isEmpty {
                         Section {
@@ -303,16 +301,10 @@ public struct ResourcesListView: View {
 
     // MARK: - Reservations entry (preservada — context-only)
 
-    @ViewBuilder
-    private var reservationsEntry: some View {
-        Section {
-            NavigationLink {
-                ContextReservationsView(context: context, container: container)
-            } label: {
-                Label("Reservaciones del contexto", systemImage: "calendar.badge.clock")
-            }
-        }
-    }
+    // R.5Z.fix.2.b (founder 2026-06-09) — removida la entry "Reservaciones del
+    // contexto" de la lista de recursos. Scope creep: esta vista lista recursos.
+    // Reservaciones tienen su propio surface (ContextDetailV2 tab "Reservaciones"
+    // + ContextReservationsView).
 
     // MARK: - Filter helpers
 

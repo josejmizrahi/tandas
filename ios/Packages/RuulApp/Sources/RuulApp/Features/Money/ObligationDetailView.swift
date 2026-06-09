@@ -34,6 +34,16 @@ public struct ObligationDetailView: View {
     @State private var governanceClientId: String = UUID().uuidString
     @State private var pendingDecisionId: UUID?
 
+    /// R.5Z.fix.CC.1 — action keys que `handleObligationAction` sabe enrutar hoy.
+    /// El resto (pay/dispute/cancel) sigue en el descriptor backend pero se filtra
+    /// del Menu del toolbar hasta que iOS los wire. Mantener esta lista sincronizada
+    /// con `handleObligationAction`'s switch.
+    private static let wiredActionKeys: Set<String> = [
+        "mark_completed",
+        "edit_obligation",
+        "forgive"
+    ]
+
     public init(obligationId: UUID, context: AppContext, container: DependencyContainer) {
         self.obligationId = obligationId
         self.context = context
@@ -52,8 +62,12 @@ public struct ObligationDetailView: View {
                 // El body solo describe; el toolbar acciona.
                 .toolbar {
                     if let detail {
+                        // R.5Z.fix.CC.1 (founder 2026-06-09) — gating defensivo:
+                        // sólo render actions que iOS sabe handlear hoy. Antes el
+                        // descriptor surface `pay`/`dispute`/`cancel` que caían
+                        // al `comingSoonAction` alert "Próximamente" → UX rota.
                         let actions = detail.availableActions.inSection("obligations")
-                            .filter { $0.enabled }
+                            .filter { $0.enabled && Self.wiredActionKeys.contains($0.actionKey) }
                         if !actions.isEmpty {
                             ToolbarItem(placement: .topBarTrailing) {
                                 actionsToolbarMenu(actions: actions)

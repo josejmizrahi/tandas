@@ -22,8 +22,11 @@ public enum AttentionDestination: Identifiable, Hashable {
     case resourceDetail(resourceId: UUID, contextActorId: UUID)
     case reservationConflict(conflictId: UUID, resourceId: UUID, contextActorId: UUID)
     case pendingInvitations
-    /// Kind no soportado por iOS aún (e.g., R.6 va a emitir `rule_violation` antes de
-    /// que iOS tenga el dispatcher correspondiente). Render UX honesto, no crash.
+    /// R.5Z.fix.CC.2 — context-scoped destination. Usado por items con
+    /// `cta_scope_kind=context` (rule_violation, policy_violation, recordatorios
+    /// genéricos del contexto). Pushea ContextDetailViewV2.
+    case context(contextActorId: UUID)
+    /// Kind no soportado por iOS aún. Render UX honesto, no crash.
     case unsupported(kind: String)
 
     public var id: String {
@@ -34,6 +37,7 @@ public enum AttentionDestination: Identifiable, Hashable {
         case .resourceDetail(let id, _):                return "resource-\(id)"
         case .reservationConflict(let id, _, _):        return "reservation-conflict-\(id)"
         case .pendingInvitations:                       return "pending-invitations"
+        case .context(let ctx):                         return "context-\(ctx)"
         case .unsupported(let kind):                    return "unsupported-\(kind)"
         }
     }
@@ -72,6 +76,27 @@ public enum AttentionDispatcher {
         case "invitation":
             return .pendingInvitations
         default:
+            // R.5Z.fix.CC.2 (founder 2026-06-09) — fallback genérico por
+            // `cta_scope_kind` antes de caer a `.unsupported`. Hace al dispatcher
+            // forward-compatible con kinds nuevos de R.6 (rule_violation,
+            // policy_violation, etc.) siempre que usen scope_kinds canónicos.
+            return scopeBasedDestination(for: item)
+        }
+    }
+
+    /// R.5Z.fix.CC.2 — mapea `cta_scope_kind` a destination cuando el kind no
+    /// tiene case dedicado. Cubre items dinámicos R.6.
+    private static func scopeBasedDestination(for item: AttentionItem) -> AttentionDestination {
+        switch item.ctaScopeKind {
+        case "context":
+            return .context(contextActorId: item.contextActorId)
+        case "resource":
+            return .resourceDetail(resourceId: item.ctaScopeId, contextActorId: item.contextActorId)
+        case "obligation":
+            return .obligation(obligationId: item.ctaScopeId, contextActorId: item.contextActorId)
+        case "decision":
+            return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId)
+        default:
             return .unsupported(kind: item.kind)
         }
     }
@@ -92,6 +117,10 @@ public enum AttentionPresentation {
         case "obligation_complete":     return "checkmark.circle"
         case "settlement_open":         return "banknote.fill"
         case "invitation":              return "envelope.fill"
+        // R.5Z.fix.CC.2 — R.6.A rule-emitted kinds.
+        case "rule_violation":          return "exclamationmark.shield.fill"
+        case "rule_recommendation":     return "lightbulb.fill"
+        case "policy_violation":        return "exclamationmark.shield.fill"
         default:                        return "circle.fill"
         }
     }
@@ -106,6 +135,10 @@ public enum AttentionPresentation {
              "settlement_open":           return .green
         case "obligation_complete":       return .indigo
         case "invitation":                return .blue
+        // R.5Z.fix.CC.2 — R.6.A rule-emitted kinds.
+        case "rule_violation",
+             "policy_violation":          return .orange
+        case "rule_recommendation":       return .yellow
         default:                          return .gray
         }
     }
@@ -120,6 +153,10 @@ public enum AttentionPresentation {
         case "obligation_complete":      return "Marcar completado"
         case "settlement_open":          return "Marcar pagado"
         case "invitation":               return "Aceptar invitación"
+        // R.5Z.fix.CC.2 — R.6.A rule-emitted kinds.
+        case "rule_violation",
+             "policy_violation":         return "Ver detalles"
+        case "rule_recommendation":      return "Ver sugerencia"
         default:                         return "Ver"
         }
     }
@@ -175,6 +212,12 @@ public struct AttentionDestinationSheet: View {
             }
         case .pendingInvitations:
             PendingInvitationsView(container: container)
+        case .context(let contextActorId):
+            // R.5Z.fix.CC.2 — push ContextDetailViewV2 dentro de NavigationStack
+            // del sheet. Para items con cta_scope_kind=context (rule_violation, etc.).
+            wrapped(contextActorId: contextActorId) { ctx in
+                ContextDetailViewV2(contextId: ctx.id, context: ctx, container: container)
+            }
         case .unsupported(let kind):
             UnsupportedAttentionView(kind: kind)
         }

@@ -129,19 +129,20 @@ public struct RuleDetailView: View {
             if canManage, container != nil, context != nil {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
+                        // R.5Z.fix.2.a — Menu plano sin Section "Gestión" con
+                        // un solo item. Divider antes de destructive action.
                         Button {
                             isShowingEdit = true
                         } label: {
                             Label("Editar", systemImage: "pencil")
                         }
                         if rule.status != "archived" {
-                            Section("Gestión") {
-                                Button(role: .destructive) {
-                                    governanceClientId = UUID().uuidString
-                                    isShowingArchiveSheet = true
-                                } label: {
-                                    Label("Archivar regla", systemImage: "archivebox")
-                                }
+                            Divider()
+                            Button(role: .destructive) {
+                                governanceClientId = UUID().uuidString
+                                isShowingArchiveSheet = true
+                            } label: {
+                                Label("Archivar regla", systemImage: "archivebox")
                             }
                         }
                     } label: {

@@ -139,13 +139,15 @@ public struct MemberDetailView: View {
                                 }
                             }
                         }
+                        // R.5Z.fix.2.a — single-item "Compromisos" Section
+                        // colapsada a bare Button con Divider (Apple HIG: no
+                        // Section headers para 1 item).
                         if container != nil, !context.isPersonal {
-                            Section("Compromisos") {
-                                Button {
-                                    isShowingCreateObligation = true
-                                } label: {
-                                    Label("Asignar compromiso", systemImage: "plus.circle.fill")
-                                }
+                            Divider()
+                            Button {
+                                isShowingCreateObligation = true
+                            } label: {
+                                Label("Asignar compromiso", systemImage: "plus.circle.fill")
                             }
                         }
                         Section("Gestión") {
