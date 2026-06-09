@@ -3,15 +3,15 @@ import RuulCore
 
 /// Documents V2 · D.3 — lista cross-resource de documentos del contexto.
 ///
-/// Reemplaza el fallback `ActivityFeedView` que ContextDetailViewV2 More tab
-/// `documents` row usaba antes (R.5X audit P1-01 founder priority #1).
-///
-/// Usa componentes Ruul* V.2:
-/// - `RuulLoadingState` / `RuulErrorState` / `RuulEmptyState` para phases
-/// - `RuulActionRow` para cada document row (state `.enabled` push detail)
-///
-/// UX Doctrine §4 (documento): 6 tipos canónicos · inmutables · `archived_at`
-/// determina active vs archived. Soft toggle "Ver archivados" extiende la lista.
+/// **R.5V.X (2026-06-09)** — Rebuild Apple-native + Liquid Glass (mismo patrón
+/// que MyResources/Events/Members/Rules/Decisions/Resources v3):
+/// 1. Hero Liquid Glass: count + breakdown chips por tipo (Contratos /
+///    Recibos / IDs / etc.)
+/// 2. `.searchable` por título / resource displayName
+/// 3. Sections por DocumentType (Contratos / Recibos / Identificaciones /
+///    Estados de cuenta / Fotos / Otros) con tints semánticos
+/// 4. Section "Archivados" al final (cuando `includeArchived` toggle ON)
+/// 5. Estados Ruul* (Loading/Error/Empty)
 public struct ContextDocumentsListView: View {
     let context: AppContext
     let container: DependencyContainer
@@ -21,6 +21,7 @@ public struct ContextDocumentsListView: View {
     @State private var isShowingAttach: Bool = false
     @State private var pickedResource: Resource?
     @State private var pushedDocumentId: UUID?
+    @State private var query: String = ""
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -99,19 +100,129 @@ public struct ContextDocumentsListView: View {
                     : "No hay documentos activos. Toca el menú para adjuntar uno o ver archivados."
             )
         } else {
+            let filtered = filter(store.contextDocuments)
+            let active = filtered.filter { !$0.isArchived }
+            let archived = filtered.filter(\.isArchived)
+            let groupedActive = Dictionary(grouping: active, by: { $0.documentType })
+                .mapValues { $0.sorted { $0.title < $1.title } }
             List {
-                let groups = grouped(store.contextDocuments)
-                if !groups.active.isEmpty {
-                    Section("Activos") {
-                        ForEach(groups.active) { doc in row(doc) }
+                heroSection(store.contextDocuments)
+                ForEach(DocumentType.displayOrder, id: \.self) { type in
+                    if let items = groupedActive[type], !items.isEmpty {
+                        Section {
+                            ForEach(items) { doc in row(doc) }
+                        } header: {
+                            HStack {
+                                Label(type.label, systemImage: type.symbolName)
+                                    .foregroundStyle(Theme.Text.secondary)
+                                Spacer()
+                                Text("\(items.count)")
+                                    .foregroundStyle(Theme.Text.tertiary)
+                            }
+                        }
                     }
                 }
-                if !groups.archived.isEmpty {
-                    Section("Archivados") {
-                        ForEach(groups.archived) { doc in row(doc) }
+                if !archived.isEmpty {
+                    Section {
+                        ForEach(archived) { doc in row(doc) }
+                    } header: {
+                        HStack {
+                            Label("Archivados", systemImage: "archivebox.fill")
+                                .foregroundStyle(Theme.Text.tertiary)
+                            Spacer()
+                            Text("\(archived.count)")
+                                .foregroundStyle(Theme.Text.tertiary)
+                        }
+                    }
+                }
+                if groupedActive.isEmpty && archived.isEmpty {
+                    Section {
+                        Text("Sin coincidencias con \"\(query)\"")
+                            .font(.callout)
+                            .foregroundStyle(Theme.Text.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, Theme.Spacing.md)
                     }
                 }
             }
+            .listStyle(.insetGrouped)
+            .searchable(text: $query, prompt: "Buscar documento")
+            .searchToolbarBehavior(.minimize)
+        }
+    }
+
+    // MARK: - Hero (Liquid Glass)
+
+    @ViewBuilder
+    private func heroSection(_ docs: [Document]) -> some View {
+        let active = docs.filter { !$0.isArchived }
+        let byType = Dictionary(grouping: active, by: { $0.documentType })
+        let breakdown = DocumentType.displayOrder.compactMap { t -> (DocumentType, Int)? in
+            guard let count = byType[t]?.count, count > 0 else { return nil }
+            return (t, count)
+        }
+        Section {
+            GlassEffectContainer(spacing: Theme.Spacing.sm) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
+                        Text("\(active.count)")
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.Tint.primary)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(active.count == 1 ? "documento" : "documentos")
+                                .font(.callout)
+                                .foregroundStyle(Theme.Text.secondary)
+                            if docs.count > active.count {
+                                Text("\(docs.count - active.count) archivado\(docs.count - active.count == 1 ? "" : "s")")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.Text.tertiary)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    if !breakdown.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: Theme.Spacing.xs) {
+                                ForEach(breakdown, id: \.0) { type, count in
+                                    typeChip(type, count: count)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(Theme.Spacing.lg)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: Theme.Spacing.md, leading: Theme.Spacing.lg, bottom: Theme.Spacing.md, trailing: Theme.Spacing.lg))
+        }
+    }
+
+    @ViewBuilder
+    private func typeChip(_ type: DocumentType, count: Int) -> some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            Image(systemName: type.symbolName)
+                .font(.caption.weight(.semibold))
+            Text("\(count)")
+                .font(.caption.weight(.semibold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(documentTint(type))
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.xs)
+        .background(documentTint(type).opacity(Theme.Surface.badgeFillSubtle), in: Capsule())
+    }
+
+    // MARK: - Filter
+
+    private func filter(_ docs: [Document]) -> [Document] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return docs }
+        return docs.filter { d in
+            d.title.lowercased().contains(q)
+                || (d.resourceDisplayName?.lowercased().contains(q) ?? false)
         }
     }
 
@@ -167,22 +278,6 @@ public struct ContextDocumentsListView: View {
         case .photo:     return Theme.Tint.warning     // evidencia visual
         case .other:     return Theme.Text.tertiary
         }
-    }
-
-    // MARK: - Grouping
-
-    private struct Groups {
-        var active: [Document]
-        var archived: [Document]
-    }
-
-    private func grouped(_ docs: [Document]) -> Groups {
-        var active: [Document] = []
-        var archived: [Document] = []
-        for doc in docs {
-            if doc.isArchived { archived.append(doc) } else { active.append(doc) }
-        }
-        return Groups(active: active, archived: archived)
     }
 
     // MARK: - Actions
@@ -284,3 +379,14 @@ private struct ResourcePickerForAttach: View {
         }
     }
 }
+
+// MARK: - DocumentType display order (R.5V v3 grouping)
+
+private extension DocumentType {
+    /// Orden de Sections: tipos más comunes primero (contratos / recibos),
+    /// "Otros" al final antes de "Archivados".
+    static let displayOrder: [DocumentType] = [
+        .contract, .id, .statement, .receipt, .photo, .other
+    ]
+}
+
