@@ -28,6 +28,10 @@ public enum AttentionDestination: Identifiable, Hashable {
     /// AppContext mínimo cuando el lookup en `availableContexts` falla (race
     /// condition contextStore loading o context not en candidates aún).
     case context(contextActorId: UUID, contextDisplayName: String)
+    /// R.5Z.fix.CC.2.2 — money-transaction scope. Push a MoneyHomeView del
+    /// contexto (lista de gastos + obligaciones). Usado para items emitidos
+    /// por reglas sobre expense.recorded / payment.recorded etc.
+    case money(contextActorId: UUID, contextDisplayName: String)
     /// Kind no soportado por iOS aún. Render UX honesto, no crash.
     case unsupported(kind: String)
 
@@ -40,6 +44,7 @@ public enum AttentionDestination: Identifiable, Hashable {
         case .reservationConflict(let id, _, _):        return "reservation-conflict-\(id)"
         case .pendingInvitations:                       return "pending-invitations"
         case .context(let ctx, _):                      return "context-\(ctx)"
+        case .money(let ctx, _):                        return "money-\(ctx)"
         case .unsupported(let kind):                    return "unsupported-\(kind)"
         }
     }
@@ -98,6 +103,10 @@ public enum AttentionDispatcher {
             return .obligation(obligationId: item.ctaScopeId, contextActorId: item.contextActorId)
         case "decision":
             return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId)
+        case "money_transaction":
+            // R.5Z.fix.CC.2.2 — items sobre gastos/payments individuales pushean
+            // a la lista de movimientos del contexto.
+            return .money(contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         default:
             return .unsupported(kind: item.kind)
         }
@@ -221,6 +230,13 @@ public struct AttentionDestinationSheet: View {
             // availableContexts falla (race condition contextStore.load).
             wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 ContextDetailViewV2(contextId: ctx.id, context: ctx, container: container)
+            }
+        case .money(let contextActorId, let contextDisplayName):
+            // R.5Z.fix.CC.2.2 — push MoneyHomeView (lista de gastos +
+            // obligaciones del contexto). iOS no tiene detail view de
+            // transacción individual; MoneyHomeView es lo más cercano a "la acción".
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
+                MoneyHomeView(context: ctx, container: container)
             }
         case .unsupported(let kind):
             UnsupportedAttentionView(kind: kind)
