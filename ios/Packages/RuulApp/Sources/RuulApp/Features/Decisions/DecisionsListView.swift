@@ -111,6 +111,7 @@ public struct DecisionsListView: View {
             }
             .listStyle(.insetGrouped)
             .searchable(text: $query, prompt: "Buscar decisión")
+            .searchToolbarBehavior(.minimize)
         }
     }
 

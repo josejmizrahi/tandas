@@ -105,6 +105,7 @@ public struct EventsListView: View {
             }
             .listStyle(.insetGrouped)
             .searchable(text: $query, prompt: "Buscar evento")
+            .searchToolbarBehavior(.minimize)
         }
     }
 

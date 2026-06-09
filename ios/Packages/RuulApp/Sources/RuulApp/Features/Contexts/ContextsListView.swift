@@ -111,6 +111,7 @@ public struct ContextsListView: View {
             placement: .navigationBarDrawer(displayMode: .automatic),
             prompt: "Buscar espacios"
         )
+        .searchToolbarBehavior(.minimize)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 if !container.invitationsStore.invitations.isEmpty {

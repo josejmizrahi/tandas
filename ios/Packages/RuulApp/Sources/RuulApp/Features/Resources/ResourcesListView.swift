@@ -115,6 +115,7 @@ public struct ResourcesListView: View {
             }
             .listStyle(.insetGrouped)
             .searchable(text: $query, prompt: "Buscar recurso")
+            .searchToolbarBehavior(.minimize)
         }
     }
 
@@ -190,6 +191,7 @@ public struct ResourcesListView: View {
             }
             .listStyle(.insetGrouped)
             .searchable(text: $query, prompt: "Buscar recurso")
+            .searchToolbarBehavior(.minimize)
         }
     }
 

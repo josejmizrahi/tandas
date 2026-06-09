@@ -124,6 +124,7 @@ public struct RulesListView: View {
             }
             .listStyle(.insetGrouped)
             .searchable(text: $query, prompt: "Buscar regla")
+            .searchToolbarBehavior(.minimize)
         }
     }
 

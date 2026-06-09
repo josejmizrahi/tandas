@@ -118,6 +118,7 @@ public struct MembersListView: View {
             }
             .listStyle(.insetGrouped)
             .searchable(text: $query, prompt: "Buscar miembro")
+            .searchToolbarBehavior(.minimize)
         }
     }
 
