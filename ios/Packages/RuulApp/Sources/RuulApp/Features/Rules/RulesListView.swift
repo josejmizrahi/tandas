@@ -56,7 +56,7 @@ public struct RulesListView: View {
             }
         }
         .sheet(isPresented: $isShowingCreate) {
-            CreateRuleWizard(context: context, store: store)
+            CreateRuleWizard(context: context, store: store, rpc: container.rpc)
         }
     }
 

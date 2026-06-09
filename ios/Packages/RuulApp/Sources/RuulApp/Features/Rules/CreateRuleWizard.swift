@@ -7,6 +7,10 @@ import RuulCore
 public struct CreateRuleWizard: View {
     let context: AppContext
     let store: RulesStore
+    /// R.6.AI.4 — RPC injected para que el suggestion service pueda darle al
+    /// modelo tools read-only (list members/resources/activity/rules) y
+    /// personalizar la sugerencia con datos reales del contexto.
+    let rpc: any RuulRPCClient
 
     @Environment(\.dismiss) private var dismiss
     @State private var template: Template = .lateFee
@@ -55,9 +59,10 @@ public struct CreateRuleWizard: View {
         }
     }
 
-    public init(context: AppContext, store: RulesStore) {
+    public init(context: AppContext, store: RulesStore, rpc: any RuulRPCClient) {
         self.context = context
         self.store = store
+        self.rpc = rpc
     }
 
     public var body: some View {
@@ -184,7 +189,13 @@ public struct CreateRuleWizard: View {
             switch suggestionService.phase {
             case .idle, .loaded:
                 Button {
-                    Task { await suggestionService.suggest(prompt: aiPromptText) }
+                    Task {
+                        await suggestionService.suggest(
+                            prompt: aiPromptText,
+                            rpc: rpc,
+                            contextId: context.id
+                        )
+                    }
                 } label: {
                     Label("Sugerir regla", systemImage: "sparkles")
                         .symbolRenderingMode(.hierarchical)
@@ -214,8 +225,8 @@ public struct CreateRuleWizard: View {
                     .foregroundStyle(Theme.Tint.critical)
             }
 
-            if case .loaded(let suggestion) = suggestionService.phase {
-                suggestionPreview(suggestion)
+            if case .loaded(let suggestion, let invocations) = suggestionService.phase {
+                suggestionPreview(suggestion, invocations: invocations)
             }
         } header: {
             Label("Sugerencia con Apple Intelligence", systemImage: "sparkles")
@@ -232,7 +243,10 @@ public struct CreateRuleWizard: View {
     }
 
     @ViewBuilder
-    private func suggestionPreview(_ suggestion: RuleSuggestion) -> some View {
+    private func suggestionPreview(
+        _ suggestion: RuleSuggestion,
+        invocations: [RuleSuggestionService.ToolInvocation]
+    ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(suggestion.title)
                 .font(.callout.weight(.semibold))
@@ -242,6 +256,21 @@ public struct CreateRuleWizard: View {
                 .foregroundStyle(Theme.Text.secondary)
         }
 
+        // R.6.AI.4 — Chips de los datos del contexto que el modelo consultó.
+        // El founder ve qué miembros / recursos / actividad / reglas miró
+        // antes de proponer. Si la lista viene vacía, no aparecen chips.
+        if !invocations.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Datos considerados")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.Text.tertiary)
+                    .textCase(.uppercase)
+                ForEach(invocations) { invocation in
+                    invocationChip(invocation)
+                }
+            }
+        }
+
         Button {
             applySuggestion(suggestion)
             suggestionService.reset()
@@ -249,6 +278,49 @@ public struct CreateRuleWizard: View {
             Label("Aplicar sugerencia", systemImage: "checkmark.circle.fill")
                 .symbolRenderingMode(.hierarchical)
                 .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private func invocationChip(_ invocation: RuleSuggestionService.ToolInvocation) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: invocationSymbol(invocation.name))
+                .font(.caption2)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Theme.Tint.info)
+                .frame(width: 16, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(invocationTitle(invocation.name))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.Text.primary)
+                if !invocation.output.isEmpty {
+                    Text(invocation.output)
+                        .font(.caption2)
+                        .foregroundStyle(Theme.Text.secondary)
+                        .lineLimit(4)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func invocationTitle(_ toolName: String) -> String {
+        switch toolName {
+        case "list_context_members":         return "Miembros del contexto"
+        case "list_context_resources":       return "Recursos del contexto"
+        case "list_context_recent_activity": return "Actividad reciente"
+        case "list_context_rules":           return "Reglas existentes"
+        default:                             return toolName
+        }
+    }
+
+    private func invocationSymbol(_ toolName: String) -> String {
+        switch toolName {
+        case "list_context_members":         return "person.2.fill"
+        case "list_context_resources":       return "shippingbox.fill"
+        case "list_context_recent_activity": return "clock.arrow.circlepath"
+        case "list_context_rules":           return "ruler.fill"
+        default:                             return "circle.dotted"
         }
     }
 
@@ -376,6 +448,7 @@ public struct CreateRuleWizard: View {
 }
 
 #Preview("Crear regla") {
+    let rpc = MockRuulRPCClient.demo()
     CreateRuleWizard(
         context: AppContext(
             id: MockRuulRPCClient.DemoIds.cenaSemanal,
@@ -383,6 +456,7 @@ public struct CreateRuleWizard: View {
             subtype: "friend_group",
             displayName: "Cena Semanal"
         ),
-        store: RulesStore(rpc: MockRuulRPCClient.demo())
+        store: RulesStore(rpc: rpc),
+        rpc: rpc
     )
 }
