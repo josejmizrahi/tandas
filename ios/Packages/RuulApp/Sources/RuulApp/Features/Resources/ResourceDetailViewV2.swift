@@ -467,29 +467,28 @@ public struct ResourceDetailViewV2: View {
     }
 
     // MARK: - Secciones (descriptor.sections)
+    //
+    // 2026-06-08 founder feedback — antes había un Section con header literal
+    // "Secciones" (meta naming anti-Apple) que listaba TODAS las secciones del
+    // descriptor incluyendo las inertes con "Requiere: <capability>" expuesto
+    // como texto técnico. Ahora:
+    //   - Solo se renderizan secciones routeable (filtra por sectionDestinationKey)
+    //   - Sin header — las rows quedan como NavigationLinks Apple-native
+    //   - Sin "Requiere: X" — el backend ya gate la sección via capabilities
 
     @ViewBuilder
     private func seccionesSection(_ d: ResourceDetailDescriptor) -> some View {
-        Section {
-            ForEach(d.sections) { section in
-                sectionLink(d, section: section)
+        let routeable = d.sections.filter { sectionDestinationKey($0.sectionKey) != nil }
+        if !routeable.isEmpty {
+            Section {
+                ForEach(routeable) { section in
+                    NavigationLink {
+                        sectionDestination(d, sectionKey: section.sectionKey)
+                    } label: {
+                        sectionRowContent(section)
+                    }
+                }
             }
-        } header: {
-            Text("Secciones")
-        }
-    }
-
-    @ViewBuilder
-    private func sectionLink(_ d: ResourceDetailDescriptor, section: ResourceSection) -> some View {
-        if sectionDestinationKey(section.sectionKey) != nil {
-            NavigationLink {
-                sectionDestination(d, sectionKey: section.sectionKey)
-            } label: {
-                sectionRowContent(section)
-            }
-        } else {
-            sectionRowContent(section)
-                .foregroundStyle(Theme.Text.secondary)
         }
     }
 
@@ -521,19 +520,7 @@ public struct ResourceDetailViewV2: View {
 
     @ViewBuilder
     private func sectionRowContent(_ section: ResourceSection) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(section.displayName)
-                if let cap = section.requiredCapability {
-                    Text("Requiere: \(cap)")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.Text.tertiary)
-                }
-            }
-        } icon: {
-            Image(systemName: section.icon ?? "circle")
-                .foregroundStyle(Theme.Tint.primary)
-        }
+        Label(section.displayName, systemImage: section.icon ?? "circle")
     }
 
     // MARK: - Acciones (grouped by descriptor section_key)
