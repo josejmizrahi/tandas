@@ -565,7 +565,7 @@ public struct ContextHomeView: View {
     @ViewBuilder
     private func resourceCarouselCard(_ resource: SummaryResource) -> some View {
         NavigationLink {
-            ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
+            ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: (ResourceType(rawValue: resource.resourceType) ?? .other).symbolName)
@@ -1442,7 +1442,7 @@ public struct ContextHomeView: View {
                 } else {
                     ForEach(Array(world.resources.prefix(5).enumerated()), id: \.element.id) { idx, resource in
                         NavigationLink {
-                            ResourceDetailView(resourceId: resource.resourceId, context: context, container: container)
+                            ResourceDetailViewV2(resourceId: resource.resourceId, context: context, container: container)
                         } label: {
                             personalResourceRow(resource)
                         }

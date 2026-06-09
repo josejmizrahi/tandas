@@ -77,7 +77,7 @@ public struct MyResourcesView: View {
         .refreshable { await load() }
         .sheet(item: $selectedResource) { target in
             NavigationStack {
-                ResourceDetailView(
+                ResourceDetailViewV2(
                     resourceId: target.resourceId,
                     context: target.context,
                     container: container

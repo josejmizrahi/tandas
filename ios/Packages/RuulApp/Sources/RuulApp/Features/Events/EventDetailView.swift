@@ -880,7 +880,7 @@ public struct EventDetailView: View {
             Section {
                 ForEach(items) { item in
                     NavigationLink {
-                        ResourceDetailView(resourceId: item.id, context: context, container: container)
+                        ResourceDetailViewV2(resourceId: item.id, context: context, container: container)
                     } label: {
                         Label {
                             Text(item.title)

@@ -56,7 +56,7 @@ public struct MyActivityFeedView: View {
     private func destinationView(for dest: ActivitySubjectDestination) -> some View {
         switch dest {
         case let .resource(id, ctx):
-            ResourceDetailView(resourceId: id, context: ctx, container: container)
+            ResourceDetailViewV2(resourceId: id, context: ctx, container: container)
         case let .event(id, ctx):
             EventDetailView(eventId: id, context: ctx, container: container)
         case let .decision(id, ctx):
