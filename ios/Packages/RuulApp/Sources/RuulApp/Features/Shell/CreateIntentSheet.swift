@@ -22,6 +22,10 @@ public struct CreateIntentSheet: View {
     /// F.NAV.8 — mismo problema con CreateContextView (NavigationStack
     /// interno). Sheet anidada también.
     @State private var isShowingCreateContext = false
+    /// R.6.AI.2 — Detector de intent on-device. Graceful degradation si
+    /// Apple Intelligence no está disponible.
+    @State private var intentService = IntentSuggestionService()
+    @State private var aiPromptText = ""
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -30,6 +34,8 @@ public struct CreateIntentSheet: View {
     public var body: some View {
         NavigationStack(path: $path) {
             List {
+                aiIntentSection
+
                 Section {
                     intentRow(.event,     icon: "calendar.badge.plus",     tint: .orange, label: "Programar algo",
                               detail: "Crear un evento del contexto.")
@@ -146,10 +152,125 @@ public struct CreateIntentSheet: View {
         }
     }
 
+    // MARK: - R.6.AI.2 Smart Create Intent
+
+    @ViewBuilder
+    private var aiIntentSection: some View {
+        Section {
+            TextField(
+                "Describe lo que quieres hacer…",
+                text: $aiPromptText,
+                axis: .vertical
+            )
+            .lineLimit(2...3)
+            .disabled(!intentService.isAvailable || isDetecting)
+
+            switch intentService.phase {
+            case .idle:
+                Button {
+                    Task { await intentService.suggest(prompt: aiPromptText) }
+                } label: {
+                    Label("Detectar intención", systemImage: "sparkles")
+                        .symbolRenderingMode(.hierarchical)
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(
+                    aiPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || !intentService.isAvailable
+                )
+            case .loading:
+                HStack {
+                    ProgressView()
+                    Text("Detectando…")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            case .loaded(let suggestion):
+                detectedIntentPreview(suggestion)
+            case .unavailable(let reason):
+                Label(reason, systemImage: "sparkles.slash")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            case .failed(let message):
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        } header: {
+            Label("Asistente de creación", systemImage: "sparkles")
+        }
+    }
+
+    private var isDetecting: Bool {
+        if case .loading = intentService.phase { return true }
+        return false
+    }
+
+    @ViewBuilder
+    private func detectedIntentPreview(_ suggestion: IntentSuggestion) -> some View {
+        if let intent = Intent(rawValueLoose: suggestion.intentKey) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(intentLabel(for: intent))
+                    .font(.callout.weight(.semibold))
+                Text(suggestion.rationale)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Button {
+                intentService.reset()
+                aiPromptText = ""
+                path.append(.pickContext(intent: intent))
+            } label: {
+                Label("Continuar con \(intentLabel(for: intent).lowercased())", systemImage: "arrow.right.circle.fill")
+                    .symbolRenderingMode(.hierarchical)
+                    .frame(maxWidth: .infinity)
+            }
+        } else {
+            Label("No reconocí el intento. Intenta describirlo con otras palabras.", systemImage: "questionmark.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button("Limpiar") {
+                intentService.reset()
+                aiPromptText = ""
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func intentLabel(for intent: Intent) -> String {
+        switch intent {
+        case .event:       return "Programar algo"
+        case .expense:     return "Registrar movimiento"
+        case .decision:    return "Crear propuesta"
+        case .obligation:  return "Asignar compromiso"
+        case .document:    return "Subir documento"
+        case .resource:    return "Agregar recurso"
+        case .reservation: return "Hacer reservación"
+        }
+    }
+
     // MARK: - Tipos
 
     enum Intent: Hashable {
         case event, expense, decision, document, resource, reservation, obligation
+
+        /// R.6.AI.2 — mapeo desde el `intentKey` string del modelo on-device.
+        /// Lowercase + trim para tolerar variantes (e.g., "Event", "events").
+        init?(rawValueLoose raw: String) {
+            switch raw.trimmingCharacters(in: .whitespaces).lowercased() {
+            case "event", "events":                       self = .event
+            case "expense", "expenses":                   self = .expense
+            case "decision", "decisions":                 self = .decision
+            case "document", "documents":                 self = .document
+            case "resource", "resources":                 self = .resource
+            case "reservation", "reservations":           self = .reservation
+            case "obligation", "obligations", "debt":     self = .obligation
+            default:                                       return nil
+            }
+        }
     }
 
     enum Route: Hashable {

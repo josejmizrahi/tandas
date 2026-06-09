@@ -17,6 +17,8 @@ public struct MyActivityFeedView: View {
     /// Tap en un item con subject conocido (resource/event/decision/obligation)
     /// empuja el detail correspondiente.
     @State private var pushedSubject: ActivitySubjectDestination?
+    /// R.6.AI.3 — Resumen on-device del feed via FoundationModels.
+    @State private var summaryService = ActivitySummaryService()
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -74,6 +76,7 @@ public struct MyActivityFeedView: View {
             )
         } else {
             List {
+                aiSummarySection
                 ForEach(groupedItems, id: \.label) { group in
                     Section {
                         ForEach(group.items) { item in
@@ -207,6 +210,81 @@ public struct MyActivityFeedView: View {
         case "obligation":           return .obligation(subjectId, ctx)
         default:                     return nil
         }
+    }
+
+    // MARK: - R.6.AI.3 Activity Summary
+
+    @ViewBuilder
+    private var aiSummarySection: some View {
+        Section {
+            switch summaryService.phase {
+            case .idle:
+                Button {
+                    Task { await summaryService.summarize(input: buildSummaryInput()) }
+                } label: {
+                    Label("Resumir mi actividad", systemImage: "sparkles")
+                        .symbolRenderingMode(.hierarchical)
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(!summaryService.isAvailable || store.items.isEmpty)
+            case .loading:
+                HStack {
+                    ProgressView()
+                    Text("Resumiendo…")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            case .loaded(let summary):
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(summary)
+                        .font(.callout)
+                        .foregroundStyle(.primary)
+                    Button("Generar otro") {
+                        Task { await summaryService.summarize(input: buildSummaryInput()) }
+                    }
+                    .font(.caption)
+                }
+            case .unavailable(let reason):
+                Label(reason, systemImage: "sparkles.slash")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            case .failed(let message):
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        } header: {
+            Label("Resumen con Apple Intelligence", systemImage: "sparkles")
+        }
+    }
+
+    /// Pre-agrega los items en un string compacto que el modelo convierte a
+    /// prosa. Limitamos a counts por kind + top 5 highlights para no inflar
+    /// el context window.
+    private func buildSummaryInput() -> String {
+        let items = store.items.prefix(40)
+        guard !items.isEmpty else { return "" }
+        let counts = Dictionary(grouping: items, by: { $0.asActivityEvent.eventType })
+            .mapValues { $0.count }
+        let countsLine = counts
+            .sorted { $0.value > $1.value }
+            .prefix(6)
+            .map { "\($0.key): \($0.value)" }
+            .joined(separator: ", ")
+        let highlights = items.prefix(5).map { item -> String in
+            let title = item.asActivityEvent.friendlyTitle(currentActorId: container.currentActorStore.actorId)
+            let ctxName = contextName(for: item.contextActorId) ?? "?"
+            return "- \(title) (\(ctxName))"
+        }.joined(separator: "\n")
+        return """
+            Total de eventos recientes: \(items.count).
+            Distribución por tipo: \(countsLine).
+            Highlights:
+            \(highlights)
+            """
     }
 }
 
