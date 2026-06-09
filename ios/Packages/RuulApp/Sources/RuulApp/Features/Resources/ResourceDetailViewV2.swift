@@ -526,21 +526,62 @@ public struct ResourceDetailViewV2: View {
             NavigationLink {
                 resourceWidgetDestination(widgetKey: widget.widgetKey, descriptor: descriptor)
             } label: {
-                widgetCardBody(widget, tappable: true)
+                widgetCardBody(widget, descriptor: descriptor, tappable: true)
             }
             .buttonStyle(.plain)
         } else {
-            widgetCardBody(widget, tappable: false)
+            widgetCardBody(widget, descriptor: descriptor, tappable: false)
         }
     }
 
+    /// Headline computado por widget key. Consume metrics + linked collections
+    /// que ya vienen en el descriptor — sin RPC adicional. Si no hay data para
+    /// ese widget, retorna nil y la card cae al layout plástico.
+    private func widgetHeadline(_ widget: ResourceWidget, descriptor d: ResourceDetailDescriptor) -> (value: String, tint: Color)? {
+        switch widget.widgetKey {
+        case "balance_summary", "member_balance_summary":
+            if let balance = d.metrics.balance, let currency = d.metrics.currency {
+                return (formatCurrency(balance, currency: currency), Theme.Tint.success)
+            }
+        case "open_obligations":
+            let count = d.linkedObligations.count
+            if count > 0 {
+                return ("\(count)", Theme.Tint.warning)
+            }
+        case "recent_activity":
+            let count = d.activityPreview.count
+            if count > 0 {
+                return ("\(count)", Theme.Tint.info)
+            }
+        case "next_event":
+            if let first = d.linkedEvents.first,
+               case .object(let obj) = first,
+               case .string(let s)? = obj["starts_at"],
+               let date = ISO8601DateFormatter().date(from: s) {
+                let isToday = Calendar.current.isDateInToday(date)
+                let isTomorrow = Calendar.current.isDateInTomorrow(date)
+                if isToday { return ("Hoy", Theme.Tint.warning) }
+                if isTomorrow { return ("Mañana", Theme.Tint.warning) }
+                return (date.formatted(.dateTime.day().month(.abbreviated)), Theme.Tint.primary)
+            }
+        case "income_summary":
+            if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
+                return (formatCurrency(value, currency: currency), Theme.Tint.success)
+            }
+        default:
+            break
+        }
+        return nil
+    }
+
     @ViewBuilder
-    private func widgetCardBody(_ widget: ResourceWidget, tappable: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func widgetCardBody(_ widget: ResourceWidget, descriptor: ResourceDetailDescriptor, tappable: Bool) -> some View {
+        let headline = widgetHeadline(widget, descriptor: descriptor)
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 Image(systemName: widget.icon ?? "rectangle.stack")
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(Theme.Tint.primary)
+                    .foregroundStyle(headline?.tint ?? Theme.Tint.primary)
                 Spacer()
                 if tappable {
                     Image(systemName: "chevron.right")
@@ -549,16 +590,24 @@ public struct ResourceDetailViewV2: View {
                 }
             }
             Spacer(minLength: 0)
-            Text(widget.displayName)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(Theme.Text.primary)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-            if let src = widget.dataSourceKey {
-                Text(src)
-                    .font(.caption2)
-                    .foregroundStyle(Theme.Text.tertiary)
+            if let headline {
+                // Headline real: número/fecha grande tinted + label como caption.
+                Text(headline.value)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(headline.tint)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(widget.displayName)
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
+                    .lineLimit(2)
+            } else {
+                // Sin data: layout plástico (título grande, sin caption técnica).
+                Text(widget.displayName)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(Theme.Text.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
             }
         }
         .frame(width: 150, height: 130, alignment: .topLeading)
