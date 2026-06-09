@@ -46,6 +46,9 @@ public enum AttentionDispatcher {
         switch item.kind {
         case "decision_vote":
             return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId)
+        case "governance_pending":
+            // R.7.G — proponente espera aprobación. ctaScopeId=decision_id desde backend.
+            return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId)
         case "obligation_pay", "obligation_complete":
             return .obligation(obligationId: item.ctaScopeId, contextActorId: item.contextActorId)
         case "settlement_open":
@@ -84,6 +87,7 @@ public enum AttentionPresentation {
         case "reservation_conflict":    return "exclamationmark.triangle.fill"
         case "resource_conflict_direct": return "exclamationmark.octagon.fill"
         case "decision_vote":           return "hand.thumbsup.fill"
+        case "governance_pending":      return "person.crop.circle.badge.questionmark"
         case "obligation_pay":          return "creditcard.fill"
         case "obligation_complete":     return "checkmark.circle"
         case "settlement_open":         return "banknote.fill"
@@ -97,6 +101,7 @@ public enum AttentionPresentation {
         case "reservation_conflict",
              "resource_conflict_direct":  return .red
         case "decision_vote":             return .purple
+        case "governance_pending":        return .orange
         case "obligation_pay",
              "settlement_open":           return .green
         case "obligation_complete":       return .indigo
@@ -110,6 +115,7 @@ public enum AttentionPresentation {
         case "reservation_conflict":     return "Resolver conflicto"
         case "resource_conflict_direct": return "Revisar recurso"
         case "decision_vote":            return "Votar"
+        case "governance_pending":       return "Ver decisión"
         case "obligation_pay":           return "Pagar"
         case "obligation_complete":      return "Marcar completado"
         case "settlement_open":          return "Marcar pagado"
