@@ -225,8 +225,8 @@ public struct CreateRuleWizard: View {
                     .foregroundStyle(Theme.Tint.critical)
             }
 
-            if case .loaded(let suggestion, let invocations) = suggestionService.phase {
-                suggestionPreview(suggestion, invocations: invocations)
+            if case .loaded(let suggestion, let considered) = suggestionService.phase {
+                suggestionPreview(suggestion, considered: considered)
             }
         } header: {
             Label("Sugerencia con Apple Intelligence", systemImage: "sparkles")
@@ -245,7 +245,7 @@ public struct CreateRuleWizard: View {
     @ViewBuilder
     private func suggestionPreview(
         _ suggestion: RuleSuggestion,
-        invocations: [RuleSuggestionService.ToolInvocation]
+        considered: [RuulAIContext.Considered]
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(suggestion.title)
@@ -256,17 +256,17 @@ public struct CreateRuleWizard: View {
                 .foregroundStyle(Theme.Text.secondary)
         }
 
-        // R.6.AI.4 — Chips de los datos del contexto que el modelo consultó.
-        // El founder ve qué miembros / recursos / actividad / reglas miró
-        // antes de proponer. Si la lista viene vacía, no aparecen chips.
-        if !invocations.isEmpty {
+        // R.6.AI.5 — Chips de los datos del contexto que se inyectaron al
+        // prompt (pre-aggregation). El founder ve qué miembros / recursos /
+        // reglas miró el modelo antes de proponer.
+        if !considered.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Datos considerados")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Theme.Text.tertiary)
                     .textCase(.uppercase)
-                ForEach(invocations) { invocation in
-                    invocationChip(invocation)
+                ForEach(considered) { item in
+                    consideredChip(item)
                 }
             }
         }
@@ -282,45 +282,35 @@ public struct CreateRuleWizard: View {
     }
 
     @ViewBuilder
-    private func invocationChip(_ invocation: RuleSuggestionService.ToolInvocation) -> some View {
+    private func consideredChip(_ item: RuulAIContext.Considered) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: invocationSymbol(invocation.name))
+            Image(systemName: consideredSymbol(item.id))
                 .font(.caption2)
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Theme.Tint.info)
                 .frame(width: 16, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
-                Text(invocationTitle(invocation.name))
+                Text(item.label)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.Text.primary)
-                if !invocation.output.isEmpty {
-                    Text(invocation.output)
-                        .font(.caption2)
-                        .foregroundStyle(Theme.Text.secondary)
-                        .lineLimit(4)
-                }
+                Text(item.summary)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.Text.secondary)
+                    .lineLimit(3)
             }
         }
         .padding(.vertical, 4)
     }
 
-    private func invocationTitle(_ toolName: String) -> String {
-        switch toolName {
-        case "list_context_members":         return "Miembros del contexto"
-        case "list_context_resources":       return "Recursos del contexto"
-        case "list_context_recent_activity": return "Actividad reciente"
-        case "list_context_rules":           return "Reglas existentes"
-        default:                             return toolName
-        }
-    }
-
-    private func invocationSymbol(_ toolName: String) -> String {
-        switch toolName {
-        case "list_context_members":         return "person.2.fill"
-        case "list_context_resources":       return "shippingbox.fill"
-        case "list_context_recent_activity": return "clock.arrow.circlepath"
-        case "list_context_rules":           return "ruler.fill"
-        default:                             return "circle.dotted"
+    private func consideredSymbol(_ id: String) -> String {
+        switch id {
+        case "members":      return "person.2.fill"
+        case "resources":    return "shippingbox.fill"
+        case "activity":     return "clock.arrow.circlepath"
+        case "rules":        return "ruler.fill"
+        case "obligations":  return "creditcard.fill"
+        case "events":       return "calendar"
+        default:             return "circle.dotted"
         }
     }
 

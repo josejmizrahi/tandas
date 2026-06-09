@@ -3,9 +3,16 @@ import Foundation
 import FoundationModels
 #endif
 
-/// R.6.AI.1 — Servicio que envuelve `LanguageModelSession` para sugerir reglas
-/// a partir de lenguaje natural. Verifica availability, maneja errores y
-/// expone phases observables.
+/// R.6.AI.1 + R.6.AI.5 — Servicio on-device para sugerir reglas a partir de
+/// lenguaje natural. Verifica availability, maneja errores y expone phases
+/// observables.
+///
+/// **R.6.AI.5 (2026-06-09)** — Migrado a patrón pre-aggregation. En vez de
+/// dar tools al modelo (que consumían ~1200 tokens en definitions y volaban
+/// el context window de 4096 al primer roundtrip), pre-fetch el slice del
+/// contexto vía `RuulAIContext.compact` y lo inyectamos como prefix del
+/// prompt. Una sola llamada a `context_summary`, prefix compacto (~200 tokens),
+/// budget protegido. Ver `RuulAIContext.swift` para la doctrina.
 ///
 /// Pre-condiciones: iPhone con Apple Intelligence (15 Pro+/16+) con la
 /// función activada en Ajustes. Si no está disponible, `phase == .unavailable`
@@ -14,28 +21,13 @@ import FoundationModels
 @MainActor
 @Observable
 public final class RuleSuggestionService {
-    /// R.6.AI.4 — Resumen visible de una tool call que hizo el modelo. La UI
-    /// las renderiza como chips "Considerado: X" para que el founder vea qué
-    /// datos del contexto miró antes de sugerir.
-    public struct ToolInvocation: Sendable, Equatable, Identifiable {
-        public let id: String
-        public let name: String
-        public let output: String
-
-        public init(id: String, name: String, output: String) {
-            self.id = id
-            self.name = name
-            self.output = output
-        }
-    }
-
     public enum Phase: Sendable, Equatable {
         case idle
         case loading
         case unavailable(reason: String)
         case failed(message: String)
         #if canImport(FoundationModels)
-        case loaded(RuleSuggestion, invocations: [ToolInvocation])
+        case loaded(RuleSuggestion, considered: [RuulAIContext.Considered])
         #endif
     }
 
@@ -82,14 +74,10 @@ public final class RuleSuggestionService {
     }
 
     #if canImport(FoundationModels)
-    /// Llama al modelo on-device con instrucciones específicas y devuelve un
-    /// `RuleSuggestion` estructurado vía guided generation.
-    ///
-    /// **R.6.AI.4 (2026-06-09)** — Si `rpc` + `contextId` están presentes, el
-    /// modelo recibe 4 tools read-only para consultar miembros, recursos,
-    /// actividad reciente y reglas existentes del contexto. Doctrina founder:
-    /// los tools son SOLO lectura — el modelo no decide ni dispara escrituras.
-    /// Si no se pasan, el modelo opera sin contexto (modo R.6.AI.1 original).
+    /// Llama al modelo on-device y devuelve un `RuleSuggestion` estructurado
+    /// vía guided generation. Si `rpc` + `contextId` están presentes, hace
+    /// pre-aggregation del contexto antes de prompt (recommended). Si no, el
+    /// modelo opera sin contexto (fallback).
     public func suggest(
         prompt userPrompt: String,
         rpc: (any RuulRPCClient)? = nil,
@@ -101,7 +89,7 @@ public final class RuleSuggestionService {
 
         phase = .loading
 
-        let baseInstructions = """
+        let instructions = """
             Eres un asistente que convierte la descripción en lenguaje natural de \
             una regla de grupo (familia, amigos, tanda, sociedad, trust) en una \
             RuleSuggestion estructurada. Elige UNA de 5 plantillas:
@@ -120,73 +108,41 @@ public final class RuleSuggestionService {
             3. Título corto (máximo 8 palabras), en español, sin signos de exclamación.
             4. rationale: una frase corta en español que explique qué hace la regla y \
                cuándo aplica.
+            5. Si te dan información del contexto (miembros, recursos, reglas existentes), \
+               úsala para personalizar título y rationale, pero NO dupliques una regla \
+               que ya exista.
             """
 
-        let tools: [any Tool] = {
-            guard let rpc, let contextId else { return [] }
-            return [
-                ListContextMembersTool(rpc: rpc, contextId: contextId),
-                ListContextResourcesTool(rpc: rpc, contextId: contextId),
-                ListContextRecentActivityTool(rpc: rpc, contextId: contextId),
-                ListContextRulesTool(rpc: rpc, contextId: contextId)
-            ]
-        }()
-
-        let instructions: String
-        if tools.isEmpty {
-            instructions = baseInstructions
-        } else {
-            instructions = baseInstructions + """
-
-                Tienes 4 tools de SOLO LECTURA para conocer el contexto antes de \
-                sugerir (miembros, recursos, actividad reciente, reglas existentes). \
-                Úsalos cuando ayude a personalizar la sugerencia, pero recuerda: \
-                tu salida es SIEMPRE una RuleSuggestion estructurada que el usuario \
-                confirma con tap. NUNCA decides por el usuario.
-                """
-        }
-
-        let session = tools.isEmpty
-            ? LanguageModelSession(instructions: instructions)
-            : LanguageModelSession(tools: tools, instructions: instructions)
         do {
+            let snapshot: RuulAIContext.Snapshot
+            if let rpc, let contextId {
+                snapshot = try await RuulAIContext.compact(
+                    rpc: rpc,
+                    contextId: contextId,
+                    fields: RuulAIContext.forRuleSuggestion
+                )
+            } else {
+                snapshot = RuulAIContext.Snapshot(prefix: "", considered: [])
+            }
+
+            let promptBody = snapshot.prefix.isEmpty
+                ? userPrompt
+                : "\(snapshot.prefix)\n\nPetición del usuario: \(userPrompt)"
+
+            let session = LanguageModelSession(instructions: instructions)
             let response = try await session.respond(
-                to: userPrompt,
+                to: promptBody,
                 generating: RuleSuggestion.self
             )
-            let invocations = Self.extractInvocations(from: session.transcript)
-            phase = .loaded(response.content, invocations: invocations)
+            phase = .loaded(response.content, considered: snapshot.considered)
         } catch {
-            phase = .failed(message: UserFacingError.from(error).message)
+            // Surfaceo descripción + tipo real del error para diagnosticar
+            // en device. Reemplaza el genérico "Algo salió mal" sin pista.
+            let raw = (error as NSError)
+            let typeName = String(describing: type(of: error))
+            let detail = "\(typeName): \(raw.localizedDescription)"
+            phase = .failed(message: detail)
         }
-    }
-
-    /// Walk del transcript para extraer pares `(toolCall, toolOutput)` que el
-    /// modelo ejecutó. Los chips de la UI consumen esto para mostrar al
-    /// founder qué datos del contexto miró el modelo antes de sugerir.
-    private static func extractInvocations(from transcript: Transcript) -> [ToolInvocation] {
-        var outputsByCallId: [String: String] = [:]
-        for entry in transcript {
-            if case let .toolOutput(output) = entry {
-                let text = output.segments.compactMap { segment -> String? in
-                    if case let .text(textSegment) = segment {
-                        return textSegment.content
-                    }
-                    return nil
-                }.joined(separator: "\n")
-                outputsByCallId[output.id] = text
-            }
-        }
-        var result: [ToolInvocation] = []
-        for entry in transcript {
-            if case let .toolCalls(calls) = entry {
-                for call in calls {
-                    let output = outputsByCallId[call.id] ?? ""
-                    result.append(ToolInvocation(id: call.id, name: call.toolName, output: output))
-                }
-            }
-        }
-        return result
     }
     #endif
 }

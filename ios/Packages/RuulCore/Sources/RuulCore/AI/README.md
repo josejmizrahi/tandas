@@ -240,6 +240,48 @@ NUNCA dispara RPCs directos. El usuario tapea "Crear" como en el flujo manual.
 
 ---
 
+## Cómo agregar contexto a una feature AI — Doctrina pre-aggregation (R.6.AI.5)
+
+> **Founder-firmada 2026-06-09**: pre-aggregation > tool calling.
+
+Ruul siempre sabe qué slice del contexto necesita el modelo para sugerir.
+En vez de pagar el costo de tool calling (~1200 tokens en definitions y
+outputs entre roundtrips), pre-fetch UNA vez via `context_summary()` y
+inyecta como prefix compacto del prompt. Una sola RPC, prefix ~200 tokens,
+budget de 4096 tokens protegido.
+
+Tool calling queda reservado para casos genuinamente agénticos (modelo
+decide entre N caminos posibles), no para fetch predecible. Hoy NO usamos
+tool calling.
+
+**Patrón canónico:**
+
+```swift
+let snapshot = try await RuulAIContext.compact(
+    rpc: rpc,
+    contextId: contextId,
+    fields: RuulAIContext.forXxxFeature  // preset por feature
+)
+let promptBody = snapshot.prefix.isEmpty
+    ? userPrompt
+    : "\(snapshot.prefix)\n\nPetición del usuario: \(userPrompt)"
+
+let session = LanguageModelSession(instructions: instructions)
+let response = try await session.respond(
+    to: promptBody,
+    generating: MyGenerable.self
+)
+phase = .loaded(response.content, considered: snapshot.considered)
+```
+
+La UI surface `snapshot.considered` como chips "DATOS CONSIDERADOS" para
+transparencia (ver `CreateRuleWizard.consideredChip`).
+
+**Presets por feature** en `RuulAIContext.swift`. Agrega uno nuevo cuando
+crees una feature AI nueva.
+
+---
+
 ## Cómo agregar una nueva feature AI
 
 Receta paso a paso:
@@ -248,14 +290,18 @@ Receta paso a paso:
 2. **Decide guided vs libre** (ver sección siguiente).
 3. **Crea `MySuggestion.swift`** (solo guided) en `RuulCore/AI/` con
    `@Generable` + `@Guide` hints. Usa `RuleSuggestion.swift` como template.
-4. **Crea `MySuggestionService.swift`** copiando el patrón canónico arriba.
-   Adapta el `instructions` system prompt a tu use case.
-5. **Wire la UI** en la vista correspondiente:
+4. **¿Necesita contexto?** Si sí, agrega un preset en `RuulAIContext` y
+   usa el patrón pre-aggregation arriba. Si no, ignora.
+5. **Crea `MySuggestionService.swift`** copiando el patrón canónico de
+   `RuleSuggestionService` (incluye Phase.loaded con `considered: []`).
+6. **Wire la UI** en la vista correspondiente:
    - `@State private var myService = MySuggestionService()`
    - Section con switch sobre `myService.phase`.
+   - Si tu feature usa contexto, reusa el patrón de chips de
+     `CreateRuleWizard.consideredChip`.
    - Botón "Aplicar" llena los `@State` del wizard manual.
-6. **Probar en device** con Apple Intelligence ON.
-7. **Probar el path unavailable**: ir a Ajustes → desactivar Apple
+7. **Probar en device** con Apple Intelligence ON.
+8. **Probar el path unavailable**: ir a Ajustes → desactivar Apple
    Intelligence → reabrir → verificar que el copy aparece y el flujo
    manual sigue funcionando.
 
