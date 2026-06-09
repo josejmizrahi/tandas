@@ -112,6 +112,11 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
     /// obligatoria (recursos no físicos como cuentas bancarias o juegos
     /// digitales no la necesitan).
     public let locationText: String?
+    /// 2026-06-09 — metadata jsonb type-specific (vin/make/model para
+    /// vehicles, account_number/expiration para bank_accounts, etc.). El
+    /// backend ya tiene resources.metadata jsonb NOT NULL desde el inicio;
+    /// iOS no la decodificaba. Defaults a `.object([:])` si no viene.
+    public let metadata: JSONValue
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -124,6 +129,7 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
         case canonicalOwnerActorId = "canonical_owner_actor_id"
         case createdAt = "created_at"
         case locationText = "location_text"
+        case metadata
     }
 
     public init(
@@ -136,7 +142,8 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
         currency: String? = nil,
         canonicalOwnerActorId: UUID? = nil,
         createdAt: Date? = nil,
-        locationText: String? = nil
+        locationText: String? = nil,
+        metadata: JSONValue = .object([:])
     ) {
         self.id = id
         self.resourceType = resourceType
@@ -148,6 +155,7 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
         self.canonicalOwnerActorId = canonicalOwnerActorId
         self.createdAt = createdAt
         self.locationText = locationText
+        self.metadata = metadata
     }
 
     public init(from decoder: Decoder) throws {
@@ -163,9 +171,18 @@ public struct Resource: Codable, Sendable, Equatable, Identifiable {
         self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
         // F.RESOURCE.4 — back-compat: shapes viejos no traen el campo.
         self.locationText = try c.decodeIfPresent(String.self, forKey: .locationText)
+        self.metadata = try c.decodeIfPresent(JSONValue.self, forKey: .metadata) ?? .object([:])
     }
 
     public var type: ResourceType { ResourceType(rawValue: resourceType) ?? .other }
+
+    /// Helper para leer un string del metadata jsonb (e.g. "vin", "make").
+    public func metadataString(_ key: String) -> String? {
+        guard case .object(let obj) = metadata,
+              case .string(let s)? = obj[key],
+              !s.isEmpty else { return nil }
+        return s
+    }
 }
 
 /// Resultado de `create_resource()` / `update_resource()`.

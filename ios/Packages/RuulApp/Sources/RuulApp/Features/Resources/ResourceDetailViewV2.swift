@@ -420,6 +420,24 @@ public struct ResourceDetailViewV2: View {
                     .foregroundStyle(Theme.Tint.success)
             }
         }
+        // 2026-06-09 — metadata type-specific (P2 audit)
+        if let institution = d.resource.metadataString("institution") {
+            LabeledContent("Institución", value: institution)
+        }
+        if let accountNumber = d.resource.metadataString("account_number") {
+            LabeledContent("Cuenta") {
+                Text(maskedAccountNumber(accountNumber))
+                    .font(.callout.monospaced())
+            }
+        }
+        if let walletAddress = d.resource.metadataString("wallet_address") {
+            LabeledContent("Dirección") {
+                Text(maskedAccountNumber(walletAddress))
+                    .font(.callout.monospaced())
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
         if let lastMovement = d.metrics.lastMovementAt {
             LabeledContent("Último movimiento",
                 value: lastMovement.formatted(date: .abbreviated, time: .shortened))
@@ -436,6 +454,16 @@ public struct ResourceDetailViewV2: View {
         if let location = d.resource.locationText, !location.isEmpty {
             LabeledContent("Ubicación", value: location)
         }
+        // 2026-06-09 — metadata type-specific
+        if let area = d.resource.metadataString("area_sqm") {
+            LabeledContent("Superficie", value: "\(area) m²")
+        }
+        if let bedrooms = d.resource.metadataString("bedrooms") {
+            LabeledContent("Habitaciones", value: bedrooms)
+        }
+        if let bathrooms = d.resource.metadataString("bathrooms") {
+            LabeledContent("Baños", value: bathrooms)
+        }
         if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
             LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
         }
@@ -443,6 +471,30 @@ public struct ResourceDetailViewV2: View {
 
     @ViewBuilder
     private func vehicleFields(_ d: ResourceDetailDescriptor) -> some View {
+        // 2026-06-09 — metadata type-specific (vehicle)
+        if let make = d.resource.metadataString("make"),
+           let model = d.resource.metadataString("model") {
+            LabeledContent("Modelo", value: "\(make) \(model)")
+        } else if let model = d.resource.metadataString("model") {
+            LabeledContent("Modelo", value: model)
+        }
+        if let year = d.resource.metadataString("year") {
+            LabeledContent("Año", value: year)
+        }
+        if let plate = d.resource.metadataString("license_plate") {
+            LabeledContent("Placa") {
+                Text(plate)
+                    .font(.callout.monospaced())
+            }
+        }
+        if let vin = d.resource.metadataString("vin") {
+            LabeledContent("VIN") {
+                Text(vin)
+                    .font(.caption.monospaced())
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
         if let location = d.resource.locationText, !location.isEmpty {
             LabeledContent("Ubicación", value: location)
         }
@@ -453,6 +505,16 @@ public struct ResourceDetailViewV2: View {
 
     @ViewBuilder
     private func equipmentFields(_ d: ResourceDetailDescriptor) -> some View {
+        if let make = d.resource.metadataString("make"),
+           let model = d.resource.metadataString("model") {
+            LabeledContent("Modelo", value: "\(make) \(model)")
+        }
+        if let serial = d.resource.metadataString("serial_number") {
+            LabeledContent("Serie") {
+                Text(serial)
+                    .font(.callout.monospaced())
+            }
+        }
         if let location = d.resource.locationText, !location.isEmpty {
             LabeledContent("Ubicación", value: location)
         }
@@ -463,6 +525,19 @@ public struct ResourceDetailViewV2: View {
 
     @ViewBuilder
     private func documentFields(_ d: ResourceDetailDescriptor) -> some View {
+        // 2026-06-09 — metadata type-specific (document)
+        if let partyA = d.resource.metadataString("party_a") {
+            LabeledContent("Parte A", value: partyA)
+        }
+        if let partyB = d.resource.metadataString("party_b") {
+            LabeledContent("Parte B", value: partyB)
+        }
+        if let effective = d.resource.metadataString("effective_date") {
+            LabeledContent("Vigencia", value: effective)
+        }
+        if let expiration = d.resource.metadataString("expiration_date") {
+            LabeledContent("Vence", value: expiration)
+        }
         if let created = d.resource.createdAt {
             LabeledContent("Creado", value: created.formatted(date: .abbreviated, time: .omitted))
         }
@@ -479,13 +554,39 @@ public struct ResourceDetailViewV2: View {
         if let location = d.resource.locationText, !location.isEmpty {
             LabeledContent("Destino", value: location)
         }
+        if let startDate = d.resource.metadataString("start_date") {
+            LabeledContent("Inicio", value: startDate)
+        }
+        if let endDate = d.resource.metadataString("end_date") {
+            LabeledContent("Fin", value: endDate)
+        }
     }
 
     @ViewBuilder
     private func digitalAssetFields(_ d: ResourceDetailDescriptor) -> some View {
+        if let platform = d.resource.metadataString("platform") {
+            LabeledContent("Plataforma", value: platform)
+        }
+        if let url = d.resource.metadataString("url") {
+            LabeledContent("URL") {
+                Text(url)
+                    .font(.callout)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
         if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
             LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
         }
+    }
+
+    /// Enmascara account numbers / wallet addresses para evitar exponer todos
+    /// los dígitos en pantalla. Muestra primeros 2 + últimos 4.
+    private func maskedAccountNumber(_ raw: String) -> String {
+        guard raw.count > 8 else { return raw }
+        let prefix = raw.prefix(2)
+        let suffix = raw.suffix(4)
+        return "\(prefix)••••\(suffix)"
     }
 
     @ViewBuilder
