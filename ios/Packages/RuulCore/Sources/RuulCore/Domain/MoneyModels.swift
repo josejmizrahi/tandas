@@ -357,6 +357,53 @@ public struct ObligationCompletedResult: Decodable, Sendable, Equatable {
     }
 }
 
+/// R.7.x — resultado de `forgive_obligation(p_obligation_id, p_reason?)`.
+/// Backend retorna `{changed, obligation_id?, status, via_governance?, governance_action_id?, noop?}`.
+/// `viaGovernance == true` cuando la acción se ejecutó porque una decisión la aprobó.
+public struct ObligationForgivenResult: Decodable, Sendable, Equatable {
+    public let changed: Bool
+    public let obligationId: UUID?
+    public let status: String
+    public let viaGovernance: Bool
+    public let governanceActionId: UUID?
+    public let noop: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case changed
+        case obligationId = "obligation_id"
+        case status
+        case viaGovernance = "via_governance"
+        case governanceActionId = "governance_action_id"
+        case noop
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.changed = try c.decodeIfPresent(Bool.self, forKey: .changed) ?? false
+        self.obligationId = try c.decodeIfPresent(UUID.self, forKey: .obligationId)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "forgiven"
+        self.viaGovernance = try c.decodeIfPresent(Bool.self, forKey: .viaGovernance) ?? false
+        self.governanceActionId = try c.decodeIfPresent(UUID.self, forKey: .governanceActionId)
+        self.noop = try c.decodeIfPresent(Bool.self, forKey: .noop) ?? false
+    }
+
+    public init(
+        changed: Bool,
+        obligationId: UUID? = nil,
+        status: String = "forgiven",
+        viaGovernance: Bool = false,
+        governanceActionId: UUID? = nil,
+        noop: Bool = false
+    ) {
+        self.changed = changed
+        self.obligationId = obligationId
+        self.status = status
+        self.viaGovernance = viaGovernance
+        self.governanceActionId = governanceActionId
+        self.noop = noop
+    }
+}
+
 // MARK: - Resultados de record_expense / record_game_result
 
 /// Obligación creada por un gasto (`record_expense().obligations[]`).

@@ -13,6 +13,14 @@ public struct RuleDetailView: View {
     let onChanged: (() -> Void)?
 
     @State private var isShowingEdit = false
+    /// R.7.x — governance flow para `rule.archive`. Catalog default es
+    /// `requires_decision=true`, así que iOS lleva siempre por governance.
+    /// Si el contexto override la policy a no-vote, una iteración futura puede
+    /// agregar branch direct cuando descriptor surface `mode` en availableActions.
+    @State private var runner = ActionRunner()
+    @State private var isShowingArchiveSheet = false
+    @State private var governanceClientId: String = UUID().uuidString
+    @State private var pendingDecisionId: UUID?
 
     public init(rule: Rule) {
         self.rule = rule
@@ -118,7 +126,30 @@ public struct RuleDetailView: View {
         .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if canManage, container != nil {
+            if canManage, container != nil, context != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button {
+                            isShowingEdit = true
+                        } label: {
+                            Label("Editar", systemImage: "pencil")
+                        }
+                        if rule.status != "archived" {
+                            Section("Gestión") {
+                                Button(role: .destructive) {
+                                    governanceClientId = UUID().uuidString
+                                    isShowingArchiveSheet = true
+                                } label: {
+                                    Label("Archivar regla", systemImage: "archivebox")
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Acciones de la regla")
+                }
+            } else if canManage, container != nil {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         isShowingEdit = true
@@ -137,6 +168,56 @@ public struct RuleDetailView: View {
                 )
             }
         }
+        .actionErrorAlert(runner)
+        // R.7.x — governance sheet (catalog default: rule.archive requires decision).
+        .confirmationDialog(
+            "Esta acción requiere aprobación",
+            isPresented: $isShowingArchiveSheet,
+            titleVisibility: .visible
+        ) {
+            Button("Crear decisión") {
+                Task { await requestGovernanceArchive() }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Archivar \(rule.title) requiere votación colectiva. Se creará una decisión para que los miembros aprueben.")
+        }
+        // R.7.x — push DecisionDetailView cuando request_governance_action devuelve decisionId.
+        .sheet(item: Binding(
+            get: { pendingDecisionId.map { RuleDecisionSheetWrapper(id: $0) } },
+            set: { pendingDecisionId = $0?.id }
+        ), onDismiss: {
+            onChanged?()
+        }) { wrapper in
+            if let context, let container {
+                NavigationStack {
+                    DecisionDetailView(decisionId: wrapper.id, context: context, container: container)
+                }
+            }
+        }
+    }
+
+    /// R.7.x — pide aprobación colectiva para `rule.archive`.
+    private func requestGovernanceArchive() async {
+        guard let context, let container else { return }
+        let input = RequestGovernanceActionInput(
+            contextActorId: context.id,
+            actionKey: "rule.archive",
+            targetType: "rule",
+            targetId: rule.id,
+            payload: .object([:]),
+            title: "Archivar regla: \(rule.title)",
+            closesAt: nil,
+            clientId: governanceClientId
+        )
+        var capturedDecisionId: UUID?
+        let success = await runner.run {
+            let result = try await container.rpc.requestGovernanceAction(input)
+            capturedDecisionId = result.decisionId
+        }
+        if success, let decisionId = capturedDecisionId {
+            pendingDecisionId = decisionId
+        }
     }
 
     private var triggerLabel: String {
@@ -146,6 +227,11 @@ public struct RuleDetailView: View {
         default: return rule.triggerEventType ?? "—"
         }
     }
+}
+
+/// R.7.x — wrapper Identifiable para presentar `DecisionDetailView` via `.sheet(item:)`.
+private struct RuleDecisionSheetWrapper: Identifiable {
+    let id: UUID
 }
 
 #Preview("Detalle de regla") {

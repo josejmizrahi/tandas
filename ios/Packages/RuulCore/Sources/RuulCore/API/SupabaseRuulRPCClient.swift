@@ -1077,6 +1077,22 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func archiveRule(ruleId: UUID, reason: String?) async throws -> RuleArchivedResult {
+        struct Params: Encodable, Sendable {
+            let pRuleId: UUID
+            let pReason: String?
+            enum CodingKeys: String, CodingKey {
+                case pRuleId = "p_rule_id"
+                case pReason = "p_reason"
+            }
+        }
+        return try await call("archive_rule", params: Params(
+            pRuleId: ruleId,
+            pReason: reason
+        ))
+    }
+
+
     // MARK: - Reservations
 
     public func requestReservation(_ input: RequestReservationInput) async throws -> ReservationRequestResult {
@@ -1700,6 +1716,21 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             enum CodingKeys: String, CodingKey { case pObligationId = "p_obligation_id" }
         }
         return try await call("obligation_detail", params: Params(pObligationId: obligationId))
+    }
+
+    public func forgiveObligation(obligationId: UUID, reason: String?) async throws -> ObligationForgivenResult {
+        struct Params: Encodable, Sendable {
+            let pObligationId: UUID
+            let pReason: String?
+            enum CodingKeys: String, CodingKey {
+                case pObligationId = "p_obligation_id"
+                case pReason = "p_reason"
+            }
+        }
+        return try await call("forgive_obligation", params: Params(
+            pObligationId: obligationId,
+            pReason: reason
+        ))
     }
 
     public func updateObligation(_ input: UpdateObligationInput) async throws -> Obligation {

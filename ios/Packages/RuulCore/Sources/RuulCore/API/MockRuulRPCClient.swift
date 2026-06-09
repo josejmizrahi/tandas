@@ -2230,6 +2230,51 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return rules[contextId] ?? []
     }
 
+    public func archiveRule(ruleId: UUID, reason: String?) async throws -> RuleArchivedResult {
+        try throwIfNeeded()
+        guard let ctxIdAndIdx = locateRule(id: ruleId) else {
+            throw RuulError.unexpected(message: "Regla no encontrada")
+        }
+        let (ctxId, idx) = ctxIdAndIdx
+        let current = rules[ctxId]![idx]
+        let myPerms = Set(permissions[ctxId] ?? [])
+        guard myPerms.contains("rules.manage") else {
+            throw RuulError.backend(.missingPermission(key: "rules.manage"))
+        }
+        if current.status == "archived" {
+            return RuleArchivedResult(changed: false, ruleId: current.id, status: "archived", noop: true)
+        }
+        let archived = Rule(
+            id: current.id,
+            contextActorId: current.contextActorId,
+            title: current.title,
+            body: current.body,
+            ruleType: current.ruleType,
+            severity: current.severity,
+            status: "archived",
+            triggerEventType: current.triggerEventType,
+            conditionTree: current.conditionTree,
+            consequences: current.consequences,
+            targetScope: current.targetScope,
+            targetFilter: current.targetFilter,
+            createdAt: current.createdAt
+        )
+        rules[ctxId]![idx] = archived
+        emit(ctxId, "rule.archived", actorId: me.id, payload: .object([
+            "rule_title": .string(current.title),
+            "rule_type": .string(current.ruleType),
+            "reason": reason.map(JSONValue.string) ?? .null
+        ]))
+        return RuleArchivedResult(
+            changed: true,
+            ruleId: current.id,
+            status: "archived",
+            viaGovernance: false,
+            governanceActionId: nil,
+            noop: false
+        )
+    }
+
     private func evaluateLateRules(contextId: UUID, eventId: UUID, subjectActorId: UUID, minutesLate: Double) {
         for rule in rules[contextId] ?? [] where rule.isActive && rule.triggerEventType == RuleTrigger.checkedIn.rawValue {
             guard let threshold = rule.conditionTree?["value"]?.numberValue,
@@ -3352,6 +3397,70 @@ public actor MockRuulRPCClient: RuulRPCClient {
             emit(ctxId, "obligation.updated")
         }
         return updated
+    }
+
+    public func forgiveObligation(obligationId: UUID, reason: String?) async throws -> ObligationForgivenResult {
+        try throwIfNeeded()
+        guard let existing = obligations[obligationId] else {
+            throw RuulError.unexpected(message: "obligación no encontrada")
+        }
+        if existing.status == "forgiven" {
+            return ObligationForgivenResult(
+                changed: false,
+                obligationId: existing.id,
+                status: "forgiven",
+                noop: true
+            )
+        }
+        let active: Set<String> = ["open", "accepted", "in_progress"]
+        guard active.contains(existing.status) else {
+            throw RuulError.unexpected(message: "no se puede condonar una obligación en estado \(existing.status)")
+        }
+        let myPerms = existing.contextActorId.flatMap { permissions[$0] } ?? []
+        let isCreditor = existing.creditorActorId == me.id
+        let isManager = myPerms.contains("money.settle")
+        guard isCreditor || isManager else {
+            throw RuulError.unexpected(message: "solo el acreedor o un admin pueden condonar")
+        }
+        let updated = Obligation(
+            id: existing.id,
+            contextActorId: existing.contextActorId,
+            debtorActorId: existing.debtorActorId,
+            creditorActorId: existing.creditorActorId,
+            obligationType: existing.obligationType,
+            obligationKind: existing.obligationKind,
+            amount: existing.amount,
+            currency: existing.currency,
+            status: "forgiven",
+            dueAt: existing.dueAt,
+            sourceEventId: existing.sourceEventId,
+            sourceRuleId: existing.sourceRuleId,
+            sourceDecisionId: existing.sourceDecisionId,
+            sourceReservationId: existing.sourceReservationId,
+            title: existing.title,
+            description: existing.description,
+            completedAt: existing.completedAt,
+            completedByActorId: existing.completedByActorId,
+            completionNotes: existing.completionNotes,
+            createdAt: existing.createdAt
+        )
+        obligations[obligationId] = updated
+        if let ctxId = existing.contextActorId {
+            emit(ctxId, "obligation.forgiven", actorId: me.id, payload: .object([
+                "obligation_kind": .string(existing.obligationKind),
+                "creditor": .string(existing.creditorActorId.uuidString),
+                "debtor": .string(existing.debtorActorId.uuidString),
+                "reason": reason.map(JSONValue.string) ?? .null
+            ]))
+        }
+        return ObligationForgivenResult(
+            changed: true,
+            obligationId: existing.id,
+            status: "forgiven",
+            viaGovernance: false,
+            governanceActionId: nil,
+            noop: false
+        )
     }
 
     public func obligationDetail(obligationId: UUID) async throws -> ObligationDetail {

@@ -22,8 +22,17 @@ public struct ObligationDetailView: View {
     /// F.MONEY.4 — sheet de edición de la obligación.
     @State private var isShowingEdit = false
     /// R.5W.P1 — alert "Próximamente" para acciones backend-advertised pero sin
-    /// RPC iOS todavía (pay/dispute/forgive/cancel). Antes eran Label inerte.
+    /// RPC iOS todavía (pay/dispute/cancel). Antes eran Label inerte.
     @State private var comingSoonAction: ComingSoonAction?
+    /// R.7.x — confirmación destructive del forgive directo (no-governance path).
+    @State private var isConfirmingForgive = false
+    /// R.7.x — sheet "Esta acción requiere aprobación" para forgive con governance.
+    /// El descriptor `availableActions` puede traer `mode=request_decision` cuando
+    /// el catálogo o la policy del contexto exigen votación. Sino, el backend igual
+    /// gatea con `governance_required` (42501) y caemos al governance flow.
+    @State private var isShowingGovernanceSheet = false
+    @State private var governanceClientId: String = UUID().uuidString
+    @State private var pendingDecisionId: UUID?
 
     public init(obligationId: UUID, context: AppContext, container: DependencyContainer) {
         self.obligationId = obligationId
@@ -91,6 +100,43 @@ public struct ObligationDetailView: View {
                     Button("OK", role: .cancel) {}
                 } message: { _ in
                     Text("Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible.")
+                }
+                // R.7.x — confirm direct forgive (no-governance path).
+                .confirmationDialog(
+                    "¿Condonar este compromiso?",
+                    isPresented: $isConfirmingForgive,
+                    titleVisibility: .visible
+                ) {
+                    Button("Condonar", role: .destructive) {
+                        Task { await forgiveDirect() }
+                    }
+                    Button("Cancelar", role: .cancel) {}
+                } message: {
+                    Text("El compromiso queda en estado perdonado. No afecta el ledger del contexto.")
+                }
+                // R.7.x — governance sheet (requires_decision path).
+                .confirmationDialog(
+                    "Esta acción requiere aprobación",
+                    isPresented: $isShowingGovernanceSheet,
+                    titleVisibility: .visible
+                ) {
+                    Button("Crear decisión") {
+                        Task { await requestGovernanceForgive() }
+                    }
+                    Button("Cancelar", role: .cancel) {}
+                } message: {
+                    Text("Condonar este compromiso requiere votación colectiva. Se creará una decisión para que los miembros aprueben.")
+                }
+                // R.7.x — push DecisionDetailView cuando request_governance_action devuelve decision_id.
+                .sheet(item: Binding(
+                    get: { pendingDecisionId.map { DecisionIdSheetWrapper(id: $0) } },
+                    set: { pendingDecisionId = $0?.id }
+                ), onDismiss: {
+                    Task { await load() }
+                }) { wrapper in
+                    NavigationStack {
+                        DecisionDetailView(decisionId: wrapper.id, context: context, container: container)
+                    }
                 }
         }
     }
@@ -250,10 +296,59 @@ public struct ObligationDetailView: View {
             isShowingCompleteSheet = true
         case "edit_obligation":
             isShowingEdit = true
+        case "forgive":
+            // R.7.x — branch governance ↔ direct según `mode` del descriptor.
+            // Si el descriptor todavía no surface `mode` (default nil → direct),
+            // el confirm directo dispara la RPC y el backend devuelve
+            // `governance_required` 42501 si la policy lo exige.
+            if action.requiresDecision {
+                governanceClientId = UUID().uuidString
+                isShowingGovernanceSheet = true
+            } else {
+                isConfirmingForgive = true
+            }
         default:
-            // pay/dispute/forgive/cancel — backend-advertised pero sin RPC iOS.
+            // pay/dispute/cancel — backend-advertised pero sin RPC iOS.
             comingSoonAction = ComingSoonAction(key: action.actionKey, label: action.label)
         }
+    }
+
+    /// R.7.x — direct path. Invoca `forgive_obligation`. Si el backend exige
+    /// governance, vendrá 42501 con copy traducido por `RPCErrorMapper`.
+    private func forgiveDirect() async {
+        let trimmed = nil as String?  // sin razón por ahora — wizard de motivo es R.7.x backlog.
+        let success = await runner.run {
+            _ = try await rpc.forgiveObligation(obligationId: obligationId, reason: trimmed)
+        }
+        if success { await load() }
+    }
+
+    /// R.7.x — governance path. Pide aprobación colectiva con canonical key
+    /// `obligation.forgive`. El backend usa idempotency_key sha1 sobre clientId.
+    private func requestGovernanceForgive() async {
+        let input = RequestGovernanceActionInput(
+            contextActorId: context.id,
+            actionKey: "obligation.forgive",
+            targetType: "obligation",
+            targetId: obligationId,
+            payload: .object([:]),
+            title: forgiveDecisionTitle,
+            closesAt: nil,
+            clientId: governanceClientId
+        )
+        var capturedDecisionId: UUID?
+        let success = await runner.run {
+            let result = try await rpc.requestGovernanceAction(input)
+            capturedDecisionId = result.decisionId
+        }
+        if success, let decisionId = capturedDecisionId {
+            pendingDecisionId = decisionId
+        }
+    }
+
+    private var forgiveDecisionTitle: String {
+        let name = detail?.title?.isEmpty == false ? detail!.title! : "compromiso"
+        return "Condonar \(name)"
     }
 
     @ViewBuilder
@@ -371,6 +466,11 @@ private struct ComingSoonAction: Identifiable {
     let key: String
     let label: String
     var id: String { key }
+}
+
+/// R.7.x — wrapper Identifiable para presentar `DecisionDetailView` via `.sheet(item:)`.
+private struct DecisionIdSheetWrapper: Identifiable {
+    let id: UUID
 }
 
 // MARK: - R.2S.10 ¿Por qué? sheet

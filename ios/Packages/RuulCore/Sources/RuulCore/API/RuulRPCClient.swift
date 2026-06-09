@@ -215,6 +215,12 @@ public protocol RuulRPCClient: Sendable {
     /// `update_rule(p_rule_id, p_title?, p_body?, p_trigger_event_type?, p_condition_tree?, p_consequences?, p_target_scope?, p_target_filter?, p_severity?, p_status?)` — F.RULE.2.
     /// Permiso: `rules.manage`. Sólo reglas no archivadas. NULL = no cambiar.
     func updateRule(_ input: UpdateRuleInput) async throws -> Rule
+    /// `archive_rule(p_rule_id, p_reason?)` — R.7.x.
+    /// Status pasa a `archived`. Permiso: `rules.manage`. PULL gate doctrine R.7:
+    /// si policy `rule_change_requires_vote` o catalog default exigen votación,
+    /// raise `governance_required` (42501). Caller debe primero invocar
+    /// `request_governance_action('rule.archive', target=rule_id)`.
+    func archiveRule(ruleId: UUID, reason: String?) async throws -> RuleArchivedResult
     /// Lectura PostgREST: `rules` activas/pausadas del contexto.
     func listRules(contextId: UUID) async throws -> [Rule]
 
@@ -329,6 +335,12 @@ public protocol RuulRPCClient: Sendable {
     /// Permiso: acreedor o `money.settle`. Sólo obligaciones activas. NULL = no cambiar.
     /// amount/currency sólo aplican a obligaciones kind='money'.
     func updateObligation(_ input: UpdateObligationInput) async throws -> Obligation
+    /// `forgive_obligation(p_obligation_id, p_reason?)` — R.7.x.
+    /// Status pasa a `forgiven` (no contamina ledger). Permiso: creditor o `money.settle`.
+    /// PULL gate doctrine R.7: si policy o catalog default exigen votación, raise
+    /// `governance_required` (42501) — el caller debe primero conseguir aprobación vía
+    /// `request_governance_action('obligation.forgive', target_id=obligation)`.
+    func forgiveObligation(obligationId: UUID, reason: String?) async throws -> ObligationForgivenResult
 
     // MARK: - Settlement
 
@@ -626,6 +638,9 @@ public struct TransferOwnershipResult: Decodable, Sendable, Equatable {
     public let rightsRevoked: Int
     public let percentTotal: Double?
     public let canonicalOwnerChanged: Bool
+    /// R.7.x — `true` cuando la ejecución corrió porque una decisión la aprobó.
+    /// Default `false` por backward-compat con backend pre-R.7.
+    public let viaGovernance: Bool
 
     enum CodingKeys: String, CodingKey {
         case resourceId = "resource_id"
@@ -635,6 +650,7 @@ public struct TransferOwnershipResult: Decodable, Sendable, Equatable {
         case rightsRevoked = "rights_revoked"
         case percentTotal = "percent_total"
         case canonicalOwnerChanged = "canonical_owner_changed"
+        case viaGovernance = "via_governance"
     }
 
     public init(from decoder: Decoder) throws {
@@ -646,6 +662,7 @@ public struct TransferOwnershipResult: Decodable, Sendable, Equatable {
         self.rightsRevoked = try c.decodeIfPresent(Int.self, forKey: .rightsRevoked) ?? 0
         self.percentTotal = try c.decodeIfPresent(Double.self, forKey: .percentTotal)
         self.canonicalOwnerChanged = try c.decodeIfPresent(Bool.self, forKey: .canonicalOwnerChanged) ?? false
+        self.viaGovernance = try c.decodeIfPresent(Bool.self, forKey: .viaGovernance) ?? false
     }
 
     public init(
@@ -655,7 +672,8 @@ public struct TransferOwnershipResult: Decodable, Sendable, Equatable {
         newRightId: UUID? = nil,
         rightsRevoked: Int = 0,
         percentTotal: Double? = nil,
-        canonicalOwnerChanged: Bool = false
+        canonicalOwnerChanged: Bool = false,
+        viaGovernance: Bool = false
     ) {
         self.resourceId = resourceId
         self.fromActorId = fromActorId
@@ -664,6 +682,7 @@ public struct TransferOwnershipResult: Decodable, Sendable, Equatable {
         self.rightsRevoked = rightsRevoked
         self.percentTotal = percentTotal
         self.canonicalOwnerChanged = canonicalOwnerChanged
+        self.viaGovernance = viaGovernance
     }
 }
 

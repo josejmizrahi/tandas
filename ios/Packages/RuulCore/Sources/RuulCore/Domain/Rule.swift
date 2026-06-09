@@ -269,3 +269,49 @@ public enum RuleTargetFilterBuilder {
         .object(["currency": .string(code)])
     }
 }
+
+/// R.7.x — resultado de `archive_rule(p_rule_id, p_reason?)`.
+/// Backend retorna `{changed, rule_id?, status, via_governance?, governance_action_id?, noop?}`.
+public struct RuleArchivedResult: Decodable, Sendable, Equatable {
+    public let changed: Bool
+    public let ruleId: UUID?
+    public let status: String
+    public let viaGovernance: Bool
+    public let governanceActionId: UUID?
+    public let noop: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case changed
+        case ruleId = "rule_id"
+        case status
+        case viaGovernance = "via_governance"
+        case governanceActionId = "governance_action_id"
+        case noop
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.changed = try c.decodeIfPresent(Bool.self, forKey: .changed) ?? false
+        self.ruleId = try c.decodeIfPresent(UUID.self, forKey: .ruleId)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "archived"
+        self.viaGovernance = try c.decodeIfPresent(Bool.self, forKey: .viaGovernance) ?? false
+        self.governanceActionId = try c.decodeIfPresent(UUID.self, forKey: .governanceActionId)
+        self.noop = try c.decodeIfPresent(Bool.self, forKey: .noop) ?? false
+    }
+
+    public init(
+        changed: Bool,
+        ruleId: UUID? = nil,
+        status: String = "archived",
+        viaGovernance: Bool = false,
+        governanceActionId: UUID? = nil,
+        noop: Bool = false
+    ) {
+        self.changed = changed
+        self.ruleId = ruleId
+        self.status = status
+        self.viaGovernance = viaGovernance
+        self.governanceActionId = governanceActionId
+        self.noop = noop
+    }
+}

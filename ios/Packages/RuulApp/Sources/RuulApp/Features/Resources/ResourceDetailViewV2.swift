@@ -49,6 +49,15 @@ public struct ResourceDetailViewV2: View {
     @State private var isResolvingConflict = false
     @State private var pushedDocumentId: UUID?
     @State private var isShowingAllDocuments = false
+    /// R.7.x — flow para `resource.transfer`. Catalog default es
+    /// `requires_decision=true`, así que UI va siempre por governance.
+    @State private var runner = ActionRunner()
+    @State private var isShowingTransferPicker = false
+    @State private var contextMembersForTransfer: [ContextMember] = []
+    @State private var transferRecipientId: UUID?
+    @State private var isShowingTransferGovernanceSheet = false
+    @State private var transferClientId: String = UUID().uuidString
+    @State private var pendingTransferDecisionId: UUID?
 
     public init(resourceId: UUID, context: AppContext, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -102,6 +111,16 @@ public struct ResourceDetailViewV2: View {
                             isShowingEditResource = true
                         } label: {
                             Label("Editar recurso", systemImage: "pencil")
+                        }
+                    }
+                    // R.7.x — surface governance-routed transfer.
+                    if !context.isPersonal, store.descriptor?.state.archived == false {
+                        Section("Gestión") {
+                            Button {
+                                Task { await openTransferPicker() }
+                            } label: {
+                                Label("Transferir propiedad", systemImage: "arrow.left.arrow.right")
+                            }
                         }
                     }
                     Section("Avanzado") {
@@ -207,6 +226,83 @@ public struct ResourceDetailViewV2: View {
             dialogMessage: conflictDialogMessage(_:),
             onKind: { conflict, kind in resolveConflict(conflict, kind: kind) }
         ))
+        .modifier(TransferFlowModifier(
+            isShowingPicker: $isShowingTransferPicker,
+            members: $contextMembersForTransfer,
+            recipientId: $transferRecipientId,
+            isShowingGovernanceSheet: $isShowingTransferGovernanceSheet,
+            pendingDecisionId: $pendingTransferDecisionId,
+            resource: store.descriptor?.resource,
+            context: context,
+            container: container,
+            governanceMessage: transferGovernanceMessage,
+            onConfirmRecipient: { isShowingTransferGovernanceSheet = true },
+            onRequestGovernance: { Task { await requestGovernanceTransfer() } }
+        ))
+        .actionErrorAlert(runner)
+    }
+
+    // MARK: - R.7.x transfer
+
+    /// Carga miembros activos del contexto y abre el picker. Excluye al caller
+    /// (no se puede transferir a uno mismo) y a actors archivados.
+    private func openTransferPicker() async {
+        guard let descriptor = store.descriptor else { return }
+        do {
+            let summary = try await container.rpc.contextSummary(contextId: context.id)
+            let canonicalOwner = descriptor.resource.canonicalOwnerActorId
+            contextMembersForTransfer = summary.members.filter { member in
+                member.actorId != canonicalOwner
+            }
+            transferRecipientId = nil
+            transferClientId = UUID().uuidString
+            isShowingTransferPicker = true
+        } catch {
+            // fail-silent: el alert global runner no aplica aquí (no fue una RPC write).
+            contextMembersForTransfer = []
+        }
+    }
+
+    /// Pide aprobación colectiva para `resource.transfer` con `payload={to_actor_id}`.
+    private func requestGovernanceTransfer() async {
+        guard let recipientId = transferRecipientId else { return }
+        let input = RequestGovernanceActionInput(
+            contextActorId: context.id,
+            actionKey: "resource.transfer",
+            targetType: "resource",
+            targetId: resourceId,
+            payload: .object([
+                "to_actor_id": .string(recipientId.uuidString)
+            ]),
+            title: transferDecisionTitle(recipientId: recipientId),
+            closesAt: nil,
+            clientId: transferClientId
+        )
+        var capturedDecisionId: UUID?
+        let success = await runner.run {
+            let result = try await container.rpc.requestGovernanceAction(input)
+            capturedDecisionId = result.decisionId
+        }
+        if success, let decisionId = capturedDecisionId {
+            pendingTransferDecisionId = decisionId
+            isShowingTransferPicker = false
+        }
+    }
+
+    private var transferGovernanceMessage: String {
+        let resourceName = store.descriptor?.resource.displayName ?? "este recurso"
+        let recipientName = contextMembersForTransfer
+            .first(where: { $0.actorId == transferRecipientId })?
+            .displayName ?? "el destinatario"
+        return "Transferir propiedad de \(resourceName) a \(recipientName) requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+    }
+
+    private func transferDecisionTitle(recipientId: UUID) -> String {
+        let resourceName = store.descriptor?.resource.displayName ?? "recurso"
+        let recipientName = contextMembersForTransfer
+            .first(where: { $0.actorId == recipientId })?
+            .displayName ?? "miembro"
+        return "Transferir \(resourceName) a \(recipientName)"
     }
 
     // MARK: - Descriptor List (R.5V.5 — Apple-native)
@@ -1438,6 +1534,129 @@ private struct ConflictsModifier: ViewModifier {
             } message: { a in
                 Text(a.message)
             }
+    }
+}
+
+/// R.7.x — encapsula los 3 sheets del transfer flow (picker / governance / decision push)
+/// para mantener el body de la view ligero (evita type-checker timeout).
+private struct TransferFlowModifier: ViewModifier {
+    @Binding var isShowingPicker: Bool
+    @Binding var members: [ContextMember]
+    @Binding var recipientId: UUID?
+    @Binding var isShowingGovernanceSheet: Bool
+    @Binding var pendingDecisionId: UUID?
+    let resource: Resource?
+    let context: AppContext
+    let container: DependencyContainer
+    let governanceMessage: String
+    let onConfirmRecipient: () -> Void
+    let onRequestGovernance: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $isShowingPicker) {
+                TransferRecipientPicker(
+                    members: members,
+                    recipientId: $recipientId,
+                    resourceName: resource?.displayName ?? "Recurso",
+                    onCancel: { isShowingPicker = false },
+                    onContinue: onConfirmRecipient
+                )
+            }
+            .confirmationDialog(
+                "Esta acción requiere aprobación",
+                isPresented: $isShowingGovernanceSheet,
+                titleVisibility: .visible
+            ) {
+                Button("Crear decisión") { onRequestGovernance() }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text(governanceMessage)
+            }
+            .sheet(item: Binding(
+                get: { pendingDecisionId.map { TransferDecisionSheetWrapper(id: $0) } },
+                set: { pendingDecisionId = $0?.id }
+            )) { wrapper in
+                NavigationStack {
+                    DecisionDetailView(decisionId: wrapper.id, context: context, container: container)
+                }
+            }
+    }
+}
+
+/// R.7.x — wrapper Identifiable para `.sheet(item:)` del push DecisionDetailView.
+private struct TransferDecisionSheetWrapper: Identifiable {
+    let id: UUID
+}
+
+/// R.7.x — picker dedicado para elegir el destinatario del transfer.
+/// Apple-native: `List + Section`. Confirma habilitando "Continuar" sólo cuando
+/// hay recipient seleccionado.
+private struct TransferRecipientPicker: View {
+    let members: [ContextMember]
+    @Binding var recipientId: UUID?
+    let resourceName: String
+    let onCancel: () -> Void
+    let onContinue: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if members.isEmpty {
+                    Section {
+                        Text("No hay miembros disponibles para recibir la propiedad.")
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                } else {
+                    Section {
+                        ForEach(members) { member in
+                            Button {
+                                recipientId = member.actorId
+                            } label: {
+                                HStack {
+                                    Label {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(member.displayName)
+                                                .foregroundStyle(Theme.Text.primary)
+                                            if let type = member.membershipType {
+                                                Text(type.capitalized)
+                                                    .font(.caption)
+                                                    .foregroundStyle(Theme.Text.secondary)
+                                            }
+                                        }
+                                    } icon: {
+                                        Image(systemName: "person.crop.circle")
+                                            .foregroundStyle(Theme.Tint.primary)
+                                    }
+                                    Spacer()
+                                    if recipientId == member.actorId {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(Theme.Tint.primary)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } header: {
+                        Text("Elegí destinatario")
+                    } footer: {
+                        Text("La transferencia se propondrá como decisión para aprobación colectiva.")
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Transferir \(resourceName)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Continuar", action: onContinue)
+                        .disabled(recipientId == nil)
+                }
+            }
+        }
     }
 }
 
