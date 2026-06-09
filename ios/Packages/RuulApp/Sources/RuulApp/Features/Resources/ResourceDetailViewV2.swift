@@ -781,7 +781,7 @@ public struct ResourceDetailViewV2: View {
 
     private func sectionDestinationKey(_ key: String) -> String? {
         switch key {
-        case "reservations", "availability", "activity", "settings": return key
+        case "reservations", "availability", "calendar", "activity", "settings": return key
         default: return nil
         }
     }
@@ -789,13 +789,17 @@ public struct ResourceDetailViewV2: View {
     @ViewBuilder
     private func sectionDestination(_ d: ResourceDetailDescriptor, sectionKey: String) -> some View {
         switch sectionKey {
-        case "reservations", "availability":
+        case "reservations":
             ReservationsListView(
                 resource: d.resource,
                 context: context,
                 reservationContextId: nil,
                 container: container
             )
+        case "availability", "calendar":
+            // R.5V.Calendar 2026-06-09 — calendar standalone del recurso
+            // (reservaciones + eventos linked vía sourceEventId).
+            ResourceCalendarView(resource: d.resource, context: context, container: container)
         case "activity":
             ActivityFeedView(context: context, container: container)
         case "settings":
