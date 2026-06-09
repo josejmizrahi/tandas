@@ -73,36 +73,42 @@ public struct MoneyHomeView: View {
         if !recordActions.isEmpty {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    ForEach(recordActions) { action in
-                        Button {
-                            handle(actionKey: action.actionKey)
-                        } label: {
-                            Label(
-                                action.label,
-                                systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
-                            )
+                    Section("Registrar") {
+                        ForEach(recordActions) { action in
+                            Button {
+                                handle(actionKey: action.actionKey)
+                            } label: {
+                                Label(
+                                    action.label,
+                                    systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
+                                )
+                            }
+                            .disabled(!action.enabled)
                         }
-                        .disabled(!action.enabled)
                     }
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel("Registrar movimiento")
             }
         } else if store.canRecord(in: context) {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button { isShowingExpense = true } label: {
-                        Label("Registrar gasto", systemImage: "cart.fill")
-                    }
-                    Button { isShowingGameResult = true } label: {
-                        Label("Resultado de juego", systemImage: "dice.fill")
-                    }
-                    Button { isShowingFine = true } label: {
-                        Label("Multa manual", systemImage: "exclamationmark.circle.fill")
+                    Section("Registrar") {
+                        Button { isShowingExpense = true } label: {
+                            Label("Registrar gasto", systemImage: "cart.fill")
+                        }
+                        Button { isShowingGameResult = true } label: {
+                            Label("Resultado de juego", systemImage: "dice.fill")
+                        }
+                        Button { isShowingFine = true } label: {
+                            Label("Multa manual", systemImage: "exclamationmark.circle.fill")
+                        }
                     }
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel("Registrar movimiento")
             }
         }
     }
