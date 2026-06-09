@@ -24,8 +24,10 @@ public enum AttentionDestination: Identifiable, Hashable {
     case pendingInvitations
     /// R.5Z.fix.CC.2 — context-scoped destination. Usado por items con
     /// `cta_scope_kind=context` (rule_violation, policy_violation, recordatorios
-    /// genéricos del contexto). Pushea ContextDetailViewV2.
-    case context(contextActorId: UUID)
+    /// genéricos del contexto). `contextDisplayName` permite construir un
+    /// AppContext mínimo cuando el lookup en `availableContexts` falla (race
+    /// condition contextStore loading o context not en candidates aún).
+    case context(contextActorId: UUID, contextDisplayName: String)
     /// Kind no soportado por iOS aún. Render UX honesto, no crash.
     case unsupported(kind: String)
 
@@ -37,7 +39,7 @@ public enum AttentionDestination: Identifiable, Hashable {
         case .resourceDetail(let id, _):                return "resource-\(id)"
         case .reservationConflict(let id, _, _):        return "reservation-conflict-\(id)"
         case .pendingInvitations:                       return "pending-invitations"
-        case .context(let ctx):                         return "context-\(ctx)"
+        case .context(let ctx, _):                      return "context-\(ctx)"
         case .unsupported(let kind):                    return "unsupported-\(kind)"
         }
     }
@@ -89,7 +91,7 @@ public enum AttentionDispatcher {
     private static func scopeBasedDestination(for item: AttentionItem) -> AttentionDestination {
         switch item.ctaScopeKind {
         case "context":
-            return .context(contextActorId: item.contextActorId)
+            return .context(contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "resource":
             return .resourceDetail(resourceId: item.ctaScopeId, contextActorId: item.contextActorId)
         case "obligation":
@@ -212,10 +214,12 @@ public struct AttentionDestinationSheet: View {
             }
         case .pendingInvitations:
             PendingInvitationsView(container: container)
-        case .context(let contextActorId):
+        case .context(let contextActorId, let contextDisplayName):
             // R.5Z.fix.CC.2 — push ContextDetailViewV2 dentro de NavigationStack
             // del sheet. Para items con cta_scope_kind=context (rule_violation, etc.).
-            wrapped(contextActorId: contextActorId) { ctx in
+            // Con fallback build-from-displayName si el lookup en
+            // availableContexts falla (race condition contextStore.load).
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 ContextDetailViewV2(contextId: ctx.id, context: ctx, container: container)
             }
         case .unsupported(let kind):
@@ -226,9 +230,29 @@ public struct AttentionDestinationSheet: View {
     @ViewBuilder
     private func wrapped<Content: View>(
         contextActorId: UUID,
+        fallbackDisplayName: String? = nil,
         @ViewBuilder _ build: (AppContext) -> Content
     ) -> some View {
-        if let ctx = container.contextStore.availableContexts.first(where: { $0.id == contextActorId }) {
+        // R.5Z.fix.CC.2 — primero busca en availableContexts (rápido y con
+        // memberCount/roles correctos). Si falla, construye un AppContext
+        // mínimo desde el fallback (e.g. nombre del attention item). El detail
+        // view internamente carga el descriptor del backend; lo único crítico
+        // del AppContext es id, kind, displayName.
+        let resolved: AppContext? = {
+            if let ctx = container.contextStore.availableContexts.first(where: { $0.id == contextActorId }) {
+                return ctx
+            }
+            if let name = fallbackDisplayName {
+                return AppContext(
+                    id: contextActorId,
+                    kind: .collective,
+                    subtype: "collective",
+                    displayName: name
+                )
+            }
+            return nil
+        }()
+        if let ctx = resolved {
             NavigationStack {
                 build(ctx)
             }
