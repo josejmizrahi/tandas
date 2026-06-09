@@ -3,56 +3,47 @@ import RuulCore
 import ContactsUI
 import Contacts
 
-/// F.5 + R.5W — invitar miembros al contexto. Tres modos:
-/// 1. **Directo** (`invite_member`): selecciona a alguien que conoces de otros
-///    contextos. Le llega como invitación pendiente; debe llamar
-///    `accept_invitation` (sheet "Invitaciones") para activarse.
-/// 2. **Por código** (`create_invite` + `join_by_invite_code`): genera un código
-///    compartible para gente que aún no está en la red.
-/// 3. **Sin app** (R.5W `create_placeholder_person`): agrega a alguien que NO
-///    usa la app (abuela, tío, vecino). Aparece en members list de inmediato y
-///    puede recibir splits/obligaciones/RSVPs. Cuando se registre con su
-///    teléfono/email, su placeholder se podrá fusionar (Slice 4).
+/// F.5 + R.5W redesign (2026-06-08) — Invitar personas al contexto.
+///
+/// **Founder doctrine 2026-06-08:** unificar el flujo. Cero segmented picker.
+/// Cero badge categórico. Cualquier persona que agregues queda como "Pendiente
+/// de unirse" hasta que efectivamente acepte. Si tiene la app y la conoces de
+/// otro contexto → `invite_member`. Si no la tiene → `create_placeholder_person`
+/// (Splitwise pattern: aparece igual en members, splits, eventos).
+///
+/// **Layout best-practice social** (WhatsApp / Apple Family Sharing):
+///
+/// 1. **Compartir invitación** — ShareLink prominente al top. Cualquier persona
+///    con el link se une al instante. Útil para grupos grandes / desconocidos.
+/// 2. **Personas en Ruul** — buscable, los que conoces de otros espacios.
+///    Tap = invita directo (invite_member).
+/// 3. **Agregar persona** — form para gente que no usa la app. Pre-llena vía
+///    Contactos. Submit = placeholder + aparece en members list de inmediato.
+///
+/// Cero menús internos. Cero modos. Una sola pantalla.
 public struct InviteMembersView: View {
-    enum Mode: String, CaseIterable, Identifiable {
-        case direct, code, placeholder
-        var id: String { rawValue }
-        var label: String {
-            switch self {
-            case .direct:      return "Directo"
-            case .code:        return "Por código"
-            case .placeholder: return "Sin app"
-            }
-        }
-    }
-
     let context: AppContext
     let store: MembersStore
     let container: DependencyContainer
 
     @Environment(\.dismiss) private var dismiss
-    @State private var mode: Mode = .direct
 
-    // Mode .code
+    // Universal share link (lazy — se crea sólo si el founder lo necesita).
     @State private var invite: InviteCreated?
-    @State private var limitUses = false
-    @State private var maxUses = 5
-    @State private var confirmRevoke = false
-    @State private var lastRevokedCode: String?
+    @State private var isGeneratingInvite = false
 
-    // Mode .direct
+    // Personas en Ruul (other contexts)
     @State private var knownActors: [KnownActor] = []
     @State private var isLoadingKnown = false
-    @State private var selectedActorId: UUID?
-    @State private var directSearch = ""
-    @State private var directSuccessName: String?
+    @State private var search = ""
+    @State private var directlyInvitedNames: Set<String> = []
 
-    // Mode .placeholder (R.5W)
-    @State private var placeholderName = ""
-    @State private var placeholderPhone = ""
-    @State private var placeholderEmail = ""
-    @State private var placeholderSuccessName: String?
+    // Agregar persona manualmente
+    @State private var newName = ""
+    @State private var newPhone = ""
+    @State private var newEmail = ""
     @State private var isShowingContactPicker = false
+    @State private var lastAddedName: String?
 
     @State private var runner = ActionRunner()
 
@@ -64,225 +55,144 @@ public struct InviteMembersView: View {
 
     public var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Picker("Modo", selection: $mode) {
-                        ForEach(Mode.allCases) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                switch mode {
-                case .direct:
-                    directSections
-                case .code:
-                    codeSections
-                case .placeholder:
-                    placeholderSections
-                }
+            List {
+                shareSection
+                personasEnRuulSection
+                agregarPersonaSection
             }
-            .navigationTitle("Invitar miembros")
+            .navigationTitle("Invitar a \(context.displayName)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cerrar") { dismiss() }
                 }
             }
+            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Buscar persona")
             .task {
                 await loadKnown()
-            }
-            .actionErrorAlert(runner)
-            .alert("¿Revocar este código?", isPresented: $confirmRevoke) {
-                Button("Revocar", role: .destructive) {
-                    Task { await revoke() }
-                }
-                Button("Cancelar", role: .cancel) {}
-            } message: {
-                Text("Nadie más podrá usarlo. Los miembros que ya se unieron siguen siendo miembros.")
+                await ensureInvite()
             }
             .sheet(isPresented: $isShowingContactPicker) {
-                ContactPickerSheet { contact in
-                    if let name = contact.name { placeholderName = name }
-                    if let phone = contact.phone { placeholderPhone = phone }
-                    if let email = contact.email { placeholderEmail = email }
+                ContactPickerSheet { picked in
+                    if let n = picked.name { newName = n }
+                    if let p = picked.phone { newPhone = p }
+                    if let e = picked.email { newEmail = e }
                     isShowingContactPicker = false
                 }
             }
+            .actionErrorAlert(runner)
         }
         .ruulSheet()
     }
 
-    // MARK: - Placeholder (R.5W — create_placeholder_person)
+    // MARK: - 1. Compartir invitación
 
     @ViewBuilder
-    private var placeholderSections: some View {
-        if let placeholderSuccessName {
-            Section {
-                Label(
-                    "\(placeholderSuccessName) ya aparece en miembros y puede recibir gastos y obligaciones.",
-                    systemImage: "checkmark.circle.fill"
-                )
-                .foregroundStyle(.green)
-            }
-        }
-
+    private var shareSection: some View {
         Section {
-            Button {
-                isShowingContactPicker = true
-            } label: {
-                Label("Elegir de Contactos", systemImage: "person.crop.circle.badge.plus")
-            }
-        } header: {
-            Text("Atajo")
-        } footer: {
-            Text("Te dejamos prellenar nombre/teléfono/email desde tu app de Contactos.")
-        }
-
-        Section {
-            TextField("Nombre (Abuela Sara…)", text: $placeholderName)
-                .textInputAutocapitalization(.words)
-                .autocorrectionDisabled()
-            TextField("Teléfono (opcional)", text: $placeholderPhone)
-                .keyboardType(.phonePad)
-                .textContentType(.telephoneNumber)
-            TextField("Email (opcional)", text: $placeholderEmail)
-                .keyboardType(.emailAddress)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textContentType(.emailAddress)
-        } header: {
-            Text("Datos")
-        } footer: {
-            Text("El nombre es obligatorio. Teléfono o email ayudarán a vincular este placeholder con su cuenta cuando se registre.")
-        }
-
-        Section {
-            Button {
-                Task { await createPlaceholder() }
-            } label: {
-                if runner.isRunning {
-                    ProgressView().frame(maxWidth: .infinity)
-                } else {
-                    Label("Agregar a \(context.displayName)", systemImage: "person.fill.badge.plus")
-                        .frame(maxWidth: .infinity)
+            if let invite {
+                ShareLink(
+                    item: inviteURL(invite),
+                    subject: Text("Invitación a \(context.displayName)"),
+                    message: Text(shareMessage(invite))
+                ) {
+                    Label("Compartir invitación", systemImage: "square.and.arrow.up")
                 }
-            }
-            .disabled(!canCreatePlaceholder)
-        } footer: {
-            Text("La persona aparece en \(context.displayName) sin registrarse. Cuando descargue Ruul y se registre con el mismo teléfono/email, su historia se vinculará automáticamente.")
-        }
-    }
-
-    private var canCreatePlaceholder: Bool {
-        !placeholderName.trimmingCharacters(in: .whitespaces).isEmpty && !runner.isRunning
-    }
-
-    private func createPlaceholder() async {
-        let name = placeholderName.trimmingCharacters(in: .whitespaces)
-        let phone = placeholderPhone.trimmingCharacters(in: .whitespaces)
-        let email = placeholderEmail.trimmingCharacters(in: .whitespaces)
-        await runner.run {
-            _ = try await container.rpc.createPlaceholderPerson(
-                contextId: context.id,
-                displayName: name,
-                phone: phone.isEmpty ? nil : phone,
-                email: email.isEmpty ? nil : email,
-                membershipType: "member"
-            )
-            // Refresh members list para que el placeholder aparezca al volver
-            await store.load(context: context)
-            placeholderSuccessName = name
-            placeholderName = ""
-            placeholderPhone = ""
-            placeholderEmail = ""
-        }
-    }
-
-    // MARK: - Direct (invite_member)
-
-    @ViewBuilder
-    private var directSections: some View {
-        if let directSuccessName {
-            Section {
-                Label(
-                    "Invitaste a \(directSuccessName). Aparecerá como miembro pendiente hasta que acepte.",
-                    systemImage: "checkmark.circle.fill"
-                )
-                .foregroundStyle(.green)
-            }
-        }
-
-        Section {
-            if isLoadingKnown {
-                HStack { ProgressView(); Text("Buscando personas que conoces…") }
-            } else if filteredKnown.isEmpty {
-                Text(knownActors.isEmpty
-                     ? "Por ahora no tienes a nadie en otros contextos. Usa “Por código” para invitar a alguien nuevo."
-                     : "Sin coincidencias para “\(directSearch)”.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            } else if isGeneratingInvite {
+                HStack {
+                    ProgressView()
+                    Text("Generando link…").font(.callout).foregroundStyle(Theme.Text.secondary)
+                }
             } else {
-                ForEach(filteredKnown) { actor in
-                    Button { selectedActorId = actor.actorId } label: {
-                        directRow(actor)
-                    }
-                    .buttonStyle(.plain)
+                Button {
+                    Task { await ensureInvite() }
+                } label: {
+                    Label("Generar link de invitación", systemImage: "link")
                 }
             }
         } header: {
-            Text("Personas que conoces")
+            Text("Compartir")
         } footer: {
-            Text("Mostramos miembros de tus otros contextos. Si no encuentras a quien buscas, comparte un código en “Por código”.")
+            Text("Cualquier persona que abra el link se une a \(context.displayName) al instante. Compártelo por WhatsApp, Mensajes o cualquier app.")
         }
-        .searchable(text: $directSearch, placement: .navigationBarDrawer(displayMode: .always), prompt: "Buscar persona")
+    }
 
-        if let selectedActorId,
-           let selected = knownActors.first(where: { $0.actorId == selectedActorId }) {
+    private func ensureInvite() async {
+        guard invite == nil, !isGeneratingInvite else { return }
+        isGeneratingInvite = true
+        defer { isGeneratingInvite = false }
+        invite = try? await store.createInvite(contextId: context.id, maxUses: nil)
+    }
+
+    private func inviteURL(_ invite: InviteCreated) -> URL {
+        URL(string: "https://ruul.mx/invite/\(invite.code)") ?? URL(string: "https://ruul.mx")!
+    }
+
+    private func shareMessage(_ invite: InviteCreated) -> String {
+        "Únete a \(context.displayName) en Ruul. Abre el link o usa el código \(invite.code)."
+    }
+
+    // MARK: - 2. Personas en Ruul
+
+    @ViewBuilder
+    private var personasEnRuulSection: some View {
+        if isLoadingKnown {
             Section {
-                Button {
-                    Task { await inviteDirect(selected) }
-                } label: {
-                    if runner.isRunning {
-                        ProgressView().frame(maxWidth: .infinity)
-                    } else {
-                        Label("Invitar a \(selected.displayName)", systemImage: "person.crop.circle.badge.plus")
-                            .frame(maxWidth: .infinity)
+                HStack { ProgressView(); Text("Buscando personas…").font(.callout) }
+            } header: { Text("Personas en Ruul") }
+        } else if !knownActors.isEmpty {
+            Section {
+                ForEach(filteredKnown) { actor in
+                    Button {
+                        Task { await inviteDirect(actor) }
+                    } label: {
+                        knownActorRow(actor)
                     }
+                    .disabled(runner.isRunning || directlyInvitedNames.contains(actor.displayName))
                 }
-                .disabled(runner.isRunning)
+                if filteredKnown.isEmpty && !search.isEmpty {
+                    Text("Sin coincidencias para “\(search)”.")
+                        .font(.callout)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+            } header: {
+                Text("Personas en Ruul")
             } footer: {
-                Text("La invitación queda pendiente hasta que la persona la acepte desde su sección de Invitaciones.")
+                Text("Personas con quien compartes otros espacios. Tap para invitarlas — les llega como invitación pendiente.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func knownActorRow(_ actor: KnownActor) -> some View {
+        HStack(spacing: 12) {
+            ActorInitialsView(name: actor.displayName)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(actor.displayName)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Theme.Text.primary)
+                if !actor.sharedContexts.isEmpty {
+                    Text(actor.sharedContexts.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+            if directlyInvitedNames.contains(actor.displayName) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Theme.Tint.success)
+            } else {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(Theme.Tint.primary)
             }
         }
     }
 
     private var filteredKnown: [KnownActor] {
-        let query = directSearch.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !query.isEmpty else { return knownActors }
-        return knownActors.filter { $0.displayName.lowercased().contains(query) }
-    }
-
-    @ViewBuilder
-    private func directRow(_ actor: KnownActor) -> some View {
-        HStack(spacing: 12) {
-            ActorInitialsView(name: actor.displayName)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(actor.displayName)
-                    .font(.body)
-                Text(actor.sharedContexts.joined(separator: " · "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-            if selectedActorId == actor.actorId {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.tint)
-            }
-        }
-        .contentShape(Rectangle())
+        let q = search.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return knownActors }
+        return knownActors.filter { $0.displayName.lowercased().contains(q) }
     }
 
     private func loadKnown() async {
@@ -297,127 +207,99 @@ public struct InviteMembersView: View {
                 myActorId: container.currentActorStore.actorId
             )
         } catch {
-            // Falla silenciosa — el listado simplemente queda vacío y el footer
-            // del Section lo explica.
             knownActors = []
         }
     }
 
     private func inviteDirect(_ actor: KnownActor) async {
         await runner.run {
-            _ = try await store.inviteMember(
-                context: context,
-                memberActorId: actor.actorId
-            )
-            directSuccessName = actor.displayName
-            selectedActorId = nil
-            directSearch = ""
+            _ = try await store.inviteMember(context: context, memberActorId: actor.actorId)
+            directlyInvitedNames.insert(actor.displayName)
         }
     }
 
-    // MARK: - Code (create_invite)
+    // MARK: - 3. Agregar persona (placeholder)
 
     @ViewBuilder
-    private var codeSections: some View {
-        if let invite {
-            Section("Código de invitación") {
-                HStack {
-                    Text(invite.code)
-                        .font(.system(.title, design: .monospaced).weight(.bold))
-                        .frame(maxWidth: .infinity)
-                        .textSelection(.enabled)
-                }
-                .padding(.vertical, 8)
-
-                ShareLink(
-                    item: inviteURL(invite),
-                    subject: Text("Invitación a \(context.displayName)"),
-                    message: Text(shareMessage(invite))
-                ) {
-                    Label("Compartir invitación", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
-                }
-            }
-
+    private var agregarPersonaSection: some View {
+        if let lastAddedName {
             Section {
-                Button("Generar otro código") {
-                    self.invite = nil
-                }
-                Button(role: .destructive) {
-                    confirmRevoke = true
-                } label: {
-                    Label("Revocar código", systemImage: "xmark.circle")
-                }
-                .disabled(runner.isRunning)
-            } footer: {
-                Text("Revocar invalida el código para todos. Las personas que ya se unieron siguen siendo miembros.")
+                Label(
+                    "\(lastAddedName) ya aparece como miembro. Le puedes compartir el link arriba para que se una a Ruul.",
+                    systemImage: "checkmark.circle.fill"
+                )
+                .foregroundStyle(Theme.Tint.success)
             }
-        } else {
-            if let lastRevokedCode {
-                Section {
-                    Label("Código \(lastRevokedCode) revocado.", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                }
-            }
+        }
 
-            Section("Opciones") {
-                Toggle("Limitar usos", isOn: $limitUses)
-                if limitUses {
-                    Stepper("Máximo \(maxUses) personas", value: $maxUses, in: 1...50)
-                }
-            }
+        Section {
+            TextField("Nombre", text: $newName)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .textContentType(.name)
+            TextField("Teléfono (opcional)", text: $newPhone)
+                .keyboardType(.phonePad)
+                .textContentType(.telephoneNumber)
+            TextField("Email (opcional)", text: $newEmail)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textContentType(.emailAddress)
 
-            Section {
-                Button {
-                    Task { await generate() }
-                } label: {
-                    if runner.isRunning {
-                        ProgressView().frame(maxWidth: .infinity)
-                    } else {
-                        Label("Generar código", systemImage: "ticket")
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .disabled(runner.isRunning)
-            } footer: {
-                Text("Cualquier persona con el código puede unirse a \(context.displayName) como miembro.")
+            Button {
+                isShowingContactPicker = true
+            } label: {
+                Label("Elegir de Contactos", systemImage: "person.crop.circle.badge.plus")
             }
+        } header: {
+            Text("Agregar persona")
+        } footer: {
+            Text("Para gente que aún no usa Ruul. Aparece de inmediato en miembros, eventos y gastos. Cuando se registre con su teléfono o email, su historia se vincula automáticamente.")
+        }
+
+        Section {
+            Button {
+                Task { await createPlaceholder() }
+            } label: {
+                if runner.isRunning {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else {
+                    Label("Agregar a \(context.displayName)", systemImage: "person.fill.badge.plus")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .disabled(!canCreatePlaceholder)
         }
     }
 
-    private func generate() async {
+    private var canCreatePlaceholder: Bool {
+        !newName.trimmingCharacters(in: .whitespaces).isEmpty && !runner.isRunning
+    }
+
+    private func createPlaceholder() async {
+        let name = newName.trimmingCharacters(in: .whitespaces)
+        let phone = newPhone.trimmingCharacters(in: .whitespaces)
+        let email = newEmail.trimmingCharacters(in: .whitespaces)
         await runner.run {
-            invite = try await store.createInvite(
+            _ = try await container.rpc.createPlaceholderPerson(
                 contextId: context.id,
-                maxUses: limitUses ? maxUses : nil
+                displayName: name,
+                phone: phone.isEmpty ? nil : phone,
+                email: email.isEmpty ? nil : email,
+                membershipType: "member"
             )
-            lastRevokedCode = nil
+            await store.load(context: context)
+            lastAddedName = name
+            newName = ""
+            newPhone = ""
+            newEmail = ""
         }
-    }
-
-    private func revoke() async {
-        guard let current = invite else { return }
-        await runner.run {
-            try await store.revokeInvite(inviteId: current.inviteId)
-            lastRevokedCode = current.code
-            invite = nil
-        }
-    }
-
-    /// Universal link que abre la app (o la landing de web/ si no la tienen).
-    private func inviteURL(_ invite: InviteCreated) -> URL {
-        URL(string: "https://ruul.mx/invite/\(invite.code)") ?? URL(string: "https://ruul.mx")!
-    }
-
-    private func shareMessage(_ invite: InviteCreated) -> String {
-        "Únete a \(context.displayName) en Ruul. Abre el link o usa el código \(invite.code)."
     }
 }
 
-// MARK: - R.5W Contact picker wrapper
+// MARK: - Contact picker wrapper
 
-/// SwiftUI wrap de `CNContactPickerViewController` para preseleccionar
-/// nombre/teléfono/email del contacto elegido. Requiere
+/// SwiftUI wrap de `CNContactPickerViewController`. Requiere
 /// `NSContactsUsageDescription` en Info.plist (ya presente).
 private struct ContactPickerSheet: UIViewControllerRepresentable {
     struct ImportedContact {
@@ -470,7 +352,7 @@ private struct ContactPickerSheet: UIViewControllerRepresentable {
     }
 }
 
-#Preview("Invitar · directo") {
+#Preview("Invitar") {
     InviteMembersView(
         context: AppContext(
             id: MockRuulRPCClient.DemoIds.cenaSemanal,

@@ -102,31 +102,15 @@ public struct MembersListView: View {
                             .font(.caption)
                             .foregroundStyle(Theme.Text.secondary)
                     }
-                    // R.5W — badge "Sin app" para placeholders.
-                    if member.isPlaceholder {
-                        Text("Sin app")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(Theme.Tint.info)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Theme.Tint.info.opacity(0.15), in: Capsule())
-                    }
                 }
-                if member.isPlaceholder, let phone = member.contactPhone, !phone.isEmpty {
-                    Text(phone)
-                        .font(.caption)
-                        .foregroundStyle(Theme.Text.secondary)
-                } else if member.isPlaceholder, let email = member.contactEmail, !email.isEmpty {
-                    Text(email)
-                        .font(.caption)
-                        .foregroundStyle(Theme.Text.secondary)
-                } else if let joined = member.joinedAt {
-                    Text("Desde \(joined.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.caption)
-                        .foregroundStyle(Theme.Text.secondary)
-                }
+                Text(memberSubtitle(member))
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
             }
             Spacer()
+            // R.5W — Trailing: rol (founder/admin) o status pendiente.
+            // Placeholders renderean con icono clock subtle (no badge categórico
+            // "Sin app" — el founder pidió tratarlos como invitados regulares).
             if member.isFounder {
                 Text("Fundador")
                     .font(.caption.weight(.medium))
@@ -135,9 +119,37 @@ public struct MembersListView: View {
                 Text("Admin")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.Tint.info)
+            } else if member.isPlaceholder {
+                Image(systemName: "clock")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.tertiary)
+                    .accessibilityLabel("Invitación pendiente de unirse")
             }
         }
     }
+
+    /// R.5W — Subtítulo unificado. Placeholders muestran su contacto + "Pendiente
+    /// de unirse"; registered members muestran fecha de unión. Apple Family
+    /// Sharing pattern: el placeholder se ve igual que cualquier miembro pero
+    /// con una etiqueta suave que avisa que la invitación está pendiente.
+    private func memberSubtitle(_ member: ContextMember) -> String {
+        if member.isPlaceholder {
+            let contact = member.contactPhone?.nilIfEmpty
+                ?? member.contactEmail?.nilIfEmpty
+            if let contact {
+                return "\(contact) · Pendiente de unirse"
+            }
+            return "Pendiente de unirse"
+        }
+        if let joined = member.joinedAt {
+            return "Desde \(joined.formatted(date: .abbreviated, time: .omitted))"
+        }
+        return "Miembro"
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }
 
 #Preview("Miembros") {
