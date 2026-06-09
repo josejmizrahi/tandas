@@ -54,7 +54,9 @@ public struct RuulHeroCard<Content: View>: View {
         }
         .padding(Theme.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: Theme.cardShape())
+        // R.5V.Glass.C1 — Liquid Glass nativo con tint semántico. Reemplaza
+        // el .regularMaterial plano por glass real que reacciona a luz y toque.
+        .glassEffect(.regular.tint(tint.opacity(0.18)), in: Theme.cardShape())
     }
 }
 

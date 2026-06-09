@@ -327,11 +327,14 @@ public struct ContextsListView: View {
                     Text(ctx.isPersonal ? "Mi espacio" : ctx.displayName)
                         .font(.callout.weight(.medium))
                         .foregroundStyle(Theme.Text.primary)
-                    if isFavorite {
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundStyle(Theme.Tint.warning)
-                    }
+                    // R.5V.Symbols.C4 — Image siempre montado: vista mantiene
+                    // identidad y SwiftUI hace morph nativo en lugar de fade
+                    // al cambiar isFavorite. Mismo patrón en card abajo.
+                    Image(systemName: isFavorite ? "star.fill" : "star")
+                        .font(.caption2)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(isFavorite ? Theme.Tint.warning : .clear)
+                        .contentTransition(.symbolEffect(.replace))
                 }
                 Text(rowCaption(ctx))
                     .font(.caption)
@@ -389,11 +392,11 @@ public struct ContextsListView: View {
                         .frame(width: 40, height: 40)
                         .background(Theme.Tint.primary.opacity(0.12), in: Circle())
                     Spacer()
-                    if isFavorite {
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundStyle(Theme.Tint.warning)
-                    }
+                    Image(systemName: isFavorite ? "star.fill" : "star")
+                        .font(.caption2)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(isFavorite ? Theme.Tint.warning : .clear)
+                        .contentTransition(.symbolEffect(.replace))
                 }
                 Spacer(minLength: 0)
                 Text(ctx.displayName)

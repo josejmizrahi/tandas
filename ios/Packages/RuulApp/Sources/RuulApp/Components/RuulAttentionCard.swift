@@ -52,7 +52,7 @@ public struct RuulAttentionCard: View {
             Spacer()
         }
         .padding(Theme.Spacing.lg)
-        .background(Theme.Surface.card, in: Theme.cardShape())
+        .glassEffect(.regular.tint(highestTint.opacity(0.18)).interactive(), in: Theme.cardShape())
     }
 
     // MARK: - Populated
@@ -71,7 +71,7 @@ public struct RuulAttentionCard: View {
                 Divider().padding(.leading, Theme.Spacing.lg)
                 rows
             }
-            .background(Theme.Surface.card, in: Theme.cardShape())
+            .glassEffect(.regular.tint(highestTint.opacity(0.18)).interactive(), in: Theme.cardShape())
         }
         .buttonStyle(.plain)
     }

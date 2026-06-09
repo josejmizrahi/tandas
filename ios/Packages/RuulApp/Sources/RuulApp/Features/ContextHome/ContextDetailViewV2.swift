@@ -739,13 +739,17 @@ public struct ContextDetailViewV2: View {
     private func childrenSection(_ children: [ContextChildPreview]) -> some View {
         Section {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(children) { child in
-                        childDescriptorCard(child)
+                // R.5V.Glass.C2 — GlassEffectContainer permite morphing entre
+                // los cards de hijos cuando se acercan/cruzan durante scroll.
+                GlassEffectContainer(spacing: 12) {
+                    HStack(spacing: 12) {
+                        ForEach(children) { child in
+                            childDescriptorCard(child)
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -795,7 +799,9 @@ public struct ContextDetailViewV2: View {
         }
         .frame(width: 150, height: 150, alignment: .topLeading)
         .padding(14)
-        .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // R.5V.Glass.C2 — glassEffect interactivo dentro del GlassEffectContainer
+        // del childrenSection para que el morphing funcione al scroll.
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
     }
 
     private func childSymbolName(_ child: ContextChildPreview) -> String {

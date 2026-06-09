@@ -84,7 +84,12 @@ public struct RuulDetailHero: View {
         }
         .padding(Theme.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: Theme.cardShape(Theme.Radius.cardHero))
+        // R.5V.Glass.C1 — Liquid Glass tinted con el color semántico del hero.
+        // Reemplaza .regularMaterial plano por glass real reactivo a luz/toque.
+        .glassEffect(
+            .regular.tint(tint.opacity(0.18)),
+            in: Theme.cardShape(Theme.Radius.cardHero)
+        )
     }
 }
 
