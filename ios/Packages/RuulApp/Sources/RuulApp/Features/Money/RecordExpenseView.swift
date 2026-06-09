@@ -116,6 +116,8 @@ public struct RecordExpenseView: View {
                             Text(member.displayName).tag(member.actorId as UUID?)
                         }
                     }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
                 }
 
                 // SplitEditor
@@ -520,6 +522,13 @@ public struct RecordExpenseView: View {
     }
 
     private func suggest() async {
+        // Asegura que store.members esté listo ANTES de aplicar la sugerencia.
+        // Si no, el matching de payerName/participantNames devuelve nil
+        // (no hay contra qué matchear) y el split queda vacío → botón
+        // Registrar disabled aunque el AI haya armado todo bien.
+        if store.members.isEmpty {
+            await store.load(context: context)
+        }
         await suggestionService.suggest(
             prompt: aiPromptText,
             rpc: container.rpc,
