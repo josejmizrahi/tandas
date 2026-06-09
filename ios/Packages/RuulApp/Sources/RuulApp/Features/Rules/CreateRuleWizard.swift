@@ -20,6 +20,10 @@ public struct CreateRuleWizard: View {
     /// R.2S.5 — para `expenseAlert`: monto a partir del cual la regla aplica.
     @State private var expenseThreshold = 5000.0
     @State private var runner = ActionRunner()
+    /// R.6.AI.1 — Sugerencias on-device vía FoundationModels. Service hace
+    /// graceful degradation si Apple Intelligence no está disponible.
+    @State private var suggestionService = RuleSuggestionService()
+    @State private var aiPromptText = ""
 
     private enum Template: String, CaseIterable, Identifiable {
         case lateFee
@@ -59,6 +63,8 @@ public struct CreateRuleWizard: View {
     public var body: some View {
         NavigationStack {
             Form {
+                aiSuggestionSection
+
                 Section("Tipo de regla") {
                     ForEach(Template.allCases) { option in
                         Button {
@@ -159,6 +165,115 @@ public struct CreateRuleWizard: View {
                 }
             }
             .actionErrorAlert(runner)
+        }
+    }
+
+    // MARK: - R.6.AI.1 — AI Suggestion (FoundationModels)
+
+    @ViewBuilder
+    private var aiSuggestionSection: some View {
+        Section {
+            TextField(
+                "Describe la regla con tus palabras…",
+                text: $aiPromptText,
+                axis: .vertical
+            )
+            .lineLimit(2...4)
+            .disabled(!suggestionService.isAvailable || isSuggesting)
+
+            switch suggestionService.phase {
+            case .idle, .loaded:
+                Button {
+                    Task { await suggestionService.suggest(prompt: aiPromptText) }
+                } label: {
+                    Label("Sugerir regla", systemImage: "sparkles")
+                        .symbolRenderingMode(.hierarchical)
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(
+                    aiPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || !suggestionService.isAvailable
+                )
+            case .loading:
+                HStack {
+                    ProgressView()
+                    Text("Pensando…")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            case .unavailable(let reason):
+                Label(reason, systemImage: "sparkles.slash")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            case .failed(let message):
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption)
+                    .foregroundStyle(Theme.Tint.critical)
+            }
+
+            if case .loaded(let suggestion) = suggestionService.phase {
+                suggestionPreview(suggestion)
+            }
+        } header: {
+            Label("Sugerencia con Apple Intelligence", systemImage: "sparkles")
+        } footer: {
+            if suggestionService.isAvailable {
+                Text("La sugerencia pre-llena el wizard. Tú decides si la creas tal cual o ajustas los valores antes.")
+            }
+        }
+    }
+
+    private var isSuggesting: Bool {
+        if case .loading = suggestionService.phase { return true }
+        return false
+    }
+
+    @ViewBuilder
+    private func suggestionPreview(_ suggestion: RuleSuggestion) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(suggestion.title)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(Theme.Text.primary)
+            Text(suggestion.rationale)
+                .font(.caption)
+                .foregroundStyle(Theme.Text.secondary)
+        }
+
+        Button {
+            applySuggestion(suggestion)
+            suggestionService.reset()
+        } label: {
+            Label("Aplicar sugerencia", systemImage: "checkmark.circle.fill")
+                .symbolRenderingMode(.hierarchical)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func applySuggestion(_ s: RuleSuggestion) {
+        if let mapped = Template(rawValue: s.templateKey) {
+            template = mapped
+        }
+        switch template {
+        case .lateFee:
+            if s.thresholdMinutes > 0 {
+                thresholdMinutes = Double(min(max(s.thresholdMinutes, 5), 120))
+            }
+            if s.fineAmount > 0 { fineAmount = s.fineAmount }
+        case .sameDayCancellation:
+            if s.fineAmount > 0 { fineAmount = s.fineAmount }
+        case .lateReservationCancel:
+            if s.lateCancelHours > 0 {
+                lateCancelHours = Double(min(max(s.lateCancelHours, 6), 168))
+            }
+            if s.fineAmount > 0 { fineAmount = s.fineAmount }
+        case .expenseAlert:
+            if s.expenseThreshold > 0 { expenseThreshold = s.expenseThreshold }
+        case .textNorm:
+            customTitle = s.title
+            normText = s.normText
         }
     }
 
