@@ -69,6 +69,13 @@ public struct MeView: View {
             } label: {
                 Label("Mi actividad", systemImage: "antenna.radiowaves.left.and.right")
             }
+            // R.5V.Calendar 2026-06-09 — Mi calendario cross-context (events
+            // + reservaciones donde participo en todos mis contextos).
+            NavigationLink {
+                MyCalendarView(container: container)
+            } label: {
+                Label("Mi calendario", systemImage: "calendar")
+            }
             Button {
                 goToContexts()
             } label: {

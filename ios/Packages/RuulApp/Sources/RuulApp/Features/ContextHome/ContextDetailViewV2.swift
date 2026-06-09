@@ -94,9 +94,9 @@ public struct ContextDetailViewV2: View {
             } else {
                 switch store.phase {
                 case .idle, .loading:
-                    LoadingStateView()
+                    RuulLoadingState()
                 case .failed(let message):
-                    ErrorStateView(message: message) {
+                    RuulErrorState(message: message) {
                         Task { await store.load(contextId: contextId) }
                     }
                 case .loaded:
@@ -1385,7 +1385,7 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func moreSectionDestination(_ sectionKey: String) -> some View {
         switch sectionKey {
-        case "calendar":   EventsListView(context: context, container: container)
+        case "calendar":   ContextCalendarView(context: context, container: container)
         case "governance": DecisionsListView(context: context, container: container)
         case "documents":  ContextDocumentsListView(context: context, container: container)
         case "activity":   ActivityFeedView(context: context, container: container)
