@@ -31,10 +31,31 @@ public struct MainTabShell: View {
 
     /// Cambia al tab Contextos y empuja el ContextHome del target.
     /// Llamado desde Home (tarjetas Continuar, attention items).
+    ///
+    /// Doctrina de orden:
+    ///   1. Switch de tab PRIMERO, para que SwiftUI commitee la transición
+    ///      y el NavigationStack del tab Contextos esté visible antes de
+    ///      mutar su path (si pusheas con el tab oculto, la barra/contenido
+    ///      no propagan al revelarse).
+    ///   2. Si el target ya está al tope del stack (mismo contexto al que
+    ///      el usuario estaba antes de irse a Home), NO toques el path —
+    ///      el switch de tab basta para revelar la vista existente.
+    ///   3. Si es un contexto distinto, primero pop a `[]` y luego push
+    ///      en el siguiente runloop para forzar a SwiftUI a desmontar el
+    ///      destination anterior antes de montar el nuevo. Reemplazar
+    ///      `[A]` por `[B]` en un solo tick deja al NavigationStack en
+    ///      un estado inconsistente (toolbar vacío + descriptor stale).
     private func jumpToContext(_ context: AppContext) {
         container.contextStore.switchTo(context)
-        contextsPath = [context]
         selectedTab = .contexts
+        if contextsPath.last?.id != context.id {
+            DispatchQueue.main.async {
+                contextsPath = []
+                DispatchQueue.main.async {
+                    contextsPath = [context]
+                }
+            }
+        }
         Task { await container.contextPreferencesStore.recordVisit(context.id) }
     }
 
