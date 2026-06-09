@@ -77,7 +77,14 @@ public struct MyResourcesView: View {
         .refreshable { await load() }
         .sheet(item: $selectedResource) { target in
             NavigationStack {
-                ResourceDetailViewV2(
+                // 2026-06-08 — MyResourcesView es cross-context; el contexto
+                // resuelto en openResource() es un best-effort que puede no
+                // coincidir con el contexto real del recurso. V2 valida más
+                // estrictamente que v1 (RLS + sub-feature navigation por
+                // contexto), causando errores de permisos cuando el atajo
+                // falla. Hasta que my_world() devuelva el context_id real del
+                // recurso, mantenemos v1 sólo en esta entrada.
+                ResourceDetailView(
                     resourceId: target.resourceId,
                     context: target.context,
                     container: container
