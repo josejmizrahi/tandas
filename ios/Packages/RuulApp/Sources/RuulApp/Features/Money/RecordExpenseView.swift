@@ -536,16 +536,32 @@ public struct RecordExpenseView: View {
         if !s.description.isEmpty { description = s.description }
         if s.amount > 0 { amountText = formatAmount(s.amount) }
         if !s.currency.isEmpty { currency = s.currency.uppercased() }
-        if !s.payerName.isEmpty, let match = matchMember(name: s.payerName) {
+
+        // R.6.AI.7.fix — payerName vacío significa "yo pagué" (paidByActorId=nil).
+        // Esto soluciona el bug donde el modelo dejaba un paidByActorId stale del
+        // intent previo. Aplicamos siempre: nombre → match, vacío → nil.
+        if s.payerName.isEmpty {
+            paidByActorId = nil
+        } else if let match = matchMember(name: s.payerName) {
             paidByActorId = match.actorId
         }
-        if !s.excludedNames.isEmpty {
-            let names = s.excludedNames
+
+        // participantNames lista los miembros que SÍ participan en el split.
+        // Vacío = todos (default). Si llega lleno, excluimos a todos los demás.
+        if s.participantNames.trimmingCharacters(in: .whitespaces).isEmpty {
+            excludedActorIds = []
+        } else {
+            let names = s.participantNames
                 .split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
-            let matched = names.compactMap { matchMember(name: $0)?.actorId }
-            excludedActorIds = Set(matched)
+            let participantIds = Set(names.compactMap { matchMember(name: $0)?.actorId })
+            if participantIds.isEmpty {
+                excludedActorIds = []
+            } else {
+                let allIds = Set(visibleMembers.map(\.actorId))
+                excludedActorIds = allIds.subtracting(participantIds)
+            }
         }
     }
 

@@ -87,18 +87,38 @@ public final class ExpenseSuggestionService {
             Eres un asistente que convierte la descripción en lenguaje natural \
             de un gasto en una ExpenseSuggestion estructurada.
 
-            Reglas estrictas:
-            1. description: corta (2-6 palabras), descriptiva.
-            2. amount: número exacto si lo dice el usuario; 0 si no menciona.
-            3. currency: 3 letras (MXN, USD, EUR). MXN por default.
-            4. payerName: nombre tal como el usuario lo dijo si menciona quien \
-               pagó. Cadena vacía si dice "yo pagué" o no menciona pagador.
-            5. excludedNames: nombres de miembros a excluir del split, separados \
-               por coma. Cadena vacía si no hay exclusiones.
-            6. Si te dan información del contexto con la lista de miembros, \
-               usa los nombres EXACTOS de la lista para payerName y excludedNames.
-            7. rationale: frase corta en español resumiendo cómo entendiste \
-               el gasto.
+            Modelo de datos:
+            - payerName = quién PUSO el dinero (cadena vacía = el usuario actual).
+            - participantNames = quiénes DEBEN ese gasto / participan en el split \
+              (cadena vacía = TODOS los miembros del contexto).
+
+            Patrones canónicos (sigue uno EXACTO, no inventes):
+
+            1. "X me debe Y" / "X me debe Y pesos":
+               → payerName="" (yo puse el dinero), participantNames="X" (solo X debe), amount=Y.
+
+            2. "Le debo X a Y" / "Le debo X pesos a Y":
+               → payerName="Y" (Y puso el dinero), participantNames="" (yo soy el único \
+                 que debe — el campo vacío significa default, pero aquí el split \
+                 es solo conmigo; déjalo vacío y el wizard lo resuelve), amount=X.
+
+            3. "Cena 500 dividida entre todos" / "Pagué 500 entre todos":
+               → payerName="" (yo pagué), participantNames="" (todos), amount=500.
+
+            4. "X pagó Y para Z" / "X pagó Y, le toca a Z":
+               → payerName="X", participantNames="Z" (solo Z debe), amount=Y.
+
+            5. "Pagué X yo, dividir con A y B":
+               → payerName="" (yo), participantNames="A, B" (solo A y B deben), amount=X.
+
+            Reglas adicionales:
+            - description: corta (2-6 palabras), descriptiva del gasto.
+            - amount: número exacto si lo dice el usuario; 0 si no menciona.
+            - currency: 3 letras (MXN, USD, EUR). MXN por default.
+            - Si te dan lista de miembros del contexto, usa nombres EXACTOS de la lista \
+              para payerName y participantNames. No inventes nombres.
+            - rationale: frase corta en español resumiendo qué entendiste, en formato \
+              "X pagó. Y debe(n)." (e.g., "Yo pagué. Moshe debe.")
             """
 
         do {
