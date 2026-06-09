@@ -92,9 +92,30 @@ public struct RequestReservationView: View {
                 }
 
                 if let conflictNotice {
+                    // R.5Z.fix.8 (founder 2026-06-09) — antes era un Label inerte
+                    // que no llevaba a ningún lado. Ahora ofrece el camino directo
+                    // a ResourceDetailV2 donde la conflictsCard + 3-kind dialog
+                    // permite resolverlo sin cerrar el sheet.
                     Section {
-                        Label(conflictNotice, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Conflicto de fechas detectado")
+                                    .font(.callout.weight(.semibold))
+                                    .foregroundStyle(Theme.Tint.warning)
+                                Text(conflictNotice)
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(Theme.Tint.warning)
+                        }
+                        NavigationLink {
+                            ResourceDetailViewV2(resourceId: resource.id, context: context, container: container)
+                        } label: {
+                            Label("Ver y resolver el conflicto", systemImage: "arrow.right.circle.fill")
+                                .foregroundStyle(Theme.Tint.primary)
+                        }
                     }
                 }
             }

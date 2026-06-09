@@ -46,6 +46,9 @@ public struct ContextDetailViewV2: View {
     @State private var isResolvingContextConflict = false
     /// P0 fix 2026-06-08 — sheet de ContextSettings desde el toolbar ellipsis.
     @State private var isShowingSettings = false
+    /// R.5Z.fix.6 (founder feedback 2026-06-09) — Money tab CTAs primarias.
+    @State private var isShowingRecordExpense = false
+    @State private var isShowingCreateObligation = false
 
     private enum QuickActionPush: Hashable, Identifiable {
         case resources, events, decisions, money, members, rules
@@ -158,6 +161,23 @@ public struct ContextDetailViewV2: View {
         }
         .sheet(isPresented: $isShowingSettings) {
             ContextSettingsView(context: context, container: container)
+        }
+        // R.5Z.fix.6 — Money tab CTAs primarias (founder 2026-06-09).
+        .sheet(isPresented: $isShowingRecordExpense, onDismiss: {
+            Task { await store.load(contextId: contextId) }
+        }) {
+            NavigationStack {
+                RecordExpenseView(
+                    context: context,
+                    store: MoneyStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId),
+                    container: container
+                )
+            }
+        }
+        .sheet(isPresented: $isShowingCreateObligation, onDismiss: {
+            Task { await store.load(contextId: contextId) }
+        }) {
+            CreateObligationView(context: context, container: container)
         }
         .modifier(ContextConflictsModifier(
             pendingConflict: $pendingContextConflict,
@@ -1187,75 +1207,166 @@ public struct ContextDetailViewV2: View {
 
     @ViewBuilder
     private func moneySections(_ d: ContextDetailDescriptor) -> some View {
-        if !d.moneyPreview.myBalanceByCurrency.isEmpty {
-            Section {
-                ForEach(d.moneyPreview.myBalanceByCurrency.sorted(by: { $0.key < $1.key }), id: \.key) { (currency, net) in
-                    LabeledContent {
-                        Text(formatCurrency(net, currency: currency))
-                            .font(.callout.bold().monospacedDigit())
-                            .foregroundStyle(net >= 0 ? Theme.Tint.success : Theme.Tint.critical)
-                    } label: {
-                        Label(currency, systemImage: net >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
-                    }
-                }
-            } header: {
-                Text("Mi saldo")
-            } footer: {
-                Text("Saldo positivo = te deben. Saldo negativo = debes.")
-            }
-        }
+        // R.5Z.fix.6 (founder firmado 2026-06-09) — antes solo se veía
+        // "Liquidaciones abiertas: 0" en contexto vacío. Ahora:
+        //  - Empty state honesto con 2 CTAs primarias.
+        //  - Cuando hay actividad: balance + acciones + obligaciones + (settlements si > 0).
+        //  - Settlements section solo si `openSettlements > 0` (no más row inert).
+        let isEmpty = d.moneyPreview.myBalanceByCurrency.isEmpty
+            && d.moneyPreview.openSettlements == 0
+            && d.obligationsPreview.isEmpty
 
-        Section {
-            NavigationLink {
-                SettlementView(context: context, container: container)
-            } label: {
-                LabeledContent {
-                    Text("\(d.moneyPreview.openSettlements)")
-                        .font(.callout.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(d.moneyPreview.openSettlements > 0 ? Theme.Tint.warning : Theme.Text.primary)
-                } label: {
-                    Label("Liquidaciones abiertas", systemImage: "creditcard.fill")
-                }
+        if isEmpty {
+            moneyEmptyHero
+            moneyQuickActionsSection
+        } else {
+            if !d.moneyPreview.myBalanceByCurrency.isEmpty {
+                moneyBalanceSection(d.moneyPreview.myBalanceByCurrency)
             }
+            moneyQuickActionsSection
+            if !d.obligationsPreview.isEmpty {
+                moneyObligationsSection(d.obligationsPreview)
+            }
+            if d.moneyPreview.openSettlements > 0 {
+                moneySettlementsSection(openCount: d.moneyPreview.openSettlements)
+            }
+            moneyHistoryLinkSection
         }
+    }
 
+    @ViewBuilder
+    private var moneyEmptyHero: some View {
         Section {
-            if d.obligationsPreview.isEmpty {
-                Label("Sin obligaciones pendientes", systemImage: "checkmark.circle")
+            VStack(spacing: 12) {
+                Image(systemName: "dollarsign.circle")
+                    .font(.system(size: 44, weight: .light))
+                    .foregroundStyle(Theme.Tint.primary)
+                Text("Aún no hay actividad de dinero")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Text.primary)
+                Text("Empezá registrando un gasto o asignando un compromiso. Las obligaciones, saldos y liquidaciones aparecerán acá.")
+                    .font(.subheadline)
                     .foregroundStyle(Theme.Text.secondary)
-            } else {
-                ForEach(d.obligationsPreview) { o in
-                    NavigationLink {
-                        ObligationDetailView(obligationId: o.obligationId, context: context, container: container)
-                    } label: {
-                        Label {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(obligationKindLabel(o.kind))
-                                        .font(.callout.weight(.medium))
-                                        .foregroundStyle(Theme.Text.primary)
-                                    if let s = o.status {
-                                        Text(obligationStatusLabel(s))
-                                            .font(.caption)
-                                            .foregroundStyle(Theme.Text.tertiary)
-                                    }
-                                }
-                                Spacer()
-                                if let amount = o.amount, let cur = o.currency {
-                                    Text("\(Int(amount)) \(cur)")
-                                        .font(.callout.bold().monospacedDigit())
-                                        .foregroundStyle(Theme.Text.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
+
+    @ViewBuilder
+    private func moneyBalanceSection(_ balances: [String: Double]) -> some View {
+        Section {
+            ForEach(balances.sorted(by: { $0.key < $1.key }), id: \.key) { (currency, net) in
+                LabeledContent {
+                    Text(formatCurrency(net, currency: currency))
+                        .font(.callout.bold().monospacedDigit())
+                        .foregroundStyle(net >= 0 ? Theme.Tint.success : Theme.Tint.critical)
+                } label: {
+                    Label(currency, systemImage: net >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
+                }
+            }
+        } header: {
+            Text("Mi saldo")
+        } footer: {
+            Text("Saldo positivo = te deben. Saldo negativo = debes.")
+        }
+    }
+
+    @ViewBuilder
+    private var moneyQuickActionsSection: some View {
+        Section {
+            Button {
+                isShowingRecordExpense = true
+            } label: {
+                Label("Registrar gasto", systemImage: "plus.circle.fill")
+            }
+            Button {
+                isShowingCreateObligation = true
+            } label: {
+                Label("Asignar compromiso", systemImage: "checklist")
+            }
+        } header: {
+            Text("Acciones rápidas")
+        }
+    }
+
+    @ViewBuilder
+    private func moneyObligationsSection(_ obligations: [ContextObligationPreview]) -> some View {
+        Section {
+            ForEach(obligations) { o in
+                NavigationLink {
+                    ObligationDetailView(obligationId: o.obligationId, context: context, container: container)
+                } label: {
+                    Label {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(obligationKindLabel(o.kind))
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                if let s = o.status {
+                                    Text(obligationStatusLabel(s))
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.tertiary)
                                 }
                             }
-                        } icon: {
-                            Image(systemName: obligationKindIcon(o.kind))
-                                .foregroundStyle(Theme.Tint.primary)
+                            Spacer()
+                            if let amount = o.amount, let cur = o.currency {
+                                Text("\(Int(amount)) \(cur)")
+                                    .font(.callout.bold().monospacedDigit())
+                                    .foregroundStyle(Theme.Text.primary)
+                            }
                         }
+                    } icon: {
+                        Image(systemName: obligationKindIcon(o.kind))
+                            .foregroundStyle(Theme.Tint.primary)
                     }
                 }
             }
         } header: {
             Text("Obligaciones recientes")
+        }
+    }
+
+    @ViewBuilder
+    private func moneySettlementsSection(openCount: Int) -> some View {
+        Section {
+            NavigationLink {
+                SettlementView(context: context, container: container)
+            } label: {
+                Label {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Liquidar saldos")
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                            Text("\(openCount) \(openCount == 1 ? "liquidación abierta" : "liquidaciones abiertas")")
+                                .font(.caption)
+                                .foregroundStyle(Theme.Tint.warning)
+                        }
+                        Spacer()
+                    }
+                } icon: {
+                    Image(systemName: "creditcard.fill")
+                        .foregroundStyle(Theme.Tint.warning)
+                }
+            }
+        } header: {
+            Text("Liquidaciones")
+        }
+    }
+
+    @ViewBuilder
+    private var moneyHistoryLinkSection: some View {
+        Section {
+            NavigationLink {
+                MoneyHomeView(context: context, container: container)
+            } label: {
+                Label("Ver historial completo", systemImage: "list.bullet.rectangle")
+            }
         }
     }
 
