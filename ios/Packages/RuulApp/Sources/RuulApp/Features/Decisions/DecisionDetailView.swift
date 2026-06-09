@@ -72,7 +72,7 @@ public struct DecisionDetailView: View {
 
             case .loaded:
                 if let decision = store.decision {
-                    detailScroll(decision)
+                    detailList(decision)
                 } else {
                     ErrorStateView(message: "Esta decisión ya no existe o no la puedes ver.")
                 }
@@ -205,62 +205,66 @@ public struct DecisionDetailView: View {
         }
     }
 
+    // R.5V.6 (2026-06-08) — Apple-native List + Section. La Section ES la card.
+    // Cero Theme.cardShape() / VStack envueltos / Divider manual. Scroll anchors
+    // estables: el contenido no se mueve cuando data async llega.
     @ViewBuilder
-    private func detailScroll(_ decision: Decision) -> some View {
-        ScrollView(.vertical) {
-            VStack(spacing: 24) {
-                heroSection(decision)
-                statusSection(decision)
-                yourVoteSection(decision)
-                resultsSection(decision)
-                participantsSection(decision)
-                consequencesSection(decision)
-                activitySection
-                subscribeSection
-                adminSection(decision)
-                auditSection(decision)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal)
-            .padding(.bottom, 32)
+    private func detailList(_ decision: Decision) -> some View {
+        List {
+            heroSection(decision)
+            statusSection(decision)
+            yourVoteSection(decision)
+            resultsSection(decision)
+            participantsSection(decision)
+            consequencesSection(decision)
+            activitySectionList
+            subscribeSectionList
+            adminSection(decision)
+            auditSection(decision)
         }
+        .listStyle(.insetGrouped)
     }
 
     // MARK: - 1. Hero (pregunta primero)
 
     @ViewBuilder
     private func heroSection(_ decision: Decision) -> some View {
-        VStack(spacing: 14) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(.tint)
-                .symbolRenderingMode(.hierarchical)
-                .frame(width: 80, height: 80)
-                .background(Color.accentColor.badgeFill, in: Circle())
+        Section {
+            VStack(spacing: 14) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.tint)
+                    .symbolRenderingMode(.hierarchical)
+                    .frame(width: 80, height: 80)
+                    .background(Color.accentColor.badgeFill, in: Circle())
 
-            Text(decision.title)
-                .font(.title2.weight(.bold))
-                .multilineTextAlignment(.center)
-
-            if let description = decision.description, !description.isEmpty {
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text(decision.title)
+                    .font(.title2.weight(.bold))
                     .multilineTextAlignment(.center)
-            }
 
-            HStack(spacing: 8) {
-                heroChip(
-                    symbol: statusSymbol(decision.status),
-                    text: decision.statusLabel,
-                    tint: statusColor(decision.status)
-                )
-                if let hint = heroHint(decision) {
-                    heroChip(symbol: hint.symbol, text: hint.text, tint: hint.tint)
+                if let description = decision.description, !description.isEmpty {
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                HStack(spacing: 8) {
+                    heroChip(
+                        symbol: statusSymbol(decision.status),
+                        text: decision.statusLabel,
+                        tint: statusColor(decision.status)
+                    )
+                    if let hint = heroHint(decision) {
+                        heroChip(symbol: hint.symbol, text: hint.text, tint: hint.tint)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
         }
-        .padding(.top, 8)
     }
 
     @ViewBuilder
@@ -306,67 +310,43 @@ public struct DecisionDetailView: View {
         let voted = store.votes.count
         let participation = Int((Double(voted) / Double(totalMembers) * 100.0).rounded())
 
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Estado")
-                .font(.title3.weight(.semibold))
-
-            VStack(spacing: 14) {
-                HStack(spacing: 12) {
-                    Image(systemName: statusSymbol(decision.status))
-                        .font(.title2)
-                        .foregroundStyle(statusColor(decision.status))
-                        .frame(width: 44, height: 44)
-                        .background(statusColor(decision.status).badgeFillSubtle, in: Circle())
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(decision.statusLabel)
-                            .font(.title3.weight(.semibold))
-                        Text(statusSubtitle(decision))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
+        Section {
+            HStack(spacing: 12) {
+                Image(systemName: statusSymbol(decision.status))
+                    .font(.title2)
+                    .foregroundStyle(statusColor(decision.status))
+                    .frame(width: 44, height: 44)
+                    .background(statusColor(decision.status).badgeFillSubtle, in: Circle())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(decision.statusLabel)
+                        .font(.title3.weight(.semibold))
+                    Text(statusSubtitle(decision))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-
-                Divider()
-
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(voted)/\(store.members.count)")
-                            .font(.title3.weight(.semibold))
-                        Text("Votos")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(participation)%")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.tint)
-                        Text("Participación")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if !decision.isOpen {
-                    Button {
-                        Task { await loadWhy(decisionId: decisionId) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "questionmark.circle")
-                            Text("¿Por qué este resultado?")
-                                .fontWeight(.semibold)
-                        }
-                        .font(.callout)
-                        .foregroundStyle(.tint)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isLoadingWhy)
-                }
+                Spacer()
             }
-            .padding(16)
-            .background(Theme.Surface.card, in: Theme.cardShape())
+
+            LabeledContent("Votos") {
+                Text("\(voted)/\(store.members.count)")
+                    .font(.callout.weight(.semibold))
+            }
+            LabeledContent("Participación") {
+                Text("\(participation)%")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(.tint)
+            }
+
+            if !decision.isOpen {
+                Button {
+                    Task { await loadWhy(decisionId: decisionId) }
+                } label: {
+                    Label("¿Por qué este resultado?", systemImage: "questionmark.circle")
+                }
+                .disabled(isLoadingWhy)
+            }
+        } header: {
+            Text("Estado")
         }
     }
 
@@ -397,10 +377,7 @@ public struct DecisionDetailView: View {
     private func yourVoteSection(_ decision: Decision) -> some View {
         let canVote = decision.isOpen && (store.canDo("vote") || store.canDo("change_vote"))
         if canVote {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Tu decisión")
-                    .font(.title3.weight(.semibold))
-
+            Section {
                 switch decision.voting {
                 case .singleChoice:
                     singleChoiceCards()
@@ -411,14 +388,15 @@ public struct DecisionDetailView: View {
                 default:
                     unsupportedVoteCard(decision)
                 }
-
+            } header: {
+                Text("Tu decisión")
+            } footer: {
                 if let mine = store.myVote(myActorId: myActorId) {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.tint)
-                            .symbolEffect(.bounce, value: mine.optionId ?? mine.id)
                         Text(yourVoteConfirmation(decision: decision, mine: mine))
-                            .font(.subheadline.weight(.semibold))
+                            .fontWeight(.semibold)
                     }
                 }
             }
@@ -428,18 +406,16 @@ public struct DecisionDetailView: View {
     @ViewBuilder
     private func singleChoiceCards() -> some View {
         let mine = store.myVote(myActorId: myActorId)
-        VStack(spacing: 8) {
-            ForEach(store.options) { option in
-                voteCard(
-                    title: option.title,
-                    description: option.description,
-                    isCurrent: mine?.optionId == option.id
-                ) {
-                    Task {
-                        await runner.run {
-                            _ = try await store.vote(for: option, decisionId: decisionId, context: context)
-                            await loadDecisionActivity()
-                        }
+        ForEach(store.options) { option in
+            voteRow(
+                title: option.title,
+                description: option.description,
+                isCurrent: mine?.optionId == option.id
+            ) {
+                Task {
+                    await runner.run {
+                        _ = try await store.vote(for: option, decisionId: decisionId, context: context)
+                        await loadDecisionActivity()
                     }
                 }
             }
@@ -449,41 +425,37 @@ public struct DecisionDetailView: View {
     @ViewBuilder
     private func yesNoAbstainCards() -> some View {
         let mine = store.myVote(myActorId: myActorId)
-        VStack(spacing: 8) {
-            voteCard(title: "Sí", description: nil, isCurrent: mine?.vote == "approve") {
-                Task { await castSimpleVote(.approve) }
-            }
-            voteCard(title: "No", description: nil, isCurrent: mine?.vote == "reject") {
-                Task { await castSimpleVote(.reject) }
-            }
-            voteCard(title: "Abstenerme", description: nil, isCurrent: mine?.vote == "abstain", muted: true) {
-                Task { await castSimpleVote(.abstain) }
-            }
+        voteRow(title: "Sí", description: nil, isCurrent: mine?.vote == "approve") {
+            Task { await castSimpleVote(.approve) }
+        }
+        voteRow(title: "No", description: nil, isCurrent: mine?.vote == "reject") {
+            Task { await castSimpleVote(.reject) }
+        }
+        voteRow(title: "Abstenerme", description: nil, isCurrent: mine?.vote == "abstain", muted: true) {
+            Task { await castSimpleVote(.abstain) }
         }
     }
 
     @ViewBuilder
     private func multipleChoiceCards() -> some View {
         let myVotes = Set(store.votes.filter { $0.voterActorId == myActorId }.compactMap { $0.optionId })
-        VStack(spacing: 8) {
-            ForEach(store.options) { option in
-                voteCard(
-                    title: option.title,
-                    description: option.description,
-                    isCurrent: myVotes.contains(option.id),
-                    showsCheckmark: true
-                ) {
-                    let alreadySelected = myVotes.contains(option.id)
-                    Task {
-                        await runner.run {
-                            if alreadySelected {
-                                _ = try await container.rpc.unvoteOption(decisionId: decisionId, optionId: option.id)
-                                await store.load(decisionId: decisionId, context: context)
-                            } else {
-                                _ = try await store.vote(for: option, decisionId: decisionId, context: context)
-                            }
-                            await loadDecisionActivity()
+        ForEach(store.options) { option in
+            voteRow(
+                title: option.title,
+                description: option.description,
+                isCurrent: myVotes.contains(option.id),
+                showsCheckmark: true
+            ) {
+                let alreadySelected = myVotes.contains(option.id)
+                Task {
+                    await runner.run {
+                        if alreadySelected {
+                            _ = try await container.rpc.unvoteOption(decisionId: decisionId, optionId: option.id)
+                            await store.load(decisionId: decisionId, context: context)
+                        } else {
+                            _ = try await store.vote(for: option, decisionId: decisionId, context: context)
                         }
+                        await loadDecisionActivity()
                     }
                 }
             }
@@ -492,20 +464,21 @@ public struct DecisionDetailView: View {
 
     @ViewBuilder
     private func unsupportedVoteCard(_ decision: Decision) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("Modo de votación no disponible todavía", systemImage: "exclamationmark.circle")
-                .font(.callout.weight(.semibold))
-            Text("\(decision.voting.label) llega en una próxima versión.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Modo de votación no disponible todavía")
+                Text("\(decision.voting.label) llega en una próxima versión.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: "exclamationmark.circle")
+                .foregroundStyle(.orange)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Theme.Surface.card, in: Theme.cardShape())
     }
 
     @ViewBuilder
-    private func voteCard(
+    private func voteRow(
         title: String,
         description: String?,
         isCurrent: Bool,
@@ -514,13 +487,7 @@ public struct DecisionDetailView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: voteIconName(isCurrent: isCurrent, showsCheckmark: showsCheckmark))
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
-                    .contentTransition(.symbolEffect(.replace))
-                    .symbolEffect(.bounce, value: isCurrent)
+            Label {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.body.weight(isCurrent ? .semibold : .regular))
@@ -532,20 +499,12 @@ public struct DecisionDetailView: View {
                             .multilineTextAlignment(.leading)
                     }
                 }
-                Spacer(minLength: 0)
+            } icon: {
+                Image(systemName: voteIconName(isCurrent: isCurrent, showsCheckmark: showsCheckmark))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(isCurrent ? Color.accentColor : .secondary)
             }
-            .padding(Theme.Spacing.md + 2)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                isCurrent ? Color.accentColor.badgeFill : Theme.Surface.card,
-                in: Theme.cardShape()
-            )
-            .overlay(
-                Theme.cardShape()
-                    .strokeBorder(isCurrent ? Color.accentColor : Color.clear, lineWidth: 1.5)
-            )
         }
-        .buttonStyle(.plain)
         .disabled(runner.isRunning)
     }
 
@@ -591,18 +550,13 @@ public struct DecisionDetailView: View {
     private func resultsSection(_ decision: Decision) -> some View {
         let entries = resultsEntries(decision)
         if !entries.isEmpty, !store.votes.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Resultados actuales")
-                    .font(.title3.weight(.semibold))
-
-                VStack(spacing: 16) {
-                    let winnerId = winningEntryId(entries: entries, decision: decision)
-                    ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
-                        resultsRow(entry, isWinner: entry.id == winnerId)
-                    }
+            let winnerId = winningEntryId(entries: entries, decision: decision)
+            Section {
+                ForEach(Array(entries.enumerated()), id: \.offset) { _, entry in
+                    resultsRow(entry, isWinner: entry.id == winnerId)
                 }
-                .padding(16)
-                .background(Theme.Surface.card, in: Theme.cardShape())
+            } header: {
+                Text("Resultados actuales")
             }
         }
     }
@@ -675,32 +629,20 @@ public struct DecisionDetailView: View {
     @ViewBuilder
     private func participantsSection(_ decision: Decision) -> some View {
         if !store.members.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Participantes (\(store.members.count))")
-                        .font(.title3.weight(.semibold))
-                    Spacer()
-                    if store.members.count > 5 {
-                        Button {
-                            isShowingAllParticipants = true
-                        } label: {
-                            Text("Ver todos \(Image(systemName: "chevron.right"))")
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .buttonStyle(.plain)
+            let preview = Array(participantsSorted().prefix(5))
+            Section {
+                ForEach(Array(preview.enumerated()), id: \.offset) { _, member in
+                    participantRow(member, decision: decision)
+                }
+                if store.members.count > 5 {
+                    Button {
+                        isShowingAllParticipants = true
+                    } label: {
+                        Label("Ver todos (\(store.members.count))", systemImage: "list.bullet")
                     }
                 }
-                VStack(spacing: 0) {
-                    let preview = Array(participantsSorted().prefix(5))
-                    ForEach(Array(preview.enumerated()), id: \.offset) { idx, member in
-                        participantRow(member, decision: decision)
-                        if idx < preview.count - 1 {
-                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
-                        }
-                    }
-                }
-                .background(Theme.Surface.card, in: Theme.cardShape())
+            } header: {
+                Text("Participantes (\(store.members.count))")
             }
         }
     }
@@ -720,19 +662,16 @@ public struct DecisionDetailView: View {
     @ViewBuilder
     private func participantRow(_ member: ContextMember, decision: Decision) -> some View {
         let vote = store.votes.first { $0.voterActorId == member.actorId }
-        HStack(spacing: 12) {
-            ActorInitialsView(name: member.displayName, size: 36)
+        Label {
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.actorId == myActorId ? "Tú" : member.displayName)
-                    .font(.callout)
                 Text(humanVoteStatus(vote: vote, decision: decision))
                     .font(.caption)
                     .foregroundStyle(vote == nil ? .orange : .green)
             }
-            Spacer()
+        } icon: {
+            ActorInitialsView(name: member.displayName, size: 36)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     private func humanVoteStatus(vote: DecisionVote?, decision: Decision) -> String {
@@ -764,19 +703,12 @@ public struct DecisionDetailView: View {
     private func consequencesSection(_ decision: Decision) -> some View {
         let items = consequences(decision)
         if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("¿Qué ocurre si gana?")
-                    .font(.title3.weight(.semibold))
-
-                VStack(spacing: 0) {
-                    ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
-                        consequenceRow(item)
-                        if idx < items.count - 1 {
-                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
-                        }
-                    }
+            Section {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    consequenceRow(item)
                 }
-                .background(Theme.Surface.card, in: Theme.cardShape())
+            } header: {
+                Text("¿Qué ocurre si gana?")
             }
         }
     }
@@ -812,12 +744,7 @@ public struct DecisionDetailView: View {
 
     @ViewBuilder
     private func consequenceRow(_ item: ConsequenceItem) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "arrow.right.circle.fill")
-                .font(.callout)
-                .foregroundStyle(.tint)
-                .frame(width: 32, height: 32)
-                .background(Color.accentColor.badgeFillSubtle, in: Circle())
+        Label {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title)
                     .font(.callout.weight(.semibold))
@@ -826,58 +753,40 @@ public struct DecisionDetailView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.leading)
             }
-            Spacer(minLength: 0)
+        } icon: {
+            Image(systemName: "arrow.right.circle.fill")
+                .foregroundStyle(.tint)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     // MARK: - 7. Actividad reciente
 
     @ViewBuilder
-    private var activitySection: some View {
+    private var activitySectionList: some View {
         if !decisionActivity.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Actividad reciente")
-                        .font(.title3.weight(.semibold))
-                    Spacer()
-                    if decisionActivity.count > 5 {
-                        Button {
-                            isShowingFullActivity = true
-                        } label: {
-                            Text("Ver todo \(Image(systemName: "chevron.right"))")
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .buttonStyle(.plain)
+            Section {
+                let preview = Array(decisionActivity.prefix(5))
+                ForEach(Array(preview.enumerated()), id: \.offset) { _, activity in
+                    activityRow(activity)
+                }
+                if decisionActivity.count > 5 {
+                    Button {
+                        isShowingFullActivity = true
+                    } label: {
+                        Label("Ver todo (\(decisionActivity.count))", systemImage: "list.bullet")
                     }
                 }
-                VStack(spacing: 0) {
-                    let preview = Array(decisionActivity.prefix(5))
-                    ForEach(Array(preview.enumerated()), id: \.offset) { idx, activity in
-                        activityRow(activity)
-                        if idx < preview.count - 1 {
-                            Divider().padding(.leading, Theme.Spacing.dividerLeading)
-                        }
-                    }
-                }
-                .background(Theme.Surface.card, in: Theme.cardShape())
+            } header: {
+                Text("Actividad reciente")
             }
         }
     }
 
     @ViewBuilder
     private func activityRow(_ activity: ActivityEvent) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: activity.symbolName)
-                .font(.callout)
-                .foregroundStyle(.tint)
-                .frame(width: 32, height: 32)
-                .background(Color.accentColor.badgeFillSubtle, in: Circle())
+        Label {
             VStack(alignment: .leading, spacing: 2) {
                 Text(humanActivityTitle(activity))
-                    .font(.callout)
                     .lineLimit(2)
                 if let occurred = activity.occurredAt {
                     Text(occurred.formatted(.relative(presentation: .named)))
@@ -885,10 +794,10 @@ public struct DecisionDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            Spacer(minLength: 0)
+        } icon: {
+            Image(systemName: activity.symbolName)
+                .foregroundStyle(.tint)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
     }
 
     private func humanActivityTitle(_ activity: ActivityEvent) -> String {
@@ -903,9 +812,10 @@ public struct DecisionDetailView: View {
     // MARK: - 8. Seguir esta decisión
 
     @ViewBuilder
-    private var subscribeSection: some View {
-        DecisionSubscribeCard(
-            decisionId: decisionId,
+    private var subscribeSectionList: some View {
+        SubscribeSection(
+            targetType: .decision,
+            targetId: decisionId,
             store: container.subscriptionsStore
         )
     }
@@ -916,61 +826,37 @@ public struct DecisionDetailView: View {
     private func adminSection(_ decision: Decision) -> some View {
         let actions = adminActions(decision)
         if hasManageAuthority && !actions.isEmpty {
-            VStack(spacing: 0) {
-                DisclosureGroup {
-                    VStack(spacing: 0) {
-                        ForEach(Array(actions.enumerated()), id: \.offset) { idx, action in
-                            Button {
-                                handleAdminAction(action)
-                            } label: {
-                                adminRow(action)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(runner.isRunning || !action.enabled)
-                            if idx < actions.count - 1 {
-                                Divider().padding(.leading, 46)
-                            }
-                        }
+            Section {
+                ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
+                    Button(role: action.role == .destructive ? .destructive : nil) {
+                        handleAdminAction(action)
+                    } label: {
+                        adminRow(action)
                     }
-                    .padding(.top, 6)
-                } label: {
-                    Label("Administración", systemImage: "gearshape")
-                        .font(.callout.weight(.semibold))
+                    .disabled(runner.isRunning || !action.enabled)
                 }
-                .padding(16)
+            } header: {
+                Text("Administración")
             }
-            .background(Theme.Surface.card, in: Theme.cardShape())
         }
     }
 
     @ViewBuilder
     private func adminRow(_ action: AdminActionItem) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: action.symbol)
-                .font(.callout)
-                .foregroundStyle(action.enabled ? action.tint : Color.secondary)
-                .frame(width: 22)
+        Label {
             VStack(alignment: .leading, spacing: 2) {
                 Text(action.label)
-                    .font(.callout)
-                    .foregroundStyle(action.role == .destructive ? Color.red : Color.primary)
                 if !action.enabled, let reason = action.reason {
                     Text(reason)
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
             }
-            Spacer()
-            if action.enabled {
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
+        } icon: {
+            Image(systemName: action.symbol)
+                .foregroundStyle(action.enabled ? action.tint : Color.secondary)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
     }
 
     /// Las acciones admin nacen de `availableActions[]` del backend. Sólo
@@ -1040,52 +926,37 @@ public struct DecisionDetailView: View {
     @ViewBuilder
     private func auditSection(_ decision: Decision) -> some View {
         if hasManageAuthority {
-            VStack(spacing: 0) {
-                DisclosureGroup {
-                    VStack(alignment: .leading, spacing: 10) {
-                        if let created = decision.createdAt {
-                            auditRow(label: "Creada", value: created.formatted(date: .abbreviated, time: .shortened))
-                        }
-                        if let by = decision.createdByActorId {
-                            auditRow(label: "Propuesta por", value: store.displayName(for: by))
-                        }
-                        if let closesAt = decision.closesAt {
-                            auditRow(label: "Cierre programado", value: closesAt.formatted(date: .abbreviated, time: .shortened))
-                        }
-                        if let decidedAt = decision.decidedAt {
-                            auditRow(label: "Decidida", value: decidedAt.formatted(date: .abbreviated, time: .shortened))
-                        }
-                        if let executedAt = decision.executedAt {
-                            auditRow(label: "Ejecutada", value: executedAt.formatted(date: .abbreviated, time: .shortened))
-                        }
-                        auditRow(label: "Estado", value: decision.status)
-                        auditRow(label: "Modelo de voto", value: decision.voting.label)
-                        auditRow(label: "Tipo", value: decision.type.label)
-                        auditRow(label: "ID", value: decision.id.uuidString, monospaced: true)
-                    }
-                    .padding(.top, 6)
-                } label: {
-                    Label("Auditoría", systemImage: "doc.text.magnifyingglass")
-                        .font(.callout.weight(.semibold))
+            Section {
+                if let created = decision.createdAt {
+                    LabeledContent("Creada", value: created.formatted(date: .abbreviated, time: .shortened))
                 }
-                .padding(16)
+                if let by = decision.createdByActorId {
+                    LabeledContent("Propuesta por", value: store.displayName(for: by))
+                }
+                if let closesAt = decision.closesAt {
+                    LabeledContent("Cierre programado", value: closesAt.formatted(date: .abbreviated, time: .shortened))
+                }
+                if let decidedAt = decision.decidedAt {
+                    LabeledContent("Decidida", value: decidedAt.formatted(date: .abbreviated, time: .shortened))
+                }
+                if let executedAt = decision.executedAt {
+                    LabeledContent("Ejecutada", value: executedAt.formatted(date: .abbreviated, time: .shortened))
+                }
+                LabeledContent("Estado", value: decision.status)
+                LabeledContent("Modelo de voto", value: decision.voting.label)
+                LabeledContent("Tipo", value: decision.type.label)
+                LabeledContent {
+                    Text(decision.id.uuidString)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                } label: {
+                    Text("ID")
+                }
+            } header: {
+                Text("Auditoría")
             }
-            .background(Theme.Surface.card, in: Theme.cardShape())
-        }
-    }
-
-    @ViewBuilder
-    private func auditRow(label: String, value: String, monospaced: Bool = false) -> some View {
-        HStack(alignment: .top) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 130, alignment: .leading)
-            Text(value)
-                .font(monospaced ? .caption.monospaced() : .caption)
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.leading)
-            Spacer(minLength: 0)
         }
     }
 
@@ -1157,110 +1028,6 @@ private struct AdminActionItem {
     let symbol: String
     let tint: Color
     var role: Role = .standard
-}
-
-// MARK: - Subscribe card
-
-/// Reemplaza a `SubscribeSection` cuando vivimos en ScrollView/VStack en vez
-/// de List/Form. UX equivalente: muestra el tipo actual + menu para cambiar
-/// o dejar de seguir.
-private struct DecisionSubscribeCard: View {
-    let decisionId: UUID
-    @Bindable var store: SubscriptionsStore
-    @State private var runner = ActionRunner()
-
-    private var current: Subscription? {
-        store.current(targetType: .decision, targetId: decisionId)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Seguir esta decisión")
-                .font(.title3.weight(.semibold))
-
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: current.map { symbol(for: $0.subscriptionType) } ?? "bell.badge")
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-                    .frame(width: 32, height: 32)
-                    .background(Color.accentColor.badgeFillSubtle, in: Circle())
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(current?.subscriptionType.label ?? "No la estás siguiendo")
-                        .font(.callout.weight(.semibold))
-                    Text(current.map(footer) ?? "Recibe novedades cuando alguien vote, comente o se cierre la decisión.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer()
-                Menu {
-                    ForEach(SubscriptionType.allCases, id: \.self) { type in
-                        Button {
-                            Task { await change(to: type) }
-                        } label: {
-                            if type == current?.subscriptionType {
-                                Label(type.label, systemImage: "checkmark")
-                            } else {
-                                Text(type.label)
-                            }
-                        }
-                    }
-                    if let current {
-                        Divider()
-                        Button(role: .destructive) {
-                            Task { await unsubscribe(current) }
-                        } label: {
-                            Label("Dejar de seguir", systemImage: "bell.slash")
-                        }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                        .foregroundStyle(.tint)
-                }
-                .accessibilityLabel("Cambiar tipo de seguimiento")
-            }
-            .padding(16)
-            .background(Theme.Surface.card, in: Theme.cardShape())
-        }
-        .actionErrorAlert(runner)
-    }
-
-    private func change(to type: SubscriptionType) async {
-        await runner.run {
-            try await store.subscribe(
-                targetType: .decision,
-                targetId: decisionId,
-                subscriptionType: type
-            )
-        }
-    }
-
-    private func unsubscribe(_ sub: Subscription) async {
-        await runner.run {
-            try await store.unsubscribe(subscriptionId: sub.id)
-        }
-    }
-
-    private func symbol(for type: SubscriptionType) -> String {
-        switch type {
-        case .watch:         return "eye"
-        case .follow:        return "bell"
-        case .stakeholder:   return "star.fill"
-        case .audit:         return "doc.text.magnifyingglass"
-        case .ownerInterest: return "crown"
-        }
-    }
-
-    private func footer(for sub: Subscription) -> String {
-        switch sub.subscriptionType {
-        case .watch:         return "Lo verás en Mi Actividad junto con todo lo que sigues."
-        case .follow:        return "Te avisamos de cualquier novedad."
-        case .stakeholder:   return "Marcado como parte interesada — prioridad alta en tu feed."
-        case .audit:         return "Auditas esta decisión — incluida también en revisiones."
-        case .ownerInterest: return "Interés de dueño — máxima prioridad en tu feed."
-        }
-    }
 }
 
 // MARK: - WhyDecisionResult sheet
