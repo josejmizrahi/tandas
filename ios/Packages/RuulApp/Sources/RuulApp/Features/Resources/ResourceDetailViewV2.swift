@@ -347,19 +347,152 @@ public struct ResourceDetailViewV2: View {
         }
     }
 
-    // MARK: - Información (metadata)
+    // MARK: - Información (type-aware metadata)
+    //
+    // 2026-06-09 — dispatch por descriptor.class.classKey. Antes mostraba los
+    // mismos 4 fields para todos los tipos (Subtipo/Categoría/Estado/Valor).
+    // Ahora cada clase resalta campos relevantes consumiendo metadata que ya
+    // viene en el descriptor (metrics.balance/lastMovementAt, resource.
+    // locationText/description, state.archivedAt). Cero backend changes.
 
     @ViewBuilder
     private func informacionSection(_ d: ResourceDetailDescriptor) -> some View {
         Section {
+            // Estado y subtipo siempre — anchors comunes a todos los tipos.
+            LabeledContent("Estado", value: estadoLabel(d))
             LabeledContent("Subtipo", value: d.subtype.displayName)
-            LabeledContent("Categoría", value: d.class.displayName)
-            LabeledContent("Estado", value: d.state.archived ? "Archivado" : d.state.status.capitalized)
-            if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-                LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+
+            // Fields específicos por clase.
+            switch d.class.classKey {
+            case "financial":
+                financialFields(d)
+            case "real_estate":
+                realEstateFields(d)
+            case "vehicle":
+                vehicleFields(d)
+            case "equipment":
+                equipmentFields(d)
+            case "document":
+                documentFields(d)
+            case "trip":
+                tripFields(d)
+            case "digital_asset":
+                digitalAssetFields(d)
+            default:
+                genericFields(d)
+            }
+
+            // Descripción al final si existe (cualquier tipo).
+            if let description = d.resource.description, !description.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Descripción")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                    Text(description)
+                        .font(.callout)
+                        .foregroundStyle(Theme.Text.primary)
+                }
             }
         } header: {
             Text("Información")
+        }
+    }
+
+    private func estadoLabel(_ d: ResourceDetailDescriptor) -> String {
+        if d.state.archived { return "Archivado" }
+        switch d.state.status {
+        case "active":    return "Activo"
+        case "inactive":  return "Inactivo"
+        case "pending":   return "Pendiente"
+        case "completed": return "Completado"
+        case "cancelled": return "Cancelado"
+        default:          return d.state.status.capitalized
+        }
+    }
+
+    @ViewBuilder
+    private func financialFields(_ d: ResourceDetailDescriptor) -> some View {
+        // Saldo es el campo headline de cualquier recurso financiero.
+        if let balance = d.metrics.balance, let currency = d.metrics.currency {
+            LabeledContent("Saldo") {
+                Text(formatCurrency(balance, currency: currency))
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(Theme.Tint.success)
+            }
+        }
+        if let lastMovement = d.metrics.lastMovementAt {
+            LabeledContent("Último movimiento",
+                value: lastMovement.formatted(date: .abbreviated, time: .shortened))
+        }
+        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency,
+           d.metrics.balance == nil {
+            // Solo mostrar estimatedValue si no hay balance (ej. security).
+            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+        }
+    }
+
+    @ViewBuilder
+    private func realEstateFields(_ d: ResourceDetailDescriptor) -> some View {
+        if let location = d.resource.locationText, !location.isEmpty {
+            LabeledContent("Ubicación", value: location)
+        }
+        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
+            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+        }
+    }
+
+    @ViewBuilder
+    private func vehicleFields(_ d: ResourceDetailDescriptor) -> some View {
+        if let location = d.resource.locationText, !location.isEmpty {
+            LabeledContent("Ubicación", value: location)
+        }
+        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
+            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+        }
+    }
+
+    @ViewBuilder
+    private func equipmentFields(_ d: ResourceDetailDescriptor) -> some View {
+        if let location = d.resource.locationText, !location.isEmpty {
+            LabeledContent("Ubicación", value: location)
+        }
+        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
+            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+        }
+    }
+
+    @ViewBuilder
+    private func documentFields(_ d: ResourceDetailDescriptor) -> some View {
+        if let created = d.resource.createdAt {
+            LabeledContent("Creado", value: created.formatted(date: .abbreviated, time: .omitted))
+        }
+        if d.state.lockedForGovernance {
+            LabeledContent("Bloqueado") {
+                Label("Decisión abierta", systemImage: "lock.fill")
+                    .foregroundStyle(.purple)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tripFields(_ d: ResourceDetailDescriptor) -> some View {
+        if let location = d.resource.locationText, !location.isEmpty {
+            LabeledContent("Destino", value: location)
+        }
+    }
+
+    @ViewBuilder
+    private func digitalAssetFields(_ d: ResourceDetailDescriptor) -> some View {
+        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
+            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+        }
+    }
+
+    @ViewBuilder
+    private func genericFields(_ d: ResourceDetailDescriptor) -> some View {
+        LabeledContent("Categoría", value: d.class.displayName)
+        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
+            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
         }
     }
 
