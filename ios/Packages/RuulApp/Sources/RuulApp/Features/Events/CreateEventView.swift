@@ -13,7 +13,14 @@ public struct CreateEventView: View {
     @State private var eventType: EventType = .dinner
     @State private var startsAt = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
     @State private var locationText = ""
-    @State private var isVirtual = false
+    /// R.5V.3A.event (2026-06-08) — 3 modos de ubicación:
+    /// - `.physical` — dirección fija (default).
+    /// - `.virtual`  — videollamada (sin ubicación física).
+    /// - `.perHost`  — sólo para recurring weekly: cada anfitrión decide
+    ///   semana a semana. `is_virtual=false, location_text=null`. Permite
+    ///   que el host actual edite el lugar de su ocurrencia sin contaminar
+    ///   las siguientes.
+    @State private var locationMode: LocationMode = .physical
     @State private var recurrence: Recurrence = .none
     /// F.EVENT.9 — cómo se acota la serie. `.indefinite` = sin fin.
     @State private var seriesBound: SeriesBound = .indefinite
@@ -34,6 +41,28 @@ public struct CreateEventView: View {
             case .indefinite: return "Sin fin"
             case .count:      return "N veces"
             case .until:      return "Hasta fecha"
+            }
+        }
+    }
+
+    /// R.5V.3A.event — 3 modos de ubicación. `.perHost` sólo está disponible
+    /// para recurring semanal (la única recurrencia que rota host por doctrina
+    /// F.EVENT.8). Para los demás recurrence modes, `.perHost` queda inaccesible.
+    private enum LocationMode: String, CaseIterable, Identifiable {
+        case physical, virtual, perHost
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .physical: return "En un lugar"
+            case .virtual:  return "Virtual"
+            case .perHost:  return "Por anfitrión"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .physical: return "mappin.and.ellipse"
+            case .virtual:  return "video.fill"
+            case .perHost:  return "person.crop.circle.badge.questionmark"
             }
         }
     }
@@ -64,9 +93,19 @@ public struct CreateEventView: View {
         self.container = container
     }
 
-    /// F.EVENT.5 — un evento siempre debe tener ubicación, salvo que sea virtual.
+    /// F.EVENT.5 + R.5V.3A.event — un evento debe tener ubicación física,
+    /// ser virtual, O delegar al anfitrión (sólo en recurring semanal).
     private var locationIsValid: Bool {
-        isVirtual || !locationText.trimmingCharacters(in: .whitespaces).isEmpty
+        switch locationMode {
+        case .physical: return !locationText.trimmingCharacters(in: .whitespaces).isEmpty
+        case .virtual:  return true
+        case .perHost:  return true
+        }
+    }
+
+    /// `.perHost` sólo tiene sentido cuando hay rotación de host (weekly).
+    private var perHostAvailable: Bool {
+        recurrence == .weekly
     }
 
     /// F.EVENT.9 — validación del bound elegido. `count` debe ser entero > 0.
@@ -128,10 +167,18 @@ public struct CreateEventView: View {
                 }
 
                 Section {
-                    Toggle(isOn: $isVirtual) {
-                        Label("Evento virtual", systemImage: "video.fill")
+                    Picker("Tipo de ubicación", selection: $locationMode) {
+                        ForEach(LocationMode.allCases) { mode in
+                            if mode == .perHost && !perHostAvailable {
+                                EmptyView()
+                            } else {
+                                Label(mode.label, systemImage: mode.symbol).tag(mode)
+                            }
+                        }
                     }
-                    if !isVirtual {
+                    .pickerStyle(.menu)
+
+                    if locationMode == .physical {
                         TextField("Dónde (dirección o lugar)", text: $locationText)
                             .textInputAutocapitalization(.words)
                             .autocorrectionDisabled()
@@ -171,10 +218,13 @@ public struct CreateEventView: View {
                 } header: {
                     Text("Ubicación")
                 } footer: {
-                    if isVirtual {
+                    switch locationMode {
+                    case .physical:
+                        Text("La ubicación es obligatoria. Si el evento es por videollamada, elige \"Virtual\".")
+                    case .virtual:
                         Text("Sin ubicación física. Después puedes compartir el link del Zoom o Meet.")
-                    } else {
-                        Text("La ubicación es obligatoria. Si el evento es por videollamada, activa \"Evento virtual\".")
+                    case .perHost:
+                        Text("Cada anfitrión define dónde hospeda su semana — útil para Cena Semanal o Noche de Juegos rotativa. El host actual puede editar la ubicación de su evento cuando le toque.")
                     }
                 }
 
@@ -182,6 +232,12 @@ public struct CreateEventView: View {
                     Picker("Frecuencia", selection: $recurrence) {
                         ForEach(Recurrence.allCases) { freq in
                             Text(freq.label).tag(freq)
+                        }
+                    }
+                    .onChange(of: recurrence) { _, _ in
+                        // Si pierde el privilegio de rotación, vuelve a física.
+                        if !perHostAvailable && locationMode == .perHost {
+                            locationMode = .physical
                         }
                     }
                 } header: {
@@ -270,6 +326,14 @@ public struct CreateEventView: View {
         // F.EVENT.9 — bounds sólo aplican si hay recurrencia.
         let count: Int? = (recurrence != .none && seriesBound == .count) ? parsedOccurrenceCount : nil
         let until: Date? = (recurrence != .none && seriesBound == .until) ? seriesUntil : nil
+        // R.5V.3A.event — payload por mode:
+        // - physical: location_text=texto, is_virtual=false
+        // - virtual:  location_text=nil,    is_virtual=true
+        // - perHost:  location_text=nil,    is_virtual=false (host decide después)
+        let payloadLocation: String? = locationMode == .physical && !trimmedLocation.isEmpty
+            ? trimmedLocation
+            : nil
+        let payloadVirtual: Bool = locationMode == .virtual
         let success = await runner.run {
             _ = try await store.createEvent(
                 CreateEventInput(
@@ -277,8 +341,8 @@ public struct CreateEventView: View {
                     title: title.trimmingCharacters(in: .whitespaces),
                     eventType: eventType,
                     startsAt: startsAt,
-                    locationText: isVirtual || trimmedLocation.isEmpty ? nil : trimmedLocation,
-                    isVirtual: isVirtual,
+                    locationText: payloadLocation,
+                    isVirtual: payloadVirtual,
                     recurrenceRule: recurrence.ruleValue,
                     recurrenceCount: count,
                     recurrenceUntil: until,

@@ -587,6 +587,9 @@ public struct EventDetailView: View {
             chips.append("Virtual")
         } else if let location = event.locationText, !location.isEmpty {
             chips.append(location)
+        } else if isPerHostLocation(event) {
+            // R.5V.3A.event — recurring semanal sin ubicación fija: cada anfitrión decide.
+            chips.append("Por anfitrión")
         }
         if event.isRecurring {
             chips.append(recurrenceLabel(event))
@@ -596,6 +599,16 @@ public struct EventDetailView: View {
         }
         chips.append(participantSummary())
         return chips
+    }
+
+    /// R.5V.3A.event — heurística: ubicación delegada al anfitrión cuando el
+    /// evento es recurring semanal Y no tiene location_text Y no es virtual.
+    /// (Cena Semanal / Noche de Juegos rotativa.)
+    private func isPerHostLocation(_ event: CalendarEvent) -> Bool {
+        guard !event.isVirtual,
+              (event.locationText ?? "").isEmpty,
+              event.isRecurring else { return false }
+        return recurrenceLabel(event) == "Semanal"
     }
 
     private func headerDateLine(_ date: Date) -> String {
@@ -958,6 +971,12 @@ public struct EventDetailView: View {
             } else if let location = event.locationText, !location.isEmpty {
                 LabeledContent("Ubicación") {
                     Text(location)
+                        .multilineTextAlignment(.trailing)
+                }
+            } else if isPerHostLocation(event) {
+                LabeledContent("Ubicación") {
+                    Text("Lo define el anfitrión")
+                        .foregroundStyle(Theme.Text.secondary)
                         .multilineTextAlignment(.trailing)
                 }
             }
