@@ -325,6 +325,36 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
     }
 
+    public func createPlaceholderPerson(
+        contextId: UUID,
+        displayName: String,
+        phone: String?,
+        email: String?,
+        membershipType: String
+    ) async throws -> PlaceholderPersonResult {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pDisplayName: String
+            let pPhone: String?
+            let pEmail: String?
+            let pMembershipType: String
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pDisplayName = "p_display_name"
+                case pPhone = "p_phone"
+                case pEmail = "p_email"
+                case pMembershipType = "p_membership_type"
+            }
+        }
+        return try await call("create_placeholder_person", params: Params(
+            pContextActorId: contextId,
+            pDisplayName: displayName,
+            pPhone: phone,
+            pEmail: email,
+            pMembershipType: membershipType
+        ))
+    }
+
     public func acceptInvitation(contextId: UUID) async throws -> AcceptInvitationResult {
         try await call("accept_invitation", params: ContextIdParams(contextId: contextId))
     }

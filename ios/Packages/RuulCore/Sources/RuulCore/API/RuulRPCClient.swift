@@ -83,6 +83,18 @@ public protocol RuulRPCClient: Sendable {
     /// `invite_member(p_context_actor_id, p_member_actor_id, p_membership_type)` —
     /// invitación directa actor→actor (status='invited' hasta accept).
     func inviteMember(contextId: UUID, memberActorId: UUID, membershipType: String) async throws -> InviteMemberResult
+    /// R.5W — `create_placeholder_person(...)` — crea un actor placeholder
+    /// (persona sin app) con membership activa. Caso Splitwise: agregar a la
+    /// abuela / tío / vecino para que aparezcan en splits y obligaciones
+    /// aunque nunca se registren. Slice 4 agregará claim/merge cuando se
+    /// registren con teléfono/email match.
+    func createPlaceholderPerson(
+        contextId: UUID,
+        displayName: String,
+        phone: String?,
+        email: String?,
+        membershipType: String
+    ) async throws -> PlaceholderPersonResult
     /// `accept_invitation(p_context_actor_id)` — el caller acepta una invitación
     /// pendiente y queda como miembro activo. Idempotente: `already_member=true`
     /// si ya era miembro.

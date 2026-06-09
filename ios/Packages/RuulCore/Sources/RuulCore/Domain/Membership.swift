@@ -55,6 +55,44 @@ public struct InviteMemberResult: Decodable, Sendable, Equatable {
     }
 }
 
+/// R.5W — Resultado de `create_placeholder_person(...)`. La persona queda
+/// como `actor_kind='person'` con `is_placeholder=true` + membership activa
+/// en el contexto. Aparece en members list inmediato y puede recibir
+/// splits/obligaciones/RSVPs.
+public struct PlaceholderPersonResult: Decodable, Sendable, Equatable {
+    public let actorId: UUID
+    public let membershipId: UUID
+    public let displayName: String
+    public let isPlaceholder: Bool
+    public let contactPhone: String?
+    public let contactEmail: String?
+
+    enum CodingKeys: String, CodingKey {
+        case actorId = "actor_id"
+        case membershipId = "membership_id"
+        case displayName = "display_name"
+        case isPlaceholder = "is_placeholder"
+        case contactPhone = "contact_phone"
+        case contactEmail = "contact_email"
+    }
+
+    public init(
+        actorId: UUID,
+        membershipId: UUID,
+        displayName: String,
+        isPlaceholder: Bool = true,
+        contactPhone: String? = nil,
+        contactEmail: String? = nil
+    ) {
+        self.actorId = actorId
+        self.membershipId = membershipId
+        self.displayName = displayName
+        self.isPlaceholder = isPlaceholder
+        self.contactPhone = contactPhone
+        self.contactEmail = contactEmail
+    }
+}
+
 /// Resultado de `accept_invitation(p_context_actor_id)` — la membresía
 /// pendiente del caller pasa a `status='active'`.
 public struct AcceptInvitationResult: Decodable, Sendable, Equatable {

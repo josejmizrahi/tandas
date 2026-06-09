@@ -908,6 +908,38 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return JoinResult(contextActorId: invite.contextId, membershipId: membershipId, context: context)
     }
 
+    public func createPlaceholderPerson(
+        contextId: UUID,
+        displayName: String,
+        phone: String?,
+        email: String?,
+        membershipType: String
+    ) async throws -> PlaceholderPersonResult {
+        try throwIfNeeded()
+        guard actors[contextId] != nil else {
+            throw RuulError.backend(.unknown(message: "context not found"))
+        }
+        let actorId = UUID()
+        let membershipId = UUID()
+        let member = ContextMember(
+            actorId: actorId,
+            displayName: displayName,
+            membershipType: membershipType,
+            joinedAt: Date(),
+            roles: []
+        )
+        memberships[contextId, default: []].append(member)
+        emit(contextId, "membership.placeholder_created", actorId: me.id)
+        return PlaceholderPersonResult(
+            actorId: actorId,
+            membershipId: membershipId,
+            displayName: displayName,
+            isPlaceholder: true,
+            contactPhone: phone,
+            contactEmail: email
+        )
+    }
+
     public func inviteMember(contextId: UUID, memberActorId: UUID, membershipType: String) async throws -> InviteMemberResult {
         try throwIfNeeded()
         guard let context = actors[contextId] else {

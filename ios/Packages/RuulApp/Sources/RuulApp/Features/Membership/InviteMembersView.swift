@@ -1,20 +1,27 @@
 import SwiftUI
 import RuulCore
+import ContactsUI
+import Contacts
 
-/// F.5 — invitar miembros al contexto. Dos modos:
+/// F.5 + R.5W — invitar miembros al contexto. Tres modos:
 /// 1. **Directo** (`invite_member`): selecciona a alguien que conoces de otros
 ///    contextos. Le llega como invitación pendiente; debe llamar
 ///    `accept_invitation` (sheet "Invitaciones") para activarse.
 /// 2. **Por código** (`create_invite` + `join_by_invite_code`): genera un código
 ///    compartible para gente que aún no está en la red.
+/// 3. **Sin app** (R.5W `create_placeholder_person`): agrega a alguien que NO
+///    usa la app (abuela, tío, vecino). Aparece en members list de inmediato y
+///    puede recibir splits/obligaciones/RSVPs. Cuando se registre con su
+///    teléfono/email, su placeholder se podrá fusionar (Slice 4).
 public struct InviteMembersView: View {
     enum Mode: String, CaseIterable, Identifiable {
-        case direct, code
+        case direct, code, placeholder
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .direct: return "Directo"
-            case .code: return "Por código"
+            case .direct:      return "Directo"
+            case .code:        return "Por código"
+            case .placeholder: return "Sin app"
             }
         }
     }
@@ -39,6 +46,13 @@ public struct InviteMembersView: View {
     @State private var selectedActorId: UUID?
     @State private var directSearch = ""
     @State private var directSuccessName: String?
+
+    // Mode .placeholder (R.5W)
+    @State private var placeholderName = ""
+    @State private var placeholderPhone = ""
+    @State private var placeholderEmail = ""
+    @State private var placeholderSuccessName: String?
+    @State private var isShowingContactPicker = false
 
     @State private var runner = ActionRunner()
 
@@ -65,6 +79,8 @@ public struct InviteMembersView: View {
                     directSections
                 case .code:
                     codeSections
+                case .placeholder:
+                    placeholderSections
                 }
             }
             .navigationTitle("Invitar miembros")
@@ -86,8 +102,102 @@ public struct InviteMembersView: View {
             } message: {
                 Text("Nadie más podrá usarlo. Los miembros que ya se unieron siguen siendo miembros.")
             }
+            .sheet(isPresented: $isShowingContactPicker) {
+                ContactPickerSheet { contact in
+                    if let name = contact.name { placeholderName = name }
+                    if let phone = contact.phone { placeholderPhone = phone }
+                    if let email = contact.email { placeholderEmail = email }
+                    isShowingContactPicker = false
+                }
+            }
         }
         .ruulSheet()
+    }
+
+    // MARK: - Placeholder (R.5W — create_placeholder_person)
+
+    @ViewBuilder
+    private var placeholderSections: some View {
+        if let placeholderSuccessName {
+            Section {
+                Label(
+                    "\(placeholderSuccessName) ya aparece en miembros y puede recibir gastos y obligaciones.",
+                    systemImage: "checkmark.circle.fill"
+                )
+                .foregroundStyle(.green)
+            }
+        }
+
+        Section {
+            Button {
+                isShowingContactPicker = true
+            } label: {
+                Label("Elegir de Contactos", systemImage: "person.crop.circle.badge.plus")
+            }
+        } header: {
+            Text("Atajo")
+        } footer: {
+            Text("Te dejamos prellenar nombre/teléfono/email desde tu app de Contactos.")
+        }
+
+        Section {
+            TextField("Nombre (Abuela Sara…)", text: $placeholderName)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+            TextField("Teléfono (opcional)", text: $placeholderPhone)
+                .keyboardType(.phonePad)
+                .textContentType(.telephoneNumber)
+            TextField("Email (opcional)", text: $placeholderEmail)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textContentType(.emailAddress)
+        } header: {
+            Text("Datos")
+        } footer: {
+            Text("El nombre es obligatorio. Teléfono o email ayudarán a vincular este placeholder con su cuenta cuando se registre.")
+        }
+
+        Section {
+            Button {
+                Task { await createPlaceholder() }
+            } label: {
+                if runner.isRunning {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else {
+                    Label("Agregar a \(context.displayName)", systemImage: "person.fill.badge.plus")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .disabled(!canCreatePlaceholder)
+        } footer: {
+            Text("La persona aparece en \(context.displayName) sin registrarse. Cuando descargue Ruul y se registre con el mismo teléfono/email, su historia se vinculará automáticamente.")
+        }
+    }
+
+    private var canCreatePlaceholder: Bool {
+        !placeholderName.trimmingCharacters(in: .whitespaces).isEmpty && !runner.isRunning
+    }
+
+    private func createPlaceholder() async {
+        let name = placeholderName.trimmingCharacters(in: .whitespaces)
+        let phone = placeholderPhone.trimmingCharacters(in: .whitespaces)
+        let email = placeholderEmail.trimmingCharacters(in: .whitespaces)
+        await runner.run {
+            _ = try await container.rpc.createPlaceholderPerson(
+                contextId: context.id,
+                displayName: name,
+                phone: phone.isEmpty ? nil : phone,
+                email: email.isEmpty ? nil : email,
+                membershipType: "member"
+            )
+            // Refresh members list para que el placeholder aparezca al volver
+            await store.load(context: context)
+            placeholderSuccessName = name
+            placeholderName = ""
+            placeholderPhone = ""
+            placeholderEmail = ""
+        }
     }
 
     // MARK: - Direct (invite_member)
@@ -301,6 +411,62 @@ public struct InviteMembersView: View {
 
     private func shareMessage(_ invite: InviteCreated) -> String {
         "Únete a \(context.displayName) en Ruul. Abre el link o usa el código \(invite.code)."
+    }
+}
+
+// MARK: - R.5W Contact picker wrapper
+
+/// SwiftUI wrap de `CNContactPickerViewController` para preseleccionar
+/// nombre/teléfono/email del contacto elegido. Requiere
+/// `NSContactsUsageDescription` en Info.plist (ya presente).
+private struct ContactPickerSheet: UIViewControllerRepresentable {
+    struct ImportedContact {
+        let name: String?
+        let phone: String?
+        let email: String?
+    }
+
+    let onPick: (ImportedContact) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+
+    func makeUIViewController(context: Context) -> CNContactPickerViewController {
+        let picker = CNContactPickerViewController()
+        picker.delegate = context.coordinator
+        picker.displayedPropertyKeys = [
+            CNContactGivenNameKey,
+            CNContactFamilyNameKey,
+            CNContactPhoneNumbersKey,
+            CNContactEmailAddressesKey
+        ]
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: CNContactPickerViewController, context: Context) {}
+
+    final class Coordinator: NSObject, CNContactPickerDelegate {
+        let onPick: (ImportedContact) -> Void
+
+        init(onPick: @escaping (ImportedContact) -> Void) {
+            self.onPick = onPick
+        }
+
+        func contactPicker(_ picker: CNContactPickerViewController, didSelect contact: CNContact) {
+            let name = [contact.givenName, contact.familyName]
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+            let phone = contact.phoneNumbers.first.map { $0.value.stringValue }
+            let email = contact.emailAddresses.first.map { $0.value as String }
+            onPick(ImportedContact(
+                name: name.isEmpty ? nil : name,
+                phone: phone,
+                email: email
+            ))
+        }
+
+        func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
+            onPick(ImportedContact(name: nil, phone: nil, email: nil))
+        }
     }
 }
 
