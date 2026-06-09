@@ -190,8 +190,10 @@ public struct HomeView: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
+                        .scrollTargetLayout()
                     }
                 }
+                .scrollTargetBehavior(.viewAligned)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
             } header: {

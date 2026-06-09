@@ -205,8 +205,10 @@ public struct ContextsListView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
+                        .scrollTargetLayout()
                     }
                 }
+                .scrollTargetBehavior(.viewAligned)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -237,8 +239,10 @@ public struct ContextsListView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
+                        .scrollTargetLayout()
                     }
                 }
+                .scrollTargetBehavior(.viewAligned)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)

@@ -806,8 +806,10 @@ public struct ContextDetailViewV2: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
+                    .scrollTargetLayout()
                 }
             }
+            .scrollTargetBehavior(.viewAligned)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         } header: {
