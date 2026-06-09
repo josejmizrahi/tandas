@@ -337,13 +337,19 @@ public struct ContextSettingsView: View {
 
     @ViewBuilder
     private func rolesSection(_ settings: ContextSettings) -> some View {
-        Section("Roles") {
-            InfoRow(symbolName: "shield.lefthalf.filled",
-                    title: "Roles del contexto",
-                    value: store.can("manage_roles") ? "Editable próximamente" : "Solo lectura")
+        // R.5W.P1 — Apple-native LabeledContent + Section footer (antes InfoRow
+        // custom + Text caption suelto, inconsistente con el resto del Detail).
+        Section {
+            LabeledContent {
+                Text(store.can("manage_roles") ? "Editable próximamente" : "Solo lectura")
+                    .foregroundStyle(Theme.Text.secondary)
+            } label: {
+                Label("Roles del contexto", systemImage: "shield.lefthalf.filled")
+            }
+        } header: {
+            Text("Roles")
+        } footer: {
             Text("Creación y asignación granular de roles llega en una próxima versión.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 

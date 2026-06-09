@@ -31,6 +31,10 @@ public struct DecisionDetailView: View {
     @State private var runner = ActionRunner()
     @State private var isConfirmingClose = false
     @State private var isConfirmingExecute = false
+    /// R.5W.P1 — diálogo dedicado para `cancel_decision` (antes reutilizaba
+    /// `isConfirmingClose` y mostraba "¿Cerrar la votación?" cuando el botón
+    /// era "Cancelar decisión", causando confusión).
+    @State private var isConfirmingCancel = false
     @State private var whyResult: WhyDecisionResult?
     @State private var isLoadingWhy = false
     @State private var decisionActivity: [ActivityEvent] = []
@@ -148,6 +152,19 @@ public struct DecisionDetailView: View {
                 }
             }
             Button("Todavía no", role: .cancel) {}
+        }
+        .confirmationDialog("¿Cancelar la decisión?", isPresented: $isConfirmingCancel, titleVisibility: .visible) {
+            Button("Cancelar decisión", role: .destructive) {
+                Task {
+                    await runner.run {
+                        _ = try await store.close(decisionId: decisionId, context: context)
+                        await loadDecisionActivity()
+                    }
+                }
+            }
+            Button("Volver", role: .cancel) {}
+        } message: {
+            Text("La votación se cierra sin ejecutar el resultado.")
         }
         .sheet(item: Binding(get: { whyResult.map { WhyResultIdentifiable(value: $0) } },
                               set: { whyResult = $0?.value })) { wrapper in
@@ -1013,7 +1030,7 @@ public struct DecisionDetailView: View {
         switch action.kind {
         case .closeDecision:   isConfirmingClose = true
         case .executeDecision: isConfirmingExecute = true
-        case .cancelDecision:  isConfirmingClose = true // Backend exposes cancel via close path for now.
+        case .cancelDecision:  isConfirmingCancel = true
         case .editDecision:    isShowingEdit = true
         }
     }

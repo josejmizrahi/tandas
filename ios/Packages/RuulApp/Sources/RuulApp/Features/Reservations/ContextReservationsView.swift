@@ -75,19 +75,29 @@ public struct ContextReservationsView: View {
 
     @ViewBuilder
     private func row(_ reservation: Reservation) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "calendar")
-                .foregroundStyle(.tint)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(store.resourceName(for: reservation.resourceId) ?? "Recurso")
-                    .font(.body.weight(.medium))
-                Text(rangeAndOwner(reservation))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        // R.5W.P1 — tap → push al Resource Detail (antes el row era inerte;
+        // el resto del Detail pattern ya empuja a su propia vista).
+        NavigationLink {
+            ResourceDetailViewV2(
+                resourceId: reservation.resourceId,
+                context: context,
+                container: container
+            )
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .foregroundStyle(.tint)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(store.resourceName(for: reservation.resourceId) ?? "Recurso")
+                        .font(.body.weight(.medium))
+                    Text(rangeAndOwner(reservation))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                StatusBadge(reservation.statusLabel, color: Theme.Status.reservation(reservation.status))
             }
-            Spacer()
-            StatusBadge(reservation.statusLabel, color: Theme.Status.reservation(reservation.status))
         }
         .swipeActions(edge: .trailing) {
             swipeActions(reservation)

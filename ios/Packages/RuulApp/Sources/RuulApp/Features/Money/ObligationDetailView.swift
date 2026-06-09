@@ -21,6 +21,9 @@ public struct ObligationDetailView: View {
     @State private var isLoadingWhy = false
     /// F.MONEY.4 — sheet de edición de la obligación.
     @State private var isShowingEdit = false
+    /// R.5W.P1 — alert "Próximamente" para acciones backend-advertised pero sin
+    /// RPC iOS todavía (pay/dispute/forgive/cancel). Antes eran Label inerte.
+    @State private var comingSoonAction: ComingSoonAction?
 
     public init(obligationId: UUID, context: AppContext, container: DependencyContainer) {
         self.obligationId = obligationId
@@ -61,6 +64,21 @@ public struct ObligationDetailView: View {
                             onSaved: { Task { await load() } }
                         )
                     }
+                }
+                // R.5W.P1 — alert canónico "Próximamente" (copy founder-signed
+                // R.5X.fix.A, reutilizado aquí porque sin RPC iOS no hay donde
+                // navegar todavía).
+                .alert(
+                    comingSoonAction?.label ?? "",
+                    isPresented: Binding(
+                        get: { comingSoonAction != nil },
+                        set: { if !$0 { comingSoonAction = nil } }
+                    ),
+                    presenting: comingSoonAction
+                ) { _ in
+                    Button("OK", role: .cancel) {}
+                } message: { _ in
+                    Text("Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible.")
                 }
         }
     }
@@ -217,11 +235,19 @@ public struct ObligationDetailView: View {
             }
             .disabled(!action.enabled || runner.isRunning)
         default:
-            // Read-only affordance (pay/dispute/forgive/cancel se cablean cuando exista UI).
-            // `.disabled()` da el dim del sistema — sin lock.fill manual.
-            Label(action.label, systemImage: actionSymbol(action.actionKey))
-                .disabled(!action.enabled)
-                .accessibilityHint(action.reason ?? "")
+            // R.5W.P1 — Button consistente con resto de acciones. Acciones
+            // backend-advertised sin RPC iOS (pay/dispute/forgive/cancel)
+            // muestran alert canónico "Próximamente" en lugar de Label inerte.
+            Button {
+                comingSoonAction = ComingSoonAction(
+                    key: action.actionKey,
+                    label: action.label
+                )
+            } label: {
+                Label(action.label, systemImage: actionSymbol(action.actionKey))
+            }
+            .disabled(!action.enabled || runner.isRunning)
+            .accessibilityHint(action.reason ?? "")
         }
     }
 
@@ -341,6 +367,14 @@ public struct ObligationDetailView: View {
         default: return "circle"
         }
     }
+}
+
+// MARK: - R.5W.P1 Próximamente alert
+
+private struct ComingSoonAction: Identifiable {
+    let key: String
+    let label: String
+    var id: String { key }
 }
 
 // MARK: - R.2S.10 ¿Por qué? sheet
