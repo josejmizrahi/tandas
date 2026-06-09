@@ -90,6 +90,8 @@ public final class RuleSuggestionService {
         phase = .loading
 
         let instructions = """
+            \(RuulAIContext.glossary)
+
             Eres un asistente que convierte la descripción en lenguaje natural de \
             una regla de grupo (familia, amigos, tanda, sociedad, trust) en una \
             RuleSuggestion estructurada. Elige UNA de 5 plantillas:

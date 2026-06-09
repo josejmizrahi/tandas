@@ -70,6 +70,8 @@ public final class IntentSuggestionService {
         phase = .loading
 
         let instructions = """
+            \(RuulAIContext.glossary)
+
             Eres un asistente que clasifica la descripción en lenguaje natural \
             del usuario al intent canónico de Ruul. Hay 7 intents:
 

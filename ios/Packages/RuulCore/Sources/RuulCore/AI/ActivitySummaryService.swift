@@ -72,6 +72,8 @@ public final class ActivitySummaryService {
         phase = .loading
 
         let instructions = """
+            \(RuulAIContext.glossary)
+
             Eres un asistente que resume la actividad reciente del usuario en \
             Ruul (un app de contextos compartidos: familias, grupos, sociedades).
 

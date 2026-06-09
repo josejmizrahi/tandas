@@ -74,6 +74,8 @@ public final class DecisionSuggestionService {
         phase = .loading
 
         let instructions = """
+            \(RuulAIContext.glossary)
+
             Eres un asistente que convierte una propuesta en lenguaje natural en \
             una DecisionSuggestion estructurada para votar en un grupo \
             (familia, amigos, sociedad).

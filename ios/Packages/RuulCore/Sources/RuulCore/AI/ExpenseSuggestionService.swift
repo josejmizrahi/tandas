@@ -84,6 +84,8 @@ public final class ExpenseSuggestionService {
         phase = .loading
 
         let instructions = """
+            \(RuulAIContext.glossary)
+
             Eres un asistente que convierte la descripción en lenguaje natural \
             de un gasto compartido en una ExpenseSuggestion estructurada.
 

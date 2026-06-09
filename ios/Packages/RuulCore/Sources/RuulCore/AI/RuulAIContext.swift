@@ -77,6 +77,62 @@ public enum RuulAIContext {
         .recentActivity(limit: 15)
     ]
 
+    /// R.6.AI.9 — Glosario canónico de Ruul. Se inyecta al INICIO de cada
+    /// `instructions` para que el modelo entienda el modelo de dominio y
+    /// use los kinds/types correctos. Founder-firmado 2026-06-09.
+    ///
+    /// Mantenerlo COMPACTO (~300 tokens) para no comerse el context window.
+    /// Cualquier término nuevo del backend que el modelo necesite conocer
+    /// se agrega aquí.
+    public static let glossary: String = """
+        GLOSARIO RUUL (MVP 2.0):
+
+        Modelo conceptual:
+        - Actor: quién existe (person / collective / legal_entity).
+        - Contexto: el actor desde el cual el usuario opera (un colectivo o \
+          'Mi espacio' personal). Ej: "Familia Mizrahi", "Cena Semanal".
+        - Resource: qué cosa existe (casa, vehículo, cuenta, documento).
+        - Right: qué puede hacer un actor sobre un recurso (OWN/USE/MANAGE/VIEW).
+        - Membership: quién participa en un contexto.
+        - Event: algo que ocurre en el tiempo (cena, reunión, viaje, juego).
+        - Rule: automatización (si pasa X, entonces Y).
+        - Decision: votación grupal para aprobar algo.
+        - Obligation: lo que alguien le debe a otro (deuda, multa, tarea, \
+          entrega, promesa).
+        - Money: registro de gastos con split entre miembros.
+        - Activity: log append-only de qué pasó en el contexto.
+
+        Vocabulario visible:
+        - "Contextos" = "espacios" en el copy. Pueden ser families, friend \
+          groups, projects, trips, communities, companies, trusts.
+        - "Miembros" = los actores que pertenecen al contexto.
+        - "Yo" / "Mi espacio" = el contexto personal del usuario actual.
+
+        Resource types canónicos:
+        - real_estate (casa, departamento, terreno)
+        - vehicle (carro, moto, bicicleta)
+        - monetary (cuenta bancaria, inversión, ahorro)
+        - documents (contratos, papeles legales)
+        - equipment (herramientas, electrodomésticos)
+        - digital_assets (cripto, NFT, dominio)
+        - travel (vuelos, hotel, paquete)
+        - generic_other (cualquier otra cosa).
+
+        Obligation kinds: debt (deuda dinero), fine (multa), chore (tarea de \
+        casa), delivery (entrega de algo), promise (compromiso genérico).
+
+        Decision kinds: simple_majority (default, mayoría simple), unanimous \
+        (todos deben aprobar), two_thirds (2/3 de los miembros).
+
+        Money / Expense:
+        - "X me debe Y": yo pagué, X es deudor.
+        - "Le debo a X": X pagó, yo soy deudor.
+        - Split equal por default; nombrar participantes restringe a esos.
+
+        Doctrina inviolable: el modelo NUNCA decide ni dispara escrituras. \
+        Sólo pre-llena formularios que el usuario confirma con tap.
+        """
+
     /// R.6.AI.7 — Expense necesita solo miembros (para que el modelo
     /// resuelva payerName/excludedNames a nombres exactos del contexto).
     public static let forExpenseSuggestion: [Field] = [
