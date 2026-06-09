@@ -587,9 +587,10 @@ public struct EventDetailView: View {
             chips.append("Virtual")
         } else if let location = event.locationText, !location.isEmpty {
             chips.append(location)
-        } else if isPerHostLocation(event) {
-            // R.5V.3A.event — recurring semanal sin ubicación fija: cada anfitrión decide.
-            chips.append("Por anfitrión")
+        } else if isLocationUndecided(event) {
+            // R.5V.3A.event.fix — sin location + no virtual: label dinámico
+            // según recurrencia (weekly rota host → "Por anfitrión").
+            chips.append(undecidedLocationLabel(event))
         }
         if event.isRecurring {
             chips.append(recurrenceLabel(event))
@@ -601,14 +602,24 @@ public struct EventDetailView: View {
         return chips
     }
 
-    /// R.5V.3A.event — heurística: ubicación delegada al anfitrión cuando el
-    /// evento es recurring semanal Y no tiene location_text Y no es virtual.
-    /// (Cena Semanal / Noche de Juegos rotativa.)
-    private func isPerHostLocation(_ event: CalendarEvent) -> Bool {
-        guard !event.isVirtual,
-              (event.locationText ?? "").isEmpty,
-              event.isRecurring else { return false }
-        return recurrenceLabel(event) == "Semanal"
+    /// R.5V.3A.event.fix — evento sin ubicación fija (host rota o lugar TBD).
+    private func isLocationUndecided(_ event: CalendarEvent) -> Bool {
+        !event.isVirtual && (event.locationText ?? "").isEmpty
+    }
+
+    /// Label del fallback según recurrencia: weekly → "Por anfitrión"
+    /// (rotación real), cualquier otra → "Por definir".
+    private func undecidedLocationLabel(_ event: CalendarEvent) -> String {
+        event.isRecurring && recurrenceLabel(event) == "Semanal"
+            ? "Por anfitrión"
+            : "Por definir"
+    }
+
+    /// Variante más explícita para la Info row.
+    private func undecidedLocationFullLabel(_ event: CalendarEvent) -> String {
+        event.isRecurring && recurrenceLabel(event) == "Semanal"
+            ? "Lo define el anfitrión"
+            : "Por definir"
     }
 
     private func headerDateLine(_ date: Date) -> String {
@@ -973,9 +984,9 @@ public struct EventDetailView: View {
                     Text(location)
                         .multilineTextAlignment(.trailing)
                 }
-            } else if isPerHostLocation(event) {
+            } else if isLocationUndecided(event) {
                 LabeledContent("Ubicación") {
-                    Text("Lo define el anfitrión")
+                    Text(undecidedLocationFullLabel(event))
                         .foregroundStyle(Theme.Text.secondary)
                         .multilineTextAlignment(.trailing)
                 }

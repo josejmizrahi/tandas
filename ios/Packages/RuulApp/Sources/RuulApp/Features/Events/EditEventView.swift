@@ -64,16 +64,14 @@ public struct EditEventView: View {
             }
         }
 
-        /// Deriva el modo inicial desde el evento. Si es recurring semanal,
-        /// sin location y sin virtual → es perHost. Si no, los flags clásicos
-        /// (virtual / physical).
+        /// Deriva el modo inicial desde el evento (founder doctrina 2026-06-08):
+        /// - virtual=true → .virtual
+        /// - sin location → .perHost (siempre — se renderiza con label dinámico)
+        /// - con location → .physical
         static func from(event: CalendarEvent) -> LocationMode {
             if event.isVirtual { return .virtual }
             let hasLocation = (event.locationText ?? "").trimmingCharacters(in: .whitespaces).isEmpty == false
-            let isWeeklyRotating = event.isRecurring &&
-                (event.recurrenceRule?.lowercased() == "weekly" ||
-                 event.recurrenceRule?.lowercased().contains("freq=weekly") == true)
-            if !hasLocation && isWeeklyRotating { return .perHost }
+            if !hasLocation { return .perHost }
             return .physical
         }
     }
@@ -106,8 +104,18 @@ public struct EditEventView: View {
         }
     }
 
-    private var perHostAvailable: Bool {
-        recurrence == .weekly
+    private var perHostAvailable: Bool { true }
+
+    /// Label dinámico para el 3er modo según recurrence (espeja CreateEventView).
+    private var perHostLabel: String {
+        recurrence == .weekly ? "Por anfitrión" : "Por definir"
+    }
+
+    private var perHostFooter: String {
+        if recurrence == .weekly {
+            return "El anfitrión actual decide dónde hospedar su semana. Cambia a “En un lugar” para fijar dirección de esta ocurrencia."
+        }
+        return "Puedes agregar la ubicación más tarde. Útil cuando todavía no decides el lugar."
     }
 
     private var canSubmit: Bool {
@@ -135,14 +143,25 @@ public struct EditEventView: View {
                 }
 
                 Section {
-                    Picker("Tipo de ubicación", selection: $locationMode) {
-                        ForEach(LocationMode.allCases) { mode in
-                            if mode == .perHost && !perHostAvailable {
-                                EmptyView()
-                            } else {
-                                Label(mode.label, systemImage: mode.symbol).tag(mode)
-                            }
+                    Picker("Frecuencia", selection: $recurrence) {
+                        ForEach(Recurrence.allCases) { freq in
+                            Text(freq.label).tag(freq)
                         }
+                    }
+                } header: {
+                    Text("Recurrencia")
+                } footer: {
+                    if recurrence != .none {
+                        Text("Al cerrar el evento se creará la próxima instancia automáticamente.")
+                    }
+                }
+
+                // Ubicación va DESPUÉS de Recurrencia (founder UX 2026-06-08).
+                Section {
+                    Picker("Tipo de ubicación", selection: $locationMode) {
+                        Label("En un lugar", systemImage: "mappin.and.ellipse").tag(LocationMode.physical)
+                        Label("Virtual", systemImage: "video.fill").tag(LocationMode.virtual)
+                        Label(perHostLabel, systemImage: "person.crop.circle.badge.questionmark").tag(LocationMode.perHost)
                     }
                     .pickerStyle(.menu)
 
@@ -188,30 +207,11 @@ public struct EditEventView: View {
                 } footer: {
                     switch locationMode {
                     case .physical:
-                        Text("Si esta es tu semana de hospedar, escribe aquí dónde reciben.")
+                        Text("Si esta semana sabes dónde reciben, escríbelo aquí.")
                     case .virtual:
                         Text("Sin ubicación física.")
                     case .perHost:
-                        Text("El anfitrión actual decide dónde hospedar su semana. Cambia a “En un lugar” para fijar dirección de esta ocurrencia.")
-                    }
-                }
-
-                Section {
-                    Picker("Frecuencia", selection: $recurrence) {
-                        ForEach(Recurrence.allCases) { freq in
-                            Text(freq.label).tag(freq)
-                        }
-                    }
-                    .onChange(of: recurrence) { _, _ in
-                        if !perHostAvailable && locationMode == .perHost {
-                            locationMode = .physical
-                        }
-                    }
-                } header: {
-                    Text("Recurrencia")
-                } footer: {
-                    if recurrence != .none {
-                        Text("Al cerrar el evento se creará la próxima instancia automáticamente.")
+                        Text(perHostFooter)
                     }
                 }
             }

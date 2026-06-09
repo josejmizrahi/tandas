@@ -103,9 +103,22 @@ public struct CreateEventView: View {
         }
     }
 
-    /// `.perHost` sólo tiene sentido cuando hay rotación de host (weekly).
-    private var perHostAvailable: Bool {
-        recurrence == .weekly
+    /// `.perHost` siempre disponible (founder doctrina 2026-06-08: location es
+    /// opcional). El label cambia según si hay rotación de host real (weekly).
+    private var perHostAvailable: Bool { true }
+
+    /// El label del 3er modo cambia según la recurrencia para ser más explícito:
+    /// - weekly recurring → "Por anfitrión" (rotación real)
+    /// - cualquier otra   → "Por definir" (location TBD)
+    private var perHostLabel: String {
+        recurrence == .weekly ? "Por anfitrión" : "Por definir"
+    }
+
+    private var perHostFooter: String {
+        if recurrence == .weekly {
+            return "Cada anfitrión define dónde hospeda su semana — útil para Cena Semanal o Noche de Juegos rotativa. El host actual puede editar la ubicación de su evento cuando le toque."
+        }
+        return "Puedes agregar la ubicación más tarde. Útil cuando todavía no decides el lugar o vives en un grupo donde rota."
     }
 
     /// F.EVENT.9 — validación del bound elegido. `count` debe ser entero > 0.
@@ -167,77 +180,9 @@ public struct CreateEventView: View {
                 }
 
                 Section {
-                    Picker("Tipo de ubicación", selection: $locationMode) {
-                        ForEach(LocationMode.allCases) { mode in
-                            if mode == .perHost && !perHostAvailable {
-                                EmptyView()
-                            } else {
-                                Label(mode.label, systemImage: mode.symbol).tag(mode)
-                            }
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    if locationMode == .physical {
-                        TextField("Dónde (dirección o lugar)", text: $locationText)
-                            .textInputAutocapitalization(.words)
-                            .autocorrectionDisabled()
-                            .onChange(of: locationText) { _, new in
-                                if suppressNextQueryUpdate {
-                                    suppressNextQueryUpdate = false
-                                    return
-                                }
-                                locationCompleter.setQuery(new)
-                            }
-                        ForEach(locationCompleter.suggestions) { suggestion in
-                            Button {
-                                pickLocation(suggestion)
-                            } label: {
-                                HStack(alignment: .top, spacing: 10) {
-                                    Image(systemName: "mappin.circle.fill")
-                                        .foregroundStyle(.tint)
-                                        .padding(.top, 2)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(suggestion.title)
-                                            .font(.callout)
-                                            .foregroundStyle(.primary)
-                                            .multilineTextAlignment(.leading)
-                                        if !suggestion.subtitle.isEmpty {
-                                            Text(suggestion.subtitle)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                                .multilineTextAlignment(.leading)
-                                        }
-                                    }
-                                    Spacer()
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                } header: {
-                    Text("Ubicación")
-                } footer: {
-                    switch locationMode {
-                    case .physical:
-                        Text("La ubicación es obligatoria. Si el evento es por videollamada, elige \"Virtual\".")
-                    case .virtual:
-                        Text("Sin ubicación física. Después puedes compartir el link del Zoom o Meet.")
-                    case .perHost:
-                        Text("Cada anfitrión define dónde hospeda su semana — útil para Cena Semanal o Noche de Juegos rotativa. El host actual puede editar la ubicación de su evento cuando le toque.")
-                    }
-                }
-
-                Section {
                     Picker("Frecuencia", selection: $recurrence) {
                         ForEach(Recurrence.allCases) { freq in
                             Text(freq.label).tag(freq)
-                        }
-                    }
-                    .onChange(of: recurrence) { _, _ in
-                        // Si pierde el privilegio de rotación, vuelve a física.
-                        if !perHostAvailable && locationMode == .perHost {
-                            locationMode = .physical
                         }
                     }
                 } header: {
@@ -287,6 +232,67 @@ public struct CreateEventView: View {
                         Text("Hasta cuándo")
                     } footer: {
                         seriesBoundFooter
+                    }
+                }
+
+                // Ubicación va DESPUÉS de Recurrencia (founder UX 2026-06-08)
+                // para que el 3er modo se renombre dinámicamente:
+                // weekly → "Por anfitrión", otras → "Por definir".
+                Section {
+                    Picker("Tipo de ubicación", selection: $locationMode) {
+                        Label("En un lugar", systemImage: "mappin.and.ellipse").tag(LocationMode.physical)
+                        Label("Virtual", systemImage: "video.fill").tag(LocationMode.virtual)
+                        Label(perHostLabel, systemImage: "person.crop.circle.badge.questionmark").tag(LocationMode.perHost)
+                    }
+                    .pickerStyle(.menu)
+
+                    if locationMode == .physical {
+                        TextField("Dónde (dirección o lugar)", text: $locationText)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .onChange(of: locationText) { _, new in
+                                if suppressNextQueryUpdate {
+                                    suppressNextQueryUpdate = false
+                                    return
+                                }
+                                locationCompleter.setQuery(new)
+                            }
+                        ForEach(locationCompleter.suggestions) { suggestion in
+                            Button {
+                                pickLocation(suggestion)
+                            } label: {
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: "mappin.circle.fill")
+                                        .foregroundStyle(.tint)
+                                        .padding(.top, 2)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(suggestion.title)
+                                            .font(.callout)
+                                            .foregroundStyle(.primary)
+                                            .multilineTextAlignment(.leading)
+                                        if !suggestion.subtitle.isEmpty {
+                                            Text(suggestion.subtitle)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .multilineTextAlignment(.leading)
+                                        }
+                                    }
+                                    Spacer()
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                } header: {
+                    Text("Ubicación")
+                } footer: {
+                    switch locationMode {
+                    case .physical:
+                        Text("Si esta semana sabes dónde reciben, escríbelo aquí.")
+                    case .virtual:
+                        Text("Sin ubicación física. Después puedes compartir el link del Zoom o Meet.")
+                    case .perHost:
+                        Text(perHostFooter)
                     }
                 }
 
