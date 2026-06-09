@@ -23,10 +23,10 @@ public struct ExpenseSuggestion: Sendable, Equatable {
     @Guide(description: "Código de 3 letras de la moneda. Default MXN si el usuario no especifica.")
     public let currency: String
 
-    @Guide(description: "Nombre EXACTO (de la lista de miembros) de quien pagó. Cadena vacía si el usuario pagó (frases tipo 'yo pagué', 'pagué', 'me debe', 'me deben').")
+    @Guide(description: "Nombre EXACTO del miembro que PUSO el dinero. Cadena vacía cuando el usuario actual (yo) puso el dinero. CRÍTICO: 'X me debe Y' significa que X DEBE; el que pagó es YO. En ese caso pon cadena vacía aquí (no X). Solo pon un nombre si el usuario dijo explícitamente que esa persona pagó.")
     public let payerName: String
 
-    @Guide(description: "Nombres EXACTOS de los miembros que DEBEN ese gasto (participan en el split), separados por coma. Cadena vacía si todos los miembros participan por igual.")
+    @Guide(description: "Nombres EXACTOS de los miembros DEUDORES (los que deben ese dinero), separados por coma. Cadena vacía cuando TODOS los miembros participan por igual. CRÍTICO: 'X me debe Y' → pon SOLO 'X' acá (solo X debe). 'Le debo a Y' → cadena vacía (yo soy el único deudor).")
     public let participantNames: String
 
     @Guide(description: "Frase corta en español explicando cómo se entendió el gasto.")

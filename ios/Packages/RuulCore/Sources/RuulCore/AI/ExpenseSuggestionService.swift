@@ -85,40 +85,61 @@ public final class ExpenseSuggestionService {
 
         let instructions = """
             Eres un asistente que convierte la descripción en lenguaje natural \
-            de un gasto en una ExpenseSuggestion estructurada.
+            de un gasto compartido en una ExpenseSuggestion estructurada.
 
-            Modelo de datos:
-            - payerName = quién PUSO el dinero (cadena vacía = el usuario actual).
-            - participantNames = quiénes DEBEN ese gasto / participan en el split \
-              (cadena vacía = TODOS los miembros del contexto).
+            MODELO DE DATOS (memorízalo):
+            - payerName: nombre del miembro que PUSO el dinero. Cadena vacía = \
+              el usuario actual (yo).
+            - participantNames: lista de nombres separados por coma de quienes \
+              DEBEN ese dinero (los deudores). Cadena vacía = TODOS los miembros \
+              participan en el split.
 
-            Patrones canónicos (sigue uno EXACTO, no inventes):
+            REGLA CRÍTICA — semántica del español:
+            La frase "X me debe Y" significa literalmente "X owes me Y". El que \
+            pagó / puso el dinero es el USUARIO ACTUAL (yo). El deudor es X. NO \
+            es lo mismo que "X pagó". Aquí X es el que tiene que devolverme \
+            dinero a mí.
 
-            1. "X me debe Y" / "X me debe Y pesos":
-               → payerName="" (yo puse el dinero), participantNames="X" (solo X debe), amount=Y.
+            Ejemplo trabajado paso a paso:
 
-            2. "Le debo X a Y" / "Le debo X pesos a Y":
-               → payerName="Y" (Y puso el dinero), participantNames="" (yo soy el único \
-                 que debe — el campo vacío significa default, pero aquí el split \
-                 es solo conmigo; déjalo vacío y el wizard lo resuelve), amount=X.
+            INPUT: "Moshe me debe 100 pesos del poker"
+            RAZONAMIENTO:
+              1. "Moshe me debe" = "Moshe owes me" → Moshe es el DEUDOR, no el pagador.
+              2. Si Moshe debe, alguien le prestó. Ese alguien es el usuario (yo).
+              3. → payerName = "" (yo puse el dinero).
+              4. → participantNames = "Moshe" (solo Moshe debe).
+              5. → amount = 100.
+              6. → description = "Poker".
+              7. → rationale = "Yo pagué. Moshe debe 100 del poker."
+            OUTPUT correcto:
+              { description="Poker", amount=100, currency="MXN", \
+                payerName="", participantNames="Moshe", \
+                rationale="Yo pagué. Moshe debe." }
 
-            3. "Cena 500 dividida entre todos" / "Pagué 500 entre todos":
-               → payerName="" (yo pagué), participantNames="" (todos), amount=500.
+            MÁS PATRONES (sigue UNO EXACTO):
 
-            4. "X pagó Y para Z" / "X pagó Y, le toca a Z":
-               → payerName="X", participantNames="Z" (solo Z debe), amount=Y.
+            • "X me debe Y" → payerName="", participantNames="X", amount=Y.
+            • "Le debo X a Y" → payerName="Y", participantNames="", amount=X.
+            • "Cena Y dividida entre todos" / "Pagué Y entre todos" → \
+              payerName="", participantNames="", amount=Y.
+            • "X pagó Y para Z" / "X pagó Y, le toca a Z" → payerName="X", \
+              participantNames="Z", amount=Y.
+            • "Pagué X yo, dividir con A y B" → payerName="", \
+              participantNames="A, B", amount=X.
 
-            5. "Pagué X yo, dividir con A y B":
-               → payerName="" (yo), participantNames="A, B" (solo A y B deben), amount=X.
+            REGLAS ADICIONALES:
+            - description: SOLO 1-3 palabras del CONCEPTO (Cena, Poker, Súper).
+            - amount: número exacto del usuario; 0 si no menciona.
+            - currency: 3 letras (MXN, USD, EUR). MXN default.
+            - Si te dan lista de miembros, usa nombres EXACTOS de la lista para \
+              payerName y participantNames. No inventes.
+            - rationale: 1 frase, formato "X pagó. Y debe(n)." (e.g., \
+              "Yo pagué. Moshe debe.").
 
-            Reglas adicionales:
-            - description: corta (2-6 palabras), descriptiva del gasto.
-            - amount: número exacto si lo dice el usuario; 0 si no menciona.
-            - currency: 3 letras (MXN, USD, EUR). MXN por default.
-            - Si te dan lista de miembros del contexto, usa nombres EXACTOS de la lista \
-              para payerName y participantNames. No inventes nombres.
-            - rationale: frase corta en español resumiendo qué entendiste, en formato \
-              "X pagó. Y debe(n)." (e.g., "Yo pagué. Moshe debe.")
+            VALIDACIÓN ANTES DE RESPONDER:
+            Re-lee tu output. Si el usuario dijo "X me debe", el rationale debe \
+            empezar con "Yo pagué.". Si dice "le debo a X", debe empezar con \
+            "X pagó.". Si no concuerda, corrige antes de entregar.
             """
 
         do {
