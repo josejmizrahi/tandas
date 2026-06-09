@@ -595,13 +595,16 @@ public struct ContextDetailViewV2: View {
     private func dashboardSection(_ widgets: [ContextWidget]) -> some View {
         Section {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(widgets) { widget in
-                        contextWidgetCard(widget)
+                // R.5V.Glass.C2 founder feedback — mismo glass que childrenSection.
+                GlassEffectContainer(spacing: 12) {
+                    HStack(spacing: 12) {
+                        ForEach(widgets) { widget in
+                            contextWidgetCard(widget)
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -647,7 +650,8 @@ public struct ContextDetailViewV2: View {
         }
         .frame(width: 150, height: 130, alignment: .topLeading)
         .padding(14)
-        .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // R.5V.Glass.C2 founder feedback — Liquid Glass como en childrenSection.
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
     }
 
     // MARK: - Próximo evento (R.5V.3A — bloque dedicado, fuera del Dashboard)

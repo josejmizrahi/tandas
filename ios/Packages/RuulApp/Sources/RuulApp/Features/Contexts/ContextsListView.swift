@@ -204,13 +204,15 @@ public struct ContextsListView: View {
         if !favorites.isEmpty {
             Section {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(favorites) { ctx in
-                            contextCard(ctx, isFavorite: true)
+                    GlassEffectContainer(spacing: 12) {
+                        HStack(spacing: 12) {
+                            ForEach(favorites) { ctx in
+                                contextCard(ctx, isFavorite: true)
+                            }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -234,13 +236,15 @@ public struct ContextsListView: View {
         if !recents.isEmpty && recents.count < allRootsCount {
             Section {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(Array(recents)) { ctx in
-                            contextCard(ctx, isFavorite: false)
+                    GlassEffectContainer(spacing: 12) {
+                        HStack(spacing: 12) {
+                            ForEach(Array(recents)) { ctx in
+                                contextCard(ctx, isFavorite: false)
+                            }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -415,7 +419,9 @@ public struct ContextsListView: View {
             }
             .frame(width: 150, height: 140, alignment: .topLeading)
             .padding(14)
-            .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // R.5V.Glass.C2 founder feedback — mismo Liquid Glass interactivo
+            // que los children cards en ContextDetailViewV2.
+            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .matchedTransitionSource(id: ctx.id, in: zoomNamespace)

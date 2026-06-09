@@ -179,13 +179,18 @@ public struct HomeView: View {
         if !resolved.isEmpty {
             Section {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(resolved) { ctx in
-                            continueCard(ctx)
+                    // R.5V.Glass.C2 founder feedback — mismo tratamiento que
+                    // "Espacios dentro de X" en ContextDetailViewV2: container
+                    // de glass para que las cards hagan morph al scroll.
+                    GlassEffectContainer(spacing: 12) {
+                        HStack(spacing: 12) {
+                            ForEach(resolved) { ctx in
+                                continueCard(ctx)
+                            }
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -220,7 +225,9 @@ public struct HomeView: View {
             }
             .frame(width: 160, height: 140, alignment: .topLeading)
             .padding(14)
-            .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // R.5V.Glass.C2 founder feedback — Liquid Glass interactivo igual
+            // que los children cards en ContextDetailViewV2.
+            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
         }
         .buttonStyle(.plain)
     }

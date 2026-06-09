@@ -365,13 +365,16 @@ public struct ResourceDetailViewV2: View {
     private func dashboardSection(_ widgets: [ResourceWidget], descriptor: ResourceDetailDescriptor) -> some View {
         Section {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(widgets) { widget in
-                        widgetCard(widget, descriptor: descriptor)
+                // R.5V.Glass.C2 founder feedback — mismo glass que childrenSection.
+                GlassEffectContainer(spacing: 12) {
+                    HStack(spacing: 12) {
+                        ForEach(widgets) { widget in
+                            widgetCard(widget, descriptor: descriptor)
+                        }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
@@ -423,7 +426,8 @@ public struct ResourceDetailViewV2: View {
         }
         .frame(width: 150, height: 130, alignment: .topLeading)
         .padding(14)
-        .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // R.5V.Glass.C2 founder feedback — Liquid Glass interactivo.
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
     }
 
     private func resourceWidgetDestinationKey(_ key: String) -> String? {
