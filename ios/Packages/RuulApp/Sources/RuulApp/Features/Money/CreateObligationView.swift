@@ -18,6 +18,10 @@ public struct CreateObligationView: View {
     @State private var kind: ObligationKind = .action
     @State private var hasDueDate = false
     @State private var dueDate = Date().addingTimeInterval(86_400 * 3)
+    /// R.6.AI.10 — AI hero state.
+    @State private var suggestionService = ObligationSuggestionService()
+    @State private var aiPromptText = ""
+    @State private var lastConsidered: [RuulAIContext.Considered] = []
 
     public init(
         context: AppContext,
@@ -60,6 +64,11 @@ public struct CreateObligationView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                // R.6.AI.10 — Hero AI sólo cuando no viene pre-rellenado.
+                if preselectedDebtorId == nil {
+                    aiHero
+                }
+
                 Section("Quién se compromete") {
                     if preselectedDebtorId != nil, let debtorId, let member = members.first(where: { $0.actorId == debtorId }) {
                         HStack(spacing: 12) {
@@ -130,6 +139,78 @@ public struct CreateObligationView: View {
 
     private var canSubmit: Bool {
         debtorId != nil && !title.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    // MARK: - R.6.AI.10 — AI Hero
+
+    private var aiHero: some View {
+        RuulAIHeroView(
+            headline: "Pídele a Ruul",
+            subtitle: "Describe el compromiso y lo armamos por ti",
+            placeholder: "Ej: Aaron entrega el reporte el viernes",
+            ctaLabel: "Pensar compromiso",
+            examples: [
+                "Aaron entrega el reporte el viernes",
+                "Maria aprueba el gasto",
+                "Moshe lleva el postre el sábado",
+                "Yo firmo el contrato hoy"
+            ],
+            footerWhenIdle: "Descríbelo con tus palabras o llena los campos abajo.",
+            footerWhenLoaded: "El compromiso ya está armado. Ajústalo si quieres.",
+            prompt: $aiPromptText,
+            considered: $lastConsidered,
+            phase: aiPhase,
+            onSuggest: { await aiSuggest() },
+            onReset: {
+                lastConsidered = []
+                aiPromptText = ""
+                suggestionService.reset()
+            }
+        )
+    }
+
+    private var aiPhase: RuulAIHeroView.HeroPhase {
+        switch suggestionService.phase {
+        case .idle, .loaded: return .idle
+        case .loading:       return .loading
+        case .failed(let m): return .failed(message: m)
+        case .unavailable(let r): return .unavailable(reason: r)
+        }
+    }
+
+    private func aiSuggest() async {
+        // Asegura members antes del apply (si .task aún no completó).
+        if members.isEmpty { await loadMembers() }
+        await suggestionService.suggest(
+            prompt: aiPromptText,
+            rpc: container.rpc,
+            contextId: context.id
+        )
+        if case .loaded(let suggestion, let considered) = suggestionService.phase {
+            applyAISuggestion(suggestion)
+            lastConsidered = considered
+            suggestionService.reset()
+        }
+    }
+
+    private func applyAISuggestion(_ s: ObligationSuggestion) {
+        if !s.title.isEmpty { title = s.title }
+        if !s.detail.isEmpty { descriptionText = s.detail }
+        if !s.debtorName.isEmpty, let match = matchMember(name: s.debtorName) {
+            debtorId = match.actorId
+        }
+        if let mapped = ObligationKind(rawValue: s.kindKey) {
+            kind = mapped
+        }
+        hasDueDate = s.hasDueDate
+    }
+
+    private func matchMember(name: String) -> ContextMember? {
+        let needle = name.lowercased().trimmingCharacters(in: .whitespaces)
+        if let exact = members.first(where: { $0.displayName.lowercased() == needle }) {
+            return exact
+        }
+        return members.first { $0.displayName.lowercased().contains(needle) }
     }
 
     private func loadMembers() async {

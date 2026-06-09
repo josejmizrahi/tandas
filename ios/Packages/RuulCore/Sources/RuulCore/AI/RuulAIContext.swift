@@ -146,6 +146,13 @@ public enum RuulAIContext {
         .members(limit: 20)
     ]
 
+    /// R.6.AI.10 — Obligation necesita miembros (debtor name match) y
+    /// actividad reciente (para entender contexto tipo "el reporte").
+    public static let forObligationSuggestion: [Field] = [
+        .members(limit: 20),
+        .recentActivity(limit: 10)
+    ]
+
     /// Construye el snapshot con un solo RPC (`context_summary`) y formato
     /// compacto. Items vacíos se omiten del prefix (excepto Rules, que se
     /// reporta explícito "ninguna" para anti-duplicación).
