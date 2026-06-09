@@ -38,8 +38,20 @@ public struct ObligationDetailView: View {
             content
                 .navigationTitle("Compromiso")
                 .navigationBarTitleDisplayMode(.inline)
+                // R.5V.X 2026-06-08 founder option B — acciones del compromiso
+                // viven en el "+" Menu del toolbar (Apple Wallet pattern).
+                // El body solo describe; el toolbar acciona.
                 .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
+                    if let detail {
+                        let actions = detail.availableActions.inSection("obligations")
+                            .filter { $0.enabled }
+                        if !actions.isEmpty {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                actionsToolbarMenu(actions: actions)
+                            }
+                        }
+                    }
+                    ToolbarItem(placement: .cancellationAction) {
                         Button("Listo") { dismiss() }
                     }
                 }
@@ -181,17 +193,8 @@ public struct ObligationDetailView: View {
                 }
             }
 
-            // R.2S — botones gateados por backend.
-            let actions = detail.availableActions.inSection("obligations")
-            if !actions.isEmpty {
-                Section {
-                    ForEach(actions) { action in
-                        actionRow(action, detail: detail)
-                    }
-                } header: {
-                    Text("Acciones")
-                }
-            }
+            // R.5V.X 2026-06-08 — acciones movidas al "+" Menu del toolbar
+            // (founder option B, Apple Wallet pattern). El body solo describe.
 
             // R.2S.10 — ¿Por qué este compromiso?
             Section {
@@ -216,38 +219,40 @@ public struct ObligationDetailView: View {
         }
     }
 
+    /// R.5V.X 2026-06-08 — Toolbar Menu con todas las acciones del compromiso.
+    /// Reemplaza el Section "Acciones" inline. Patrón Apple Wallet/Stocks.
     @ViewBuilder
-    private func actionRow(_ action: AvailableAction, detail: ObligationDetail) -> some View {
+    private func actionsToolbarMenu(actions: [AvailableAction]) -> some View {
+        Menu {
+            ForEach(actions) { action in
+                let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
+                let isDangerous = action.actionKey == "cancel" || action.actionKey == "dispute" || action.actionKey == "forgive"
+                Button(role: isDangerous ? .destructive : nil) {
+                    handleObligationAction(action)
+                } label: {
+                    Label(action.label, systemImage: presentation.symbolName)
+                }
+                .disabled(!action.enabled || runner.isRunning)
+            }
+        } label: {
+            Image(systemName: "plus.circle.fill")
+                .font(.title3)
+        }
+        .accessibilityLabel("Acciones del compromiso")
+    }
+
+    /// Dispatch routing — antes vivía en actionRow inline, ahora compartido
+    /// por el toolbar Menu.
+    private func handleObligationAction(_ action: AvailableAction) {
         switch action.actionKey {
         case "mark_completed":
-            Button {
-                completionNotes = ""
-                isShowingCompleteSheet = true
-            } label: {
-                Label(action.label, systemImage: "checkmark.circle.fill")
-            }
-            .disabled(!action.enabled || runner.isRunning)
+            completionNotes = ""
+            isShowingCompleteSheet = true
         case "edit_obligation":
-            Button {
-                isShowingEdit = true
-            } label: {
-                Label(action.label, systemImage: "pencil")
-            }
-            .disabled(!action.enabled || runner.isRunning)
+            isShowingEdit = true
         default:
-            // R.5W.P1 — Button consistente con resto de acciones. Acciones
-            // backend-advertised sin RPC iOS (pay/dispute/forgive/cancel)
-            // muestran alert canónico "Próximamente" en lugar de Label inerte.
-            Button {
-                comingSoonAction = ComingSoonAction(
-                    key: action.actionKey,
-                    label: action.label
-                )
-            } label: {
-                Label(action.label, systemImage: actionSymbol(action.actionKey))
-            }
-            .disabled(!action.enabled || runner.isRunning)
-            .accessibilityHint(action.reason ?? "")
+            // pay/dispute/forgive/cancel — backend-advertised pero sin RPC iOS.
+            comingSoonAction = ComingSoonAction(key: action.actionKey, label: action.label)
         }
     }
 
@@ -358,15 +363,6 @@ public struct ObligationDetailView: View {
         Theme.Status.obligation(status)
     }
 
-    private func actionSymbol(_ key: String) -> String {
-        switch key {
-        case "pay": return "creditcard.fill"
-        case "dispute": return "exclamationmark.bubble"
-        case "forgive": return "heart"
-        case "cancel": return "xmark.circle"
-        default: return "circle"
-        }
-    }
 }
 
 // MARK: - R.5W.P1 Próximamente alert

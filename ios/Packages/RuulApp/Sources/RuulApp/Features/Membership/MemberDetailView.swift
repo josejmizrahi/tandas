@@ -94,57 +94,10 @@ public struct MemberDetailView: View {
                 obligationsSection
             }
 
-            // Acciones de admin
-            if store.canManageMembers(in: context) && !isMe {
-                Section("Administración") {
-                    let assignable = assignableRoles(for: member)
-                    if !assignable.isEmpty {
-                        Menu {
-                            ForEach(assignable, id: \.key) { role in
-                                Button {
-                                    Task {
-                                        await runner.run {
-                                            try await store.assignRole(
-                                                context: context,
-                                                memberActorId: member.actorId,
-                                                roleKey: role.key
-                                            )
-                                        }
-                                    }
-                                } label: {
-                                    Label(role.label, systemImage: role.symbol)
-                                }
-                            }
-                        } label: {
-                            Label("Asignar rol", systemImage: "person.badge.shield.checkmark")
-                        }
-                    }
-
-                    // R.7.F — promover a admin via governance (si action presente)
-                    if memberActions.contains(where: { $0.actionKey == "member.promote" && $0.enabled }) {
-                        Button {
-                            handleMemberAction("member.promote")
-                        } label: {
-                            Label("Promover a admin", systemImage: "person.badge.plus")
-                        }
-                    }
-
-                    // R.7.F — pausar miembro via governance (si action presente)
-                    if memberActions.contains(where: { $0.actionKey == "member.pause" && $0.enabled }) {
-                        Button {
-                            handleMemberAction("member.pause")
-                        } label: {
-                            Label("Pausar miembro", systemImage: "pause.circle")
-                        }
-                    }
-
-                    Button(role: .destructive) {
-                        handleMemberAction("member.remove")
-                    } label: {
-                        Label("Remover del contexto", systemImage: "person.badge.minus")
-                    }
-                }
-            }
+            // R.5V.X 2026-06-08 founder option B — acciones admin del miembro
+            // viven en el ellipsis Menu del toolbar (Apple Wallet pattern).
+            // El body solo describe (Información, Compromisos). El toolbar
+            // acciona (Roles / Compromisos / Gestión: promote/pause/remove).
 
             // Salir (si soy yo)
             if isMe && !context.isPersonal {
@@ -342,13 +295,8 @@ public struct MemberDetailView: View {
                     }
                 }
             }
-            if !isMe {
-                Button {
-                    isShowingCreateObligation = true
-                } label: {
-                    Label("Asignar compromiso", systemImage: "plus.circle.fill")
-                }
-            }
+            // "Asignar compromiso" vive en el toolbar Menu (Section Compromisos)
+            // — founder option B 2026-06-08: el body describe, el toolbar acciona.
         } header: {
             Text("Compromisos")
         } footer: {
