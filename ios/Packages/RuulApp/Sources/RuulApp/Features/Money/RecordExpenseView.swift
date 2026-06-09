@@ -43,6 +43,10 @@ public struct RecordExpenseView: View {
     @State private var suggestionService = ExpenseSuggestionService()
     @State private var aiPromptText = ""
     @State private var lastConsidered: [RuulAIContext.Considered] = []
+    /// R.6.AI.7.fix4 — Fallback de miembros si `store.members` queda vacío
+    /// (e.g., `MoneyStore.load` falló en una de sus dos RPCs paralelas).
+    /// Garantiza que el split + matching de AI tengan contra qué trabajar.
+    @State private var fallbackMembers: [ContextMember] = []
 
     private enum SplitMethod: String, CaseIterable, Identifiable {
         case equal = "Partes iguales"
@@ -65,11 +69,18 @@ public struct RecordExpenseView: View {
     private var myActorId: UUID? { container.currentActorStore.actorId }
     private var amount: Double? { Double(amountText.replacingOccurrences(of: ",", with: "")) }
 
+    /// Source de miembros con fallback: prefer store.members; si está vacío
+    /// (MoneyStore.load pudo haber fallado en su rama paralela), usa
+    /// fallbackMembers que la vista fetchea directo de context_summary.
+    private var resolvedMembers: [ContextMember] {
+        store.members.isEmpty ? fallbackMembers : store.members
+    }
+
     /// F.EVENT.6 — universo de miembros visibles. Cuando hay event scope,
     /// se reduce a los invitados al evento.
     private var visibleMembers: [ContextMember] {
-        guard let scope = eventScope else { return store.members }
-        return store.members.filter { scope.participantActorIds.contains($0.actorId) }
+        guard let scope = eventScope else { return resolvedMembers }
+        return resolvedMembers.filter { scope.participantActorIds.contains($0.actorId) }
     }
 
     /// Miembros que participan en el split (no excluidos).
@@ -175,11 +186,17 @@ public struct RecordExpenseView: View {
                 }
             }
             .task {
-                // R.6.AI.7.fix3 — Quitamos el guard isEmpty: necesitamos
-                // que members siempre esté fresco cuando AI aplica la
-                // sugerencia. Sin members, el split queda en cero filas
-                // y Registrar gasto disabled aunque AI armó todo bien.
+                // R.6.AI.7.fix3 — load store siempre fresco para que AI
+                // apply tenga members contra qué matchear.
                 await store.load(context: context)
+                // R.6.AI.7.fix4 — si store.members quedó vacío (MoneyStore
+                // .load puede fallar en una rama paralela), fetch directo
+                // de context_summary como fallback.
+                if store.members.isEmpty {
+                    if let summary = try? await container.rpc.contextSummary(contextId: context.id) {
+                        fallbackMembers = summary.members
+                    }
+                }
             }
             .actionErrorAlert(runner)
             .alert("Gasto registrado", isPresented: Binding(
@@ -549,12 +566,16 @@ public struct RecordExpenseView: View {
     }
 
     private func suggest() async {
-        // Asegura que store.members esté listo ANTES de aplicar la sugerencia.
-        // Si no, el matching de payerName/participantNames devuelve nil
-        // (no hay contra qué matchear) y el split queda vacío → botón
-        // Registrar disabled aunque el AI haya armado todo bien.
+        // R.6.AI.7.fix4 — Garantiza que tengamos members (store o fallback)
+        // antes de que AI aplique. Sin members, applySuggestion no puede
+        // hacer match de payerName/participantNames y el split queda vacío.
         if store.members.isEmpty {
             await store.load(context: context)
+        }
+        if store.members.isEmpty && fallbackMembers.isEmpty {
+            if let summary = try? await container.rpc.contextSummary(contextId: context.id) {
+                fallbackMembers = summary.members
+            }
         }
         await suggestionService.suggest(
             prompt: aiPromptText,
