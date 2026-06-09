@@ -32,7 +32,6 @@ public struct ContextDetailViewV2: View {
     @State private var store: ContextDescriptorStore
     @State private var hierarchyStore: ContextHierarchyStore
     @State private var selectedTab: Tab = .overview
-    @State private var isShowingClassicSheet = false
     @State private var quickActionsRouter = NoopActionRouter()
     @State private var pushedActionDestination: QuickActionPush?
     @State private var isShowingCreateChild = false
@@ -159,16 +158,6 @@ public struct ContextDetailViewV2: View {
         }
         .sheet(isPresented: $isShowingSettings) {
             ContextSettingsView(context: context, container: container)
-        }
-        .sheet(isPresented: $isShowingClassicSheet) {
-            NavigationStack {
-                ContextHomeView(context: context, container: container)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Cerrar") { isShowingClassicSheet = false }
-                        }
-                    }
-            }
         }
         .modifier(ContextConflictsModifier(
             pendingConflict: $pendingContextConflict,
@@ -1412,8 +1401,7 @@ public struct ContextDetailViewV2: View {
     //   - Trailing "+": Menu con descriptor.actions (create_resource, invite,
     //     record_expense, create_decision, create_event, create_rule, create_child).
     //   - Trailing "ellipsis": Menu con drill-downs específicos del contexto
-    //     (Configuración, Documentos, Reglas, Reservaciones) en vez del legacy
-    //     "Vista clásica" que era debug.
+    //     (Reglas, Configuración).
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
@@ -1431,24 +1419,15 @@ public struct ContextDetailViewV2: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Section("Explorar") {
-                        Button {
-                            pushedActionDestination = .rules
-                        } label: {
-                            Label("Reglas", systemImage: "ruler.fill")
-                        }
-                        Button {
-                            isShowingSettings = true
-                        } label: {
-                            Label("Configuración", systemImage: "gearshape.fill")
-                        }
+                    Button {
+                        pushedActionDestination = .rules
+                    } label: {
+                        Label("Reglas", systemImage: "ruler.fill")
                     }
-                    Section("Avanzado") {
-                        Button {
-                            isShowingClassicSheet = true
-                        } label: {
-                            Label("Vista clásica", systemImage: "rectangle.stack")
-                        }
+                    Button {
+                        isShowingSettings = true
+                    } label: {
+                        Label("Configuración", systemImage: "gearshape.fill")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")

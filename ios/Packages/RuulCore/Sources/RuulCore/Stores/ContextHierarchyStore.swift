@@ -3,7 +3,7 @@ import Observation
 
 /// R.2U.3 — store de jerarquía padre/hijo del contexto actual.
 ///
-/// Vive per-context: cada `ContextHomeView` crea el suyo con `@State` y lo
+/// Vive per-context: cada `ContextDetailViewV2` crea el suyo con `@State` y lo
 /// recarga al cambiar `context.id`. NO se promueve a long-lived: la jerarquía
 /// depende del contexto activo y un cambio invalida todo.
 ///

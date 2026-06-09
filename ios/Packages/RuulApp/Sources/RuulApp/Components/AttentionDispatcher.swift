@@ -9,8 +9,8 @@ import RuulCore
 /// > cualquier attention item presente o futuro."
 ///
 /// Cualquier vista que muestra items de atención (HomeView, ContextDetailViewV2,
-/// ContextHomeView, AllAttentionView, futura R.5Y AttentionCenter, R.6 Rule Engine)
-/// **DEBE** usar este dispatcher. PROHIBIDO duplicar switches por kind en pantallas.
+/// AllAttentionView, futura R.5Y AttentionCenter, R.6 Rule Engine) **DEBE** usar
+/// este dispatcher. PROHIBIDO duplicar switches por kind en pantallas.
 ///
 /// Para agregar un kind nuevo: extender `AttentionDestination`, agregar caso en
 /// `AttentionDispatcher.destination(for:container:)` + en `AttentionDestinationSheet.body`,
@@ -79,8 +79,8 @@ public enum AttentionDispatcher {
 
 // MARK: - Presentation helpers (mata duplicación de symbol/tint/cta entre vistas)
 
-/// R.5Y.A2 — Helpers visuales para listar items. Unifica los tres conjuntos de
-/// funciones duplicadas que vivían en HomeView/ContextDetailViewV2/ContextHomeView.
+/// R.5Y.A2 — Helpers visuales para listar items. Unifica los conjuntos de
+/// funciones de presentación que antes vivían duplicados en cada vista.
 public enum AttentionPresentation {
     public static func symbol(for kind: String) -> String {
         switch kind {

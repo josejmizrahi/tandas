@@ -28,7 +28,6 @@ public struct ContextsListView: View {
     @State private var isShowingCreateContext = false
     @State private var isShowingJoinByCode = false
     @State private var isShowingInvitations = false
-    @State private var settingsContext: AppContext?
     @State private var prefilledInviteCode: String?
     @State private var searchText = ""
     /// R.5V.Zoom — Namespace para `matchedTransitionSource` + `.navigationTransition(.zoom)`.
@@ -88,9 +87,6 @@ public struct ContextsListView: View {
         .sheet(isPresented: $isShowingInvitations) {
             PendingInvitationsView(container: container)
         }
-        .sheet(item: $settingsContext) { ctx in
-            ContextSettingsView(context: ctx, container: container)
-        }
     }
 
     // MARK: - Dashboard (Apple-native List + Section + searchable)
@@ -136,9 +132,6 @@ public struct ContextsListView: View {
             ContextHomeContainer(
                 context: context,
                 container: container,
-                onOpenSettings: {
-                    if !context.isPersonal { settingsContext = context }
-                },
                 onSwitchContext: { newCtx in
                     container.contextStore.switchTo(newCtx)
                     Task { await container.contextPreferencesStore.recordVisit(newCtx.id) }
@@ -480,12 +473,13 @@ public struct ContextsListView: View {
 private struct ContextHomeContainer: View {
     let context: AppContext
     let container: DependencyContainer
-    let onOpenSettings: () -> Void
     let onSwitchContext: (AppContext) -> Void
 
     @State private var isShowingSwitcher = false
 
     var body: some View {
+        // Configuración vive dentro del Menu ellipsis de ContextDetailViewV2
+        // (sección "Configuración"). NO duplicar con un gear adicional aquí.
         ContextDetailViewV2(contextId: context.id, context: context, container: container)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -505,16 +499,6 @@ private struct ContextHomeContainer: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Cambiar espacio. Actual: \(context.displayName)")
-                }
-                if !context.isPersonal {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            onOpenSettings()
-                        } label: {
-                            Image(systemName: "gearshape")
-                        }
-                        .accessibilityLabel("Configuración del espacio")
-                    }
                 }
             }
             .sheet(isPresented: $isShowingSwitcher) {

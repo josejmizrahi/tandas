@@ -9,7 +9,7 @@ import RuulCore
 ///    antes de mostrar contenido.
 /// 3. **Tab shell** (`MainTabShell`, F.NAV.1): tabs Home/Contextos/Crear/
 ///    Actividad/Yo. La tab Contextos contiene `ContextsListView` con
-///    NavigationStack propio que pushea a `ContextHomeView` por contexto.
+///    NavigationStack propio que pushea a `ContextDetailViewV2` por contexto.
 public struct RuulAppShell: View {
     @AppStorage(AppearancePreference.storageKey) private var appearanceRaw: String = AppearancePreference.system.rawValue
     @State private var container: DependencyContainer

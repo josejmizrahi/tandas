@@ -3,7 +3,7 @@ import RuulCore
 
 /// R.2U.3 — vista del árbol completo del contexto raíz dado. Sólo estructura
 /// (nombres + tipos). NO muestra members/roles/rights — esos viven en
-/// `ContextHomeView` de cada nodo.
+/// `ContextDetailViewV2` de cada nodo.
 ///
 /// Tap en un nodo accesible → `contextStore.switchTo` y pop. Subárboles
 /// restringidos (`restricted=true`) se renderizan inertes.
