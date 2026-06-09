@@ -546,12 +546,15 @@ public struct ContextHomeView: View {
                     .background(Theme.Surface.card, in: Theme.cardShape())
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(resources) { resource in
-                            resourceCarouselCard(resource)
+                    // R.5V.Glass polish — mismo container que childrenSection.
+                    GlassEffectContainer(spacing: 10) {
+                        HStack(spacing: 10) {
+                            ForEach(resources) { resource in
+                                resourceCarouselCard(resource)
+                            }
                         }
+                        .padding(.bottom, 4)
                     }
-                    .padding(.bottom, 4)
                 }
             }
         }
@@ -585,11 +588,9 @@ public struct ContextHomeView: View {
             }
             .frame(width: 140, height: 140, alignment: .topLeading)
             .padding(Theme.Spacing.md)
-            .background(Theme.Surface.card, in: Theme.cardShape())
-            .overlay(
-                Theme.cardShape()
-                    .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
-            )
+            // R.5V.Glass polish — Liquid Glass interactivo (sustituye solid
+            // card + stroke overlay).
+            .glassEffect(.regular.interactive(), in: Theme.cardShape())
         }
         .buttonStyle(.plain)
     }
@@ -894,12 +895,15 @@ public struct ContextHomeView: View {
                         }
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(children) { child in
-                                childCarouselCard(child)
+                        // R.5V.Glass polish — container para morph entre hijos.
+                        GlassEffectContainer(spacing: 10) {
+                            HStack(spacing: 10) {
+                                ForEach(children) { child in
+                                    childCarouselCard(child)
+                                }
                             }
+                            .padding(.bottom, 4)
                         }
-                        .padding(.bottom, 4)
                     }
                 }
             }
@@ -946,11 +950,8 @@ public struct ContextHomeView: View {
         }
         .frame(width: 140, height: 140, alignment: .topLeading)
         .padding(12)
-        .background(Theme.Surface.card, in: Theme.cardShape())
-        .overlay(
-            Theme.cardShape()
-                .strokeBorder(Color.secondary.opacity(0.10), lineWidth: 0.5)
-        )
+        // R.5V.Glass polish — Liquid Glass interactivo.
+        .glassEffect(.regular.interactive(), in: Theme.cardShape())
     }
 
     private func subtypeLabel(_ subtype: String) -> String {
