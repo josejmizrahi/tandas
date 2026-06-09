@@ -154,6 +154,22 @@ public enum AttentionPresentation {
         }
     }
 
+    /// R.5Z.fix.CC.2.3 — `true` si el kind viene de `rule_attention_items`
+    /// (tabla con status mutable). Los demás kinds (obligation_pay/decision_vote/
+    /// settlement_open/etc.) son derivados runtime de las tablas operacionales y
+    /// se cierran cuando la acción subyacente se completa — no admiten dismiss
+    /// manual.
+    public static func isDismissable(kind: String) -> Bool {
+        switch kind {
+        case "rule_violation",
+             "rule_recommendation",
+             "policy_violation":
+            return true
+        default:
+            return false
+        }
+    }
+
     public static func ctaLabel(for kind: String) -> String {
         switch kind {
         case "reservation_conflict":     return "Resolver conflicto"

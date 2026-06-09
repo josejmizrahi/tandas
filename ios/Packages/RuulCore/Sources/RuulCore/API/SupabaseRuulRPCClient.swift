@@ -2087,6 +2087,14 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("attention_inbox", params: Empty())
     }
 
+    public func dismissAttentionItem(itemId: UUID) async throws {
+        struct Params: Encodable, Sendable {
+            let pAttentionItemId: UUID
+            enum CodingKeys: String, CodingKey { case pAttentionItemId = "p_attention_item_id" }
+        }
+        try await callVoid("dismiss_attention_item", params: Params(pAttentionItemId: itemId))
+    }
+
     public func markContextFavorite(contextActorId: UUID, isFavorite: Bool) async throws {
         struct Params: Encodable, Sendable {
             let pContextActorId: UUID

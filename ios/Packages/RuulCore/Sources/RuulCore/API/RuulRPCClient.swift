@@ -451,6 +451,14 @@ public protocol RuulRPCClient: Sendable {
     /// `attention_inbox()` — items cross-context que requieren acción del caller
     /// (conflictos / votos / pagos / invitaciones). Max 5, sort desc.
     func attentionInbox() async throws -> [AttentionItem]
+    /// `dismiss_attention_item(p_attention_item_id)` — R.5Z.fix.CC.2.3.
+    /// Marca un `rule_attention_item` como descartado (status='dismissed').
+    /// Solo dismissable para items en la tabla `rule_attention_items`
+    /// (rule_violation, rule_recommendation, policy_violation). Otros kinds
+    /// (obligation_pay/decision_vote/settlement_open/etc.) son derivados y
+    /// se cierran cuando la acción subyacente se completa.
+    /// Auth: el subject del item o un admin del contexto.
+    func dismissAttentionItem(itemId: UUID) async throws
     /// `mark_context_favorite(ctx, fav)` — toggle favorito (member-only).
     func markContextFavorite(contextActorId: UUID, isFavorite: Bool) async throws
     /// `mark_context_visited(ctx)` — registra visita para "Continuar" en Home.

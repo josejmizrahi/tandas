@@ -4317,6 +4317,13 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     // MARK: - Navigation shell (F.NAV.0)
 
+    public func dismissAttentionItem(itemId: UUID) async throws {
+        try throwIfNeeded()
+        // Mock: attention items son derivados runtime de obligations/decisions/etc.
+        // No hay tabla en memoria para mutar. Como el Mock genera el inbox dinámicamente,
+        // basta con un no-op para satisfacer el protocol — los tests reales viven en backend.
+    }
+
     public func attentionInbox() async throws -> [AttentionItem] {
         try throwIfNeeded()
         var items: [AttentionItem] = []

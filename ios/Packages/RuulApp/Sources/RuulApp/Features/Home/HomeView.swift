@@ -126,6 +126,22 @@ public struct HomeView: View {
                     } label: {
                         attentionRow(item)
                     }
+                    // R.5Z.fix.CC.2.3 (founder 2026-06-09 "y como lo doy por leido")
+                    // — Apple Mail style: swipe trailing → Marcar leído. Solo
+                    // visible para kinds dismissables (rule_attention_items table).
+                    // Items derivados (obligation_pay/decision_vote/etc.) se
+                    // cierran cuando completas la acción subyacente.
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        if AttentionPresentation.isDismissable(kind: item.kind) {
+                            Button(role: .destructive) {
+                                Task {
+                                    await container.attentionInboxStore.dismiss(itemId: item.subjectId)
+                                }
+                            } label: {
+                                Label("Marcar leído", systemImage: "checkmark.circle.fill")
+                            }
+                        }
+                    }
                 }
                 if items.count > 3 {
                     Button {

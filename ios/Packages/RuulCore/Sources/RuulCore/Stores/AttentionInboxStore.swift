@@ -25,6 +25,20 @@ public final class AttentionInboxStore {
         }
     }
 
+    /// R.5Z.fix.CC.2.3 — descarta un attention item (status='dismissed' en
+    /// backend). Optimistic UI: remueve el item local primero, refresca
+    /// después. Si el RPC falla, recarga para resincronizar.
+    public func dismiss(itemId: UUID) async {
+        items.removeAll { $0.subjectId == itemId }
+        do {
+            try await rpc.dismissAttentionItem(itemId: itemId)
+        } catch {
+            // Resincroniza si falló (ya logueó el error via runner si el
+            // caller lo wrapeó; AttentionInboxStore no tiene runner).
+            await load()
+        }
+    }
+
     public func reset() {
         items = []
         phase = .idle
