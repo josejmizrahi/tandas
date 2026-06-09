@@ -186,17 +186,16 @@ public struct RecordExpenseView: View {
                 }
             }
             .task {
-                // R.6.AI.7.fix3 — load store siempre fresco para que AI
-                // apply tenga members contra qué matchear.
-                await store.load(context: context)
-                // R.6.AI.7.fix4 — si store.members quedó vacío (MoneyStore
-                // .load puede fallar en una rama paralela), fetch directo
-                // de context_summary como fallback.
-                if store.members.isEmpty {
-                    if let summary = try? await container.rpc.contextSummary(contextId: context.id) {
-                        fallbackMembers = summary.members
-                    }
+                // R.6.AI.7.fix5 — Fetch directo de context_summary PRIMERO,
+                // independiente de MoneyStore. Garantiza que members estén
+                // disponibles aunque MoneyStore.load rompa o tarde. El
+                // store se carga en paralelo para traer obligations y demás.
+                async let summaryTask = container.rpc.contextSummary(contextId: context.id)
+                async let storeLoad: () = store.load(context: context)
+                if let summary = try? await summaryTask {
+                    fallbackMembers = summary.members
                 }
+                _ = await storeLoad
             }
             .actionErrorAlert(runner)
             .alert("Gasto registrado", isPresented: Binding(

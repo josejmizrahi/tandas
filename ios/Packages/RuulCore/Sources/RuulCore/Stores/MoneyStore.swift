@@ -52,20 +52,32 @@ public final class MoneyStore {
 
     public func load(context: AppContext) async {
         if obligations.isEmpty { phase = .loading }
+        // R.6.AI.7.fix5 — cargas independientes para que un RPC roto no
+        // borre el otro. Antes corrían en `async let` paralelo con un
+        // único catch: si listObligations o contextSummary throweaba, el
+        // otro se perdía y `members` quedaba vacío (rompía RecordExpense
+        // post-AI: sin members no hay split ni Picker de "Quién pagó").
+        var summaryLoaded = false
         do {
-            async let obligationsTask = rpc.listObligations(contextId: context.id)
-            async let summaryTask = rpc.contextSummary(contextId: context.id)
-            let (loaded, summary) = try await (obligationsTask, summaryTask)
-            obligations = loaded
+            let summary = try await rpc.contextSummary(contextId: context.id)
             members = summary.members
             myPermissions = summary.myPermissions
             contextDisplayName = summary.context.displayName
             availableActions = summary.availableActions
             recentActivity = summary.recentActivity
-            phase = .loaded
+            summaryLoaded = true
         } catch {
-            phase = .failed(message: UserFacingError.from(error).message)
+            // Non-fatal — el bloque de obligations puede seguir.
         }
+        do {
+            obligations = try await rpc.listObligations(contextId: context.id)
+        } catch {
+            if !summaryLoaded {
+                phase = .failed(message: UserFacingError.from(error).message)
+                return
+            }
+        }
+        phase = .loaded
     }
 
     public func displayName(for actorId: UUID?, contextId: UUID? = nil) -> String {
