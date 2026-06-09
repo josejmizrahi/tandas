@@ -448,7 +448,24 @@ public protocol RuulRPCClient: Sendable {
     /// `list_recent_contexts(limit)` — contextos visitados recientemente.
     func listRecentContexts(limit: Int) async throws -> [ContextPreference]
 
-    // MARK: - Governance (R.5)
+    // MARK: - Governance (R.5 + R.7)
+
+    /// R.7.D — `member_available_actions(p_context_actor_id, p_member_actor_id, p_actor_id)`.
+    /// Devuelve hasta 3 actions (`member.remove`, `member.pause`, `member.promote`) con
+    /// `mode` decorado por `_aa_apply_governance_mode`. Reglas: `member.remove` no aparece
+    /// si target == caller; `member.promote` no aparece si target ya es admin/founder/owner.
+    func memberAvailableActions(
+        contextId: UUID,
+        memberActorId: UUID,
+        actorId: UUID
+    ) async throws -> [AvailableAction]
+
+    /// R.7.B — `request_governance_action(...)`. Entrypoint canónico R.7. Resuelve
+    /// aliases, calcula `idempotency_key` sha1 si `clientId` no es nil, advisory lock
+    /// race-safe, delega a `request_governed_action()` con canonical key. Si el catálogo
+    /// + policy dictan `requires_decision=true`, devuelve `decisionId` para que iOS
+    /// pushee `DecisionDetailView`.
+    func requestGovernanceAction(_ input: RequestGovernanceActionInput) async throws -> RequestGovernanceActionResult
 
     /// `list_governance_policies(p_context_actor_id)` — políticas del contexto.
     /// Member-only en backend.
@@ -1149,5 +1166,83 @@ public struct RecordGameResultInput: Sendable, Equatable {
         self.amount = amount
         self.currency = currency
         self.clientId = clientId
+    }
+}
+
+// MARK: - R.7 Governance Orchestration inputs/results
+
+/// Input de `request_governance_action` (R.7.B).
+/// `clientId` opcional: si se provee, el backend calcula `idempotency_key` sha1
+/// para que retry desde iOS no duplique decisions.
+public struct RequestGovernanceActionInput: Sendable, Equatable {
+    public var contextActorId: UUID
+    public var actionKey: String
+    public var targetType: String?
+    public var targetId: UUID?
+    public var payload: JSONValue
+    public var title: String?
+    public var closesAt: Date?
+    public var clientId: String?
+
+    public init(
+        contextActorId: UUID,
+        actionKey: String,
+        targetType: String? = nil,
+        targetId: UUID? = nil,
+        payload: JSONValue = .object([:]),
+        title: String? = nil,
+        closesAt: Date? = nil,
+        clientId: String? = nil
+    ) {
+        self.contextActorId = contextActorId
+        self.actionKey = actionKey
+        self.targetType = targetType
+        self.targetId = targetId
+        self.payload = payload
+        self.title = title
+        self.closesAt = closesAt
+        self.clientId = clientId
+    }
+}
+
+/// Resultado de `request_governance_action` (R.7.B).
+public struct RequestGovernanceActionResult: Decodable, Sendable, Equatable {
+    public let governanceActionId: UUID
+    public let decisionId: UUID?
+    public let actionKey: String
+    public let requiresDecision: Bool
+    /// R.7.B — `true` si el backend devolvió un row pre-existente por idempotency
+    /// (mismo `clientId` + `actionKey` + `targetId` + `contextActorId`).
+    public let idempotentReplay: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case governanceActionId = "governance_action_id"
+        case decisionId = "decision_id"
+        case actionKey = "action_key"
+        case requiresDecision = "requires_decision"
+        case idempotentReplay = "idempotent_replay"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.governanceActionId = try c.decode(UUID.self, forKey: .governanceActionId)
+        self.decisionId = try c.decodeIfPresent(UUID.self, forKey: .decisionId)
+        self.actionKey = try c.decode(String.self, forKey: .actionKey)
+        self.requiresDecision = try c.decodeIfPresent(Bool.self, forKey: .requiresDecision) ?? false
+        self.idempotentReplay = try c.decodeIfPresent(Bool.self, forKey: .idempotentReplay) ?? false
+    }
+
+    public init(
+        governanceActionId: UUID,
+        decisionId: UUID? = nil,
+        actionKey: String,
+        requiresDecision: Bool = false,
+        idempotentReplay: Bool = false
+    ) {
+        self.governanceActionId = governanceActionId
+        self.decisionId = decisionId
+        self.actionKey = actionKey
+        self.requiresDecision = requiresDecision
+        self.idempotentReplay = idempotentReplay
     }
 }

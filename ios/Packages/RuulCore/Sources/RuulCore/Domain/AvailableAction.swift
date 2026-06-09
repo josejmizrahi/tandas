@@ -1,8 +1,21 @@
 import Foundation
 
+/// R.7.D — Cómo el backend espera que el cliente ejecute la acción.
+/// `direct`: invocar el RPC canónico directo (comportamiento default histórico).
+/// `requestDecision`: la acción requiere aprobación colectiva — el cliente debe
+/// abrir el flow de governance (sheet "Esta acción requiere aprobación" →
+/// `request_governance_action` → push DecisionDetailView).
+public enum ActionMode: String, Codable, Sendable, Hashable {
+    case direct
+    case requestDecision = "request_decision"
+}
+
 /// R.2S-FIX — forma canónica de una acción disponible para un actor en
 /// cualquier dominio (resource / decision / reservation / obligation).
 /// El backend la calcula vía `_aa(...)` y la inyecta en cada `*_detail` RPC.
+/// R.7.D — opcionalmente trae `mode` cuando el descriptor pasó por
+/// `_aa_apply_governance_mode` (member/context descriptors). `mode == nil`
+/// significa `direct` (default histórico).
 public struct AvailableAction: Codable, Sendable, Equatable, Hashable, Identifiable {
     public let actionKey: String
     public let label: String
@@ -14,6 +27,8 @@ public struct AvailableAction: Codable, Sendable, Equatable, Hashable, Identifia
     public let reason: String?
     public let requiredRights: [String]
     public let requiredCapabilities: [String]
+    /// R.7.D — `nil` cuando el descriptor no aplica governance mode (default `direct`).
+    public let mode: ActionMode?
 
     enum CodingKeys: String, CodingKey {
         case actionKey = "action_key"
@@ -23,6 +38,7 @@ public struct AvailableAction: Codable, Sendable, Equatable, Hashable, Identifia
         case reason
         case requiredRights = "required_rights"
         case requiredCapabilities = "required_capabilities"
+        case mode
     }
 
     public init(from decoder: Decoder) throws {
@@ -34,6 +50,7 @@ public struct AvailableAction: Codable, Sendable, Equatable, Hashable, Identifia
         self.reason = try c.decodeIfPresent(String.self, forKey: .reason)
         self.requiredRights = try c.decodeIfPresent([String].self, forKey: .requiredRights) ?? []
         self.requiredCapabilities = try c.decodeIfPresent([String].self, forKey: .requiredCapabilities) ?? []
+        self.mode = try c.decodeIfPresent(ActionMode.self, forKey: .mode)
     }
 
     public init(
@@ -43,7 +60,8 @@ public struct AvailableAction: Codable, Sendable, Equatable, Hashable, Identifia
         enabled: Bool = true,
         reason: String? = nil,
         requiredRights: [String] = [],
-        requiredCapabilities: [String] = []
+        requiredCapabilities: [String] = [],
+        mode: ActionMode? = nil
     ) {
         self.actionKey = actionKey
         self.label = label
@@ -52,9 +70,13 @@ public struct AvailableAction: Codable, Sendable, Equatable, Hashable, Identifia
         self.reason = reason
         self.requiredRights = requiredRights
         self.requiredCapabilities = requiredCapabilities
+        self.mode = mode
     }
 
     public var id: String { actionKey }
+
+    /// R.7.D — `true` si la acción requiere aprobación colectiva.
+    public var requiresDecision: Bool { mode == .requestDecision }
 }
 
 extension Array where Element == AvailableAction {

@@ -19,6 +19,14 @@ public struct MemberDetailView: View {
     @State private var memberObligations: [Obligation] = []
     @State private var selectedObligationId: UUID?
     @State private var isShowingCreateObligation = false
+    /// R.7.E — actions canonical desde `member_available_actions` con `mode` decorado.
+    /// Si `member.remove` viene con `mode=request_decision`, el flow de remove abre el
+    /// sheet de governance en vez de invocar `remove_member` directo.
+    @State private var memberActions: [AvailableAction] = []
+    /// R.7.E — sheet "Esta acción requiere aprobación" + push DecisionDetailView.
+    @State private var isShowingGovernanceSheet = false
+    @State private var governanceClientId: String = UUID().uuidString
+    @State private var pendingDecisionId: UUID?
 
     public init(member: ContextMember, context: AppContext, store: MembersStore, myActorId: UUID?, container: DependencyContainer? = nil) {
         self.member = member
@@ -110,7 +118,7 @@ public struct MemberDetailView: View {
                     }
 
                     Button(role: .destructive) {
-                        isConfirmingRemove = true
+                        handleRemoveTap()
                     } label: {
                         Label("Remover del contexto", systemImage: "person.badge.minus")
                     }
@@ -168,7 +176,7 @@ public struct MemberDetailView: View {
                         }
                         Section("Gestión") {
                             Button(role: .destructive) {
-                                isConfirmingRemove = true
+                                handleRemoveTap()
                             } label: {
                                 Label("Remover del contexto", systemImage: "person.badge.minus")
                             }
@@ -182,6 +190,7 @@ public struct MemberDetailView: View {
         }
         .task {
             await loadObligations()
+            await loadMemberActions()
         }
         .sheet(item: Binding(get: { selectedObligationId.map { ObligationIdSheetWrapper(id: $0) } },
                               set: { selectedObligationId = $0?.id })) { wrapper in
@@ -213,6 +222,30 @@ public struct MemberDetailView: View {
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text("Perderá acceso a todo el contexto: eventos, recursos, dinero y actividad.")
+        }
+        // R.7.E — Governance sheet cuando member.remove requiere aprobación colectiva.
+        .confirmationDialog(
+            "Esta acción requiere aprobación",
+            isPresented: $isShowingGovernanceSheet,
+            titleVisibility: .visible
+        ) {
+            Button("Crear decisión") {
+                Task { await requestGovernanceRemoval() }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Remover a \(member.displayName) requiere votación colectiva. Se creará una decisión para que los miembros aprueben.")
+        }
+        // R.7.E — push DecisionDetailView cuando request_governance_action devuelve decision_id.
+        .sheet(item: Binding(
+            get: { pendingDecisionId.map { DecisionIdSheetWrapper(id: $0) } },
+            set: { pendingDecisionId = $0?.id }
+        )) { wrapper in
+            if let container {
+                NavigationStack {
+                    DecisionDetailView(decisionId: wrapper.id, context: context, container: container)
+                }
+            }
         }
         .confirmationDialog(
             "¿Salir de \(context.displayName)?",
@@ -295,6 +328,66 @@ public struct MemberDetailView: View {
         }
     }
 
+    // MARK: - R.7.E governance
+
+    /// Tap del botón "Remover del contexto". Branch:
+    /// - Si `member_available_actions` reporta `member.remove` con `mode=request_decision`
+    ///   → abre el sheet de governance (catalog default o policy del contexto lo decidió).
+    /// - En caso contrario (mode=direct, sin action, sin container) → flow legacy de
+    ///   remove_member directo con confirmationDialog destructive.
+    private func handleRemoveTap() {
+        let removeAction = memberActions.first { $0.actionKey == "member.remove" }
+        if removeAction?.requiresDecision == true && container != nil {
+            // Reset clientId por cada tap fresco (cancelar + reintentar = nueva request).
+            governanceClientId = UUID().uuidString
+            isShowingGovernanceSheet = true
+        } else {
+            isConfirmingRemove = true
+        }
+    }
+
+    /// Carga `member_available_actions` para decidir si el remove pasa por governance.
+    /// Fail-silent: si falla, queda el array vacío y handleRemoveTap usa el flow legacy.
+    private func loadMemberActions() async {
+        guard let container, !context.isPersonal, let myId = myActorId else {
+            memberActions = []
+            return
+        }
+        do {
+            memberActions = try await container.rpc.memberAvailableActions(
+                contextId: context.id,
+                memberActorId: member.actorId,
+                actorId: myId
+            )
+        } catch {
+            memberActions = []
+        }
+    }
+
+    /// Invoca `request_governance_action` con clientId para idempotency.
+    /// Devuelve `decisionId` que dispara el sheet de DecisionDetailView.
+    private func requestGovernanceRemoval() async {
+        guard let container else { return }
+        let input = RequestGovernanceActionInput(
+            contextActorId: context.id,
+            actionKey: "member.remove",
+            targetType: "actor",
+            targetId: member.actorId,
+            payload: .object([:]),
+            title: "Remover a \(member.displayName)",
+            closesAt: nil,
+            clientId: governanceClientId
+        )
+        var capturedDecisionId: UUID?
+        let success = await runner.run {
+            let result = try await container.rpc.requestGovernanceAction(input)
+            capturedDecisionId = result.decisionId
+        }
+        if success, let decisionId = capturedDecisionId {
+            pendingDecisionId = decisionId
+        }
+    }
+
     private func loadObligations() async {
         guard let container, !context.isPersonal else {
             memberObligations = []
@@ -348,6 +441,11 @@ public struct MemberDetailView: View {
 
 /// Wrapper Identifiable para `.sheet(item:)`.
 private struct ObligationIdSheetWrapper: Identifiable {
+    let id: UUID
+}
+
+/// R.7.E — wrapper Identifiable para presentar `DecisionDetailView` via `.sheet(item:)`.
+private struct DecisionIdSheetWrapper: Identifiable {
     let id: UUID
 }
 

@@ -53,6 +53,9 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var mockGovernancePolicies: [UUID: [GovernancePolicy]] = [:]
     /// R.5 — delegaciones de voto por contexto. Activas e históricas.
     var mockVoteDelegations: [UUID: [VoteDelegation]] = [:]
+    /// R.7 — cache de idempotency replays para `request_governance_action`
+    /// (clientId → resultado). Sin clientId no se cachea.
+    var mockGovernanceReplayCache: [String: RequestGovernanceActionResult] = [:]
 
     /// Error a lanzar en la siguiente llamada (para probar manejo de errores).
     public var nextError: RuulError?
@@ -4355,7 +4358,106 @@ public actor MockRuulRPCClient: RuulRPCClient {
             .map { $0 }
     }
 
-    // MARK: - Governance (R.5)
+    // MARK: - Governance (R.5 + R.7)
+
+    /// R.7.D — Mock: devuelve hasta 3 acciones canonical con `mode=request_decision`.
+    /// Reglas: self-remove omitido; promote omitido si role admin presente.
+    public func memberAvailableActions(
+        contextId: UUID,
+        memberActorId: UUID,
+        actorId: UUID
+    ) async throws -> [AvailableAction] {
+        try throwIfNeeded()
+        let isSelf = (memberActorId == actorId)
+        let members = memberships[contextId] ?? []
+        let target = members.first { $0.actorId == memberActorId }
+        // Demo world: si hay membership type, consideramos active. Sin target no
+        // generamos acciones (caller no es member del contexto demo).
+        let isMemberActive = target?.membershipType != nil
+        let isMemberAdmin = (target?.roles.contains("admin") ?? false)
+            || (target?.roles.contains("founder") ?? false)
+            || (target?.roles.contains("owner") ?? false)
+        let canManage = permissions[contextId]?.contains("members.manage") ?? false
+        let reason = canManage ? "Puedes gestionar a este miembro" : "Requiere permiso members.manage"
+
+        var actions: [AvailableAction] = []
+        if !isSelf && isMemberActive {
+            actions.append(AvailableAction(
+                actionKey: "member.remove",
+                label: "Remover del contexto",
+                section: "membership",
+                enabled: canManage,
+                reason: reason,
+                mode: .requestDecision
+            ))
+        }
+        if isMemberActive {
+            actions.append(AvailableAction(
+                actionKey: "member.pause",
+                label: "Pausar miembro",
+                section: "membership",
+                enabled: canManage,
+                reason: reason,
+                mode: .requestDecision
+            ))
+        }
+        if isMemberActive && !isMemberAdmin {
+            actions.append(AvailableAction(
+                actionKey: "member.promote",
+                label: "Promover a admin",
+                section: "membership",
+                enabled: canManage,
+                reason: reason,
+                mode: .requestDecision
+            ))
+        }
+        return actions
+    }
+
+    /// R.7.B — Mock: crea una decision sintética + governance_action_id sintético.
+    /// Idempotency replay: mismo `clientId` devuelve el mismo result.
+    public func requestGovernanceAction(_ input: RequestGovernanceActionInput) async throws -> RequestGovernanceActionResult {
+        try throwIfNeeded()
+        if let clientId = input.clientId,
+           let cached = mockGovernanceReplayCache[clientId] {
+            return RequestGovernanceActionResult(
+                governanceActionId: cached.governanceActionId,
+                decisionId: cached.decisionId,
+                actionKey: cached.actionKey,
+                requiresDecision: cached.requiresDecision,
+                idempotentReplay: true
+            )
+        }
+        let gaId = UUID()
+        let decId = UUID()
+        let fresh = RequestGovernanceActionResult(
+            governanceActionId: gaId,
+            decisionId: decId,
+            actionKey: input.actionKey,
+            requiresDecision: true,
+            idempotentReplay: false
+        )
+        if let clientId = input.clientId {
+            mockGovernanceReplayCache[clientId] = fresh
+        }
+        // Inyecta una Decision sintética para que DecisionDetailView abra sin error.
+        let title = input.title ?? "Acción de gobernanza: \(input.actionKey)"
+        let decision = Decision(
+            id: decId,
+            contextActorId: input.contextActorId,
+            decisionType: "governance",
+            title: title,
+            description: "Acción propuesta vía Governance Engine.",
+            status: "open",
+            votingModel: "yes_no_abstain",
+            createdByActorId: me.id,
+            closesAt: input.closesAt,
+            payload: input.payload,
+            createdAt: Date()
+        )
+        decisions[decId] = decision
+        return fresh
+    }
 
     public func listGovernancePolicies(contextActorId: UUID) async throws -> [GovernancePolicy] {
         try throwIfNeeded()

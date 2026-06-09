@@ -2089,7 +2089,62 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("list_recent_contexts", params: Params(pLimit: limit))
     }
 
-    // MARK: - Governance (R.5)
+    // MARK: - Governance (R.5 + R.7)
+
+    public func memberAvailableActions(
+        contextId: UUID,
+        memberActorId: UUID,
+        actorId: UUID
+    ) async throws -> [AvailableAction] {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pMemberActorId: UUID
+            let pActorId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pMemberActorId = "p_member_actor_id"
+                case pActorId = "p_actor_id"
+            }
+        }
+        return try await call("member_available_actions", params: Params(
+            pContextActorId: contextId,
+            pMemberActorId: memberActorId,
+            pActorId: actorId
+        ))
+    }
+
+    public func requestGovernanceAction(_ input: RequestGovernanceActionInput) async throws -> RequestGovernanceActionResult {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pActionKey: String
+            let pTargetType: String?
+            let pTargetId: UUID?
+            let pPayload: JSONValue
+            let pTitle: String?
+            let pClosesAt: Date?
+            let pClientId: String?
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pActionKey = "p_action_key"
+                case pTargetType = "p_target_type"
+                case pTargetId = "p_target_id"
+                case pPayload = "p_payload"
+                case pTitle = "p_title"
+                case pClosesAt = "p_closes_at"
+                case pClientId = "p_client_id"
+            }
+        }
+        return try await call("request_governance_action", params: Params(
+            pContextActorId: input.contextActorId,
+            pActionKey: input.actionKey,
+            pTargetType: input.targetType,
+            pTargetId: input.targetId,
+            pPayload: input.payload,
+            pTitle: input.title,
+            pClosesAt: input.closesAt,
+            pClientId: input.clientId
+        ))
+    }
 
     public func listGovernancePolicies(contextActorId: UUID) async throws -> [GovernancePolicy] {
         try await call("list_governance_policies", params: ContextIdParams(contextId: contextActorId))
