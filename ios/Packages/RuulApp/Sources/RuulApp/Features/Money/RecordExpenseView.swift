@@ -39,6 +39,10 @@ public struct RecordExpenseView: View {
     @State private var customAmounts: [UUID: String] = [:]
     @State private var runner = ActionRunner()
     @State private var resultNotice: String?
+    /// R.6.AI.7 — AI hero state.
+    @State private var suggestionService = ExpenseSuggestionService()
+    @State private var aiPromptText = ""
+    @State private var lastConsidered: [RuulAIContext.Considered] = []
 
     private enum SplitMethod: String, CaseIterable, Identifiable {
         case equal = "Partes iguales"
@@ -76,6 +80,8 @@ public struct RecordExpenseView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                aiHeroSection
+
                 Section("Gasto") {
                     TextField("¿Qué se pagó? (Cena, súper…)", text: $description)
                     HStack {
@@ -311,6 +317,252 @@ public struct RecordExpenseView: View {
             return store.displayName(for: paidByActorId)
         }
         return "ti"
+    }
+
+    // MARK: - R.6.AI.7 — AI Hero (Apple Intelligence)
+    //
+    // Pídele a Ruul que arme el gasto en lenguaje natural: "Cena 500 yo
+    // pagué" → description + amount + payer + currency llenos. Mismo
+    // patrón pre-aggregation que R.6.AI.5/6: 1 RPC para fetch members,
+    // prefix compacto, guided generation. Auto-apply al recibir.
+
+    @ViewBuilder
+    private var aiHeroSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                heroHeadline
+                heroPromptField
+                examplePromptsRow
+                aiActionRow
+                if !lastConsidered.isEmpty, case .idle = suggestionService.phase {
+                    consideredSection
+                }
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+            .listRowSeparator(.hidden)
+        } footer: {
+            if !suggestionService.isAvailable,
+               case .unavailable(let reason) = suggestionService.phase {
+                Label(reason, systemImage: "sparkles.slash")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if !lastConsidered.isEmpty {
+                Text("El gasto ya está armado abajo. Ajústalo si quieres y dale Registrar.")
+            } else {
+                Text("Descríbelo con tus palabras o llena los campos manualmente.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var heroHeadline: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: "sparkles")
+                .font(.title2)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Theme.Tint.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Pídele a Ruul")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Theme.Text.primary)
+                Text("Describe el gasto y lo armamos por ti")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder
+    private var heroPromptField: some View {
+        TextField(
+            "Ej: cena 500 yo pagué, dividido entre todos",
+            text: $aiPromptText,
+            axis: .vertical
+        )
+        .lineLimit(2...5)
+        .textInputAutocapitalization(.sentences)
+        .disabled(!suggestionService.isAvailable || isSuggesting)
+        .padding(12)
+        .background(Theme.Background.secondary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var examplePromptsRow: some View {
+        let examples = [
+            "Cena 500 yo pagué",
+            "Súper 250 pagó Aaron",
+            "Uber 80 sin Juan",
+            "Gasolina 600 USD"
+        ]
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(examples, id: \.self) { example in
+                    Button {
+                        aiPromptText = example
+                    } label: {
+                        Text(example)
+                            .font(.caption.weight(.medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Theme.Tint.primary.opacity(0.12), in: Capsule())
+                            .foregroundStyle(Theme.Tint.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!suggestionService.isAvailable || isSuggesting)
+                }
+            }
+        }
+        .scrollClipDisabled()
+    }
+
+    @ViewBuilder
+    private var aiActionRow: some View {
+        switch suggestionService.phase {
+        case .idle:
+            Button {
+                Task { await suggest() }
+            } label: {
+                Label("Pensar gasto", systemImage: "sparkles")
+                    .symbolRenderingMode(.hierarchical)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassProminent)
+            .disabled(
+                aiPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || !suggestionService.isAvailable
+            )
+
+        case .loading:
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Pensando…")
+                    .font(.callout)
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 6)
+
+        case .loaded, .unavailable:
+            EmptyView()
+
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 8) {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption)
+                    .foregroundStyle(Theme.Tint.critical)
+                Button {
+                    Task { await suggest() }
+                } label: {
+                    Label("Reintentar", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var consideredSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Datos considerados")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.Text.tertiary)
+                    .textCase(.uppercase)
+                Spacer()
+                Button {
+                    lastConsidered = []
+                    aiPromptText = ""
+                    suggestionService.reset()
+                } label: {
+                    Label("Pensar otro", systemImage: "arrow.clockwise")
+                        .font(.caption2.weight(.medium))
+                        .symbolRenderingMode(.hierarchical)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.Tint.primary)
+            }
+            ForEach(lastConsidered) { item in
+                consideredChip(item)
+            }
+        }
+        .padding(12)
+        .background(Theme.Tint.info.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func consideredChip(_ item: RuulAIContext.Considered) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "person.2.fill")
+                .font(.caption2)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Theme.Tint.info)
+                .frame(width: 16, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.label)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.Text.primary)
+                Text(item.summary)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.Text.secondary)
+                    .lineLimit(2)
+            }
+        }
+    }
+
+    private var isSuggesting: Bool {
+        if case .loading = suggestionService.phase { return true }
+        return false
+    }
+
+    private func suggest() async {
+        await suggestionService.suggest(
+            prompt: aiPromptText,
+            rpc: container.rpc,
+            contextId: context.id
+        )
+        if case .loaded(let suggestion, let considered) = suggestionService.phase {
+            applySuggestion(suggestion)
+            lastConsidered = considered
+            suggestionService.reset()
+        }
+    }
+
+    private func applySuggestion(_ s: ExpenseSuggestion) {
+        if !s.description.isEmpty { description = s.description }
+        if s.amount > 0 { amountText = formatAmount(s.amount) }
+        if !s.currency.isEmpty { currency = s.currency.uppercased() }
+        if !s.payerName.isEmpty, let match = matchMember(name: s.payerName) {
+            paidByActorId = match.actorId
+        }
+        if !s.excludedNames.isEmpty {
+            let names = s.excludedNames
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            let matched = names.compactMap { matchMember(name: $0)?.actorId }
+            excludedActorIds = Set(matched)
+        }
+    }
+
+    private func matchMember(name: String) -> ContextMember? {
+        let needle = name.lowercased().trimmingCharacters(in: .whitespaces)
+        // Match exacto primero, después contiene.
+        if let exact = visibleMembers.first(where: { $0.displayName.lowercased() == needle }) {
+            return exact
+        }
+        return visibleMembers.first { $0.displayName.lowercased().contains(needle) }
+    }
+
+    private func formatAmount(_ amount: Double) -> String {
+        if amount.truncatingRemainder(dividingBy: 1) == 0 {
+            return String(Int(amount))
+        }
+        return String(format: "%.2f", amount)
     }
 }
 

@@ -77,6 +77,12 @@ public enum RuulAIContext {
         .recentActivity(limit: 15)
     ]
 
+    /// R.6.AI.7 — Expense necesita solo miembros (para que el modelo
+    /// resuelva payerName/excludedNames a nombres exactos del contexto).
+    public static let forExpenseSuggestion: [Field] = [
+        .members(limit: 20)
+    ]
+
     /// Construye el snapshot con un solo RPC (`context_summary`) y formato
     /// compacto. Items vacíos se omiten del prefix (excepto Rules, que se
     /// reporta explícito "ninguna" para anti-duplicación).
