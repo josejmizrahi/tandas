@@ -17,6 +17,10 @@ public struct CreateDecisionView: View {
     @State private var optionDrafts: [DecisionOptionDraft] = []
     @State private var newOptionText: String = ""
     @State private var runner = ActionRunner()
+    /// R.6.AI.8 — AI hero state.
+    @State private var suggestionService = DecisionSuggestionService()
+    @State private var aiPromptText = ""
+    @State private var lastConsidered: [RuulAIContext.Considered] = []
 
     public init(
         context: AppContext,
@@ -39,6 +43,11 @@ public struct CreateDecisionView: View {
 
     public var body: some View {
         Form {
+            // R.6.AI.8 — Hero AI sólo cuando no viene de un conflicto pre-poblado.
+            if conflictReference == nil {
+                aiHero
+            }
+
             Section("Propuesta") {
                 TextField("¿Qué hay que decidir?", text: $title, axis: .vertical)
                     .lineLimit(1...3)
@@ -190,6 +199,63 @@ public struct CreateDecisionView: View {
         default:
             return ""
         }
+    }
+
+    // MARK: - R.6.AI.8 — AI hero
+
+    private var aiHero: some View {
+        RuulAIHeroView(
+            headline: "Pídele a Ruul",
+            subtitle: "Describe la decisión y la armamos por ti",
+            placeholder: "Ej: ¿Compramos el coche nuevo?",
+            ctaLabel: "Pensar decisión",
+            examples: [
+                "¿Compramos el coche nuevo?",
+                "Cambiar la cena al sábado",
+                "Aprobar el gasto del palco",
+                "Subir la cuota mensual"
+            ],
+            footerWhenIdle: "Descríbela con tus palabras o escribe el título manualmente.",
+            footerWhenLoaded: "La decisión ya está armada abajo. Ajústala si quieres.",
+            prompt: $aiPromptText,
+            considered: $lastConsidered,
+            phase: aiPhase,
+            onSuggest: { await aiSuggest() },
+            onReset: {
+                lastConsidered = []
+                aiPromptText = ""
+                suggestionService.reset()
+            }
+        )
+    }
+
+    private var aiPhase: RuulAIHeroView.HeroPhase {
+        switch suggestionService.phase {
+        case .idle, .loaded: return .idle
+        case .loading:       return .loading
+        case .failed(let m): return .failed(message: m)
+        case .unavailable(let r): return .unavailable(reason: r)
+        }
+    }
+
+    private func aiSuggest() async {
+        await suggestionService.suggest(
+            prompt: aiPromptText,
+            rpc: container.rpc,
+            contextId: context.id
+        )
+        if case .loaded(let suggestion, let considered) = suggestionService.phase {
+            applyAISuggestion(suggestion)
+            lastConsidered = considered
+            suggestionService.reset()
+        }
+    }
+
+    private func applyAISuggestion(_ s: DecisionSuggestion) {
+        if !s.title.isEmpty { title = s.title }
+        if !s.detail.isEmpty { description = s.detail }
+        // decisionKind se mantiene manual por ahora — el VotingModel canónico
+        // de Ruul no mapea 1:1 a unanimous/two_thirds. El user lo elige abajo.
     }
 
     private func create() async {

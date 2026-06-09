@@ -83,6 +83,13 @@ public enum RuulAIContext {
         .members(limit: 20)
     ]
 
+    /// R.6.AI.8 — Decision sólo necesita miembros (la votación incluye a
+    /// todos automáticamente; el modelo no debe inventar nombres en el
+    /// título).
+    public static let forDecisionSuggestion: [Field] = [
+        .members(limit: 20)
+    ]
+
     /// Construye el snapshot con un solo RPC (`context_summary`) y formato
     /// compacto. Items vacíos se omiten del prefix (excepto Rules, que se
     /// reporta explícito "ninguna" para anti-duplicación).
