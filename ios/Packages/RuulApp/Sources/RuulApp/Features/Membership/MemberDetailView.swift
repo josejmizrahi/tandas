@@ -131,6 +131,55 @@ public struct MemberDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(member.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        // P0 fix 2026-06-08 — toolbar Menu mirror de "Administración" Section
+        // (Roles / Gestión). Acceso rápido desde header.
+        .toolbar {
+            if !isMe && store.canManageMembers(in: context) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        let assignable = assignableRoles(for: member)
+                        if !assignable.isEmpty {
+                            Section("Roles") {
+                                ForEach(assignable, id: \.key) { role in
+                                    Button {
+                                        Task {
+                                            await runner.run {
+                                                try await store.assignRole(
+                                                    context: context,
+                                                    memberActorId: member.actorId,
+                                                    roleKey: role.key
+                                                )
+                                            }
+                                        }
+                                    } label: {
+                                        Label("Asignar \(role.label)", systemImage: role.symbol)
+                                    }
+                                }
+                            }
+                        }
+                        if container != nil, !context.isPersonal {
+                            Section("Compromisos") {
+                                Button {
+                                    isShowingCreateObligation = true
+                                } label: {
+                                    Label("Asignar compromiso", systemImage: "plus.circle.fill")
+                                }
+                            }
+                        }
+                        Section("Gestión") {
+                            Button(role: .destructive) {
+                                isConfirmingRemove = true
+                            } label: {
+                                Label("Remover del contexto", systemImage: "person.badge.minus")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Acciones del miembro")
+                }
+            }
+        }
         .task {
             await loadObligations()
         }

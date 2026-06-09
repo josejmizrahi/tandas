@@ -76,6 +76,46 @@ public struct DecisionDetailView: View {
         }
         .navigationTitle(store.decision?.title ?? "Decisión")
         .navigationBarTitleDisplayMode(.inline)
+        // P0 fix 2026-06-08 — toolbar Menu mirror de adminSection (Estado /
+        // Editar). Acceso rápido desde header sin scroll hasta DisclosureGroup.
+        .toolbar {
+            let actions = store.decision.map(adminActions) ?? []
+            if hasManageAuthority && !actions.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        let stateActions = actions.filter { $0.kind != .editDecision }
+                        let editActions = actions.filter { $0.kind == .editDecision }
+                        if !stateActions.isEmpty {
+                            Section("Estado") {
+                                ForEach(Array(stateActions.enumerated()), id: \.offset) { _, action in
+                                    Button(role: action.role == .destructive ? .destructive : nil) {
+                                        handleAdminAction(action)
+                                    } label: {
+                                        Label(action.label, systemImage: action.symbol)
+                                    }
+                                    .disabled(!action.enabled || runner.isRunning)
+                                }
+                            }
+                        }
+                        if !editActions.isEmpty {
+                            Section("Editar") {
+                                ForEach(Array(editActions.enumerated()), id: \.offset) { _, action in
+                                    Button {
+                                        handleAdminAction(action)
+                                    } label: {
+                                        Label(action.label, systemImage: action.symbol)
+                                    }
+                                    .disabled(!action.enabled || runner.isRunning)
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Acciones de la decisión")
+                }
+            }
+        }
         .task {
             await store.load(decisionId: decisionId, context: context)
             await container.subscriptionsStore.load()

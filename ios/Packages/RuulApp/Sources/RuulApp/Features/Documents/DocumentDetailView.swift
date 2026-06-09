@@ -60,6 +60,40 @@ public struct DocumentDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle("Documento")
         .navigationBarTitleDisplayMode(.inline)
+        // P0 fix 2026-06-08 — toolbar Menu agrupado por section (Ver / Editar).
+        // Acciones del body section "Acciones" replicadas para acceso rápido.
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Section("Ver") {
+                        Button {
+                            Task { await openPreview() }
+                        } label: {
+                            Label("Ver completo", systemImage: "eye.fill")
+                        }
+                        .disabled(document.storagePath == nil)
+                        Button {
+                            Task { await prepareShare() }
+                        } label: {
+                            Label("Compartir", systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(document.storagePath == nil)
+                    }
+                    if !document.isArchived {
+                        Section("Estado") {
+                            Button(role: .destructive) {
+                                isConfirmingArchive = true
+                            } label: {
+                                Label("Archivar", systemImage: "archivebox.fill")
+                            }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Acciones del documento")
+            }
+        }
         .quickLookPreview($previewURL)
         .alert("Archivar documento",
                isPresented: $isConfirmingArchive,

@@ -37,6 +37,27 @@ public struct SettlementView: View {
         }
         .navigationTitle("Settlement")
         .navigationBarTitleDisplayMode(.inline)
+        // P0 fix 2026-06-08 — toolbar Menu con acciones de liquidación
+        // (Recalcular). Antes la única acción vivía inline en el body.
+        .toolbar {
+            if store.canSettle(in: context) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Section("Calcular") {
+                            Button {
+                                Task { await generate() }
+                            } label: {
+                                Label("Recalcular settlement", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            .disabled(runner.isRunning)
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Acciones de settlement")
+                }
+            }
+        }
         .task {
             await store.load(context: context)
             // El settlement se calcula solo al entrar: el backend es idempotente
