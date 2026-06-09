@@ -531,8 +531,24 @@ public struct ResourceDetailDescriptor: Decodable, Sendable, Equatable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.resource = try c.decode(Resource.self, forKey: .resource)
-        self.class = try c.decode(ResourceClassRef.self, forKey: .class)
-        self.subtype = try c.decode(ResourceSubtypeRef.self, forKey: .subtype)
+        // 2026-06-08 defensive — antes class/subtype eran hard-required y el
+        // descriptor entero fallaba a decodificar cuando el backend devolvía
+        // null (recurso sin fila en catálogos resource_class_catalog /
+        // resource_subtype_catalog). Founder reportó "algo salió mal" abriendo
+        // un recurso real. Ahora caen a un fallback genérico derivado del
+        // resource_type legacy.
+        let resourceTypeLegacy = self.resource.resourceType
+        self.class = (try c.decodeIfPresent(ResourceClassRef.self, forKey: .class))
+            ?? ResourceClassRef(
+                classKey: "generic",
+                displayName: ResourceType(rawValue: resourceTypeLegacy)?.label ?? "Recurso"
+            )
+        self.subtype = (try c.decodeIfPresent(ResourceSubtypeRef.self, forKey: .subtype))
+            ?? ResourceSubtypeRef(
+                subtypeKey: "generic_\(resourceTypeLegacy)",
+                classKey: self.class.classKey,
+                displayName: self.class.displayName
+            )
         self.effectiveCapabilities = try c.decodeIfPresent([String].self, forKey: .effectiveCapabilities) ?? []
         self.rights = try c.decodeIfPresent([ResourceRight].self, forKey: .rights) ?? []
         self.sections = try c.decodeIfPresent([ResourceSection].self, forKey: .sections) ?? []

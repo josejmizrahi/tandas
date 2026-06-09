@@ -31,6 +31,11 @@ public final class ResourceDescriptorStore {
             descriptor = try await rpc.resourceDetailDescriptor(resourceId: resourceId)
             phase = .loaded
         } catch {
+            // 2026-06-08 diag — surface underlying error to Xcode console
+            // cuando el descriptor falla. UI sigue mostrando UserFacingError.
+            #if DEBUG
+            print("[ResourceDescriptorStore] resourceDetailDescriptor failed for \(resourceId): \(error)")
+            #endif
             phase = .failed(message: UserFacingError.from(error).message)
         }
     }
