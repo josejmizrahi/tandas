@@ -74,10 +74,19 @@ public struct InviteMembersView: View {
             }
             .sheet(isPresented: $isShowingContactPicker) {
                 ContactPickerSheet { picked in
-                    if let n = picked.name { newName = n }
-                    if let p = picked.phone { newPhone = p }
-                    if let e = picked.email { newEmail = e }
                     isShowingContactPicker = false
+                    // R.5W UX fix 2026-06-08 — auto-add: si el picker retorna
+                    // nombre, inmediatamente crea el placeholder. Sin paso de
+                    // confirmación manual (Splitwise / WhatsApp pattern).
+                    // El feedback aparece en la sección "Compartir" al top.
+                    guard let name = picked.name, !name.isEmpty else { return }
+                    Task {
+                        await autoAddFromContact(
+                            name: name,
+                            phone: picked.phone,
+                            email: picked.email
+                        )
+                    }
                 }
             }
             .actionErrorAlert(runner)
@@ -85,10 +94,23 @@ public struct InviteMembersView: View {
         .ruulSheet()
     }
 
-    // MARK: - 1. Compartir invitación
+    // MARK: - 1. Compartir invitación + feedback de personas agregadas
 
     @ViewBuilder
     private var shareSection: some View {
+        // Si acabas de agregar alguien (manual o desde contactos), se muestra
+        // toast inline aquí. Mantiene visible el feedback sin perder de vista
+        // el share link de arriba.
+        if let lastAddedName {
+            Section {
+                Label(
+                    "\(lastAddedName) agregado como pendiente. Comparte el link de abajo para que se una.",
+                    systemImage: "checkmark.circle.fill"
+                )
+                .foregroundStyle(Theme.Tint.success)
+            }
+        }
+
         Section {
             if let invite {
                 ShareLink(
@@ -97,31 +119,59 @@ public struct InviteMembersView: View {
                     message: Text(shareMessage(invite))
                 ) {
                     Label("Compartir invitación", systemImage: "square.and.arrow.up")
-                }
-            } else if isGeneratingInvite {
-                HStack {
-                    ProgressView()
-                    Text("Generando link…").font(.callout).foregroundStyle(Theme.Text.secondary)
+                        .font(.callout.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
+                // Si falló, mostramos un botón de reintentar siempre tappable.
                 Button {
-                    Task { await ensureInvite() }
+                    Task { await ensureInvite(force: true) }
                 } label: {
-                    Label("Generar link de invitación", systemImage: "link")
+                    HStack {
+                        if isGeneratingInvite {
+                            ProgressView().controlSize(.small)
+                            Text("Generando link…")
+                                .font(.callout)
+                                .foregroundStyle(Theme.Text.secondary)
+                        } else {
+                            Label("Generar link de invitación", systemImage: "link")
+                                .font(.callout.weight(.semibold))
+                        }
+                        Spacer()
+                    }
                 }
+                .disabled(isGeneratingInvite)
             }
         } header: {
-            Text("Compartir")
+            Text("Compartir invitación")
         } footer: {
             Text("Cualquier persona que abra el link se une a \(context.displayName) al instante. Compártelo por WhatsApp, Mensajes o cualquier app.")
         }
     }
 
-    private func ensureInvite() async {
+    private func ensureInvite(force: Bool = false) async {
+        if force { invite = nil }
         guard invite == nil, !isGeneratingInvite else { return }
         isGeneratingInvite = true
         defer { isGeneratingInvite = false }
         invite = try? await store.createInvite(contextId: context.id, maxUses: nil)
+    }
+
+    /// R.5W UX fix — auto-add desde el contact picker. Crea el placeholder
+    /// inmediatamente, refresca members store y muestra toast en la section
+    /// "Compartir" al top.
+    private func autoAddFromContact(name: String, phone: String?, email: String?) async {
+        await runner.run {
+            _ = try await container.rpc.createPlaceholderPerson(
+                contextId: context.id,
+                displayName: name,
+                phone: phone?.trimmingCharacters(in: .whitespaces).nilIfEmpty,
+                email: email?.trimmingCharacters(in: .whitespaces).nilIfEmpty,
+                membershipType: "member"
+            )
+            await store.load(context: context)
+            lastAddedName = name
+        }
     }
 
     private func inviteURL(_ invite: InviteCreated) -> URL {
@@ -222,14 +272,19 @@ public struct InviteMembersView: View {
 
     @ViewBuilder
     private var agregarPersonaSection: some View {
-        if let lastAddedName {
-            Section {
-                Label(
-                    "\(lastAddedName) ya aparece como miembro. Le puedes compartir el link arriba para que se una a Ruul.",
-                    systemImage: "checkmark.circle.fill"
-                )
-                .foregroundStyle(Theme.Tint.success)
+        // Contactos: row prominente que abre el picker. Tap a un contacto =
+        // se agrega automáticamente (sin pasos manuales).
+        Section {
+            Button {
+                isShowingContactPicker = true
+            } label: {
+                Label("Elegir de Contactos", systemImage: "person.crop.circle.badge.plus")
+                    .font(.callout.weight(.semibold))
             }
+        } header: {
+            Text("Desde tus contactos")
+        } footer: {
+            Text("Toca para abrir tu app de Contactos. La persona se agrega como miembro pendiente al instante.")
         }
 
         Section {
@@ -245,14 +300,8 @@ public struct InviteMembersView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .textContentType(.emailAddress)
-
-            Button {
-                isShowingContactPicker = true
-            } label: {
-                Label("Elegir de Contactos", systemImage: "person.crop.circle.badge.plus")
-            }
         } header: {
-            Text("Agregar persona")
+            Text("O escribir manualmente")
         } footer: {
             Text("Para gente que aún no usa Ruul. Aparece de inmediato en miembros, eventos y gastos. Cuando se registre con su teléfono o email, su historia se vincula automáticamente.")
         }
@@ -363,4 +412,8 @@ private struct ContactPickerSheet: UIViewControllerRepresentable {
         store: MembersStore(rpc: MockRuulRPCClient.demo()),
         container: .demo()
     )
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }
