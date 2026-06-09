@@ -276,7 +276,7 @@ public struct SessionLoadingView: View {
     }
 
     public var body: some View {
-        LoadingStateView(title: message)
+        RuulLoadingState(title: message)
             .background(Theme.Surface.appBackground)
     }
 }

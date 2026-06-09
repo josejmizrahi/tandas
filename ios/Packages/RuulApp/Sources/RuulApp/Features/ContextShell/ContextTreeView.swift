@@ -24,9 +24,9 @@ public struct ContextTreeView: View {
         Group {
             switch store.treePhase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.loadTree(rootContextId: rootContext.id) }
                 }
             case .loaded:

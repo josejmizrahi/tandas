@@ -48,9 +48,9 @@ public struct ContextConflictsListView: View {
         Group {
             switch phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await load() }
                 }
             case .loaded:

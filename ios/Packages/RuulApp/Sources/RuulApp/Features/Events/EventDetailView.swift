@@ -157,10 +157,10 @@ public struct EventDetailView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
 
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.load(eventId: eventId, context: context) }
                 }
 
@@ -1392,9 +1392,9 @@ private struct ReserveResourceForEventSheet: View {
         NavigationStack {
             Group {
                 if isLoading {
-                    LoadingStateView()
+                    RuulLoadingState()
                 } else if let loadError {
-                    ErrorStateView(message: loadError) {
+                    RuulErrorState(message: loadError) {
                         Task { await load() }
                     }
                 } else if resources.isEmpty {

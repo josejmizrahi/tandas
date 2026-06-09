@@ -26,16 +26,16 @@ public struct ResourceSettingsView: View {
             Group {
                 switch store.phase {
                 case .idle, .loading:
-                    LoadingStateView()
+                    RuulLoadingState()
                 case .failed(let message):
-                    ErrorStateView(message: message) {
+                    RuulErrorState(message: message) {
                         Task { await store.load(resourceId: resourceId) }
                     }
                 case .loaded:
                     if let settings = store.settings {
                         settingsList(settings)
                     } else {
-                        ErrorStateView(message: "No pudimos cargar la configuración.")
+                        RuulErrorState(message: "No pudimos cargar la configuración.")
                     }
                 }
             }

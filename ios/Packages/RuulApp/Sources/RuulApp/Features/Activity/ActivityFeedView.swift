@@ -20,10 +20,10 @@ public struct ActivityFeedView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
 
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.load(context: context) }
                 }
 
@@ -61,11 +61,11 @@ public struct ActivityFeedView: View {
     @ViewBuilder
     private var feedList: some View {
         if store.events.isEmpty {
-            EmptyStateView(
-                symbolName: "clock.arrow.circlepath",
+            RuulEmptyState(
                 title: "Sin actividad",
+                systemImage: "clock.arrow.circlepath",
                 message: "Todo lo que pase en \(context.displayName) queda registrado aquí: eventos, gastos, multas, decisiones, reservaciones…"
-            )
+                )
         } else {
             List {
                 ForEach(groupedByDay, id: \.day) { group in

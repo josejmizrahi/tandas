@@ -99,16 +99,16 @@ public struct ObligationDetailView: View {
     private var content: some View {
         switch phase {
         case .idle, .loading:
-            LoadingStateView()
+            RuulLoadingState()
         case .failed(let message):
-            ErrorStateView(message: message) {
+            RuulErrorState(message: message) {
                 Task { await load() }
             }
         case .loaded:
             if let detail {
                 detailList(detail)
             } else {
-                ErrorStateView(message: "No se pudo cargar el compromiso.")
+                RuulErrorState(message: "No se pudo cargar el compromiso.")
             }
         }
     }

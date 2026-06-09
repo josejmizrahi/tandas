@@ -51,9 +51,9 @@ public struct ResourceDetailView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.load(resourceId: resourceId) }
                 }
             case .loaded:

@@ -49,7 +49,7 @@ public struct ContextsListView: View {
                     SessionLoadingView(message: "Cargando tus espacios…")
 
                 case .failed(let message):
-                    ErrorStateView(title: "No pudimos cargar tus espacios", message: message) {
+                    RuulErrorState(title: "No pudimos cargar tus espacios", message: message) {
                         Task { await contextStore.load() }
                     }
 

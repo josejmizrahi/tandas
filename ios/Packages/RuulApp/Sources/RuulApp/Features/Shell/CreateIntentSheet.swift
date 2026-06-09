@@ -470,9 +470,9 @@ private struct DocumentIntentLanding: View {
         Group {
             switch phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await load() }
                 }
             case .loaded:
@@ -581,9 +581,9 @@ private struct ReservationIntentLanding: View {
         Group {
             switch phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await load() }
                 }
             case .loaded:

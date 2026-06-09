@@ -31,10 +31,10 @@ public struct ReservationsListView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
 
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.load(resourceId: resource.id, context: context) }
                 }
 
@@ -132,11 +132,11 @@ public struct ReservationsListView: View {
             }
 
             if store.upcoming.isEmpty && store.pastOrInactive.isEmpty {
-                EmptyStateView(
-                    symbolName: "calendar.badge.clock",
+                RuulEmptyState(
                     title: "Sin reservaciones",
+                    systemImage: "calendar.badge.clock",
                     message: "Solicita \(resource.displayName) para un rango de fechas."
-                )
+                    )
                 .listRowBackground(Color.clear)
             }
 

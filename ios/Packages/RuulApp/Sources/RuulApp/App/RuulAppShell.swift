@@ -63,7 +63,7 @@ public struct RuulAppShell: View {
                 .task { await container.currentActorStore.load() }
 
         case .failed(let message):
-            ErrorStateView(title: "No pudimos cargar tu cuenta", message: message) {
+            RuulErrorState(title: "No pudimos cargar tu cuenta", message: message) {
                 Task { await container.currentActorStore.load() }
             }
 

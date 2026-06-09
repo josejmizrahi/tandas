@@ -21,11 +21,11 @@ public struct PendingInvitationsView: View {
         NavigationStack {
             Group {
                 if case .failed(let message) = store.phase {
-                    ErrorStateView(message: message) {
+                    RuulErrorState(message: message) {
                         Task { await store.load(actorId: container.currentActorStore.actorId) }
                     }
                 } else if store.invitations.isEmpty && !store.phase.isLoaded {
-                    LoadingStateView(title: "Cargando invitaciones…")
+                    RuulLoadingState(title: "Cargando invitaciones…")
                 } else {
                     invitationsList
                 }
@@ -51,11 +51,11 @@ public struct PendingInvitationsView: View {
     @ViewBuilder
     private var invitationsList: some View {
         if store.invitations.isEmpty {
-            EmptyStateView(
-                symbolName: "tray",
+            RuulEmptyState(
                 title: "Sin invitaciones",
+                systemImage: "tray",
                 message: "Cuando alguien te invite directamente a un contexto, aparecerá aquí."
-            )
+                )
         } else {
             List {
                 Section {

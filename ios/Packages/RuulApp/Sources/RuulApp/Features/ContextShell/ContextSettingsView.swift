@@ -33,16 +33,16 @@ public struct ContextSettingsView: View {
             Group {
                 switch store.phase {
                 case .idle, .loading:
-                    LoadingStateView()
+                    RuulLoadingState()
                 case .failed(let message):
-                    ErrorStateView(message: message) {
+                    RuulErrorState(message: message) {
                         Task { await store.load(contextId: context.id) }
                     }
                 case .loaded:
                     if let settings = store.settings {
                         settingsList(settings)
                     } else {
-                        ErrorStateView(message: "No pudimos cargar la configuración.")
+                        RuulErrorState(message: "No pudimos cargar la configuración.")
                     }
                 }
             }
@@ -949,9 +949,9 @@ private struct DelegateVoteSheet: View {
             Group {
                 switch membersStore.phase {
                 case .idle, .loading:
-                    LoadingStateView(title: "Cargando miembros…")
+                    RuulLoadingState(title: "Cargando miembros…")
                 case .failed(let message):
-                    ErrorStateView(message: message) {
+                    RuulErrorState(message: message) {
                         Task { await membersStore.load(context: context) }
                     }
                 case .loaded:

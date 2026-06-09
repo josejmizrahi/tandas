@@ -215,9 +215,9 @@ private struct ReservationConflictBootstrap: View {
         Group {
             switch phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
             case .failed(let message):
-                ErrorStateView(message: message) { Task { await load() } }
+                RuulErrorState(message: message) { Task { await load() } }
             case .loaded:
                 if let conflict, let resource, let store {
                     ReservationConflictView(

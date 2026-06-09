@@ -20,10 +20,10 @@ public struct ContextReservationsView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
 
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.loadByContext(context: context) }
                 }
 
@@ -47,11 +47,11 @@ public struct ContextReservationsView: View {
     @ViewBuilder
     private var loadedContent: some View {
         if store.upcoming.isEmpty && store.pastOrInactive.isEmpty {
-            EmptyStateView(
-                symbolName: "calendar.badge.clock",
+            RuulEmptyState(
                 title: "Sin reservaciones",
+                systemImage: "calendar.badge.clock",
                 message: "Cuando alguien reserve un recurso del contexto, aparecerá aquí."
-            )
+                )
         } else {
             List {
                 if !store.upcoming.isEmpty {

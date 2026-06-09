@@ -29,10 +29,10 @@ public struct MyActivityFeedView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
 
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.reload() }
                 }
 
@@ -69,11 +69,11 @@ public struct MyActivityFeedView: View {
     @ViewBuilder
     private var feedList: some View {
         if store.items.isEmpty {
-            EmptyStateView(
-                symbolName: "antenna.radiowaves.left.and.right",
+            RuulEmptyState(
                 title: "Sin señales todavía",
+                systemImage: "antenna.radiowaves.left.and.right",
                 message: "Suscríbete a contextos, recursos, decisiones o eventos. Aquí verás las últimas actualizaciones de lo que te importa."
-            )
+                )
         } else {
             List {
                 aiSummarySection

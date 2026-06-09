@@ -63,10 +63,10 @@ public struct DecisionDetailView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
 
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.load(decisionId: decisionId, context: context) }
                 }
 
@@ -74,7 +74,7 @@ public struct DecisionDetailView: View {
                 if let decision = store.decision {
                     detailList(decision)
                 } else {
-                    ErrorStateView(message: "Esta decisión ya no existe o no la puedes ver.")
+                    RuulErrorState(message: "Esta decisión ya no existe o no la puedes ver.")
                 }
             }
         }

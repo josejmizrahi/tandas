@@ -1,90 +1,11 @@
 import SwiftUI
 import RuulCore
 
-// MARK: - Loading
-
-public struct LoadingStateView: View {
-    let title: String
-
-    public init(title: String = "Cargando…") {
-        self.title = title
-    }
-
-    public var body: some View {
-        VStack(spacing: Theme.Spacing.lg) {
-            ProgressView()
-                .controlSize(.large)
-            Text(title)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - Error
-
-public struct ErrorStateView: View {
-    let title: String
-    let message: String
-    let retry: (() -> Void)?
-
-    public init(title: String = "Algo salió mal", message: String, retry: (() -> Void)? = nil) {
-        self.title = title
-        self.message = message
-        self.retry = retry
-    }
-
-    public var body: some View {
-        VStack(spacing: Theme.Spacing.lg) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: Theme.IconSize.lg))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.headline)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Theme.Spacing.xl)
-            if let retry {
-                Button("Reintentar", action: retry)
-                    .buttonStyle(.glassProminent)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-// MARK: - Empty
-
-public struct EmptyStateView: View {
-    let symbolName: String
-    let title: String
-    let message: String
-
-    public init(symbolName: String, title: String, message: String) {
-        self.symbolName = symbolName
-        self.title = title
-        self.message = message
-    }
-
-    public var body: some View {
-        VStack(spacing: Theme.Spacing.md) {
-            Image(systemName: symbolName)
-                .font(.system(size: Theme.IconSize.lg))
-                .foregroundStyle(.tertiary)
-            Text(title)
-                .font(.headline)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Theme.Spacing.xxl)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.xxl + Theme.Spacing.sm)
-    }
-}
+// Los Loading/Error/Empty state legacy fueron migrados a
+// `RuulLoadingState` / `RuulErrorState` / `RuulEmptyState` (V.8 cleanup
+// 2026-06-09). Este archivo conserva helpers que siguen vigentes:
+// ActionRunner + actionErrorAlert + refreshOnReappear + InfoRow +
+// StatusBadge + ActorInitialsView.
 
 // MARK: - Acciones con error
 

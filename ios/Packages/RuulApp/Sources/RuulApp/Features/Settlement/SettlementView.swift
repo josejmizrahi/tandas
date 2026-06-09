@@ -24,10 +24,10 @@ public struct SettlementView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                LoadingStateView()
+                RuulLoadingState()
 
             case .failed(let message):
-                ErrorStateView(message: message) {
+                RuulErrorState(message: message) {
                     Task { await store.load(context: context) }
                 }
 
@@ -118,11 +118,11 @@ public struct SettlementView: View {
             // Batches
             if store.batches.isEmpty {
                 Section {
-                    EmptyStateView(
-                        symbolName: "checkmark.circle",
+                    RuulEmptyState(
                         title: "Nada que liquidar",
+                        systemImage: "checkmark.circle",
                         message: "Cuando haya deudas abiertas, aquí aparece quién le paga a quién (con el mínimo de transferencias)."
-                    )
+                        )
                     .listRowBackground(Color.clear)
                 }
             } else {
