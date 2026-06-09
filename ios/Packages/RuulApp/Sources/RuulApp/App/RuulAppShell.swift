@@ -69,7 +69,45 @@ public struct RuulAppShell: View {
 
         case .loaded:
             MainTabShell(container: container)
+                .modifier(ClaimPlaceholdersGate(container: container))
         }
+    }
+}
+
+// MARK: - R.5W Slice 4 — Claim placeholders gate
+
+/// Al entrar al tab shell, consulta `find_placeholder_matches_for_me`. Si hay
+/// matches (el caller tiene phone/email que coincide con placeholders activos),
+/// presenta el sheet de claim. Una sola vez por session — no spamea al user.
+private struct ClaimPlaceholdersGate: ViewModifier {
+    let container: DependencyContainer
+
+    @State private var matches: [PlaceholderMatch] = []
+    @State private var isShowingSheet = false
+    @State private var didCheckOnce = false
+
+    func body(content: Content) -> some View {
+        content
+            .task {
+                guard !didCheckOnce else { return }
+                didCheckOnce = true
+                do {
+                    let result = try await container.rpc.findPlaceholderMatchesForMe()
+                    if !result.matches.isEmpty {
+                        matches = result.matches
+                        isShowingSheet = true
+                    }
+                } catch {
+                    // Silent — non-blocking. El user puede invocar manual en futuro.
+                }
+            }
+            .sheet(isPresented: $isShowingSheet) {
+                ClaimPlaceholdersSheet(matches: matches, container: container) {
+                    isShowingSheet = false
+                    // Refresh contextos por si el claim agregó memberships nuevas.
+                    Task { await container.contextStore.load() }
+                }
+            }
     }
 }
 

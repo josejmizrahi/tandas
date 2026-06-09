@@ -95,6 +95,12 @@ public protocol RuulRPCClient: Sendable {
         email: String?,
         membershipType: String
     ) async throws -> PlaceholderPersonResult
+    /// R.5W Slice 4 — `find_placeholder_matches_for_me()`. Caller recién
+    /// registrado consulta si hay placeholders con su phone/email match.
+    func findPlaceholderMatchesForMe() async throws -> PlaceholderMatchesResult
+    /// R.5W Slice 4 — `claim_placeholder_actor(p_placeholder_actor_id)`.
+    /// Backend reasigna toda la historia del placeholder → caller.
+    func claimPlaceholderActor(placeholderActorId: UUID) async throws -> ClaimPlaceholderResult
     /// `accept_invitation(p_context_actor_id)` — el caller acepta una invitación
     /// pendiente y queda como miembro activo. Idempotente: `already_member=true`
     /// si ya era miembro.

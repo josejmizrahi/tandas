@@ -355,6 +355,23 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
     }
 
+    public func findPlaceholderMatchesForMe() async throws -> PlaceholderMatchesResult {
+        struct Empty: Encodable, Sendable {}
+        return try await call("find_placeholder_matches_for_me", params: Empty())
+    }
+
+    public func claimPlaceholderActor(placeholderActorId: UUID) async throws -> ClaimPlaceholderResult {
+        struct Params: Encodable, Sendable {
+            let pPlaceholderActorId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pPlaceholderActorId = "p_placeholder_actor_id"
+            }
+        }
+        return try await call("claim_placeholder_actor", params: Params(
+            pPlaceholderActorId: placeholderActorId
+        ))
+    }
+
     public func acceptInvitation(contextId: UUID) async throws -> AcceptInvitationResult {
         try await call("accept_invitation", params: ContextIdParams(contextId: contextId))
     }

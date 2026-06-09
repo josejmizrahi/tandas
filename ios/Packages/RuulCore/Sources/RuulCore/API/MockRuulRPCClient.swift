@@ -908,6 +908,23 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return JoinResult(contextActorId: invite.contextId, membershipId: membershipId, context: context)
     }
 
+    public func findPlaceholderMatchesForMe() async throws -> PlaceholderMatchesResult {
+        try throwIfNeeded()
+        return PlaceholderMatchesResult(matches: [])
+    }
+
+    public func claimPlaceholderActor(placeholderActorId: UUID) async throws -> ClaimPlaceholderResult {
+        try throwIfNeeded()
+        return ClaimPlaceholderResult(
+            claimedActorId: placeholderActorId,
+            claimedByActorId: me.id,
+            membershipsReassigned: 0,
+            obligationsReassigned: 0,
+            splitsReassigned: 0,
+            eventParticipantsReassigned: 0
+        )
+    }
+
     public func createPlaceholderPerson(
         contextId: UUID,
         displayName: String,

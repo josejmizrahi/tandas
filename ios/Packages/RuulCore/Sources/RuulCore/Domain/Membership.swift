@@ -93,6 +93,92 @@ public struct PlaceholderPersonResult: Decodable, Sendable, Equatable {
     }
 }
 
+/// R.5W Slice 4 — Match de placeholder con el caller (phone/email).
+/// Caller ve esta lista al login y puede reclamar lo que le corresponde.
+public struct PlaceholderMatch: Decodable, Sendable, Equatable, Identifiable {
+    public let actorId: UUID
+    public let displayName: String
+    public let contactPhone: String?
+    public let contactEmail: String?
+    public let contextCount: Int
+    public let contexts: [PlaceholderMatchContext]
+
+    public var id: UUID { actorId }
+
+    enum CodingKeys: String, CodingKey {
+        case actorId = "actor_id"
+        case displayName = "display_name"
+        case contactPhone = "contact_phone"
+        case contactEmail = "contact_email"
+        case contextCount = "context_count"
+        case contexts
+    }
+}
+
+public struct PlaceholderMatchContext: Decodable, Sendable, Equatable, Identifiable {
+    public let contextActorId: UUID
+    public let contextDisplayName: String
+    public let contextActorSubtype: String?
+
+    public var id: UUID { contextActorId }
+
+    enum CodingKeys: String, CodingKey {
+        case contextActorId = "context_actor_id"
+        case contextDisplayName = "context_display_name"
+        case contextActorSubtype = "context_actor_subtype"
+    }
+}
+
+/// Wrapper del resultado de `find_placeholder_matches_for_me()`.
+public struct PlaceholderMatchesResult: Decodable, Sendable, Equatable {
+    public let matches: [PlaceholderMatch]
+
+    enum CodingKeys: String, CodingKey {
+        case matches
+    }
+
+    public init(matches: [PlaceholderMatch]) {
+        self.matches = matches
+    }
+}
+
+/// R.5W Slice 4 — Resultado de `claim_placeholder_actor(...)`. Counts del
+/// merge para que iOS muestre breve summary ("Reclamaste 2 membresías + 3
+/// obligaciones").
+public struct ClaimPlaceholderResult: Decodable, Sendable, Equatable {
+    public let claimedActorId: UUID
+    public let claimedByActorId: UUID
+    public let membershipsReassigned: Int
+    public let obligationsReassigned: Int
+    public let splitsReassigned: Int
+    public let eventParticipantsReassigned: Int
+
+    enum CodingKeys: String, CodingKey {
+        case claimedActorId = "claimed_actor_id"
+        case claimedByActorId = "claimed_by_actor_id"
+        case membershipsReassigned = "memberships_reassigned"
+        case obligationsReassigned = "obligations_reassigned"
+        case splitsReassigned = "splits_reassigned"
+        case eventParticipantsReassigned = "event_participants_reassigned"
+    }
+
+    public init(
+        claimedActorId: UUID,
+        claimedByActorId: UUID,
+        membershipsReassigned: Int,
+        obligationsReassigned: Int,
+        splitsReassigned: Int,
+        eventParticipantsReassigned: Int
+    ) {
+        self.claimedActorId = claimedActorId
+        self.claimedByActorId = claimedByActorId
+        self.membershipsReassigned = membershipsReassigned
+        self.obligationsReassigned = obligationsReassigned
+        self.splitsReassigned = splitsReassigned
+        self.eventParticipantsReassigned = eventParticipantsReassigned
+    }
+}
+
 /// Resultado de `accept_invitation(p_context_actor_id)` — la membresía
 /// pendiente del caller pasa a `status='active'`.
 public struct AcceptInvitationResult: Decodable, Sendable, Equatable {
