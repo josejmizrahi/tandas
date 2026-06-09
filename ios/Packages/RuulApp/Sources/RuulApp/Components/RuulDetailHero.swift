@@ -84,12 +84,10 @@ public struct RuulDetailHero: View {
         }
         .padding(Theme.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // R.5V.Glass.C1 — Liquid Glass tinted con el color semántico del hero.
-        // Reemplaza .regularMaterial plano por glass real reactivo a luz/toque.
-        .glassEffect(
-            .regular.tint(tint.opacity(0.18)),
-            in: Theme.cardShape(Theme.Radius.cardHero)
-        )
+        // R.5V.Glass.C1 (fix founder 2026-06-08) — Liquid Glass neutro.
+        // El tint queda solo en el icon circle; el glass del card es regular
+        // para no convertir cada hero en una cápsula de color saturada.
+        .glassEffect(.regular, in: Theme.cardShape(Theme.Radius.cardHero))
     }
 }
 

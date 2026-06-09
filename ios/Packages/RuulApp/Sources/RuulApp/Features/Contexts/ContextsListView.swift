@@ -343,7 +343,9 @@ public struct ContextsListView: View {
             }
         } icon: {
             Image(systemName: ctx.symbolName)
+                .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Theme.Tint.primary)
+                .contentTransition(.symbolEffect(.replace))
         }
     }
 
@@ -388,9 +390,11 @@ public struct ContextsListView: View {
                 HStack {
                     Image(systemName: ctx.symbolName)
                         .font(.system(size: 26, weight: .semibold))
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(Theme.Tint.primary)
                         .frame(width: 40, height: 40)
                         .background(Theme.Tint.primary.opacity(0.12), in: Circle())
+                        .contentTransition(.symbolEffect(.replace))
                     Spacer()
                     Image(systemName: isFavorite ? "star.fill" : "star")
                         .font(.caption2)

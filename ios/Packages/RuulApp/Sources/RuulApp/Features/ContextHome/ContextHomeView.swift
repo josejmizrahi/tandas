@@ -217,9 +217,11 @@ public struct ContextHomeView: View {
             HStack(alignment: .center, spacing: 14) {
                 Image(systemName: context.symbolName)
                     .font(.system(size: 26, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.tint)
                     .frame(width: 52, height: 52)
                     .background(Color.accentColor.badgeFill, in: Circle())
+                    .contentTransition(.symbolEffect(.replace))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(heroTitle(summary))

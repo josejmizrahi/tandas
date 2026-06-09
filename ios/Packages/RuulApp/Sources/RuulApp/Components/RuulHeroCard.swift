@@ -54,9 +54,11 @@ public struct RuulHeroCard<Content: View>: View {
         }
         .padding(Theme.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // R.5V.Glass.C1 — Liquid Glass nativo con tint semántico. Reemplaza
-        // el .regularMaterial plano por glass real que reacciona a luz y toque.
-        .glassEffect(.regular.tint(tint.opacity(0.18)), in: Theme.cardShape())
+        // R.5V.Glass.C1 (fix founder 2026-06-08) — Liquid Glass neutro. El
+        // tint queda sólo en el icon circle de adentro; el glass del card es
+        // regular para no chocar con la identidad neutra del hero (e.g.
+        // "Mi espacio" con tint primary se veía como cápsula azul).
+        .glassEffect(.regular, in: Theme.cardShape())
     }
 }
 

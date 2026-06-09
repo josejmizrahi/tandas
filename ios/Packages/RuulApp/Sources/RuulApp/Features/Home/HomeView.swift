@@ -203,9 +203,11 @@ public struct HomeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Image(systemName: ctx.symbolName)
                     .font(.system(size: 28, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(Theme.Tint.primary)
                     .frame(width: 40, height: 40)
                     .background(Theme.Tint.primary.opacity(0.12), in: Circle())
+                    .contentTransition(.symbolEffect(.replace))
                 Spacer(minLength: 0)
                 Text(ctx.displayName)
                     .font(.callout.weight(.semibold))

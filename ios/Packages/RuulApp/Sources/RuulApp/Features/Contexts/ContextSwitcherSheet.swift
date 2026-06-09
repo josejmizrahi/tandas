@@ -137,9 +137,11 @@ public struct ContextSwitcherSheet: View {
             HStack(spacing: 12) {
                 Image(systemName: context.symbolName)
                     .font(.title3)
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.tint)
                     .frame(width: 32, height: 32)
                     .background(Color.accentColor.badgeFillSubtle, in: Circle())
+                    .contentTransition(.symbolEffect(.replace))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.displayName).font(.callout.weight(.medium))
                     if !context.isPersonal {
