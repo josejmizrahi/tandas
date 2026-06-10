@@ -197,10 +197,11 @@ public protocol RuulRPCClient: Sendable {
     /// `remove_event_participants(p_event_id, p_actor_ids[])` — R.5Z.fix.EVENT.PARTICIPANTS.
     /// Host o `events.manage`. Soft remove (status='cancelled' + cancelled_at).
     func removeEventParticipants(eventId: UUID, actorIds: [UUID]) async throws
-    /// `set_event_participant_plus_one(p_event_id, p_actor_id, p_plus_one)` —
-    /// R.5Z.fix.EVENT.PLUS_ONE. El propio participant, host o admin.
-    /// Guarda en `event_participants.metadata.plus_one`. Cuenta x2 en splits.
-    func setEventParticipantPlusOne(eventId: UUID, actorId: UUID, plusOne: Bool) async throws
+    /// `set_event_participant_plus_count(p_event_id, p_actor_id, p_count)` —
+    /// R.5Z.fix.EVENT.PLUS_N. El propio participant, host o admin.
+    /// Guarda en `event_participants.metadata.plus_count`. Cuenta como N
+    /// unidades adicionales en el split del gasto (0..20).
+    func setEventParticipantPlusCount(eventId: UUID, actorId: UUID, count: Int) async throws
 
     /// F.EVENT.8 — `preview_next_host(p_event_id)`. Devuelve quién será el
     /// próximo anfitrión sin mutar nada. Para eventos no recurrentes los

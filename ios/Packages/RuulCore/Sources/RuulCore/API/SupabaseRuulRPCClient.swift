@@ -965,18 +965,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callVoid("remove_event_participants", params: Params(pEventId: eventId, pActorIds: actorIds))
     }
 
-    public func setEventParticipantPlusOne(eventId: UUID, actorId: UUID, plusOne: Bool) async throws {
+    public func setEventParticipantPlusCount(eventId: UUID, actorId: UUID, count: Int) async throws {
         struct Params: Encodable, Sendable {
             let pEventId: UUID
             let pActorId: UUID
-            let pPlusOne: Bool
+            let pCount: Int
             enum CodingKeys: String, CodingKey {
                 case pEventId = "p_event_id"
                 case pActorId = "p_actor_id"
-                case pPlusOne = "p_plus_one"
+                case pCount = "p_count"
             }
         }
-        try await callVoid("set_event_participant_plus_one", params: Params(pEventId: eventId, pActorId: actorId, pPlusOne: plusOne))
+        try await callVoid("set_event_participant_plus_count", params: Params(pEventId: eventId, pActorId: actorId, pCount: count))
     }
 
     // MARK: - F.EVENT.8 host rotation

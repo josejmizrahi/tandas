@@ -1964,7 +1964,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
         }
     }
 
-    public func setEventParticipantPlusOne(eventId: UUID, actorId: UUID, plusOne: Bool) async throws {
+    public func setEventParticipantPlusCount(eventId: UUID, actorId: UUID, count: Int) async throws {
         try throwIfNeeded()
         participants[eventId] = (participants[eventId] ?? []).map { p in
             guard p.participantActorId == actorId else { return p }
@@ -1972,7 +1972,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 id: p.id, eventId: eventId, participantActorId: p.participantActorId,
                 status: p.status, rsvpAt: p.rsvpAt, checkedInAt: p.checkedInAt,
                 cancelledAt: p.cancelledAt,
-                metadata: .object(["plus_one": .bool(plusOne)])
+                metadata: .object(["plus_count": .number(Double(count))])
             )
         }
     }

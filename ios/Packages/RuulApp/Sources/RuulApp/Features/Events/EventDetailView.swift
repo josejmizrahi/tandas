@@ -1387,8 +1387,8 @@ private struct ParticipantsFullView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(store.displayName(for: participant.participantActorId))
-                    if participant.plusOne {
-                        Text("+1")
+                    if participant.plusCount > 0 {
+                        Text("+\(participant.plusCount)")
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -1401,22 +1401,29 @@ private struct ParticipantsFullView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            // R.5Z.fix.EVENT.PLUS_ONE.2 — toggle +1 (self-service o admin).
-            // Gate ampliado: cualquier status NO terminal acepta +1, no solo
-            // confirmados. El +1 solo entra al split cuando el participant
-            // eventualmente cuenta (countsForExpenseSplit), pero el flag se
-            // puede setear desde 'invited' / 'maybe' / 'going' / 'checked_in'.
+            // R.5Z.fix.EVENT.PLUS_N — Stepper +N (self-service o admin).
+            // Founder pidió +2/+N en lugar de bool +1. Cada unidad suma al
+            // split. Range 0..20. Gate por status no terminal.
             if canEditPlusOne(participant)
                 && participant.status != "cancelled"
                 && participant.status != "declined" {
-                Toggle("+1", isOn: Binding(
-                    get: { participant.plusOne },
-                    set: { newValue in
-                        Task { await setPlusOne(participant, value: newValue) }
+                HStack(spacing: 4) {
+                    Stepper(value: Binding(
+                        get: { participant.plusCount },
+                        set: { newValue in
+                            Task { await setPlusCount(participant, value: newValue) }
+                        }
+                    ), in: 0...20) {
+                        Text(participant.plusCount > 0 ? "+\(participant.plusCount)" : "+0")
+                            .font(.caption.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(participant.plusCount > 0 ? Theme.Tint.primary : Theme.Text.tertiary)
+                            .frame(minWidth: 28)
                     }
-                ))
-                .labelsHidden()
-                .tint(Theme.Tint.primary)
+                    .labelsHidden()
+                    Text(participant.plusCount > 0 ? "+\(participant.plusCount)" : "")
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Theme.Tint.primary)
+                }
             }
             if canCheckInOthers && !participant.checkedIn
                 && participant.status != "cancelled"
@@ -1437,12 +1444,12 @@ private struct ParticipantsFullView: View {
         return canManageRoster || p.participantActorId == myId
     }
 
-    private func setPlusOne(_ p: EventParticipant, value: Bool) async {
+    private func setPlusCount(_ p: EventParticipant, value: Int) async {
         _ = await runner.run {
-            try await rpc.setEventParticipantPlusOne(
+            try await rpc.setEventParticipantPlusCount(
                 eventId: eventId,
                 actorId: p.participantActorId,
-                plusOne: value
+                count: value
             )
         }
         onChanged()
