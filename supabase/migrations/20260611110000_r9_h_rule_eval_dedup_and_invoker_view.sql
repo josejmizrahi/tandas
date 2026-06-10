@@ -130,8 +130,22 @@ begin
         v_matched := v_matched + 1;
         v_obligations := v_obligations || coalesce(v_prev_cons->'obligations', '[]'::jsonb);
         v_attentions  := v_attentions  || coalesce(v_prev_cons->'attentions',  '[]'::jsonb);
+        continue;
+      elsif v_outcome = 'not_matched' then
+        continue;
       end if;
-      continue;
+      -- R.9.H: la evaluación previa fue not_matched pero ESTA sí matchea.
+      -- Payload asimétrico: el trigger evalúa con el payload de activity (que
+      -- puede carecer de campos como event_type) y el path síncrono con el
+      -- payload enriquecido. Upgrade de la evaluación a matched y caemos al
+      -- branch de consecuencias (el guard de obligación existente + la key de
+      -- attention dedupean, así que no hay doble multa).
+      update public.rule_evaluations
+         set outcome = 'matched',
+             metadata = jsonb_build_object(
+               'subject_actor_id', p_subject_actor_id, 'payload', p_payload,
+               'upgraded_from', 'not_matched')
+       where id = v_eval_id;
     end if;
 
     if v_outcome = 'matched' then
