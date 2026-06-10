@@ -70,6 +70,12 @@ declare
   v_subject_active boolean := false;
   v_prev_outcome text;
   v_prev_cons jsonb;
+  v_prev_source text;
+  -- R.9.H: el dispatcher de trigger marca sus evaluaciones vía GUC transaccional
+  -- para que el path síncrono pueda distinguir "el trigger de ESTE rpc llegó
+  -- primero" (reportar/upgrade) de "re-evaluación manual posterior" (dedup
+  -- silencioso R.6.A).
+  v_eval_source text := coalesce(nullif(current_setting('ruul.rule_eval_source', true), ''), 'sync');
 begin
   -- Translate p_source_event_id → calendar_event_id si existe en la tabla.
   -- Trigger path pasa activity_event.id (no calendar_event); wrapper manual pasa el real.
@@ -111,21 +117,32 @@ begin
        outcome, metadata, idempotency_key)
     values
       (v_rule.id, p_context_actor_id, p_trigger_event_type, p_source_event_id, v_outcome,
-       jsonb_build_object('subject_actor_id', p_subject_actor_id, 'payload', p_payload),
+       jsonb_build_object('subject_actor_id', p_subject_actor_id, 'payload', p_payload,
+                          'eval_source', v_eval_source),
        v_idempotency_key)
     on conflict (idempotency_key) do nothing
     returning id into v_eval_id;
 
     if v_eval_id is null then
-      -- R.9.H: la evaluación ya existe (el otro path — trigger o síncrono —
-      -- llegó primero con la MISMA key). Reportar su resultado en vez de
-      -- omitirlo: el caller sigue viendo rules_matched/obligations aunque
-      -- la consecuencia se haya creado en el otro path (already_existed).
-      select id, outcome, consequences_emitted
-        into v_eval_id, v_prev_outcome, v_prev_cons
+      -- R.9.H: la evaluación ya existe (la MISMA key llegó antes).
+      select id, outcome, consequences_emitted, metadata->>'eval_source'
+        into v_eval_id, v_prev_outcome, v_prev_cons, v_prev_source
         from public.rule_evaluations
        where idempotency_key = v_idempotency_key
        limit 1;
+
+      if coalesce(v_prev_source, 'sync') <> 'trigger' then
+        -- R.6.A intacto: la evaluación previa vino de un path síncrono →
+        -- esto es una re-evaluación manual/replay → dedup silencioso
+        -- (resultado vacío, cero filas nuevas).
+        continue;
+      end if;
+
+      -- La previa vino del trigger de activity DENTRO de este mismo rpc
+      -- (check_in/cancel emiten activity antes de su eval síncrona). Reportar
+      -- su resultado en vez de omitirlo: el caller sigue viendo
+      -- rules_matched/obligations aunque la consecuencia se haya creado en el
+      -- otro path (already_existed).
       if v_prev_outcome = 'matched' then
         v_matched := v_matched + 1;
         v_obligations := v_obligations || coalesce(v_prev_cons->'obligations', '[]'::jsonb);
@@ -134,17 +151,19 @@ begin
       elsif v_outcome = 'not_matched' then
         continue;
       end if;
-      -- R.9.H: la evaluación previa fue not_matched pero ESTA sí matchea.
-      -- Payload asimétrico: el trigger evalúa con el payload de activity (que
-      -- puede carecer de campos como event_type) y el path síncrono con el
-      -- payload enriquecido. Upgrade de la evaluación a matched y caemos al
-      -- branch de consecuencias (el guard de obligación existente + la key de
-      -- attention dedupean, así que no hay doble multa).
+      -- El trigger evaluó not_matched pero ESTA evaluación sí matchea.
+      -- Payload asimétrico: el trigger usa el payload de activity (que puede
+      -- carecer de campos como event_type); el path síncrono el enriquecido.
+      -- Upgrade de la evaluación a matched y caemos al branch de consecuencias
+      -- (el guard de obligación existente + la key de attention dedupean, así
+      -- que no hay doble multa). eval_source pasa a 'sync' → re-evaluaciones
+      -- posteriores dedupean silencioso (R.6.A).
       update public.rule_evaluations
          set outcome = 'matched',
              metadata = jsonb_build_object(
                'subject_actor_id', p_subject_actor_id, 'payload', p_payload,
-               'upgraded_from', 'not_matched')
+               'eval_source', v_eval_source,
+               'upgraded_from', 'trigger_not_matched')
        where id = v_eval_id;
     end if;
 
@@ -335,6 +354,10 @@ begin
   end if;
 
   begin
+    -- R.9.H: marcar la evaluación como originada por el trigger (GUC
+    -- transaccional) para que el path síncrono del mismo rpc pueda
+    -- reportar/upgrade su resultado sin romper el dedup R.6.A de replays.
+    perform set_config('ruul.rule_eval_source', 'trigger', true);
     perform public._r6_eval_rules_core(
       p_context_actor_id := NEW.context_actor_id,
       p_trigger_event_type := NEW.event_type,
@@ -342,7 +365,9 @@ begin
       p_payload := coalesce(NEW.payload, '{}'::jsonb),
       p_source_event_id := v_source
     );
+    perform set_config('ruul.rule_eval_source', '', true);
   exception when others then
+    perform set_config('ruul.rule_eval_source', '', true);
     -- Best-effort: warn pero no romper la activity insertion.
     raise warning 'R.6.B rule dispatch failed for activity_event % type=%: %',
       NEW.id, NEW.event_type, sqlerrm;
@@ -415,22 +440,42 @@ begin
   end if;
 
   -- ═══ 2. Vista de balances con security_invoker: miembro ve, extraño no ═══
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_admin::text)::text, true);
-  perform public.record_expense(v_ctx::uuid, 300, 'MXN', 'r9h gasto');
-
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_m::text)::text, true);
-  execute 'set local role authenticated';
-  select count(*) into v_n from public.actor_money_balances where context_actor_id = v_ctx::uuid;
-  if v_n < 1 then
-    execute 'reset role';
-    raise exception 'r9_h 2: miembro no ve balances de su contexto (invoker rompió visibilidad)';
+  -- Patrón r2j: el smoke es SECURITY DEFINER (owner de las tablas → RLS no le
+  -- aplica y SET ROLE está prohibido dentro de security definer), así que se
+  -- valida (a) estructuralmente que la vista es security_invoker y (b) la
+  -- expresión de la policy ledger_entries_read con el JWT de cada actor.
+  if not exists (
+    select 1 from pg_class
+    where oid = 'public.actor_money_balances'::regclass
+      and exists (select 1 from unnest(coalesce(reloptions, '{}'::text[])) o
+                  where o in ('security_invoker=true', 'security_invoker=on', 'security_invoker=1'))
+  ) then
+    raise exception 'r9_h 2: actor_money_balances no quedó con security_invoker = true';
   end if;
 
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_admin::text)::text, true);
+  perform public.record_expense(v_ctx::uuid, 300, 'MXN', 'r9h gasto');
+  select count(*) into v_n from public.ledger_entries where context_actor_id = v_ctx::uuid;
+  if v_n < 1 then
+    raise exception 'r9_h 2: el gasto no emitió ledger entries';
+  end if;
+
+  -- Miembro: pasa la policy del ledger → vía la vista invoker SÍ ve balances.
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', u_m::text)::text, true);
+  if not (public.is_context_member(v_ctx::uuid) or v_ctx::uuid = public.current_actor_id()) then
+    raise exception 'r9_h 2: miembro no pasa la policy del ledger (invoker rompió visibilidad)';
+  end if;
+
+  -- NO-miembro: la policy lo excluye → vía la vista invoker ve cero filas.
   perform set_config('request.jwt.claims', jsonb_build_object('sub', u_x::text)::text, true);
-  select count(*) into v_n from public.actor_money_balances where context_actor_id = v_ctx::uuid;
-  execute 'reset role';
-  if v_n <> 0 then
-    raise exception 'r9_h 2: un NO-miembro ve % filas de balances ajenos (fuga RLS)', v_n;
+  if (public.is_context_member(v_ctx::uuid) or v_ctx::uuid = public.current_actor_id()) then
+    raise exception 'r9_h 2: un NO-miembro pasa la policy del ledger (fuga RLS)';
+  end if;
+
+  -- anon: sin SELECT ni en la vista ni en la tabla base.
+  if has_table_privilege('anon', 'public.actor_money_balances', 'SELECT')
+     or has_table_privilege('anon', 'public.ledger_entries', 'SELECT') then
+    raise exception 'r9_h 2: anon tiene SELECT en balances/ledger';
   end if;
 
   -- Cleanup
