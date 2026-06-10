@@ -346,6 +346,11 @@ public protocol RuulRPCClient: Sendable {
 
     /// `record_expense(...)`
     func recordExpense(_ input: RecordExpenseInput) async throws -> ExpenseResult
+    /// `preview_event_split(p_event_id, p_amount, p_currency)` — R.9.C.
+    /// Split ponderado calculado por el BACKEND (1 + plus_count + guest shares,
+    /// redondeo determinista idéntico a `record_expense(split_basis='event_weights')`).
+    /// Read-only: iOS solo presenta el desglose.
+    func previewEventSplit(eventId: UUID, amount: Double, currency: String) async throws -> EventSplitPreview
     /// `record_fine(...)` → obligation id
     func recordFine(contextId: UUID, debtorActorId: UUID, amount: Double, currency: String, reason: String?) async throws -> UUID
     /// `record_game_result(...)`
@@ -368,6 +373,29 @@ public protocol RuulRPCClient: Sendable {
     /// `governance_required` (42501) — el caller debe primero conseguir aprobación vía
     /// `request_governance_action('obligation.forgive', target_id=obligation)`.
     func forgiveObligation(obligationId: UUID, reason: String?) async throws -> ObligationForgivenResult
+
+    // MARK: - Pools (R.8)
+
+    /// `create_pool(...)` — R.8.B. Crea pool actor (collective/pool) +
+    /// `pool_accounts` row. Permission: `money.record`.
+    func createPool(_ input: CreatePoolInput) async throws -> PoolCreated
+    /// `contribute_to_pool(...)` — R.8.B. `cash` crea money_transaction +
+    /// obligation `pending_pool`; `pending_stake` solo obligation; `asset`/
+    /// `service` solo basis entry.
+    func contributeToPool(_ input: ContributeToPoolInput) async throws -> PoolContributionResult
+    /// `list_context_pools(p_parent_context_actor_id)` — R.8.B. Pools del
+    /// contexto con `totals` (basis_total + my_basis + contributor_count).
+    func listContextPools(contextId: UUID) async throws -> [PoolAccount]
+    /// `pool_account_detail(p_pool_account_id)` — R.8.B. Pool + basis ledger +
+    /// totals + 4 `available_actions` canónicos.
+    func poolAccountDetail(poolAccountId: UUID) async throws -> PoolAccountDetail
+    /// `preview_pool_resolution(p_pool_account_id)` — R.8.C. Read-only, no muta.
+    func previewPoolResolution(poolAccountId: UUID) async throws -> PoolResolutionPreview
+    /// `resolve_pool(p_pool_account_id, p_resolution, p_client_id)` — R.8.C.
+    /// winner_takes_all requiere `resolution = {"winner_actor_id": uuid}`.
+    /// Permission: `money.settle`. Governance PULL: puede lanzar
+    /// `governance_required` (la UI lo muestra vía `UserFacingError`).
+    func resolvePool(poolAccountId: UUID, resolution: JSONValue?, clientId: String?) async throws -> PoolResolutionResult
 
     // MARK: - Settlement
 
@@ -1105,6 +1133,11 @@ public struct RecordExpenseInput: Sendable, Equatable {
     public var eventId: UUID?
     public var paidByActorId: UUID?
     public var clientId: String?
+    /// R.9.C — evento fuente para `splitBasis = "event_weights"` (el backend
+    /// computa los splits desde `_event_split_weights`).
+    public var sourceEventId: UUID?
+    /// R.9.C — `equal` | `explicit` | `event_weights`. `nil` = flujo legacy.
+    public var splitBasis: String?
 
     public init(
         contextId: UUID,
@@ -1117,7 +1150,9 @@ public struct RecordExpenseInput: Sendable, Equatable {
         splits: [ExpenseSplit]? = nil,
         eventId: UUID? = nil,
         paidByActorId: UUID? = nil,
-        clientId: String? = nil
+        clientId: String? = nil,
+        sourceEventId: UUID? = nil,
+        splitBasis: String? = nil
     ) {
         self.contextId = contextId
         self.amount = amount
@@ -1129,6 +1164,76 @@ public struct RecordExpenseInput: Sendable, Equatable {
         self.splits = splits
         self.eventId = eventId
         self.paidByActorId = paidByActorId
+        self.clientId = clientId
+        self.sourceEventId = sourceEventId
+        self.splitBasis = splitBasis
+    }
+}
+
+/// Input de `create_pool` (R.8.B).
+public struct CreatePoolInput: Sendable, Equatable {
+    public var contextId: UUID
+    public var displayName: String
+    /// `winner_takes_all` | `equity_target` (políticas MVP con UI).
+    public var policyKey: String
+    public var policyConfig: JSONValue?
+    public var currency: String?
+    /// Requerido (> 0) por el backend cuando `policyKey == "equity_target"`.
+    public var targetAmount: Double?
+    public var description: String?
+    public var clientId: String?
+
+    public init(
+        contextId: UUID,
+        displayName: String,
+        policyKey: String,
+        policyConfig: JSONValue? = nil,
+        currency: String? = nil,
+        targetAmount: Double? = nil,
+        description: String? = nil,
+        clientId: String? = nil
+    ) {
+        self.contextId = contextId
+        self.displayName = displayName
+        self.policyKey = policyKey
+        self.policyConfig = policyConfig
+        self.currency = currency
+        self.targetAmount = targetAmount
+        self.description = description
+        self.clientId = clientId
+    }
+}
+
+/// Input de `contribute_to_pool` (R.8.B).
+public struct ContributeToPoolInput: Sendable, Equatable {
+    public var poolAccountId: UUID
+    /// `cash` | `asset` | `service` | `pending_stake`. UI MVP: `cash`.
+    public var basisKind: String
+    public var amount: Double
+    /// Requerida por el backend para `cash` / `pending_stake`.
+    public var currency: String?
+    public var assetResourceId: UUID?
+    public var valuationMethod: String?
+    public var valuationNotes: String?
+    public var clientId: String?
+
+    public init(
+        poolAccountId: UUID,
+        basisKind: String = "cash",
+        amount: Double,
+        currency: String? = nil,
+        assetResourceId: UUID? = nil,
+        valuationMethod: String? = nil,
+        valuationNotes: String? = nil,
+        clientId: String? = nil
+    ) {
+        self.poolAccountId = poolAccountId
+        self.basisKind = basisKind
+        self.amount = amount
+        self.currency = currency
+        self.assetResourceId = assetResourceId
+        self.valuationMethod = valuationMethod
+        self.valuationNotes = valuationNotes
         self.clientId = clientId
     }
 }

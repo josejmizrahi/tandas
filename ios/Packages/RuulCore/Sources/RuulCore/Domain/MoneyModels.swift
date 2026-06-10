@@ -404,6 +404,70 @@ public struct ObligationForgivenResult: Decodable, Sendable, Equatable {
     }
 }
 
+// MARK: - R.9.C Event weighted split (backend = autoridad)
+
+/// Un renglón del preview ponderado (`preview_event_split().splits[]`).
+public struct EventSplitShare: Decodable, Sendable, Equatable, Identifiable {
+    public let actorId: UUID
+    /// 1 + plus_count + guest shares vivos invitados por ese actor.
+    public let weight: Int
+    public let amount: Double
+
+    enum CodingKeys: String, CodingKey {
+        case actorId = "actor_id"
+        case weight
+        case amount
+    }
+
+    public init(actorId: UUID, weight: Int, amount: Double) {
+        self.actorId = actorId
+        self.weight = weight
+        self.amount = amount
+    }
+
+    public var id: UUID { actorId }
+}
+
+/// Resultado de `preview_event_split(p_event_id, p_amount, p_currency)` (R.9.C).
+/// Mismo cómputo + redondeo determinista que
+/// `record_expense(split_basis='event_weights')`: iOS solo lo muestra.
+public struct EventSplitPreview: Decodable, Sendable, Equatable {
+    public let eventId: UUID
+    public let amount: Double
+    public let currency: String
+    public let totalWeight: Int
+    public let splits: [EventSplitShare]
+
+    enum CodingKeys: String, CodingKey {
+        case eventId = "event_id"
+        case amount
+        case currency
+        case totalWeight = "total_weight"
+        case splits
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.eventId = try c.decode(UUID.self, forKey: .eventId)
+        self.amount = try c.decode(Double.self, forKey: .amount)
+        self.currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "MXN"
+        self.totalWeight = try c.decodeIfPresent(Int.self, forKey: .totalWeight) ?? 0
+        self.splits = try c.decodeIfPresent([EventSplitShare].self, forKey: .splits) ?? []
+    }
+
+    public init(eventId: UUID, amount: Double, currency: String, totalWeight: Int, splits: [EventSplitShare]) {
+        self.eventId = eventId
+        self.amount = amount
+        self.currency = currency
+        self.totalWeight = totalWeight
+        self.splits = splits
+    }
+
+    public func share(for actorId: UUID) -> EventSplitShare? {
+        splits.first { $0.actorId == actorId }
+    }
+}
+
 // MARK: - Resultados de record_expense / record_game_result
 
 /// Obligación creada por un gasto (`record_expense().obligations[]`).

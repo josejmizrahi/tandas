@@ -121,6 +121,7 @@ public struct MoneyHomeView: View {
                 pendientesSection
             }
             accionesSection
+            fondosSection
             if !moneyActivity.isEmpty {
                 actividadSection
             }
@@ -426,6 +427,23 @@ public struct MoneyHomeView: View {
         case .recordFine:       isShowingFine = true
         case .recordGameResult: isShowingGameResult = true
         default: break
+        }
+    }
+
+    // MARK: - Fondos (R.8.E)
+
+    @ViewBuilder
+    private var fondosSection: some View {
+        Section {
+            NavigationLink {
+                PoolsListView(context: context, container: container)
+            } label: {
+                Label("Fondos", systemImage: "banknote.fill")
+            }
+        } header: {
+            Text("Fondos")
+        } footer: {
+            Text("Botes y fondos con meta del contexto.")
         }
     }
 

@@ -3221,13 +3221,88 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     // MARK: - Money
 
+    /// R.9.C — réplica de `_event_split_weights` + redondeo determinista de
+    /// `preview_event_split`: peso = 1 + plus_count + sum(count_share) de los
+    /// guests vivos invitados por ese actor; solo cuentan participants
+    /// confirmados (going/attended/late). El remanente de centavos va al actor
+    /// de MAYOR peso (tiebreak: menor actor_id) para que la suma == total.
+    private func eventSplitShares(eventId: UUID, amount: Double) throws -> (totalWeight: Int, shares: [EventSplitShare]) {
+        let confirmed = (participants[eventId] ?? []).filter {
+            ["going", "attended", "late"].contains($0.status)
+        }
+        guard !confirmed.isEmpty else {
+            throw RuulError.backend(.validation(message: "event has no participants that count for the split"))
+        }
+        let guests = mockEventGuests[eventId] ?? []
+        var weighted: [(actorId: UUID, weight: Int)] = confirmed.map { p in
+            let guestShares = guests
+                .filter { $0.invitedByActorId == p.participantActorId }
+                .reduce(0) { $0 + $1.countShare }
+            return (actorId: p.participantActorId, weight: 1 + p.plusCount + guestShares)
+        }
+        // Orden determinista: mayor peso primero, tiebreak menor actor_id.
+        weighted.sort { lhs, rhs in
+            if lhs.weight != rhs.weight { return lhs.weight > rhs.weight }
+            return lhs.actorId.uuidString < rhs.actorId.uuidString
+        }
+        let totalWeight = weighted.reduce(0) { $0 + $1.weight }
+        var shares = weighted.map { entry -> EventSplitShare in
+            let raw = (amount * Double(entry.weight) / Double(totalWeight) * 100).rounded() / 100
+            return EventSplitShare(actorId: entry.actorId, weight: entry.weight, amount: raw)
+        }
+        let preliminarySum = shares.reduce(0.0) { $0 + $1.amount }
+        let remainder = ((amount - preliminarySum) * 100).rounded() / 100
+        if remainder != 0, let first = shares.first {
+            shares[0] = EventSplitShare(
+                actorId: first.actorId,
+                weight: first.weight,
+                amount: ((first.amount + remainder) * 100).rounded() / 100
+            )
+        }
+        return (totalWeight, shares)
+    }
+
+    public func previewEventSplit(eventId: UUID, amount: Double, currency: String) async throws -> EventSplitPreview {
+        try throwIfNeeded()
+        guard amount > 0 else {
+            throw RuulError.backend(.validation(message: "amount must be positive"))
+        }
+        guard events[eventId] != nil else {
+            throw RuulError.unexpected(message: "Evento no encontrado")
+        }
+        let (totalWeight, shares) = try eventSplitShares(eventId: eventId, amount: amount)
+        return EventSplitPreview(
+            eventId: eventId,
+            amount: amount,
+            currency: currency,
+            totalWeight: totalWeight,
+            splits: shares
+        )
+    }
+
     public func recordExpense(_ input: RecordExpenseInput) async throws -> ExpenseResult {
         try throwIfNeeded()
         let payer = input.paidByActorId ?? me.id
         let transactionId = UUID()
         var created: [ExpenseObligation] = []
 
-        if input.splitMethod == "custom", let splits = input.splits {
+        if input.splitBasis == "event_weights" {
+            // R.9.C — el "backend" (este mock) computa el split ponderado;
+            // misma math que previewEventSplit por construcción.
+            guard let sourceEventId = input.sourceEventId else {
+                throw RuulError.backend(.validation(message: "split_basis event_weights requires p_source_event_id"))
+            }
+            guard events[sourceEventId] != nil else {
+                throw RuulError.backend(.validation(message: "source event does not belong to context"))
+            }
+            let (_, shares) = try eventSplitShares(eventId: sourceEventId, amount: input.amount)
+            for share in shares where share.actorId != payer {
+                created.append(makeObligation(
+                    contextId: input.contextId, debtor: share.actorId, creditor: payer,
+                    amount: share.amount, currency: input.currency, eventId: sourceEventId
+                ))
+            }
+        } else if input.splitMethod == "custom", let splits = input.splits {
             let total = splits.reduce(0.0) { $0 + $1.amount }
             guard abs(total - input.amount) <= 0.01 else {
                 throw RuulError.backend(.validation(message: "splits must sum to amount (\(total) vs \(input.amount))"))
@@ -3258,7 +3333,9 @@ public actor MockRuulRPCClient: RuulRPCClient {
             "currency": .string(input.currency),
             "description": .string(input.description)
         ]))
-        let share = input.splitMethod == "equal" && !created.isEmpty ? created[0].amount : nil
+        // share_per_person solo aplica al split equal puro (no event_weights).
+        let share = input.splitMethod == "equal" && input.splitBasis != "event_weights" && !created.isEmpty
+            ? created[0].amount : nil
         return ExpenseResult(transactionId: transactionId, sharePerPerson: share, splitMethod: input.splitMethod, obligations: created)
     }
 
@@ -3287,6 +3364,395 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return obligations.values
             .filter { $0.contextActorId == contextId }
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+    }
+
+    // MARK: - Pools (R.8)
+
+    /// R.8 — pools in-memory: poolAccountId → pool / basis entries.
+    var mockPools: [UUID: PoolAccount] = [:]
+    var mockPoolEntries: [UUID: [PoolBasisEntry]] = [:]
+
+    private func poolTotals(_ poolAccountId: UUID) -> PoolTotals {
+        let entries = mockPoolEntries[poolAccountId] ?? []
+        return PoolTotals(
+            basisTotal: entries.reduce(0.0) { $0 + $1.basisAmount },
+            myBasis: entries
+                .filter { $0.contributorActorId == me.id }
+                .reduce(0.0) { $0 + $1.basisAmount },
+            contributorCount: Set(entries.map(\.contributorActorId)).count,
+            entryCount: entries.count
+        )
+    }
+
+    /// Espejo de las transiciones de obligations en `resolve_pool`.
+    private func updatePoolObligation(_ ob: Obligation, status: String, creditor: UUID? = nil) {
+        obligations[ob.id] = Obligation(
+            id: ob.id,
+            contextActorId: ob.contextActorId,
+            debtorActorId: ob.debtorActorId,
+            creditorActorId: creditor ?? ob.creditorActorId,
+            obligationType: ob.obligationType,
+            obligationKind: ob.obligationKind,
+            amount: ob.amount,
+            currency: ob.currency,
+            status: status,
+            dueAt: ob.dueAt,
+            sourceEventId: ob.sourceEventId,
+            sourceRuleId: ob.sourceRuleId,
+            sourceDecisionId: ob.sourceDecisionId,
+            sourceReservationId: ob.sourceReservationId,
+            title: ob.title,
+            description: ob.description,
+            createdAt: ob.createdAt
+        )
+    }
+
+    public func createPool(_ input: CreatePoolInput) async throws -> PoolCreated {
+        try throwIfNeeded()
+        let validPolicies = ["winner_takes_all", "equity_target", "proportional", "equal_share", "rotational", "custom_spec"]
+        guard validPolicies.contains(input.policyKey) else {
+            throw RuulError.backend(.validation(message: "invalid policy_key: \(input.policyKey)"))
+        }
+        if input.policyKey == "equity_target", (input.targetAmount ?? 0) <= 0 {
+            throw RuulError.backend(.validation(message: "equity_target requires positive target_amount"))
+        }
+        let trimmedName = input.displayName.trimmingCharacters(in: .whitespaces)
+        guard !trimmedName.isEmpty else {
+            throw RuulError.backend(.validation(message: "display_name is required"))
+        }
+        let poolActorId = UUID()
+        let poolAccountId = UUID()
+        actors[poolActorId] = ActorRecord(
+            id: poolActorId, actorKind: .collective, actorSubtype: "pool", displayName: trimmedName
+        )
+        let pool = PoolAccount(
+            poolAccountId: poolAccountId,
+            poolActorId: poolActorId,
+            parentContextActorId: input.contextId,
+            policyKey: input.policyKey,
+            policyConfig: input.policyConfig,
+            status: "open",
+            displayName: trimmedName,
+            description: input.description,
+            currency: input.currency,
+            targetAmount: input.targetAmount,
+            createdByActorId: me.id,
+            createdAt: Date()
+        )
+        mockPools[poolAccountId] = pool
+        emit(input.contextId, "pool.created", payload: .object([
+            "pool_account_id": .string(poolAccountId.uuidString),
+            "policy_key": .string(input.policyKey),
+            "display_name": .string(trimmedName)
+        ]))
+        return PoolCreated(poolAccountId: poolAccountId, poolActorId: poolActorId)
+    }
+
+    public func contributeToPool(_ input: ContributeToPoolInput) async throws -> PoolContributionResult {
+        try throwIfNeeded()
+        guard let pool = mockPools[input.poolAccountId] else {
+            throw RuulError.unexpected(message: "Fondo no encontrado")
+        }
+        guard pool.status == "open" else {
+            throw RuulError.backend(.validation(message: "pool is not open (status=\(pool.status))"))
+        }
+        guard input.amount > 0 else {
+            throw RuulError.backend(.validation(message: "amount must be positive"))
+        }
+        guard ["cash", "asset", "service", "pending_stake"].contains(input.basisKind) else {
+            throw RuulError.backend(.validation(message: "invalid basis_kind: \(input.basisKind)"))
+        }
+        if ["cash", "pending_stake"].contains(input.basisKind), input.currency == nil {
+            throw RuulError.backend(.validation(message: "currency is required for cash/pending_stake"))
+        }
+
+        var pairedObligationId: UUID?
+        var transactionId: UUID?
+        if ["cash", "pending_stake"].contains(input.basisKind) {
+            if input.basisKind == "cash" { transactionId = UUID() }
+            // pending_pool NO contamina las obligations abiertas (espejo R.8.B).
+            let obligation = Obligation(
+                id: UUID(),
+                contextActorId: pool.parentContextActorId,
+                debtorActorId: me.id,
+                creditorActorId: pool.poolActorId,
+                obligationType: "contribution",
+                amount: input.amount,
+                currency: input.currency,
+                status: "pending_pool",
+                createdAt: Date()
+            )
+            obligations[obligation.id] = obligation
+            pairedObligationId = obligation.id
+        }
+
+        let entry = PoolBasisEntry(
+            basisEntryId: UUID(),
+            contributorActorId: me.id,
+            contributorDisplayName: actors[me.id]?.displayName ?? me.displayName,
+            basisKind: input.basisKind,
+            basisAmount: input.amount,
+            currency: input.currency,
+            assetResourceId: input.assetResourceId,
+            assetDisplayName: input.assetResourceId.flatMap { resources[$0]?.displayName },
+            valuationMethod: input.basisKind == "asset" ? (input.valuationMethod ?? "manual") : input.valuationMethod,
+            valuationNotes: input.valuationNotes,
+            pairedObligationId: pairedObligationId,
+            moneyTransactionId: transactionId,
+            createdAt: Date()
+        )
+        mockPoolEntries[input.poolAccountId, default: []].append(entry)
+        if let contextId = pool.parentContextActorId {
+            emit(contextId, "pool.contributed", payload: .object([
+                "pool_account_id": .string(pool.poolAccountId.uuidString),
+                "basis_kind": .string(input.basisKind),
+                "basis_amount": .number(input.amount)
+            ]))
+        }
+        return PoolContributionResult(
+            basisEntryId: entry.basisEntryId,
+            pairedObligationId: pairedObligationId,
+            moneyTransactionId: transactionId
+        )
+    }
+
+    public func listContextPools(contextId: UUID) async throws -> [PoolAccount] {
+        try throwIfNeeded()
+        let statusOrder: [String: Int] = [
+            "open": 0, "target_reached": 1, "resolving": 2, "resolved": 3, "cancelled": 4
+        ]
+        return mockPools.values
+            .filter { $0.parentContextActorId == contextId }
+            .map { $0.updating(totals: poolTotals($0.poolAccountId)) }
+            .sorted { lhs, rhs in
+                let lo = statusOrder[lhs.status] ?? 5
+                let ro = statusOrder[rhs.status] ?? 5
+                if lo != ro { return lo < ro }
+                return (lhs.createdAt ?? .distantPast) > (rhs.createdAt ?? .distantPast)
+            }
+    }
+
+    public func poolAccountDetail(poolAccountId: UUID) async throws -> PoolAccountDetail {
+        try throwIfNeeded()
+        guard let pool = mockPools[poolAccountId] else {
+            throw RuulError.unexpected(message: "Fondo no encontrado")
+        }
+        let totals = poolTotals(poolAccountId)
+        let myPerms = pool.parentContextActorId.flatMap { permissions[$0] } ?? []
+        let canRecord = myPerms.contains("money.record")
+        let canManage = pool.createdByActorId == me.id || myPerms.contains("context.manage")
+        let resolvableStatus = ["open", "target_reached"].contains(pool.status)
+        let actions: [AvailableAction] = [
+            AvailableAction(
+                actionKey: "pool.contribute",
+                label: "Aportar",
+                section: "actions",
+                enabled: pool.status == "open" && canRecord,
+                reason: pool.status != "open" ? "pool is not open"
+                    : (!canRecord ? "missing money.record permission" : nil)
+            ),
+            AvailableAction(
+                actionKey: "pool.resolve",
+                label: "Resolver fondo",
+                section: "actions",
+                enabled: resolvableStatus && canManage && totals.entryCount > 0,
+                reason: !resolvableStatus ? "pool already resolved or cancelled"
+                    : (!canManage ? "only creator or admin can resolve"
+                        : (totals.entryCount == 0 ? "no basis entries to resolve" : nil))
+            ),
+            AvailableAction(
+                actionKey: "pool.cancel",
+                label: "Cancelar fondo",
+                section: "actions",
+                enabled: pool.status == "open" && canManage,
+                reason: pool.status != "open" ? "pool is not open"
+                    : (!canManage ? "only creator or admin can cancel" : nil)
+            ),
+            AvailableAction(
+                actionKey: "pool.update_config",
+                label: "Configurar fondo",
+                section: "actions",
+                enabled: pool.status == "open" && canManage,
+                reason: pool.status != "open" ? "pool is not open"
+                    : (!canManage ? "only creator or admin can configure" : nil)
+            )
+        ]
+        return PoolAccountDetail(
+            poolAccount: pool.updating(totals: totals),
+            basisEntries: mockPoolEntries[poolAccountId] ?? [],
+            totals: totals,
+            availableActions: actions
+        )
+    }
+
+    public func previewPoolResolution(poolAccountId: UUID) async throws -> PoolResolutionPreview {
+        try throwIfNeeded()
+        guard let pool = mockPools[poolAccountId] else {
+            throw RuulError.unexpected(message: "Fondo no encontrado")
+        }
+        guard ["winner_takes_all", "equity_target"].contains(pool.policyKey) else {
+            throw RuulError.backend(.validation(
+                message: "pool policy \(pool.policyKey) resolution is not supported yet (MVP: winner_takes_all, equity_target)"
+            ))
+        }
+        let entries = mockPoolEntries[poolAccountId] ?? []
+        let total = entries.reduce(0.0) { $0 + $1.basisAmount }
+        let cashTotal = entries.filter { $0.basisKind == "cash" }.reduce(0.0) { $0 + $1.basisAmount }
+        let stakeTotal = entries.filter { $0.basisKind == "pending_stake" }.reduce(0.0) { $0 + $1.basisAmount }
+
+        var basisByActor: [UUID: Double] = [:]
+        for entry in entries {
+            basisByActor[entry.contributorActorId, default: 0] += entry.basisAmount
+        }
+        let contributors = basisByActor
+            .map { actorId, basis in
+                PoolResolutionContributor(
+                    actorId: actorId,
+                    displayName: actors[actorId]?.displayName,
+                    basisAmount: basis,
+                    share: total > 0 ? basis / total : 0
+                )
+            }
+            .sorted { lhs, rhs in
+                if lhs.basisAmount != rhs.basisAmount { return lhs.basisAmount > rhs.basisAmount }
+                return lhs.actorId.uuidString < rhs.actorId.uuidString
+            }
+
+        var warnings: [String] = []
+        if !["open", "target_reached"].contains(pool.status) {
+            warnings.append("pool is not resolvable in status \(pool.status)")
+        }
+        if entries.isEmpty {
+            warnings.append("no basis entries to resolve")
+        }
+
+        if pool.policyKey == "winner_takes_all" {
+            return PoolResolutionPreview(
+                poolAccountId: poolAccountId,
+                policyKey: pool.policyKey,
+                status: pool.status,
+                totalBasis: total,
+                currency: pool.currency,
+                entryCount: entries.count,
+                contributors: contributors,
+                warnings: warnings,
+                cashTotal: cashTotal,
+                stakeTotal: stakeTotal,
+                payoutAmount: cashTotal,
+                payoutCurrency: pool.currency,
+                winnerKnown: false
+            )
+        }
+        let target = pool.targetAmount ?? 0
+        return PoolResolutionPreview(
+            poolAccountId: poolAccountId,
+            policyKey: pool.policyKey,
+            status: pool.status,
+            totalBasis: total,
+            currency: pool.currency,
+            entryCount: entries.count,
+            contributors: contributors,
+            warnings: warnings,
+            targetAmount: pool.targetAmount,
+            targetReached: total >= target,
+            targetProgress: target > 0 ? total / target : nil,
+            remainingToTarget: max(target - total, 0)
+        )
+    }
+
+    public func resolvePool(poolAccountId: UUID, resolution: JSONValue?, clientId: String?) async throws -> PoolResolutionResult {
+        try throwIfNeeded()
+        guard let pool = mockPools[poolAccountId] else {
+            throw RuulError.unexpected(message: "Fondo no encontrado")
+        }
+        if pool.status == "resolved" {
+            return PoolResolutionResult(
+                poolAccountId: poolAccountId,
+                status: "resolved",
+                policyKey: pool.policyKey,
+                alreadyResolved: true
+            )
+        }
+        guard ["open", "target_reached"].contains(pool.status) else {
+            throw RuulError.backend(.validation(
+                message: "pool cannot be resolved from status \(pool.status) (expected open or target_reached)"
+            ))
+        }
+        guard ["winner_takes_all", "equity_target"].contains(pool.policyKey) else {
+            throw RuulError.backend(.validation(
+                message: "pool policy \(pool.policyKey) resolution is not supported yet (MVP: winner_takes_all, equity_target)"
+            ))
+        }
+        let myPerms = pool.parentContextActorId.flatMap { permissions[$0] } ?? []
+        guard myPerms.contains("money.settle") else {
+            throw RuulError.backend(.missingPermission(key: "money.settle"))
+        }
+        let entries = mockPoolEntries[poolAccountId] ?? []
+        guard !entries.isEmpty else {
+            throw RuulError.backend(.validation(message: "no basis entries to resolve"))
+        }
+
+        var settledCount = 0
+        var winnerActorId: UUID?
+        var payoutTransactionId: UUID?
+        var payoutAmount: Double?
+
+        if pool.policyKey == "winner_takes_all" {
+            guard let winnerString = resolution?["winner_actor_id"]?.stringValue,
+                  let winner = UUID(uuidString: winnerString) else {
+                throw RuulError.backend(.validation(
+                    message: "winner_takes_all resolution requires p_resolution.winner_actor_id"
+                ))
+            }
+            winnerActorId = winner
+            let cashTotal = entries.filter { $0.basisKind == "cash" }.reduce(0.0) { $0 + $1.basisAmount }
+            if cashTotal > 0 {
+                payoutTransactionId = UUID()
+                payoutAmount = cashTotal
+            }
+            // pending_pool pareadas: cash → settled; stake del winner → settled;
+            // stake de terceros → cristaliza a 'open' con creditor = winner.
+            for entry in entries {
+                guard let obId = entry.pairedObligationId,
+                      let ob = obligations[obId], ob.status == "pending_pool" else { continue }
+                if entry.basisKind == "cash" || ob.debtorActorId == winner {
+                    updatePoolObligation(ob, status: "settled")
+                    settledCount += 1
+                } else {
+                    updatePoolObligation(ob, status: "open", creditor: winner)
+                }
+            }
+        } else {
+            // equity_target mínimo viable: settle de las pending_pool pareadas.
+            for entry in entries {
+                guard let obId = entry.pairedObligationId,
+                      let ob = obligations[obId], ob.status == "pending_pool" else { continue }
+                updatePoolObligation(ob, status: "settled")
+                settledCount += 1
+            }
+        }
+
+        mockPools[poolAccountId] = pool.updating(status: "resolved", resolvedAt: Date())
+        if let contextId = pool.parentContextActorId {
+            emit(contextId, "pool.resolved", payload: .object([
+                "pool_account_id": .string(poolAccountId.uuidString),
+                "policy_key": .string(pool.policyKey)
+            ]))
+        }
+        let total = entries.reduce(0.0) { $0 + $1.basisAmount }
+        return PoolResolutionResult(
+            poolAccountId: poolAccountId,
+            status: "resolved",
+            policyKey: pool.policyKey,
+            winnerActorId: winnerActorId,
+            payoutTransactionId: payoutTransactionId,
+            payoutAmount: payoutAmount,
+            payoutCurrency: pool.currency,
+            totalBasis: pool.policyKey == "equity_target" ? total : nil,
+            targetReached: pool.policyKey == "equity_target"
+                ? total >= (pool.targetAmount ?? 0) : nil,
+            settledObligationCount: settledCount
+        )
     }
 
     // MARK: - R.2R Obligations universales
@@ -4804,6 +5270,9 @@ extension MockRuulRPCClient {
         public static let mundialPalco2026 = UUID(uuidString: "00000000-0000-0000-0000-0000000000c5")!
         public static let proyectoNave = UUID(uuidString: "00000000-0000-0000-0000-0000000000c6")!
         public static let fideicomiso = UUID(uuidString: "00000000-0000-0000-0000-0000000000c7")!
+        // R.8 — pool demo: "Bote — Cena Semanal" (winner_takes_all, 3 aportes).
+        public static let boteCena = UUID(uuidString: "00000000-0000-0000-0000-0000000000e1")!
+        public static let boteCenaActor = UUID(uuidString: "00000000-0000-0000-0000-0000000000e2")!
     }
 
     /// Mundo seedeado con el escenario del founder para previews.
@@ -4981,6 +5450,62 @@ extension MockRuulRPCClient {
             )
             obligations[ob.id] = ob
         }
+
+        // R.8 — Pool demo: "Bote — Cena Semanal" (winner_takes_all, 3 aportes cash).
+        let boteActor = ActorRecord(
+            id: DemoIds.boteCenaActor,
+            actorKind: .collective,
+            actorSubtype: "pool",
+            displayName: "Bote — Cena Semanal"
+        )
+        actors[boteActor.id] = boteActor
+        mockPools[DemoIds.boteCena] = PoolAccount(
+            poolAccountId: DemoIds.boteCena,
+            poolActorId: boteActor.id,
+            parentContextActorId: cena.id,
+            policyKey: "winner_takes_all",
+            status: "open",
+            displayName: "Bote — Cena Semanal",
+            description: "El bote de la próxima noche de juegos",
+            currency: "MXN",
+            createdByActorId: DemoIds.jose,
+            createdAt: Date().addingTimeInterval(-86400 * 3)
+        )
+        let boteContributions: [(UUID, String, Double)] = [
+            (DemoIds.jose, "José", 200),
+            (DemoIds.david, "David", 200),
+            (DemoIds.isaac, "Isaac", 150)
+        ]
+        for (index, contribution) in boteContributions.enumerated() {
+            let pendingObligation = Obligation(
+                id: UUID(),
+                contextActorId: cena.id,
+                debtorActorId: contribution.0,
+                creditorActorId: boteActor.id,
+                obligationType: "contribution",
+                amount: contribution.2,
+                currency: "MXN",
+                status: "pending_pool",
+                createdAt: Date().addingTimeInterval(Double(-(3 - index)) * 86400)
+            )
+            obligations[pendingObligation.id] = pendingObligation
+            mockPoolEntries[DemoIds.boteCena, default: []].append(PoolBasisEntry(
+                basisEntryId: UUID(),
+                contributorActorId: contribution.0,
+                contributorDisplayName: contribution.1,
+                basisKind: "cash",
+                basisAmount: contribution.2,
+                currency: "MXN",
+                pairedObligationId: pendingObligation.id,
+                moneyTransactionId: UUID(),
+                createdAt: Date().addingTimeInterval(Double(-(3 - index)) * 86400)
+            ))
+        }
+        emit(cena.id, "pool.created", actorId: DemoIds.jose, payload: .object([
+            "pool_account_id": .string(DemoIds.boteCena.uuidString),
+            "policy_key": .string("winner_takes_all"),
+            "display_name": .string("Bote — Cena Semanal")
+        ]))
 
         // Activity seed
         emit(cena.id, "context.created", actorId: DemoIds.jose)

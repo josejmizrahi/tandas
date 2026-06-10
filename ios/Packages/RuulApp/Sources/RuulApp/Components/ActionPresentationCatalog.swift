@@ -38,8 +38,11 @@ public enum ActionPresentationCatalog {
 
     /// Keys destructivos/irreversibles a nivel obligación (R.2S.9 / R.5V.X).
     /// Si el backend introduce un key destructivo nuevo, se agrega aquí.
+    /// R.8 — `pool.resolve` / `pool.cancel` son irreversibles (mueven dinero
+    /// fuera del fondo / lo cierran).
     private static let destructiveKeys: Set<String> = [
         "cancel", "dispute", "forgive",
+        "pool.resolve", "pool.cancel",
     ]
 
     // MARK: - Tabla
@@ -166,6 +169,12 @@ public enum ActionPresentationCatalog {
         "extend_due_date":       .init(symbolName: "calendar.badge.clock",         tint: .orange),
         "convert_to_settlement": .init(symbolName: "arrow.right.circle.fill",      tint: .green),
         "cancel_obligation":     .init(symbolName: "xmark.circle",                 tint: .red),
+
+        // ── Pool-level (R.8) ────────────────────────────────────────────────
+        "pool.contribute":      .init(symbolName: "plus.circle.fill",    tint: .green),
+        "pool.resolve":         .init(symbolName: "flag.checkered",      tint: .green),
+        "pool.cancel":          .init(symbolName: "xmark.circle",        tint: .red),
+        "pool.update_config":   .init(symbolName: "gearshape.fill",      tint: .secondary),
 
         // ── Decision-level (R.2S.9) ────────────────────────────────────────
         "vote":                 .init(symbolName: "hand.thumbsup.fill",     tint: .purple),
