@@ -91,30 +91,39 @@ select cron.schedule(
 );
 
 -- Seed rule en Familia Mizrahi.
-insert into public.rules
-  (context_actor_id, title, body, rule_type, severity, status,
-   trigger_event_type, condition_tree, consequences,
-   target_scope, target_filter, created_by_actor_id)
-values
-  ('afa227dd-31e5-471a-9d40-178ef50038f4',
-   'Obligación vencida — alerta crítica al deudor',
-   'Cuando una obligación pasa su fecha de vencimiento, el deudor recibe atención inmediata con priority=critical.',
-   'norm', 1, 'active',
-   'obligation.overdue',
-   '{}'::jsonb,
-   jsonb_build_array(
-     jsonb_build_object(
-       'type','emit_attention',
-       'kind','rule_violation',
-       'title','Obligación vencida',
-       'reason','Tienes una obligación que pasó su fecha de pago',
-       'priority','critical',
-       'cta_action_key','view_context',
-       'cta_scope_kind','context',
-       'cta_scope_id','afa227dd-31e5-471a-9d40-178ef50038f4'
-     )
-   ),
-   'event_type',
-   '{}'::jsonb,
-   'c9f0c0d8-cae5-4ef1-aec4-2418748b5b47'::uuid)
-on conflict do nothing;
+-- R.9 replay fix (2026-06-11): UUIDs de la BD viva — condicional para que el
+-- replay desde cero no muera con FK 23503 (el seed ya está aplicado en live).
+do $$
+begin
+  if exists (select 1 from public.actors where id = 'afa227dd-31e5-471a-9d40-178ef50038f4')
+     and exists (select 1 from public.actors where id = 'c9f0c0d8-cae5-4ef1-aec4-2418748b5b47')
+  then
+    insert into public.rules
+      (context_actor_id, title, body, rule_type, severity, status,
+       trigger_event_type, condition_tree, consequences,
+       target_scope, target_filter, created_by_actor_id)
+    values
+      ('afa227dd-31e5-471a-9d40-178ef50038f4',
+       'Obligación vencida — alerta crítica al deudor',
+       'Cuando una obligación pasa su fecha de vencimiento, el deudor recibe atención inmediata con priority=critical.',
+       'norm', 1, 'active',
+       'obligation.overdue',
+       '{}'::jsonb,
+       jsonb_build_array(
+         jsonb_build_object(
+           'type','emit_attention',
+           'kind','rule_violation',
+           'title','Obligación vencida',
+           'reason','Tienes una obligación que pasó su fecha de pago',
+           'priority','critical',
+           'cta_action_key','view_context',
+           'cta_scope_kind','context',
+           'cta_scope_id','afa227dd-31e5-471a-9d40-178ef50038f4'
+         )
+       ),
+       'event_type',
+       '{}'::jsonb,
+       'c9f0c0d8-cae5-4ef1-aec4-2418748b5b47'::uuid)
+    on conflict do nothing;
+  end if;
+end $$;
