@@ -328,6 +328,67 @@ public struct EventParticipant: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+/// R.5Z.fix.EVENT.GUESTS — invitado externo del evento (no es member del
+/// contexto). MVP1: source='manual' (founder escribió nombre). Futuro:
+/// source='actor' (link a actor de mi mundo) y 'contact' (Apple Contacts).
+public struct EventGuest: Codable, Sendable, Equatable, Identifiable {
+    public let id: UUID
+    public let eventId: UUID
+    public let displayName: String
+    public let countShare: Int
+    public let invitedByActorId: UUID
+    public let invitedByDisplayName: String?
+    public let linkedActorId: UUID?
+    public let source: String
+    public let createdAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case eventId = "event_id"
+        case displayName = "display_name"
+        case countShare = "count_share"
+        case invitedByActorId = "invited_by_actor_id"
+        case invitedByDisplayName = "invited_by_display_name"
+        case linkedActorId = "linked_actor_id"
+        case source
+        case createdAt = "created_at"
+    }
+
+    public init(
+        id: UUID, eventId: UUID, displayName: String, countShare: Int = 1,
+        invitedByActorId: UUID, invitedByDisplayName: String? = nil,
+        linkedActorId: UUID? = nil, source: String = "manual",
+        createdAt: Date? = nil
+    ) {
+        self.id = id
+        self.eventId = eventId
+        self.displayName = displayName
+        self.countShare = countShare
+        self.invitedByActorId = invitedByActorId
+        self.invitedByDisplayName = invitedByDisplayName
+        self.linkedActorId = linkedActorId
+        self.source = source
+        self.createdAt = createdAt
+    }
+}
+
+/// R.5Z.fix.EVENT.GUESTS — resultado de `add_event_guest`.
+public struct EventGuestAdded: Decodable, Sendable, Equatable {
+    public let guestId: UUID
+    public let eventId: UUID
+    public let displayName: String
+    public let countShare: Int
+    public let invitedBy: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case guestId = "guest_id"
+        case eventId = "event_id"
+        case displayName = "display_name"
+        case countShare = "count_share"
+        case invitedBy = "invited_by"
+    }
+}
+
 // MARK: - Resultados de acciones
 
 /// Resultado de `check_in_participant()`.

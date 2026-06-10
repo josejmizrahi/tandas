@@ -1977,6 +1977,36 @@ public actor MockRuulRPCClient: RuulRPCClient {
         }
     }
 
+    // R.5Z.fix.EVENT.GUESTS — mock storage en memoria.
+    var mockEventGuests: [UUID: [EventGuest]] = [:]
+
+    public func addEventGuest(eventId: UUID, displayName: String, countShare: Int, linkedActorId: UUID?, source: String) async throws -> EventGuestAdded {
+        try throwIfNeeded()
+        let id = UUID()
+        let guest = EventGuest(
+            id: id, eventId: eventId, displayName: displayName,
+            countShare: countShare, invitedByActorId: me.id,
+            linkedActorId: linkedActorId, source: source, createdAt: Date()
+        )
+        mockEventGuests[eventId, default: []].append(guest)
+        return EventGuestAdded(
+            guestId: id, eventId: eventId, displayName: displayName,
+            countShare: countShare, invitedBy: me.id
+        )
+    }
+
+    public func removeEventGuest(guestId: UUID) async throws {
+        try throwIfNeeded()
+        for (eventId, gs) in mockEventGuests {
+            mockEventGuests[eventId] = gs.filter { $0.id != guestId }
+        }
+    }
+
+    public func listEventGuests(eventId: UUID) async throws -> [EventGuest] {
+        try throwIfNeeded()
+        return mockEventGuests[eventId] ?? []
+    }
+
     public func closeEvent(eventId: UUID) async throws -> CloseEventResult {
         try throwIfNeeded()
         guard let event = events[eventId] else {

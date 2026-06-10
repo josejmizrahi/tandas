@@ -979,6 +979,43 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callVoid("set_event_participant_plus_count", params: Params(pEventId: eventId, pActorId: actorId, pCount: count))
     }
 
+    public func addEventGuest(eventId: UUID, displayName: String, countShare: Int, linkedActorId: UUID?, source: String) async throws -> EventGuestAdded {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pDisplayName: String
+            let pCountShare: Int
+            let pLinkedActorId: UUID?
+            let pSource: String
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pDisplayName = "p_display_name"
+                case pCountShare = "p_count_share"
+                case pLinkedActorId = "p_linked_actor_id"
+                case pSource = "p_source"
+            }
+        }
+        return try await call("add_event_guest", params: Params(
+            pEventId: eventId, pDisplayName: displayName,
+            pCountShare: countShare, pLinkedActorId: linkedActorId, pSource: source
+        ))
+    }
+
+    public func removeEventGuest(guestId: UUID) async throws {
+        struct Params: Encodable, Sendable {
+            let pGuestId: UUID
+            enum CodingKeys: String, CodingKey { case pGuestId = "p_guest_id" }
+        }
+        try await callVoid("remove_event_guest", params: Params(pGuestId: guestId))
+    }
+
+    public func listEventGuests(eventId: UUID) async throws -> [EventGuest] {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            enum CodingKeys: String, CodingKey { case pEventId = "p_event_id" }
+        }
+        return try await call("list_event_guests", params: Params(pEventId: eventId))
+    }
+
     // MARK: - F.EVENT.8 host rotation
 
     public func previewNextHost(eventId: UUID) async throws -> NextHostPreview {

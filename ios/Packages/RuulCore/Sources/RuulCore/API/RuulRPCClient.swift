@@ -202,6 +202,17 @@ public protocol RuulRPCClient: Sendable {
     /// Guarda en `event_participants.metadata.plus_count`. Cuenta como N
     /// unidades adicionales en el split del gasto (0..20).
     func setEventParticipantPlusCount(eventId: UUID, actorId: UUID, count: Int) async throws
+    /// `add_event_guest(p_event_id, p_display_name, p_count_share?, p_linked_actor_id?, p_source?)` —
+    /// R.5Z.fix.EVENT.GUESTS MVP1. Cualquier participant del evento o host/admin.
+    /// MVP1 solo soporta source='manual' (display name escrito). Phase 2:
+    /// source='actor' (linked_actor_id) + cross-context picker.
+    func addEventGuest(eventId: UUID, displayName: String, countShare: Int, linkedActorId: UUID?, source: String) async throws -> EventGuestAdded
+    /// `remove_event_guest(p_guest_id)` — R.5Z.fix.EVENT.GUESTS.
+    /// El invitante, host o events.manage. Soft delete.
+    func removeEventGuest(guestId: UUID) async throws
+    /// `list_event_guests(p_event_id)` — R.5Z.fix.EVENT.GUESTS.
+    /// Members del contexto del evento.
+    func listEventGuests(eventId: UUID) async throws -> [EventGuest]
 
     /// F.EVENT.8 — `preview_next_host(p_event_id)`. Devuelve quién será el
     /// próximo anfitrión sin mutar nada. Para eventos no recurrentes los

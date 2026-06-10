@@ -69,6 +69,8 @@ public final class EventsStore {
 public final class EventDetailStore {
     public private(set) var event: CalendarEvent?
     public private(set) var participants: [EventParticipant] = []
+    /// R.5Z.fix.EVENT.GUESTS — invitados externos (no members del contexto).
+    public private(set) var guests: [EventGuest] = []
     public private(set) var members: [ContextMember] = []
     public private(set) var myPermissions: [String] = []
     /// F.2X.4 — Acciones canónicas del evento desde `event_detail.available_actions`.
@@ -110,6 +112,9 @@ public final class EventDetailStore {
             availableActions = detail.availableActions
             members = summary.members
             myPermissions = summary.myPermissions
+            // R.5Z.fix.EVENT.GUESTS — load en paralelo, fail-silent (un event
+            // sin guests no debe romper el load principal).
+            guests = (try? await rpc.listEventGuests(eventId: eventId)) ?? []
             phase = .loaded
             // F.EVENT.8 — preview del próximo anfitrión cuando el evento es
             // recurrente. Falla silencioso para no romper el load principal.

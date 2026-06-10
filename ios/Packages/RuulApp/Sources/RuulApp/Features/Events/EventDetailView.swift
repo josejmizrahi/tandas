@@ -1325,6 +1325,7 @@ private struct ParticipantsFullView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var isShowingAdd = false
+    @State private var isShowingAddGuest = false
     @State private var runner = ActionRunner()
 
     var body: some View {
@@ -1345,18 +1346,49 @@ private struct ParticipantsFullView: View {
                     }
                 }
             }
+            // R.5Z.fix.EVENT.GUESTS — invitados externos (no members del contexto).
+            if !store.guests.isEmpty {
+                Section {
+                    ForEach(store.guests) { guest in
+                        guestRow(guest)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                if canRemoveGuest(guest) {
+                                    Button(role: .destructive) {
+                                        Task { await removeGuest(guest) }
+                                    } label: {
+                                        Label("Remover", systemImage: "person.badge.minus")
+                                    }
+                                }
+                            }
+                    }
+                } header: {
+                    Text("Invitados externos")
+                } footer: {
+                    Text("Acompañantes que no son miembros del contexto. Cuentan en el split del gasto según su share.")
+                }
+            }
         }
         .navigationTitle("Participantes")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if canManageRoster {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isShowingAdd = true
-                    } label: {
-                        Label("Agregar", systemImage: "person.badge.plus")
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    if canManageRoster {
+                        Button {
+                            isShowingAdd = true
+                        } label: {
+                            Label("Agregar miembro", systemImage: "person.badge.plus")
+                        }
                     }
+                    Button {
+                        isShowingAddGuest = true
+                    } label: {
+                        Label("Agregar invitado externo", systemImage: "person.crop.circle.badge.plus")
+                    }
+                } label: {
+                    Image(systemName: "plus")
                 }
+                .accessibilityLabel("Agregar")
             }
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cerrar") { dismiss() }
@@ -1367,8 +1399,6 @@ private struct ParticipantsFullView: View {
             AddParticipantsSheet(
                 eventId: eventId,
                 contextId: store.event?.contextActorId,
-                // R.5Z.fix.EVENT.PARTICIPANTS.2 — solo bloquea miembros con
-                // status activo. Cancelled/declined deben ser re-agregables.
                 existingActorIds: Set(
                     participants
                         .filter { $0.status != "cancelled" && $0.status != "declined" }
@@ -1378,6 +1408,54 @@ private struct ParticipantsFullView: View {
                 onAdded: { onChanged() }
             )
         }
+        .sheet(isPresented: $isShowingAddGuest, onDismiss: { onChanged() }) {
+            AddEventGuestSheet(
+                eventId: eventId,
+                rpc: rpc,
+                onAdded: { onChanged() }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func guestRow(_ guest: EventGuest) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "person.crop.circle.badge.questionmark")
+                .font(.title2)
+                .foregroundStyle(Theme.Tint.primary)
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(guest.displayName)
+                    if guest.countShare > 1 {
+                        Text("×\(guest.countShare)")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.Tint.primary.opacity(0.15), in: Capsule())
+                            .foregroundStyle(Theme.Tint.primary)
+                    }
+                }
+                if let invitedBy = guest.invitedByDisplayName {
+                    Text("Invitado por \(invitedBy)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+        }
+    }
+
+    private func canRemoveGuest(_ g: EventGuest) -> Bool {
+        guard let myId = myActorId else { return false }
+        return canManageRoster || g.invitedByActorId == myId
+    }
+
+    private func removeGuest(_ g: EventGuest) async {
+        _ = await runner.run {
+            try await rpc.removeEventGuest(guestId: g.id)
+        }
+        onChanged()
     }
 
     @ViewBuilder
@@ -1624,6 +1702,93 @@ private struct AddParticipantsSheet: View {
         let ids = Array(selectedIds)
         let success = await runner.run {
             try await rpc.addEventParticipants(eventId: eventId, actorIds: ids)
+        }
+        if success {
+            onAdded()
+            dismiss()
+        }
+    }
+}
+
+// MARK: - R.5Z.fix.EVENT.GUESTS — Add External Guest Sheet
+//
+// MVP1: solo source='manual' (name + count share). Phase 2: cross-context
+// picker + Apple Contacts integration.
+
+private struct AddEventGuestSheet: View {
+    let eventId: UUID
+    let rpc: any RuulRPCClient
+    let onAdded: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var displayName = ""
+    @State private var countShare = 1
+    @State private var runner = ActionRunner()
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Ej. Mi esposa", text: $displayName)
+                        .textInputAutocapitalization(.words)
+                    Stepper(value: $countShare, in: 1...20) {
+                        HStack {
+                            Text("Cuenta como")
+                            Spacer()
+                            Text("\(countShare) \(countShare == 1 ? "persona" : "personas")")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Datos del invitado")
+                } footer: {
+                    Text("El invitado no será miembro del contexto. Solo aparece en este evento y cuenta en el split del gasto según su share.")
+                }
+
+                Section {
+                    Button {
+                        Task { await add() }
+                    } label: {
+                        if runner.isRunning {
+                            ProgressView().frame(maxWidth: .infinity)
+                        } else {
+                            Text("Agregar invitado").frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty || runner.isRunning)
+                }
+
+                Section {
+                    Label("Próximamente", systemImage: "sparkles")
+                        .foregroundStyle(Theme.Text.secondary)
+                } header: {
+                    Text("Próximamente")
+                } footer: {
+                    Text("Pronto vas a poder seleccionar invitados desde tus otros contextos o tu libreta de contactos de Apple.")
+                }
+            }
+            .navigationTitle("Invitar externo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                }
+            }
+            .actionErrorAlert(runner)
+        }
+        .ruulSheet()
+    }
+
+    private func add() async {
+        let trimmed = displayName.trimmingCharacters(in: .whitespaces)
+        let success = await runner.run {
+            _ = try await rpc.addEventGuest(
+                eventId: eventId,
+                displayName: trimmed,
+                countShare: countShare,
+                linkedActorId: nil,
+                source: "manual"
+            )
         }
         if success {
             onAdded()
