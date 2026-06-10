@@ -17,6 +17,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache SwiftPM (resolución + checkouts de dependencias)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/**/Package.swift', 'ios/**/Package.resolved', 'ios/project.yml') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
       - name: Select latest Xcode
         run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
 
