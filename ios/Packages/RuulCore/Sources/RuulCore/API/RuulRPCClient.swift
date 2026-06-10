@@ -388,6 +388,11 @@ public protocol RuulRPCClient: Sendable {
     /// `reject_settlement_paid(p_settlement_item_id, p_reason?)` — R.5Z.fix.SETTLEMENT.HANDSHAKE.
     /// Solo creditor o admin. Vuelve a status='pending' + emite attention al debtor.
     func rejectSettlementPaid(itemId: UUID, reason: String?) async throws
+    /// `appeal_settlement_paid(p_settlement_item_id, p_reason?)` — R.5Z.fix.SETTLEMENT.APPEAL.
+    /// Solo el debtor. Status pasa a 'disputed' + emite attention a admins
+    /// (money.settle) y al creditor. Admin resuelve via `confirm_settlement_paid`
+    /// o `reject_settlement_paid`.
+    func appealSettlementPaid(itemId: UUID, reason: String?) async throws
 
     // MARK: - Documents
 

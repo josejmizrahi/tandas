@@ -3765,6 +3765,11 @@ public actor MockRuulRPCClient: RuulRPCClient {
         // mock no-op
     }
 
+    public func appealSettlementPaid(itemId: UUID, reason: String?) async throws {
+        try throwIfNeeded()
+        // mock no-op
+    }
+
     private func closeObligation(_ id: UUID) {
         guard let ob = obligations[id] else { return }
         obligations[id] = Obligation(

@@ -1923,6 +1923,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callVoid("reject_settlement_paid", params: Params(pSettlementItemId: itemId, pReason: reason))
     }
 
+    public func appealSettlementPaid(itemId: UUID, reason: String?) async throws {
+        struct Params: Encodable, Sendable {
+            let pSettlementItemId: UUID
+            let pReason: String?
+            enum CodingKeys: String, CodingKey {
+                case pSettlementItemId = "p_settlement_item_id"
+                case pReason = "p_reason"
+            }
+        }
+        try await callVoid("appeal_settlement_paid", params: Params(pSettlementItemId: itemId, pReason: reason))
+    }
+
     // MARK: - Explanation engine (R.2S.10)
 
     public func whyCanViewResource(actorId: UUID, resourceId: UUID) async throws -> WhyCanViewResource {

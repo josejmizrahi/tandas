@@ -33,6 +33,10 @@ public struct SettlementView: View {
     @State private var isShowingRejectSheet = false
     @State private var rejectReason = ""
     @State private var rejectTargetItemId: UUID?
+    /// R.5Z.fix.SETTLEMENT.APPEAL — debtor apela el rechazo del creditor.
+    @State private var isShowingAppealSheet = false
+    @State private var appealReason = ""
+    @State private var appealTargetItemId: UUID?
     @State private var showsPaidHistory = false
 
     public init(context: AppContext, container: DependencyContainer) {
@@ -113,7 +117,14 @@ public struct SettlementView: View {
                         rejectReason = ""
                         isShowingRejectSheet = true
                         selectedItemId = nil
-                    }
+                    },
+                    onAppeal: {
+                        appealTargetItemId = item.id
+                        appealReason = ""
+                        isShowingAppealSheet = true
+                        selectedItemId = nil
+                    },
+                    canResolveAsAdmin: canResolveAsAdmin
                 )
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
@@ -122,6 +133,13 @@ public struct SettlementView: View {
         .sheet(isPresented: $isShowingRejectSheet) {
             rejectReasonSheet
         }
+        .sheet(isPresented: $isShowingAppealSheet) {
+            appealReasonSheet
+        }
+    }
+
+    private var canResolveAsAdmin: Bool {
+        store.canSettle(in: context)
     }
 
     // MARK: - Sectioned list
@@ -452,6 +470,56 @@ public struct SettlementView: View {
         rejectReason = ""
         rejectTargetItemId = nil
     }
+
+    private func appealPaid() async {
+        guard let id = appealTargetItemId else { return }
+        let reason = appealReason.trimmingCharacters(in: .whitespaces)
+        await runner.run {
+            try await container.rpc.appealSettlementPaid(itemId: id, reason: reason.isEmpty ? nil : reason)
+            await store.load(context: context)
+        }
+        isShowingAppealSheet = false
+        appealReason = ""
+        appealTargetItemId = nil
+    }
+
+    @ViewBuilder
+    private var appealReasonSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Explica por qué insistís (opcional)", text: $appealReason, axis: .vertical)
+                        .lineLimit(3...5)
+                } header: {
+                    Text("Apelar")
+                } footer: {
+                    Text("La transferencia pasa a disputa. Los administradores (money.settle) deciden si se confirma como pagada o no.")
+                }
+                Section {
+                    Button {
+                        Task { await appealPaid() }
+                    } label: {
+                        if runner.isRunning {
+                            ProgressView().frame(maxWidth: .infinity)
+                        } else {
+                            Text("Apelar al admin").frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(runner.isRunning)
+                }
+            }
+            .navigationTitle("Apelar el pago")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { isShowingAppealSheet = false }
+                }
+            }
+            .actionErrorAlert(runner)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
 }
 
 // MARK: - Bottom sheet con acciones por item
@@ -465,6 +533,8 @@ private struct ItemActionsSheet: View {
     let onMarkPaid: () -> Void
     let onConfirm: () -> Void
     let onReject: () -> Void
+    let onAppeal: () -> Void
+    let canResolveAsAdmin: Bool
 
     @Environment(\.dismiss) private var dismiss
 
@@ -519,6 +589,9 @@ private struct ItemActionsSheet: View {
                 Label("El pago está esperando confirmación.", systemImage: "hourglass")
                     .foregroundStyle(Theme.Tint.info)
             }
+        } else if item.isDisputed {
+            Label("En disputa — un admin tiene que resolver.", systemImage: "scale.3d")
+                .foregroundStyle(Theme.Tint.critical)
         }
     }
 
@@ -533,6 +606,15 @@ private struct ItemActionsSheet: View {
                     Label("Marcar como pagado", systemImage: "checkmark.circle.fill")
                 }
                 .disabled(isRunning)
+                // Si fue rechazado antes (metadata.rejected_at), también puede apelar.
+                if item.metadata?["rejected_at"] != nil {
+                    Button(role: .destructive) {
+                        onAppeal()
+                    } label: {
+                        Label("Apelar al admin", systemImage: "scale.3d")
+                    }
+                    .disabled(isRunning)
+                }
             case (.creditor, "pending_confirmation"):
                 Button {
                     onConfirm()
@@ -555,6 +637,32 @@ private struct ItemActionsSheet: View {
                         .foregroundStyle(Theme.Tint.success)
                 }
                 .disabled(isRunning)
+            case (.debtor, "pending_confirmation"):
+                Button(role: .destructive) {
+                    onAppeal()
+                } label: {
+                    Label("Apelar al admin", systemImage: "scale.3d")
+                }
+                .disabled(isRunning)
+            case (_, "disputed"):
+                if canResolveAsAdmin {
+                    Button {
+                        onConfirm()
+                    } label: {
+                        Label("Confirmar el pago", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(Theme.Tint.success)
+                    }
+                    .disabled(isRunning)
+                    Button(role: .destructive) {
+                        onReject()
+                    } label: {
+                        Label("Marcar como NO pagado", systemImage: "xmark.circle")
+                    }
+                    .disabled(isRunning)
+                } else {
+                    Label("Esperando resolución del admin", systemImage: "hourglass")
+                        .foregroundStyle(Theme.Text.secondary)
+                }
             default:
                 EmptyView()
             }

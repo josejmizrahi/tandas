@@ -535,6 +535,10 @@ public struct SettlementItem: Codable, Sendable, Equatable, Identifiable {
     public let amount: Double
     public let currency: String
     public let status: String
+    /// R.5Z.fix.SETTLEMENT.HANDSHAKE — incluye `marked_paid_at/by`, `confirmed_at/by`,
+    /// `rejected_at/by/reason`, `appealed_at/by/reason`. iOS usa estos campos para
+    /// mostrar la historia del item (e.g., "fue reportado, apelá si insistís").
+    public let metadata: JSONValue?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -544,6 +548,7 @@ public struct SettlementItem: Codable, Sendable, Equatable, Identifiable {
         case amount
         case currency
         case status
+        case metadata
     }
 
     public init(
@@ -553,7 +558,8 @@ public struct SettlementItem: Codable, Sendable, Equatable, Identifiable {
         toActorId: UUID,
         amount: Double,
         currency: String,
-        status: String = "pending"
+        status: String = "pending",
+        metadata: JSONValue? = nil
     ) {
         self.id = id
         self.settlementBatchId = settlementBatchId
@@ -562,6 +568,19 @@ public struct SettlementItem: Codable, Sendable, Equatable, Identifiable {
         self.amount = amount
         self.currency = currency
         self.status = status
+        self.metadata = metadata
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.settlementBatchId = try c.decode(UUID.self, forKey: .settlementBatchId)
+        self.fromActorId = try c.decode(UUID.self, forKey: .fromActorId)
+        self.toActorId = try c.decode(UUID.self, forKey: .toActorId)
+        self.amount = try c.decode(Double.self, forKey: .amount)
+        self.currency = try c.decode(String.self, forKey: .currency)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "pending"
+        self.metadata = try c.decodeIfPresent(JSONValue.self, forKey: .metadata)
     }
 
     public var isPaid: Bool { status == "paid" }
@@ -569,6 +588,9 @@ public struct SettlementItem: Codable, Sendable, Equatable, Identifiable {
     /// aún no confirma. Se muestra como "Esperando confirmación".
     public var isPendingConfirmation: Bool { status == "pending_confirmation" }
     public var isPending: Bool { status == "pending" }
+    /// R.5Z.fix.SETTLEMENT.APPEAL — debtor apeló el rechazo del creditor.
+    /// Solo admin con money.settle puede resolver.
+    public var isDisputed: Bool { status == "disputed" }
     /// R.2N: items reemplazados por un recálculo del neteo vivo — no se muestran.
     public var isCancelled: Bool { status == "cancelled" }
 }
