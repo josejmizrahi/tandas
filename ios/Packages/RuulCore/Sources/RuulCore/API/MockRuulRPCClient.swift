@@ -3754,6 +3754,17 @@ public actor MockRuulRPCClient: RuulRPCClient {
         throw RuulError.unexpected(message: "Settlement item no encontrado")
     }
 
+    public func confirmSettlementPaid(itemId: UUID) async throws -> MarkPaidResult {
+        // R.5Z.fix.SETTLEMENT.HANDSHAKE — mock: alias a markSettlementPaid
+        // porque el mock no simula el handshake (no rastrea pending_confirmation).
+        try await markSettlementPaid(itemId: itemId)
+    }
+
+    public func rejectSettlementPaid(itemId: UUID, reason: String?) async throws {
+        try throwIfNeeded()
+        // mock no-op
+    }
+
     private func closeObligation(_ id: UUID) {
         guard let ob = obligations[id] else { return }
         obligations[id] = Obligation(

@@ -377,8 +377,17 @@ public protocol RuulRPCClient: Sendable {
     func listSettlementBatches(contextId: UUID) async throws -> [SettlementBatch]
     /// Lectura PostgREST: `settlement_items` de un batch.
     func listSettlementItems(batchId: UUID) async throws -> [SettlementItem]
-    /// `mark_settlement_paid(p_settlement_item_id)`
+    /// `mark_settlement_paid(p_settlement_item_id)` — R.5Z.fix.SETTLEMENT.HANDSHAKE.
+    /// Cuando lo llama el debtor → status='pending_confirmation' + emite
+    /// attention al creditor. Cuando lo llama el creditor o admin → paid directo.
     func markSettlementPaid(itemId: UUID) async throws -> MarkPaidResult
+    /// `confirm_settlement_paid(p_settlement_item_id)` — R.5Z.fix.SETTLEMENT.HANDSHAKE.
+    /// Solo creditor o admin. Aplica side effects (transaction + obligation close
+    /// + batch finalize + activity).
+    func confirmSettlementPaid(itemId: UUID) async throws -> MarkPaidResult
+    /// `reject_settlement_paid(p_settlement_item_id, p_reason?)` — R.5Z.fix.SETTLEMENT.HANDSHAKE.
+    /// Solo creditor o admin. Vuelve a status='pending' + emite attention al debtor.
+    func rejectSettlementPaid(itemId: UUID, reason: String?) async throws
 
     // MARK: - Documents
 

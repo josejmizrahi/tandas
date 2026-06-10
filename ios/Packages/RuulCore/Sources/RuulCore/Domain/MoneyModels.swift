@@ -565,6 +565,10 @@ public struct SettlementItem: Codable, Sendable, Equatable, Identifiable {
     }
 
     public var isPaid: Bool { status == "paid" }
+    /// R.5Z.fix.SETTLEMENT.HANDSHAKE — el debtor marcó pagado pero el creditor
+    /// aún no confirma. Se muestra como "Esperando confirmación".
+    public var isPendingConfirmation: Bool { status == "pending_confirmation" }
+    public var isPending: Bool { status == "pending" }
     /// R.2N: items reemplazados por un recálculo del neteo vivo — no se muestran.
     public var isCancelled: Bool { status == "cancelled" }
 }

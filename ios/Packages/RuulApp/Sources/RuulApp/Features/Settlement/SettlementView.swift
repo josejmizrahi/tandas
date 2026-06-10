@@ -1,8 +1,24 @@
 import SwiftUI
 import RuulCore
 
-/// F.12 — settlement: generar el neteo de deudas abiertas, ver quién paga a
-/// quién y marcar pagos (sin duplicar — el backend es idempotente).
+/// R.5Z.fix.SETTLEMENT.REDESIGN (2026-06-10 founder) — rediseño completo
+/// Apple-native + 2-way handshake.
+///
+/// Doctrina Ruul (founder lock):
+/// - List + Section, no custom cards.
+/// - Hero section con balance neto del usuario.
+/// - Section "Te deben" (yo soy creditor) + Section "Debes" (yo soy debtor).
+/// - Tap row → bottom sheet con detalle + acciones canónicas según rol.
+/// - Status badges semánticos:
+///   * `pending` → "Pendiente" (warning).
+///   * `pending_confirmation` → "Esperando confirmación" / "Confirma este pago"
+///     según rol (high prio en el lado creditor).
+///   * `paid` → "Liquidado" (success), colapsable.
+///
+/// 2-way handshake:
+/// - Debtor marca pagado → status='pending_confirmation' + attention al creditor.
+/// - Creditor confirma o rechaza (con razón).
+/// - Si rechaza, el debtor recibe attention prioridad alta.
 public struct SettlementView: View {
     let context: AppContext
     let container: DependencyContainer
@@ -11,6 +27,13 @@ public struct SettlementView: View {
     @State private var runner = ActionRunner()
     @State private var currency = "MXN"
     @State private var generateNotice: String?
+    /// Item seleccionado para mostrar el bottom sheet con acciones.
+    @State private var selectedItemId: UUID?
+    /// Reject flow: muestra TextField para razón.
+    @State private var isShowingRejectSheet = false
+    @State private var rejectReason = ""
+    @State private var rejectTargetItemId: UUID?
+    @State private var showsPaidHistory = false
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -25,43 +48,35 @@ public struct SettlementView: View {
             switch store.phase {
             case .idle, .loading:
                 RuulLoadingState()
-
             case .failed(let message):
                 RuulErrorState(message: message) {
                     Task { await store.load(context: context) }
                 }
-
             case .loaded:
                 settlementList
             }
         }
-        .navigationTitle("Settlement")
+        .navigationTitle("Liquidaciones")
         .navigationBarTitleDisplayMode(.inline)
-        // P0 fix 2026-06-08 — toolbar Menu con acciones de liquidación
-        // (Recalcular). Antes la única acción vivía inline en el body.
         .toolbar {
             if store.canSettle(in: context) {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Section("Calcular") {
-                            Button {
-                                Task { await generate() }
-                            } label: {
-                                Label("Recalcular settlement", systemImage: "arrow.triangle.2.circlepath")
-                            }
-                            .disabled(runner.isRunning)
+                        Button {
+                            Task { await generate() }
+                        } label: {
+                            Label("Recalcular", systemImage: "arrow.triangle.2.circlepath")
                         }
+                        .disabled(runner.isRunning)
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("Acciones de settlement")
+                    .accessibilityLabel("Más opciones")
                 }
             }
         }
         .task {
             await store.load(context: context)
-            // El settlement se calcula solo al entrar: el backend es idempotente
-            // (reusa el batch draft) y falla controlado si no hay nada que netear.
             await autoGenerate()
         }
         .refreshable {
@@ -72,7 +87,7 @@ public struct SettlementView: View {
             await store.load(context: context)
         }
         .actionErrorAlert(runner)
-        .alert("Settlement", isPresented: Binding(
+        .alert("Liquidación", isPresented: Binding(
             get: { generateNotice != nil },
             set: { if !$0 { generateNotice = nil } }
         )) {
@@ -80,137 +95,312 @@ public struct SettlementView: View {
         } message: {
             Text(generateNotice ?? "")
         }
+        .sheet(item: Binding(
+            get: { selectedItemId.map { ItemSheetWrapper(id: $0) } },
+            set: { selectedItemId = $0?.id }
+        )) { wrapper in
+            if let item = activeItems.first(where: { $0.id == wrapper.id }) {
+                ItemActionsSheet(
+                    item: item,
+                    fromName: store.displayName(for: item.fromActorId),
+                    toName: store.displayName(for: item.toActorId),
+                    myRole: roleFor(item),
+                    isRunning: runner.isRunning,
+                    onMarkPaid: { Task { await markPaid(item) } },
+                    onConfirm: { Task { await confirmPaid(item) } },
+                    onReject: {
+                        rejectTargetItemId = item.id
+                        rejectReason = ""
+                        isShowingRejectSheet = true
+                        selectedItemId = nil
+                    }
+                )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+            }
+        }
+        .sheet(isPresented: $isShowingRejectSheet) {
+            rejectReasonSheet
+        }
     }
 
-    // MARK: - Contenido
+    // MARK: - Sectioned list
+
+    private var activeItems: [SettlementItem] {
+        store.batches.flatMap { store.items(for: $0.id) }.filter { !$0.isPaid }
+    }
+    private var paidItems: [SettlementItem] {
+        store.batches.flatMap { store.items(for: $0.id) }.filter { $0.isPaid }
+    }
+    /// Items donde yo soy creditor activos.
+    private var theyOweMe: [SettlementItem] {
+        activeItems.filter { $0.toActorId == myActorId }
+    }
+    /// Items donde yo soy debtor activos.
+    private var iOwe: [SettlementItem] {
+        activeItems.filter { $0.fromActorId == myActorId }
+    }
+    /// Items que no me involucran (admin view).
+    private var others: [SettlementItem] {
+        activeItems.filter { $0.fromActorId != myActorId && $0.toActorId != myActorId }
+    }
 
     @ViewBuilder
     private var settlementList: some View {
         List {
-            // Recalcular (la generación es automática al entrar; esto re-netea
-            // manualmente, p.ej. tras registrar gastos nuevos)
-            if store.canSettle(in: context) {
-                Section {
-                    HStack {
-                        Text("Moneda")
-                        Spacer()
-                        TextField("MXN", text: $currency)
-                            .textInputAutocapitalization(.characters)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                    }
-                    Button {
-                        Task { await generate() }
-                    } label: {
-                        if runner.isRunning {
-                            ProgressView().frame(maxWidth: .infinity)
-                        } else {
-                            Label("Recalcular", systemImage: "arrow.triangle.2.circlepath")
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .disabled(runner.isRunning)
-                } footer: {
-                    Text("Las deudas abiertas en \(currency) se netean automáticamente al mínimo número de transferencias para quedar a mano.")
-                }
-            }
-
-            // Batches
-            if store.batches.isEmpty {
-                Section {
-                    RuulEmptyState(
-                        title: "Nada que liquidar",
-                        systemImage: "checkmark.circle",
-                        message: "Cuando haya deudas abiertas, aquí aparece quién le paga a quién (con el mínimo de transferencias)."
-                        )
-                    .listRowBackground(Color.clear)
-                }
+            heroSection
+            if theyOweMe.isEmpty && iOwe.isEmpty && others.isEmpty && paidItems.isEmpty {
+                emptyStateSection
             } else {
-                ForEach(store.batches) { batch in
-                    batchSection(batch)
-                }
+                if !theyOweMe.isEmpty { theyOweMeSection }
+                if !iOwe.isEmpty       { iOweSection }
+                if !others.isEmpty     { othersSection }
+                if !paidItems.isEmpty  { paidHistorySection }
             }
         }
         .listStyle(.insetGrouped)
     }
 
     @ViewBuilder
-    private func batchSection(_ batch: SettlementBatch) -> some View {
-        let items = store.items(for: batch.id)
-        let pendingCount = items.filter { !$0.isPaid }.count
+    private var heroSection: some View {
+        let netCredit = theyOweMe.reduce(0) { $0 + $1.amount }
+        let netDebit = iOwe.reduce(0) { $0 + $1.amount }
+        let net = netCredit - netDebit
+        let currency = (theyOweMe.first?.currency ?? iOwe.first?.currency ?? "MXN")
 
         Section {
-            ForEach(items) { item in
-                itemRow(item, batch: batch)
-            }
-        } header: {
-            HStack {
-                Text(batch.createdAt?.formatted(date: .abbreviated, time: .shortened) ?? "Settlement")
-                Spacer()
-                if batch.isFinalized {
-                    Text("Liquidado")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Theme.Tint.success)
-                } else {
-                    Text("\(pendingCount) pendiente\(pendingCount == 1 ? "" : "s")")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Theme.Tint.warning)
+            HStack(spacing: 14) {
+                Image(systemName: net >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill")
+                    .font(.system(size: 30))
+                    .foregroundStyle(net >= 0 ? Theme.Tint.success : Theme.Tint.critical)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(net >= 0 ? "Te deben en neto" : "Debes en neto")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                    Text(abs(net).currencyLabel(currency))
+                        .font(.title2.bold().monospacedDigit())
+                        .foregroundStyle(Theme.Text.primary)
                 }
+                Spacer()
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            if !theyOweMe.isEmpty || !iOwe.isEmpty {
+                HStack {
+                    if !theyOweMe.isEmpty {
+                        Label("\(theyOweMe.count) por cobrar", systemImage: "arrow.down.circle")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Tint.success)
+                    }
+                    Spacer()
+                    if !iOwe.isEmpty {
+                        Label("\(iOwe.count) por pagar", systemImage: "arrow.up.circle")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Tint.warning)
+                    }
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
     }
 
     @ViewBuilder
-    private func itemRow(_ item: SettlementItem, batch: SettlementBatch) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(store.displayName(for: item.fromActorId))
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(Theme.Text.primary)
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                        .foregroundStyle(Theme.Text.secondary)
-                    Text(store.displayName(for: item.toActorId))
-                        .font(.callout.weight(.medium))
-                        .foregroundStyle(Theme.Text.primary)
-                }
-                Text(item.amount.currencyLabel(item.currency))
-                    .font(.title3.bold().monospacedDigit())
-                    .foregroundStyle(item.isPaid ? Theme.Text.secondary : Theme.Text.primary)
-                    .contentTransition(.numericText(value: item.amount))
-            }
+    private var emptyStateSection: some View {
+        Section {
+            RuulEmptyState(
+                title: "Todo al día",
+                systemImage: "checkmark.seal.fill",
+                message: "No hay transferencias pendientes. Cuando registres gastos, las liquidaciones aparecen acá con el mínimo de transferencias para quedar a mano."
+            )
+            .listRowBackground(Color.clear)
+        }
+    }
 
-            Spacer()
-
-            if item.isPaid {
-                Label("Pagado", systemImage: "checkmark.circle.fill")
-                    .font(.callout)
-                    .foregroundStyle(Theme.Tint.success)
-                    .labelStyle(.titleAndIcon)
-            } else if store.canMarkPaid(item, context: context, myActorId: myActorId) {
+    @ViewBuilder
+    private var theyOweMeSection: some View {
+        Section {
+            ForEach(theyOweMe) { item in
                 Button {
-                    Task { await markPaid(item) }
+                    selectedItemId = item.id
                 } label: {
-                    Text("Marcar pagado")
-                        .font(.callout.weight(.semibold))
+                    itemRow(item, role: .creditor)
                 }
-                .buttonStyle(.glassProminent)
-                .controlSize(.small)
-                .disabled(runner.isRunning)
-            } else {
-                Text("Pendiente")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(Theme.Tint.warning)
+                .buttonStyle(.plain)
             }
+        } header: {
+            Text("Te deben")
+        } footer: {
+            Text("Toca un cobro para confirmar o reportar un problema con el pago.")
+        }
+    }
+
+    @ViewBuilder
+    private var iOweSection: some View {
+        Section {
+            ForEach(iOwe) { item in
+                Button {
+                    selectedItemId = item.id
+                } label: {
+                    itemRow(item, role: .debtor)
+                }
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Text("Debes")
+        } footer: {
+            Text("Toca una deuda para marcarla como pagada. El otro lado confirma o reporta.")
+        }
+    }
+
+    @ViewBuilder
+    private var othersSection: some View {
+        Section {
+            ForEach(others) { item in
+                Button {
+                    selectedItemId = item.id
+                } label: {
+                    itemRow(item, role: .observer)
+                }
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Text("Otras transferencias")
+        }
+    }
+
+    @ViewBuilder
+    private var paidHistorySection: some View {
+        Section {
+            DisclosureGroup(isExpanded: $showsPaidHistory) {
+                ForEach(paidItems) { item in
+                    itemRow(item, role: roleFor(item))
+                }
+            } label: {
+                Label("Historial liquidado (\(paidItems.count))", systemImage: "tray.full")
+                    .font(.callout)
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+        }
+    }
+
+    // MARK: - Row
+
+    enum Role { case creditor, debtor, observer }
+
+    private func roleFor(_ item: SettlementItem) -> Role {
+        if item.toActorId == myActorId { return .creditor }
+        if item.fromActorId == myActorId { return .debtor }
+        return .observer
+    }
+
+    @ViewBuilder
+    private func itemRow(_ item: SettlementItem, role: Role) -> some View {
+        HStack(spacing: 12) {
+            ActorInitialsView(name: counterpartName(item, role: role), size: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(counterpartName(item, role: role))
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Theme.Text.primary)
+                Text(item.amount.currencyLabel(item.currency))
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(amountTint(item, role: role))
+            }
+            Spacer(minLength: 0)
+            statusBadge(item, role: role)
         }
         .padding(.vertical, 4)
     }
 
-    // MARK: - Acciones
+    private func counterpartName(_ item: SettlementItem, role: Role) -> String {
+        switch role {
+        case .creditor: return store.displayName(for: item.fromActorId)
+        case .debtor:   return store.displayName(for: item.toActorId)
+        case .observer: return "\(store.displayName(for: item.fromActorId)) → \(store.displayName(for: item.toActorId))"
+        }
+    }
 
-    /// Genera el settlement sin interacción del usuario. Silencioso: si no hay
-    /// deudas abiertas el backend falla controlado y no pasa nada.
+    private func amountTint(_ item: SettlementItem, role: Role) -> Color {
+        if item.isPaid { return Theme.Text.secondary }
+        switch role {
+        case .creditor: return Theme.Tint.success
+        case .debtor:   return Theme.Text.primary
+        case .observer: return Theme.Text.primary
+        }
+    }
+
+    @ViewBuilder
+    private func statusBadge(_ item: SettlementItem, role: Role) -> some View {
+        if item.isPaid {
+            Label("Liquidado", systemImage: "checkmark.seal.fill")
+                .labelStyle(.iconOnly)
+                .foregroundStyle(Theme.Tint.success)
+                .font(.title3)
+        } else if item.isPendingConfirmation {
+            if role == .creditor {
+                Label("Por confirmar", systemImage: "bell.badge.fill")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Theme.Tint.warning.opacity(0.15), in: Capsule())
+                    .foregroundStyle(Theme.Tint.warning)
+            } else {
+                Label("Esperando", systemImage: "hourglass")
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Theme.Tint.info.opacity(0.15), in: Capsule())
+                    .foregroundStyle(Theme.Tint.info)
+            }
+        } else {
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(Theme.Text.tertiary)
+        }
+    }
+
+    // MARK: - Reject sheet
+
+    @ViewBuilder
+    private var rejectReasonSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("¿Qué pasó? (opcional)", text: $rejectReason, axis: .vertical)
+                        .lineLimit(3...5)
+                } header: {
+                    Text("Reportar problema")
+                } footer: {
+                    Text("Quien marcó el pago va a ver tu reporte como alerta de alta prioridad.")
+                }
+                Section {
+                    Button(role: .destructive) {
+                        Task { await rejectPaid() }
+                    } label: {
+                        if runner.isRunning {
+                            ProgressView().frame(maxWidth: .infinity)
+                        } else {
+                            Text("Reportar y reabrir").frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(runner.isRunning)
+                }
+            }
+            .navigationTitle("Reportar pago")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { isShowingRejectSheet = false }
+                }
+            }
+            .actionErrorAlert(runner)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    // MARK: - Actions
+
     private func autoGenerate() async {
         guard store.canSettle(in: context) else { return }
         _ = try? await store.generate(context: context, currency: currency)
@@ -228,7 +418,7 @@ public struct SettlementView: View {
                     generateNotice = "No hay nada que liquidar."
                 }
             } else {
-                generateNotice = "Settlement generado: \(result.items.count) transferencia(s) para quedar a mano."
+                generateNotice = "Liquidación generada: \(result.items.count) transferencia(s)."
             }
         }
     }
@@ -237,15 +427,146 @@ public struct SettlementView: View {
         await runner.run {
             let result = try await store.markPaid(itemId: item.id, context: context, myActorId: myActorId)
             if result.alreadyPaid {
-                generateNotice = "Ese pago ya estaba registrado — no se duplica."
-            } else if result.batchFinalized {
-                generateNotice = "¡Pago registrado! Todas las transferencias del settlement están completas."
-            } else if let closed = result.obligationsClosed {
-                generateNotice = "Pago registrado. \(closed) deuda(s) quedaron liquidadas."
+                generateNotice = "Ese pago ya estaba registrado."
+            }
+        }
+        selectedItemId = nil
+    }
+
+    private func confirmPaid(_ item: SettlementItem) async {
+        await runner.run {
+            _ = try await container.rpc.confirmSettlementPaid(itemId: item.id)
+            await store.load(context: context)
+        }
+        selectedItemId = nil
+    }
+
+    private func rejectPaid() async {
+        guard let id = rejectTargetItemId else { return }
+        let reason = rejectReason.trimmingCharacters(in: .whitespaces)
+        await runner.run {
+            try await container.rpc.rejectSettlementPaid(itemId: id, reason: reason.isEmpty ? nil : reason)
+            await store.load(context: context)
+        }
+        isShowingRejectSheet = false
+        rejectReason = ""
+        rejectTargetItemId = nil
+    }
+}
+
+// MARK: - Bottom sheet con acciones por item
+
+private struct ItemActionsSheet: View {
+    let item: SettlementItem
+    let fromName: String
+    let toName: String
+    let myRole: SettlementView.Role
+    let isRunning: Bool
+    let onMarkPaid: () -> Void
+    let onConfirm: () -> Void
+    let onReject: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(fromName) → \(toName)")
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                            Text(item.amount.currencyLabel(item.currency))
+                                .font(.title2.bold().monospacedDigit())
+                                .foregroundStyle(Theme.Text.primary)
+                        }
+                        Spacer()
+                    }
+                } header: {
+                    Text("Transferencia")
+                }
+
+                Section {
+                    statusInfo
+                }
+
+                actionsSection
+            }
+            .navigationTitle("Liquidación")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cerrar") { dismiss() }
+                }
             }
         }
     }
+
+    @ViewBuilder
+    private var statusInfo: some View {
+        if item.isPending {
+            Label("Pendiente de pago", systemImage: "hourglass")
+                .foregroundStyle(Theme.Tint.warning)
+        } else if item.isPendingConfirmation {
+            if myRole == .creditor {
+                Label("\(fromName) dice que te pagó. Confirma para liquidar.", systemImage: "bell.badge.fill")
+                    .foregroundStyle(Theme.Tint.warning)
+            } else if myRole == .debtor {
+                Label("Esperando que \(toName) confirme el pago.", systemImage: "hourglass")
+                    .foregroundStyle(Theme.Tint.info)
+            } else {
+                Label("El pago está esperando confirmación.", systemImage: "hourglass")
+                    .foregroundStyle(Theme.Tint.info)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var actionsSection: some View {
+        Section {
+            switch (myRole, item.status) {
+            case (.debtor, "pending"):
+                Button {
+                    onMarkPaid()
+                } label: {
+                    Label("Marcar como pagado", systemImage: "checkmark.circle.fill")
+                }
+                .disabled(isRunning)
+            case (.creditor, "pending_confirmation"):
+                Button {
+                    onConfirm()
+                } label: {
+                    Label("Confirmar pago", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(Theme.Tint.success)
+                }
+                .disabled(isRunning)
+                Button(role: .destructive) {
+                    onReject()
+                } label: {
+                    Label("Reportar problema", systemImage: "exclamationmark.triangle")
+                }
+                .disabled(isRunning)
+            case (.creditor, "pending"):
+                Button {
+                    onConfirm()
+                } label: {
+                    Label("Marcar como recibido", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(Theme.Tint.success)
+                }
+                .disabled(isRunning)
+            default:
+                EmptyView()
+            }
+        } header: {
+            Text("Acciones")
+        }
+    }
 }
+
+// MARK: - Helpers
+
+private struct ItemSheetWrapper: Identifiable { let id: UUID }
 
 #Preview("Settlement") {
     NavigationStack {
