@@ -167,6 +167,14 @@ public enum RuulAIContext {
         .upcomingEvents(limit: 5)
     ]
 
+    /// R.6.AI.13 — Resource necesita recursos existentes (detectar dups
+    /// y entender el patrón del contexto) + miembros (raras menciones a
+    /// dueños).
+    public static let forResourceSuggestion: [Field] = [
+        .resources(limit: 15),
+        .members(limit: 10)
+    ]
+
     /// Construye el snapshot con un solo RPC (`context_summary`) y formato
     /// compacto. Items vacíos se omiten del prefix (excepto Rules, que se
     /// reporta explícito "ninguna" para anti-duplicación).

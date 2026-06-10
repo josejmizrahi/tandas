@@ -44,6 +44,20 @@ private struct ClassPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var classes: [ResourceClass] = []
     @State private var phase: StorePhase = .idle
+    /// R.6.AI.13 — AI hero state.
+    @State private var suggestionService = ResourceSuggestionService()
+    @State private var aiPromptText = ""
+    @State private var lastConsidered: [RuulAIContext.Considered] = []
+    /// Resultado de la resolución AI: classRef + subtype + prefilled. Cuando
+    /// no es nil, se presenta el form como sheet.
+    @State private var aiResolved: AIResolvedResource?
+
+    struct AIResolvedResource: Identifiable {
+        let id = UUID()
+        let classRef: ResourceClass
+        let subtype: ResourceSubtype
+        let suggestion: ResourceSuggestion
+    }
 
     var body: some View {
         Group {
@@ -53,21 +67,26 @@ private struct ClassPickerView: View {
             case .failed(let message):
                 RuulErrorState(message: message) { Task { await load() } }
             case .loaded:
-                List(classes) { cls in
-                    NavigationLink(value: Route.subtype(cls)) {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(cls.displayName)
-                                if let description = cls.description {
-                                    Text(description)
-                                        .font(.caption)
-                                        .foregroundStyle(Theme.Text.secondary)
-                                        .lineLimit(2)
+                List {
+                    aiHero
+                    Section("Categorías") {
+                        ForEach(classes) { cls in
+                            NavigationLink(value: Route.subtype(cls)) {
+                                Label {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(cls.displayName)
+                                        if let description = cls.description {
+                                            Text(description)
+                                                .font(.caption)
+                                                .foregroundStyle(Theme.Text.secondary)
+                                                .lineLimit(2)
+                                        }
+                                    }
+                                } icon: {
+                                    Image(systemName: cls.icon ?? "tag.fill")
+                                        .foregroundStyle(Theme.Tint.primary)
                                 }
                             }
-                        } icon: {
-                            Image(systemName: cls.icon ?? "tag.fill")
-                                .foregroundStyle(Theme.Tint.primary)
                         }
                     }
                 }
@@ -82,6 +101,19 @@ private struct ClassPickerView: View {
             }
         }
         .task { await load() }
+        // R.6.AI.13 — sheet con el form prerellenado cuando AI resolvió.
+        .sheet(item: $aiResolved) { resolved in
+            NavigationStack {
+                CreateResourceForm(
+                    classRef: resolved.classRef,
+                    subtype: resolved.subtype,
+                    context: context,
+                    container: container,
+                    store: store,
+                    prefilled: resolved.suggestion
+                )
+            }
+        }
         .navigationDestination(for: Route.self) { route in
             switch route {
             case .subtype(let cls):
@@ -106,6 +138,75 @@ private struct ClassPickerView: View {
     enum Route: Hashable {
         case subtype(ResourceClass)
         case form(ResourceClass, ResourceSubtype)
+    }
+
+    // MARK: - R.6.AI.13 — AI Hero
+
+    private var aiHero: some View {
+        RuulAIHeroView(
+            headline: "Pídele a Ruul",
+            subtitle: "Describe el recurso y elegimos la categoría por ti",
+            placeholder: "Ej: Casa Valle en San Miguel, vale 5M",
+            ctaLabel: "Pensar recurso",
+            examples: [
+                "Casa Valle en San Miguel, vale 5M",
+                "Fondo común BBVA",
+                "Camioneta Toyota Hilux",
+                "Boletos del Mundial"
+            ],
+            footerWhenIdle: "Descríbelo con tus palabras o elige una categoría abajo.",
+            footerWhenLoaded: "Abrimos el form con todo armado en cuanto resolvamos la categoría.",
+            prompt: $aiPromptText,
+            considered: $lastConsidered,
+            phase: aiPhase,
+            onSuggest: { await aiSuggest() },
+            onReset: {
+                lastConsidered = []
+                aiPromptText = ""
+                suggestionService.reset()
+            }
+        )
+    }
+
+    private var aiPhase: RuulAIHeroView.HeroPhase {
+        switch suggestionService.phase {
+        case .idle, .loaded: return .idle
+        case .loading:       return .loading
+        case .failed(let m): return .failed(message: m)
+        case .unavailable(let r): return .unavailable(reason: r)
+        }
+    }
+
+    private func aiSuggest() async {
+        await suggestionService.suggest(
+            prompt: aiPromptText,
+            rpc: container.rpc,
+            contextId: context.id
+        )
+        guard case .loaded(let suggestion, let considered) = suggestionService.phase else { return }
+        lastConsidered = considered
+        // Resolve class del taxonomy ya cargado.
+        guard let cls = classes.first(where: { $0.classKey == suggestion.classKey })
+            ?? classes.first(where: { $0.classKey == "generic_other" }) else {
+            suggestionService.reset()
+            return
+        }
+        // Fetch subtypes del class elegido y resuelve por subtypeKey hint.
+        do {
+            let subtypes = try await container.rpc.listResourceSubtypes(classKey: cls.classKey)
+            let subtype = subtypes.first(where: { $0.subtypeKey == suggestion.subtypeKey })
+                ?? subtypes.first(where: { $0.subtypeKey.hasPrefix("generic") })
+                ?? subtypes.first
+            guard let subtype else {
+                suggestionService.reset()
+                return
+            }
+            aiResolved = AIResolvedResource(classRef: cls, subtype: subtype, suggestion: suggestion)
+            suggestionService.reset()
+        } catch {
+            // Subtype fetch falló — quedó en idle, user puede tap manualmente.
+            suggestionService.reset()
+        }
     }
 }
 
@@ -185,14 +286,44 @@ private struct CreateResourceForm: View {
     let store: ResourcesStore
 
     @Environment(\.dismiss) private var dismiss
-    @State private var displayName = ""
-    @State private var descriptionText = ""
-    @State private var hasValue = false
-    @State private var estimatedValue = ""
-    @State private var currency = "MXN"
-    @State private var locationText = ""
+    @State private var displayName: String
+    @State private var descriptionText: String
+    @State private var hasValue: Bool
+    @State private var estimatedValue: String
+    @State private var currency: String
+    @State private var locationText: String
     @State private var runner = ActionRunner()
     @State private var guardCandidates: [ResourceCreationCandidate] = []
+
+    /// R.6.AI.13 — Init que acepta prefilled de AI (default empty fields).
+    init(
+        classRef: ResourceClass,
+        subtype: ResourceSubtype,
+        context: AppContext,
+        container: DependencyContainer,
+        store: ResourcesStore,
+        prefilled: ResourceSuggestion? = nil
+    ) {
+        self.classRef = classRef
+        self.subtype = subtype
+        self.context = context
+        self.container = container
+        self.store = store
+        _displayName = State(initialValue: prefilled?.displayName ?? "")
+        _descriptionText = State(initialValue: prefilled?.detail ?? "")
+        _hasValue = State(initialValue: (prefilled?.estimatedValue ?? 0) > 0)
+        _estimatedValue = State(
+            initialValue: (prefilled?.estimatedValue ?? 0) > 0
+                ? String(format: "%g", prefilled?.estimatedValue ?? 0)
+                : ""
+        )
+        _currency = State(
+            initialValue: (prefilled?.currency.isEmpty ?? true)
+                ? "MXN"
+                : (prefilled?.currency.uppercased() ?? "MXN")
+        )
+        _locationText = State(initialValue: prefilled?.locationText ?? "")
+    }
 
     var body: some View {
         Form {
