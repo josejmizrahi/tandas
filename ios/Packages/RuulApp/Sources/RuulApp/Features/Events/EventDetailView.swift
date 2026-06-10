@@ -333,11 +333,34 @@ public struct EventDetailView: View {
             linkedReservationsSection
             locationSection(event)
             participantsSection(event)
+            moneySection(event)
             relatedResourcesSection(event)
             relatedDecisionsSection(event)
             infoSection(event)
         }
         .listStyle(.insetGrouped)
+    }
+
+    // R.5Z.fix.EVENT.1 (founder 2026-06-10 Bros/Campo Marte) — Section "Dinero
+    // del evento" con CTA prominente "Registrar gasto" cuando el caller tiene
+    // permiso. Antes la acción solo vivía escondida en el "+" Menu del toolbar
+    // y founder no la encontraba. Section solo se renderiza si record_expense
+    // está enabled en availableActions del backend.
+    @ViewBuilder
+    private func moneySection(_ event: CalendarEvent) -> some View {
+        if let action = store.availableActions.first(where: { $0.actionKey == "record_expense" && $0.enabled }) {
+            Section {
+                Button {
+                    openExpenseSheet()
+                } label: {
+                    Label(action.label, systemImage: "dollarsign.circle.fill")
+                }
+            } header: {
+                Text("Dinero del evento")
+            } footer: {
+                Text("El gasto se divide automáticamente entre los participantes del evento.")
+            }
+        }
     }
 
     // MARK: - F.EVENT.8 Próxima reunión (Section dedicada)

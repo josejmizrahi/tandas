@@ -303,3 +303,80 @@ R.6 Rule Engine 2.0 arranca cuando R.5Z CLOSED.
   - `rule_attention_items.*` (R.6.A shipped `8703ee2a`) → push a `ContextDetailViewV2` o RuleDetailView según `cta_target_type`.
   - `obligation.overdue` / `document.expiring` / `reservation.starting_soon` / `right.expiring` (R.6.C shipped) → push al detail correspondiente.
 - Agendado **R.5Z.fix.CC.2**. P0 alto — el attention center es feature core.
+
+---
+
+## Founder smoke continuó 2026-06-10 — Caso real "Campo Marte" (Bros)
+
+Founder reportó 3 problemas distintos durante un caso real:
+> "Cree un evento llamado campo marte en bros. compre las entradas y no me deja
+> registrar el movimiento dentro del evento... también me gustaría poder
+> invitar a gente externa al contexto al evento... yo compré 8 entradas y
+> pagué 9490 pesos y moshe compró otros 5 por el mismo precio unitario.
+> yo voy a llevar a mi esposa que no está en el contexto entonces a mí me
+> corresponde pagar dos entradas... isaac cattan también va con su esposa y
+> solo él está en el espacio. tampoco puedo editar a los participantes."
+
+### EVENT.1 — Registrar gasto desde EventDetail · ✅ shipped 2026-06-10
+- **Síntoma:** founder no encontraba el botón "Registrar gasto" — vivía solo en
+  el "+" Menu del toolbar (escondido tras Apple-style Section "Registrar").
+  Backend SÍ surface `record_expense` action (enabled=true para founder con
+  money.record). El problema era de VISIBILIDAD UX.
+- **Fix shipped:** nueva `moneySection(event)` en el body de EventDetailView,
+  visible cuando `record_expense` action está enabled. CTA prominente
+  "Registrar gasto" + footer explicativo ("El gasto se divide automáticamente
+  entre los participantes del evento.").
+- Pattern análogo a fix.6 (Money tab) pero per-event scope.
+
+### EVENT.2 — Participantes externos al contexto (guests) · ⏳ slice mayor
+- **Caso:** Founder lleva a su esposa (no es member de Bros). Isaac lleva a su
+  esposa (no es member). Hay 2 "personas-cabeza" que necesitan estar en el
+  roster del evento + en el split del gasto pero NO son members del contexto.
+- **Estado actual:**
+  - `event_participants` requiere `participant_actor_id` que apunta a un
+    `actor` existente. Sin actor, no se puede agregar.
+  - Workaround posible: usar `create_placeholder_person()` (R.5W slice 1)
+    para crear placeholder actors para esposa/hijos. PERO esto los agrega
+    como members del contexto, lo cual NO es lo que el founder quiere
+    (la esposa no debería ver el grupo de WhatsApp del Bros).
+- **Modelo correcto:**
+  - Nueva tabla `event_guests` (o `event_external_participants`):
+    - `event_id`, `display_name`, `invited_by_actor_id`,
+      `count_share` (cuántas "porciones" representa — la esposa cuenta como
+      1, los hijos chicos podrían contar como 0.5).
+    - NO crea actor. NO es member. Solo existe en el roster del evento.
+  - `record_expense` extendido: cuando el evento tiene guests, el split
+    considera `participants + guests` proporcionalmente a `count_share`.
+  - El responsable financiero de cada guest es su `invited_by_actor_id`.
+- **iOS:** EventDetailView gana Section "Invitados externos" con `+ Agregar
+  invitado` (form: nombre + cuántas porciones). RecordExpenseView event-scope
+  incluye guests en el split.
+- **Slice nuevo:** `R.5Z.fix.EVENT.GUESTS` — backend mig + iOS surface.
+
+### EVENT.3 — Editar participantes post-creación · ⏳ slice mayor
+- **Síntoma:** "tampoco puedo editar a los participantes de un evento".
+- **Estado actual:** `update_calendar_event` (F.EVENT.7) existe pero no
+  permite editar participants. Para agregar/quitar member del roster después
+  de crear el evento, no hay RPC. Sólo cada participante puede hacer su
+  propio RSVP/cancel.
+- **Modelo correcto:**
+  - Host o admin (`events.manage`) puede modificar el roster post-creación.
+  - RPCs nuevos: `add_event_participant(event_id, actor_id)` /
+    `remove_event_participant(event_id, actor_id)`.
+  - O extender `update_calendar_event` con `p_added_participants[]` /
+    `p_removed_participants[]`.
+- **iOS:** EventDetailView gana "Editar participantes" como action en el
+  toolbar Menu cuando `canManageEvent`. Sheet con member picker (add) +
+  swipe-to-remove (delete) en la lista actual.
+- **Slice nuevo:** `R.5Z.fix.EVENT.PARTICIPANTS` — backend mig + iOS surface.
+
+### Implicaciones para el founder use case
+Para que el caso "Campo Marte" funcione end-to-end:
+1. ✅ Registrar gasto (EVENT.1 shipped).
+2. ⏳ Agregar esposa y Linda Cattan como guests (EVENT.GUESTS).
+3. ⏳ Si olvidó a alguien al crear el evento, agregarlo después (EVENT.PARTICIPANTS).
+
+El split del gasto debería repartir 13 boletos (8 founder + 5 moshe) entre
+13 personas (10 participants - 2 founders pagados + 2 esposas como guests),
+quedando founder con 2 boletos de costo (su entrada + esposa) e Isaac con 2
+(su entrada + esposa), y los demás con 1 cada uno.
