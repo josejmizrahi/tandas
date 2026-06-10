@@ -1663,6 +1663,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
         try throwIfNeeded()
         // R.5V.3A — espejea el backend: la ubicación es totalmente opcional
         // (constraint eliminado en 20260608204500).
+        let trimmedLocation = input.locationText?.trimmingCharacters(in: .whitespaces) ?? ""
         // F.EVENT.9 — bounds require recurrence_rule + non-trivial values.
         if (input.recurrenceCount != nil || input.recurrenceUntil != nil)
             && input.recurrenceRule == nil {
