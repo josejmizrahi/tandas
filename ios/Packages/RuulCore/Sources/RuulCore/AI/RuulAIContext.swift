@@ -153,6 +153,13 @@ public enum RuulAIContext {
         .recentActivity(limit: 10)
     ]
 
+    /// R.6.AI.11 — Event necesita miembros (host hint cuando se mencione)
+    /// + próximos eventos para evitar choques de fecha.
+    public static let forEventSuggestion: [Field] = [
+        .members(limit: 20),
+        .upcomingEvents(limit: 5)
+    ]
+
     /// Construye el snapshot con un solo RPC (`context_summary`) y formato
     /// compacto. Items vacíos se omiten del prefix (excepto Rules, que se
     /// reporta explícito "ninguna" para anti-duplicación).

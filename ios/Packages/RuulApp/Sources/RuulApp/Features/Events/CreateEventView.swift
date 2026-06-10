@@ -11,6 +11,10 @@ public struct CreateEventView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var eventType: EventType = .dinner
+    /// R.6.AI.11 — AI hero state.
+    @State private var suggestionService = EventSuggestionService()
+    @State private var aiPromptText = ""
+    @State private var lastConsidered: [RuulAIContext.Considered] = []
     @State private var startsAt = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
     @State private var locationText = ""
     /// R.5V.3A.event (2026-06-08) — 3 modos de ubicación:
@@ -169,6 +173,8 @@ public struct CreateEventView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                aiHero
+
                 Section("Evento") {
                     TextField("Título (Cena de los jueves…)", text: $title)
                     Picker("Tipo", selection: $eventType) {
@@ -372,6 +378,75 @@ public struct CreateEventView: View {
         suppressNextQueryUpdate = true
         locationText = composed
         locationCompleter.clear()
+    }
+
+    // MARK: - R.6.AI.11 — AI Hero
+
+    private var aiHero: some View {
+        RuulAIHeroView(
+            headline: "Pídele a Ruul",
+            subtitle: "Describe el evento y lo armamos por ti",
+            placeholder: "Ej: Cena el viernes 8pm en casa de Maria",
+            ctaLabel: "Pensar evento",
+            examples: [
+                "Cena el viernes 8pm en casa de Maria",
+                "Reunión el lunes a las 10am",
+                "Noche de juegos el sábado",
+                "Cumpleaños de Aaron el 15 a las 7pm"
+            ],
+            footerWhenIdle: "Descríbelo con tus palabras o llena los campos abajo.",
+            footerWhenLoaded: "El evento ya está armado. Ajusta lo que necesites y crea.",
+            prompt: $aiPromptText,
+            considered: $lastConsidered,
+            phase: aiPhase,
+            onSuggest: { await aiSuggest() },
+            onReset: {
+                lastConsidered = []
+                aiPromptText = ""
+                suggestionService.reset()
+            }
+        )
+    }
+
+    private var aiPhase: RuulAIHeroView.HeroPhase {
+        switch suggestionService.phase {
+        case .idle, .loaded: return .idle
+        case .loading:       return .loading
+        case .failed(let m): return .failed(message: m)
+        case .unavailable(let r): return .unavailable(reason: r)
+        }
+    }
+
+    private func aiSuggest() async {
+        await suggestionService.suggest(
+            prompt: aiPromptText,
+            rpc: container.rpc,
+            contextId: context.id
+        )
+        if case .loaded(let suggestion, let considered) = suggestionService.phase {
+            applyAISuggestion(suggestion)
+            lastConsidered = considered
+            suggestionService.reset()
+        }
+    }
+
+    private func applyAISuggestion(_ s: EventSuggestion) {
+        if !s.title.isEmpty { title = s.title }
+        if let mapped = EventType(rawValue: s.eventTypeKey) {
+            eventType = mapped
+        }
+        if let parsedDate = EventSuggestionDateParser.parse(
+            dateHint: s.dateHint,
+            timeHint: s.timeHint
+        ) {
+            startsAt = parsedDate
+        }
+        if !s.locationText.isEmpty {
+            // F.EVENT.7 — suprime el siguiente onChange del completer así
+            // no abre la lista de resultados sugeridos automáticamente.
+            suppressNextQueryUpdate = true
+            locationText = s.locationText
+        }
     }
 }
 
