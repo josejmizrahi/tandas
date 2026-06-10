@@ -1,7 +1,11 @@
 # R.8 — Pool / Cuenta de Capital Colectiva (primitiva universal)
 
 **Fecha:** 2026-06-10
-**Status:** 🟡 DRAFT — founder firmó shape 2026-06-10, implementación pendiente
+**Status:** 🟢 R.8.A/B/C shipped — founder firmó shape 2026-06-10; schema (r8_a),
+RPCs core (r8_b) y resolución `preview_pool_resolution`/`resolve_pool` con
+winner_takes_all + equity_target y gate de gobernanza `pool.resolve` (r8_c,
+20260611104000) en la cadena. Pendiente: R.8.D activity extra · R.8.E/F iOS
+(en curso) · policies proportional/equal_share/rotational/custom_spec (post-MVP).
 **Companions:**
 - `Plans/Active/MVP2_iOS_Contract.md` (Money RPCs + obligations universal R.2R)
 - `Plans/Active/R5V_UXDoctrine.md` (§0.4 action states · §V Section layout doctrine)
