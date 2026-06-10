@@ -2007,6 +2007,19 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return mockEventGuests[eventId] ?? []
     }
 
+    public func hostConfirmParticipant(eventId: UUID, actorId: UUID) async throws {
+        try throwIfNeeded()
+        participants[eventId] = (participants[eventId] ?? []).map { p in
+            guard p.participantActorId == actorId else { return p }
+            return EventParticipant(
+                id: p.id, eventId: eventId, participantActorId: p.participantActorId,
+                status: "going", rsvpAt: p.rsvpAt ?? Date(),
+                checkedInAt: p.checkedInAt, cancelledAt: p.cancelledAt,
+                metadata: .object(["host_confirmed": .bool(true)])
+            )
+        }
+    }
+
     public func closeEvent(eventId: UUID) async throws -> CloseEventResult {
         try throwIfNeeded()
         guard let event = events[eventId] else {

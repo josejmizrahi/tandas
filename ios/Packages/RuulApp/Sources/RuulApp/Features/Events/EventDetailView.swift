@@ -1528,6 +1528,20 @@ private struct ParticipantsFullView: View {
                         .foregroundStyle(Theme.Tint.primary)
                 }
             }
+            // R.5Z.fix.EVENT.HOST_CONFIRM — host/admin puede marcar going.
+            // Solo visible si el participant aún no está confirmado y no canceló.
+            if canManageRoster
+                && (participant.status == "invited" || participant.status == "maybe") {
+                Button {
+                    Task { await hostConfirm(participant) }
+                } label: {
+                    Image(systemName: "checkmark.seal")
+                        .font(.title3)
+                        .foregroundStyle(Theme.Tint.success)
+                }
+                .buttonStyle(.plain)
+                .help("Confirmar por anfitrión")
+            }
             if canCheckInOthers && !participant.checkedIn
                 && participant.status != "cancelled"
                 && participant.status != "declined" {
@@ -1561,6 +1575,13 @@ private struct ParticipantsFullView: View {
     private func remove(_ p: EventParticipant) async {
         _ = await runner.run {
             try await rpc.removeEventParticipants(eventId: eventId, actorIds: [p.participantActorId])
+        }
+        onChanged()
+    }
+
+    private func hostConfirm(_ p: EventParticipant) async {
+        _ = await runner.run {
+            try await rpc.hostConfirmParticipant(eventId: eventId, actorId: p.participantActorId)
         }
         onChanged()
     }

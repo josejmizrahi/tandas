@@ -213,6 +213,10 @@ public protocol RuulRPCClient: Sendable {
     /// `list_event_guests(p_event_id)` — R.5Z.fix.EVENT.GUESTS.
     /// Members del contexto del evento.
     func listEventGuests(eventId: UUID) async throws -> [EventGuest]
+    /// `host_confirm_participant(p_event_id, p_actor_id)` — R.5Z.fix.EVENT.HOST_CONFIRM.
+    /// Host o `events.manage` puede setear status='going' a un participant
+    /// en su nombre. Emite attention al participant para que confirme/cambie.
+    func hostConfirmParticipant(eventId: UUID, actorId: UUID) async throws
 
     /// F.EVENT.8 — `preview_next_host(p_event_id)`. Devuelve quién será el
     /// próximo anfitrión sin mutar nada. Para eventos no recurrentes los

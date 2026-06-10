@@ -1016,6 +1016,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("list_event_guests", params: Params(pEventId: eventId))
     }
 
+    public func hostConfirmParticipant(eventId: UUID, actorId: UUID) async throws {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pActorId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pActorId = "p_actor_id"
+            }
+        }
+        try await callVoid("host_confirm_participant", params: Params(pEventId: eventId, pActorId: actorId))
+    }
+
     // MARK: - F.EVENT.8 host rotation
 
     public func previewNextHost(eventId: UUID) async throws -> NextHostPreview {

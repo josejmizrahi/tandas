@@ -32,6 +32,9 @@ public enum AttentionDestination: Identifiable, Hashable {
     /// contexto (lista de gastos + obligaciones). Usado para items emitidos
     /// por reglas sobre expense.recorded / payment.recorded etc.
     case money(contextActorId: UUID, contextDisplayName: String)
+    /// R.5Z.fix.EVENT.HOST_CONFIRM — event scope. Push a EventDetailView.
+    /// Usado por `event_confirmation_by_host` y futuros items event-scoped.
+    case event(eventId: UUID, contextActorId: UUID, contextDisplayName: String)
     /// Kind no soportado por iOS aún. Render UX honesto, no crash.
     case unsupported(kind: String)
 
@@ -45,6 +48,7 @@ public enum AttentionDestination: Identifiable, Hashable {
         case .pendingInvitations:                       return "pending-invitations"
         case .context(let ctx, _):                      return "context-\(ctx)"
         case .money(let ctx, _):                        return "money-\(ctx)"
+        case .event(let id, _, _):                      return "event-\(id)"
         case .unsupported(let kind):                    return "unsupported-\(kind)"
         }
     }
@@ -107,6 +111,11 @@ public enum AttentionDispatcher {
             // R.5Z.fix.CC.2.2 — items sobre gastos/payments individuales pushean
             // a la lista de movimientos del contexto.
             return .money(contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
+        case "event":
+            // R.5Z.fix.EVENT.HOST_CONFIRM — items sobre eventos (e.g.,
+            // event_confirmation_by_host) pushean al EventDetailView para
+            // que el participant pueda confirmar/cambiar RSVP.
+            return .event(eventId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         default:
             return .unsupported(kind: item.kind)
         }
@@ -132,6 +141,8 @@ public enum AttentionPresentation {
         case "rule_violation":          return "exclamationmark.shield.fill"
         case "rule_recommendation":     return "lightbulb.fill"
         case "policy_violation":        return "exclamationmark.shield.fill"
+        // R.5Z.fix.EVENT.HOST_CONFIRM
+        case "event_confirmation_by_host": return "calendar.badge.checkmark"
         default:                        return "circle.fill"
         }
     }
@@ -150,6 +161,8 @@ public enum AttentionPresentation {
         case "rule_violation",
              "policy_violation":          return .orange
         case "rule_recommendation":       return .yellow
+        // R.5Z.fix.EVENT.HOST_CONFIRM
+        case "event_confirmation_by_host": return .purple
         default:                          return .gray
         }
     }
@@ -184,6 +197,8 @@ public enum AttentionPresentation {
         case "rule_violation",
              "policy_violation":         return "Ver detalles"
         case "rule_recommendation":      return "Ver sugerencia"
+        // R.5Z.fix.EVENT.HOST_CONFIRM
+        case "event_confirmation_by_host": return "Confirmar o cambiar"
         default:                         return "Ver"
         }
     }
@@ -253,6 +268,11 @@ public struct AttentionDestinationSheet: View {
             // transacción individual; MoneyHomeView es lo más cercano a "la acción".
             wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 MoneyHomeView(context: ctx, container: container)
+            }
+        case .event(let eventId, let contextActorId, let contextDisplayName):
+            // R.5Z.fix.EVENT.HOST_CONFIRM — push EventDetailView.
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
+                EventDetailView(eventId: eventId, context: ctx, container: container)
             }
         case .unsupported(let kind):
             UnsupportedAttentionView(kind: kind)
