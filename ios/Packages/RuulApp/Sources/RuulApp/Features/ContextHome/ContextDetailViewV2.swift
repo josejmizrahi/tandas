@@ -775,7 +775,7 @@ public struct ContextDetailViewV2: View {
             let sum = d.moneyPreview.myBalanceByCurrency.values.reduce(0, +)
             if sum != 0, let currency = d.moneyPreview.myBalanceByCurrency.keys.first {
                 let tint: Color = sum >= 0 ? Theme.Tint.success : Theme.Tint.critical
-                return (formatCurrency(sum, currency: currency), tint)
+                return (sum.compactCurrencyLabel(currency), tint)
             }
         case "open_obligations":
             if d.metrics.openObligations > 0 {
@@ -891,7 +891,7 @@ public struct ContextDetailViewV2: View {
                     MoneyHomeView(context: context, container: container)
                 } label: {
                     LabeledContent {
-                        Text(formatCurrency(net, currency: currency))
+                        Text(net.compactCurrencyLabel(currency))
                             .font(.callout.bold().monospacedDigit())
                             .foregroundStyle(net >= 0 ? Theme.Tint.success : Theme.Tint.critical)
                     } label: {
@@ -1389,7 +1389,7 @@ public struct ContextDetailViewV2: View {
         Section {
             ForEach(balances.sorted(by: { $0.key < $1.key }), id: \.key) { (currency, net) in
                 LabeledContent {
-                    Text(formatCurrency(net, currency: currency))
+                    Text(net.compactCurrencyLabel(currency))
                         .font(.callout.bold().monospacedDigit())
                         .foregroundStyle(net >= 0 ? Theme.Tint.success : Theme.Tint.critical)
                 } label: {
@@ -1534,14 +1534,6 @@ public struct ContextDetailViewV2: View {
         case "expired":     return "Vencida"
         default:            return status.capitalized
         }
-    }
-
-    private func formatCurrency(_ value: Double, currency: String) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = currency
-        f.maximumFractionDigits = 0
-        return f.string(from: NSNumber(value: value)) ?? "\(Int(value)) \(currency)"
     }
 
     // MARK: - More tab
@@ -1751,14 +1743,16 @@ public struct ContextDetailViewV2: View {
     }
 
     private func handleQuickAction(_ destination: ActionDestination) {
-        switch destination.actionKey {
-        case "create_resource":      pushedActionDestination = .resources
-        case "create_event":         pushedActionDestination = .events
-        case "create_decision":      pushedActionDestination = .decisions
-        case "record_expense":       pushedActionDestination = .money
-        case "invite_member":        pushedActionDestination = .members
-        case "create_rule":          pushedActionDestination = .rules
-        case "create_child_context": isShowingCreateChild = true
+        // F.2X — el mapeo key→destino vive en ActionRouter; aquí sólo se
+        // decide la navegación local (push de tab / sheet).
+        switch ActionRouter.quickActionDestination(for: destination.actionKey) {
+        case .createResource:     pushedActionDestination = .resources
+        case .createEvent:        pushedActionDestination = .events
+        case .createDecision:     pushedActionDestination = .decisions
+        case .recordExpense:      pushedActionDestination = .money
+        case .inviteMember:       pushedActionDestination = .members
+        case .createRule:         pushedActionDestination = .rules
+        case .createChildContext: isShowingCreateChild = true
         default: break
         }
     }
@@ -1977,5 +1971,23 @@ private struct ContextConflictsModifier: ViewModifier {
             } message: { a in
                 Text(a.message)
             }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Contexto — Cena Semanal") {
+    NavigationStack {
+        ContextDetailViewV2(
+            contextId: MockRuulRPCClient.DemoIds.cenaSemanal,
+            context: AppContext(
+                id: MockRuulRPCClient.DemoIds.cenaSemanal,
+                kind: .collective,
+                subtype: "friend_group",
+                displayName: "Cena Semanal",
+                roles: ["admin"]
+            ),
+            container: .demo()
+        )
     }
 }

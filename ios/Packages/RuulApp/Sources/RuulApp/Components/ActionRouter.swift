@@ -116,11 +116,63 @@ public final class NoopActionRouter: ActionRouting {
     }
 }
 
+/// F.2X — Destino canónico tipado de una Quick Action. Centraliza el mapeo
+/// `action_key` (string crudo del backend) → caso tipado, para que las vistas
+/// NO hagan switch sobre strings crudos (doctrina intent-first). Cada vista
+/// decide localmente cómo presentar el caso (push de tab, sheet, flow).
+///
+/// Si el backend introduce un `action_key` nuevo, se agrega un caso aquí —
+/// igual que `ActionPresentationCatalog`.
+public enum QuickActionDestination: Sendable, Equatable {
+    // ── Context-level (F.2X.0) ─────────────────────────────────────────
+    case createResource
+    case createEvent
+    case createDecision
+    case inviteMember
+    case createRule
+    case createChildContext
+
+    // ── Money (context-scoped) ─────────────────────────────────────────
+    case recordExpense
+    case recordFine
+    case recordGameResult
+
+    // ── Obligation-level (R.2S.9 / R.5V.X) ─────────────────────────────
+    case markObligationCompleted
+    case editObligation
+    case forgiveObligation
+}
+
 /// F.2X — Helpers de construcción y debugging del router.
 public enum ActionRouter {
 
     /// Construye el destino canónico desde una `AvailableAction` + `ActionScope`.
     public static func destination(for action: AvailableAction, in scope: ActionScope) -> ActionDestination {
         ActionDestination(actionKey: action.actionKey, scope: scope)
+    }
+
+    /// Mapeo canónico `action_key` → `QuickActionDestination`. ÚNICA fuente
+    /// de verdad para routing por key; las vistas consumen el caso tipado.
+    /// Keys desconocidos devuelven `nil` y el caller decide el fallback
+    /// (mismo patrón que el caso unknown de `ActionDestination.debugIntent`).
+    public static func quickActionDestination(for actionKey: String) -> QuickActionDestination? {
+        switch actionKey {
+        case "create_resource":      return .createResource
+        case "create_event":         return .createEvent
+        case "create_decision":      return .createDecision
+        case "invite_member":        return .inviteMember
+        case "create_rule":          return .createRule
+        case "create_child_context": return .createChildContext
+
+        case "record_expense":       return .recordExpense
+        case "record_fine":          return .recordFine
+        case "record_game_result":   return .recordGameResult
+
+        case "mark_completed":       return .markObligationCompleted
+        case "edit_obligation":      return .editObligation
+        case "forgive":              return .forgiveObligation
+
+        default:                     return nil
+        }
     }
 }

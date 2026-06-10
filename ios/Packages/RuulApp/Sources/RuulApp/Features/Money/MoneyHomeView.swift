@@ -121,6 +121,7 @@ public struct MoneyHomeView: View {
                 pendientesSection
             }
             accionesSection
+            fondosSection
             if !moneyActivity.isEmpty {
                 actividadSection
             }
@@ -419,11 +420,30 @@ public struct MoneyHomeView: View {
     }
 
     private func handle(actionKey: String) {
-        switch actionKey {
-        case "record_expense":     isShowingExpense = true
-        case "record_fine":        isShowingFine = true
-        case "record_game_result": isShowingGameResult = true
+        // F.2X — el mapeo key→destino vive en ActionRouter; aquí sólo se
+        // decide qué sheet local abrir.
+        switch ActionRouter.quickActionDestination(for: actionKey) {
+        case .recordExpense:    isShowingExpense = true
+        case .recordFine:       isShowingFine = true
+        case .recordGameResult: isShowingGameResult = true
         default: break
+        }
+    }
+
+    // MARK: - Fondos (R.8.E)
+
+    @ViewBuilder
+    private var fondosSection: some View {
+        Section {
+            NavigationLink {
+                PoolsListView(context: context, container: container)
+            } label: {
+                Label("Fondos", systemImage: "banknote.fill")
+            }
+        } header: {
+            Text("Fondos")
+        } footer: {
+            Text("Botes y fondos con meta del contexto.")
         }
     }
 

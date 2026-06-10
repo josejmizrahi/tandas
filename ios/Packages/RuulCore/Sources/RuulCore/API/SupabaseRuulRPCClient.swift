@@ -1626,6 +1626,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pEventId: UUID?
             let pPaidByActorId: UUID?
             let pClientId: String?
+            let pSourceEventId: UUID?
+            let pSplitBasis: String?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pAmount = "p_amount"
@@ -1638,6 +1640,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pEventId = "p_event_id"
                 case pPaidByActorId = "p_paid_by_actor_id"
                 case pClientId = "p_client_id"
+                case pSourceEventId = "p_source_event_id"
+                case pSplitBasis = "p_split_basis"
             }
         }
         return try await call("record_expense", params: Params(
@@ -1651,7 +1655,27 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pSplits: input.splits?.map { WireSplit(actorId: $0.actorId, amount: $0.amount) },
             pEventId: input.eventId,
             pPaidByActorId: input.paidByActorId,
-            pClientId: input.clientId
+            pClientId: input.clientId,
+            pSourceEventId: input.sourceEventId,
+            pSplitBasis: input.splitBasis
+        ))
+    }
+
+    public func previewEventSplit(eventId: UUID, amount: Double, currency: String) async throws -> EventSplitPreview {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pAmount: Double
+            let pCurrency: String
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pAmount = "p_amount"
+                case pCurrency = "p_currency"
+            }
+        }
+        return try await call("preview_event_split", params: Params(
+            pEventId: eventId,
+            pAmount: amount,
+            pCurrency: currency
         ))
     }
 
@@ -1849,6 +1873,108 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pCurrency: input.currency
         ))
         return result.obligation
+    }
+
+    // MARK: - Pools (R.8)
+
+    public func createPool(_ input: CreatePoolInput) async throws -> PoolCreated {
+        struct Params: Encodable, Sendable {
+            let pParentContextActorId: UUID
+            let pDisplayName: String
+            let pPolicyKey: String
+            let pPolicyConfig: JSONValue?
+            let pCurrency: String?
+            let pTargetAmount: Double?
+            let pDescription: String?
+            let pClientId: String?
+            enum CodingKeys: String, CodingKey {
+                case pParentContextActorId = "p_parent_context_actor_id"
+                case pDisplayName = "p_display_name"
+                case pPolicyKey = "p_policy_key"
+                case pPolicyConfig = "p_policy_config"
+                case pCurrency = "p_currency"
+                case pTargetAmount = "p_target_amount"
+                case pDescription = "p_description"
+                case pClientId = "p_client_id"
+            }
+        }
+        return try await call("create_pool", params: Params(
+            pParentContextActorId: input.contextId,
+            pDisplayName: input.displayName,
+            pPolicyKey: input.policyKey,
+            pPolicyConfig: input.policyConfig,
+            pCurrency: input.currency,
+            pTargetAmount: input.targetAmount,
+            pDescription: input.description,
+            pClientId: input.clientId
+        ))
+    }
+
+    public func contributeToPool(_ input: ContributeToPoolInput) async throws -> PoolContributionResult {
+        struct Params: Encodable, Sendable {
+            let pPoolAccountId: UUID
+            let pBasisKind: String
+            let pAmount: Double
+            let pCurrency: String?
+            let pAssetResourceId: UUID?
+            let pValuationMethod: String?
+            let pValuationNotes: String?
+            let pClientId: String?
+            enum CodingKeys: String, CodingKey {
+                case pPoolAccountId = "p_pool_account_id"
+                case pBasisKind = "p_basis_kind"
+                case pAmount = "p_amount"
+                case pCurrency = "p_currency"
+                case pAssetResourceId = "p_asset_resource_id"
+                case pValuationMethod = "p_valuation_method"
+                case pValuationNotes = "p_valuation_notes"
+                case pClientId = "p_client_id"
+            }
+        }
+        return try await call("contribute_to_pool", params: Params(
+            pPoolAccountId: input.poolAccountId,
+            pBasisKind: input.basisKind,
+            pAmount: input.amount,
+            pCurrency: input.currency,
+            pAssetResourceId: input.assetResourceId,
+            pValuationMethod: input.valuationMethod,
+            pValuationNotes: input.valuationNotes,
+            pClientId: input.clientId
+        ))
+    }
+
+    public func listContextPools(contextId: UUID) async throws -> [PoolAccount] {
+        struct Params: Encodable, Sendable {
+            let pParentContextActorId: UUID
+            enum CodingKeys: String, CodingKey { case pParentContextActorId = "p_parent_context_actor_id" }
+        }
+        return try await call("list_context_pools", params: Params(pParentContextActorId: contextId))
+    }
+
+    public func poolAccountDetail(poolAccountId: UUID) async throws -> PoolAccountDetail {
+        try await call("pool_account_detail", params: PoolAccountIdParams(poolAccountId: poolAccountId))
+    }
+
+    public func previewPoolResolution(poolAccountId: UUID) async throws -> PoolResolutionPreview {
+        try await call("preview_pool_resolution", params: PoolAccountIdParams(poolAccountId: poolAccountId))
+    }
+
+    public func resolvePool(poolAccountId: UUID, resolution: JSONValue?, clientId: String?) async throws -> PoolResolutionResult {
+        struct Params: Encodable, Sendable {
+            let pPoolAccountId: UUID
+            let pResolution: JSONValue?
+            let pClientId: String?
+            enum CodingKeys: String, CodingKey {
+                case pPoolAccountId = "p_pool_account_id"
+                case pResolution = "p_resolution"
+                case pClientId = "p_client_id"
+            }
+        }
+        return try await call("resolve_pool", params: Params(
+            pPoolAccountId: poolAccountId,
+            pResolution: resolution,
+            pClientId: clientId
+        ))
     }
 
     // MARK: - Settlement
@@ -2383,4 +2509,9 @@ private struct ActorResourceParams: Encodable, Sendable {
 private struct ReservationIdParams: Encodable, Sendable {
     let reservationId: UUID
     enum CodingKeys: String, CodingKey { case reservationId = "p_reservation_id" }
+}
+
+private struct PoolAccountIdParams: Encodable, Sendable {
+    let poolAccountId: UUID
+    enum CodingKeys: String, CodingKey { case poolAccountId = "p_pool_account_id" }
 }

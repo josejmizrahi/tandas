@@ -107,21 +107,25 @@ Plans/Active/Frontend_MVP2_Rebuild.md# Estado del rebuild F.0–F.14
 
 ## Backend (referencia rápida)
 
-Contrato completo en `Plans/Active/MVP2_iOS_Contract.md`. Resumen:
+Contrato completo (fuente canónica de RPCs) en `Plans/Active/MVP2_iOS_Contract.md` —
+el §14 indexa todo lo posterior a `r2k` (R.3A→R.9). Esta tabla es resumen de
+dominios, NO inventario exhaustivo:
 
-| Dominio | RPCs |
+| Dominio | RPCs (núcleo; ver contrato §14 para el resto) |
 |---|---|
 | Identity | `ensure_person_actor` · `current_actor_id` · `update_my_profile` |
-| Contexts | `create_context` · `context_candidates` · `context_summary` · `my_world` |
-| Membership | `create_invite` · `revoke_invite` · `join_by_invite_code` · `invite_member` · `accept_invitation` · `remove_member` · `leave_context` · `assign_role` |
-| Resources | `create_resource` · `list_context_resources` · `resource_detail` · `grant_right` · `revoke_right` · `update_resource` · `archive_resource` · `resource_type_catalog` · `resource_capabilities` · `resource_can` · `resource_available_actions` |
-| Events | `create_calendar_event` · `rsvp_event` · `check_in_participant` · `cancel_participation` · `close_event` |
-| Rules | `create_rule` · `evaluate_rules_for_event` (lo invocan check-in/cancel) |
+| Contexts | `create_context` · `context_candidates` · `context_summary` · `my_world` · jerarquía `context_tree/children/parents` · `context_detail_descriptor` |
+| Membership | `create_invite` · `revoke_invite` · `join_by_invite_code` · `invite_member` · `accept_invitation` · `remove_member(p_force)` · `leave_context` · `assign_role` · `set_membership_state` · placeholders `create_placeholder_person`/`claim_placeholder_actor` |
+| Resources | `create_resource` · `list_context_resources` · `resource_detail` · `resource_detail_descriptor` · `grant_right` · `revoke_right` · `update_resource` · `archive_resource` · `transfer_resource_ownership` · catálogos/capabilities · `list_resource_actions`/`execute_resource_action` |
+| Events | `create_calendar_event` · `update_calendar_event` · `rsvp_event` · `check_in_participant` · `cancel_participation` · `close_event` · `add/remove_event_participants` · `add/remove_event_guest` · `set_event_participant_plus_one/plus_count` · `host_confirm_participant` |
+| Rules | `create_rule` · `update_rule` · `archive_rule` · `evaluate_rules_for_event` · motor R.6 (trigger activity + pg_cron + DSL cerrado) |
 | Reservations | `request_resource_reservation` · `approve/confirm/cancel_reservation` · `detect_reservation_conflicts` · `resolve_reservation_conflict` |
-| Decisions | `create_decision` · `vote_decision` · `close_decision` · `execute_decision` |
-| Money | `record_expense` · `record_fine` · `record_game_result` |
-| Settlement | `generate_settlement_batch` · `mark_settlement_paid` |
-| Activity | `list_activity` |
+| Decisions | `create_decision` · `vote_decision` · `close_decision` · `execute_decision` (templates R.4B) |
+| Governance | `governance_action_catalog` · `request_governance_action` · `execute_governance_action` · policies por contexto (R.7, modelo PULL) |
+| Money | `record_expense(p_source_event_id, p_split_basis)` · `preview_event_split` · `record_fine(p_client_id)` · `record_game_result(p_client_id)` · `forgive_obligation` |
+| Settlement | `generate_settlement_batch` · `mark_settlement_paid` · `confirm/reject/appeal_settlement_paid` (handshake 2 vías) |
+| Pools | `create_pool` · `contribute_to_pool` · `list_context_pools` · `pool_account_detail` · `preview_pool_resolution` · `resolve_pool` (R.8) |
+| Activity / Atención | `list_activity` · `attention_inbox` · `dismiss_attention_item` · notifications (R.4D) |
 
 ## Reglas
 

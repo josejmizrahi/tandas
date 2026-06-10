@@ -104,6 +104,13 @@ public final class MoneyStore {
         return result
     }
 
+    /// R.9.C — preview read-only del split ponderado de un evento. El backend
+    /// es la autoridad del cómputo (misma math que `split_basis='event_weights'`);
+    /// no muta estado del store.
+    public func previewEventSplit(eventId: UUID, amount: Double, currency: String) async throws -> EventSplitPreview {
+        try await rpc.previewEventSplit(eventId: eventId, amount: amount, currency: currency)
+    }
+
     public func recordFine(context: AppContext, debtorActorId: UUID, amount: Double, currency: String, reason: String?) async throws {
         _ = try await rpc.recordFine(
             contextId: context.id,

@@ -71,6 +71,10 @@ public struct RecordExpenseView: View {
     /// (e.g., `MoneyStore.load` falló en una de sus dos RPCs paralelas).
     /// Garantiza que el split + matching de AI tengan contra qué trabajar.
     @State private var fallbackMembers: [ContextMember] = []
+    /// R.9.C — preview del split ponderado calculado por el BACKEND
+    /// (`preview_event_split`). Solo aplica en modo `usesEventWeights`.
+    @State private var splitPreview: EventSplitPreview?
+    @State private var splitPreviewPhase: StorePhase = .idle
 
     private enum SplitMethod: String, CaseIterable, Identifiable {
         case equal = "Partes iguales"
@@ -111,6 +115,23 @@ public struct RecordExpenseView: View {
     /// Miembros que participan en el split (no excluidos).
     private var participants: [ContextMember] {
         visibleMembers.filter { !excludedActorIds.contains($0.actorId) }
+    }
+
+    /// R.9.C — `true` cuando el reparto se delega al backend
+    /// (`split_basis='event_weights'`): el gasto viene de un evento con pesos,
+    /// el método es "Por partes", nadie fue excluido y los Steppers siguen en
+    /// los pesos originales del evento. Cualquier edición manual cae al
+    /// mecanismo explícito vigente.
+    private var usesEventWeights: Bool {
+        guard let scope = eventScope, scope.hasWeights,
+              splitMethod == .shares, excludedActorIds.isEmpty else { return false }
+        return participants.allSatisfy { (shareCounts[$0.actorId] ?? 1) == scope.weight(for: $0.actorId) }
+    }
+
+    /// Clave de recarga del preview: amount / moneda / modo. Cambiar un Stepper
+    /// o excluir a alguien flipea `usesEventWeights` → re-evalúa.
+    private var splitPreviewKey: String {
+        "\(amountText)|\(currency)|\(usesEventWeights)"
     }
 
     public var body: some View {
@@ -188,6 +209,8 @@ public struct RecordExpenseView: View {
                     }
                 }
 
+                splitPreviewSection
+
                 splitSummarySection
 
                 Section {
@@ -229,6 +252,11 @@ public struct RecordExpenseView: View {
                     shareCounts = initial
                     splitMethod = .shares
                 }
+            }
+            // R.9.C — el desglose ponderado lo calcula el backend; se recarga
+            // al cambiar monto/moneda o al entrar/salir del modo ponderado.
+            .task(id: splitPreviewKey) {
+                await loadSplitPreview()
             }
             .actionErrorAlert(runner)
             .alert("Gasto registrado", isPresented: Binding(
@@ -304,7 +332,16 @@ public struct RecordExpenseView: View {
                                 .frame(minWidth: 56, alignment: .trailing)
                         }
                         .labelsHidden()
-                        if let amount, totalShares > 0, shares > 0 {
+                        if usesEventWeights {
+                            // R.9.C — el monto viene del preview del backend
+                            // (mismo redondeo determinista que el registro).
+                            if let serverShare = splitPreview?.share(for: member.actorId) {
+                                Text(serverShare.amount.currencyLabel(nil))
+                                    .font(.callout.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(minWidth: 60, alignment: .trailing)
+                            }
+                        } else if let amount, totalShares > 0, shares > 0 {
                             let share = amount * Double(shares) / Double(totalShares)
                             Text(share.currencyLabel(nil))
                                 .font(.callout.monospacedDigit())
@@ -321,6 +358,52 @@ public struct RecordExpenseView: View {
                     .multilineTextAlignment(.trailing)
                     .frame(width: 90)
                     .textFieldStyle(.roundedBorder)
+                }
+            }
+        }
+    }
+
+    /// R.9.C — estado del preview ponderado del backend. Loading mientras
+    /// calcula; error con retry si el RPC falla (el modo manual sigue
+    /// disponible cambiando el método o editando los Steppers).
+    @ViewBuilder
+    private var splitPreviewSection: some View {
+        if usesEventWeights {
+            switch splitPreviewPhase {
+            case .loading:
+                Section {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Calculando reparto…")
+                            .font(.callout)
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                }
+            case .failed(let message):
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(message, systemImage: "exclamationmark.triangle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .font(.caption)
+                            .foregroundStyle(Theme.Tint.critical)
+                        Button {
+                            Task { await loadSplitPreview() }
+                        } label: {
+                            Label("Reintentar", systemImage: "arrow.clockwise")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.glass)
+                    }
+                } footer: {
+                    Text("También puedes ajustar las partes a mano o usar montos personalizados.")
+                }
+            case .loaded, .idle:
+                if splitPreview != nil {
+                    Section {
+                        EmptyView()
+                    } footer: {
+                        Text("Las cantidades se calculan según los pesos del evento (+N y acompañantes).")
+                    }
                 }
             }
         }
@@ -379,11 +462,51 @@ public struct RecordExpenseView: View {
         participants.reduce(0) { $0 + max(0, shareCounts[$1.actorId] ?? 1) }
     }
 
+    /// R.9.C — pide al backend el desglose ponderado del evento. Solo corre
+    /// en modo `usesEventWeights`; fuera de él limpia el estado.
+    private func loadSplitPreview() async {
+        guard usesEventWeights, let scope = eventScope, let amount, amount > 0 else {
+            splitPreview = nil
+            splitPreviewPhase = .idle
+            return
+        }
+        splitPreviewPhase = .loading
+        do {
+            splitPreview = try await store.previewEventSplit(
+                eventId: scope.eventId,
+                amount: amount,
+                currency: currency
+            )
+            splitPreviewPhase = .loaded
+        } catch is CancellationError {
+            // `.task(id:)` re-disparó por un cambio de monto — no es error.
+        } catch {
+            guard !Task.isCancelled else { return }
+            splitPreview = nil
+            splitPreviewPhase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+
     private func record() async {
         guard let amount else { return }
         let success = await runner.run {
             let input: RecordExpenseInput
-            if splitMethod == .shares, totalShares > 0 {
+            if usesEventWeights, let scope = eventScope {
+                // R.9.C — backend = autoridad: NO mandamos montos por actor;
+                // record_expense(split_basis='event_weights') computa los
+                // splits server-side con el mismo redondeo que el preview.
+                input = RecordExpenseInput(
+                    contextId: context.id,
+                    amount: amount,
+                    currency: currency,
+                    description: description.trimmingCharacters(in: .whitespaces),
+                    eventId: scope.eventId,
+                    paidByActorId: paidByActorId,
+                    clientId: UUID().uuidString,
+                    sourceEventId: scope.eventId,
+                    splitBasis: "event_weights"
+                )
+            } else if splitMethod == .shares, totalShares > 0 {
                 // R.5Z.fix.EVENT.SPLIT.SHARES — Splitwise-style: cada participant
                 // tiene N partes (0 = excluido). Monto = total × shares / sum_shares.
                 // Para evitar drift de redondeo, el último con shares > 0 recibe el
@@ -402,6 +525,7 @@ public struct RecordExpenseView: View {
                     assignments[assignments.count - 1].amount += delta
                 }
                 let splits = assignments.map { ExpenseSplit(actorId: $0.member.actorId, amount: $0.amount) }
+                // R.9.C — partes editadas a mano: mecanismo explícito vigente.
                 input = RecordExpenseInput(
                     contextId: context.id,
                     amount: amount,
@@ -411,29 +535,8 @@ public struct RecordExpenseView: View {
                     splits: splits,
                     eventId: eventScope?.eventId,
                     paidByActorId: paidByActorId,
-                    clientId: UUID().uuidString
-                )
-            } else if splitMethod == .equal,
-               let scope = eventScope, scope.hasWeights {
-                let activeWeights = participants.reduce(into: 0) { acc, m in
-                    acc += scope.weight(for: m.actorId)
-                }
-                let totalWeight = Double(max(activeWeights, 1))
-                let splits = participants.map { member -> ExpenseSplit in
-                    let w = Double(scope.weight(for: member.actorId))
-                    let share = (amount * w / totalWeight * 100).rounded() / 100
-                    return ExpenseSplit(actorId: member.actorId, amount: share)
-                }
-                input = RecordExpenseInput(
-                    contextId: context.id,
-                    amount: amount,
-                    currency: currency,
-                    description: description.trimmingCharacters(in: .whitespaces),
-                    splitMethod: "custom",
-                    splits: splits,
-                    eventId: eventScope?.eventId,
-                    paidByActorId: paidByActorId,
-                    clientId: UUID().uuidString
+                    clientId: UUID().uuidString,
+                    splitBasis: eventScope != nil ? "explicit" : nil
                 )
             } else if splitMethod == .custom {
                 let splits = participants.compactMap { member -> ExpenseSplit? in
@@ -449,7 +552,8 @@ public struct RecordExpenseView: View {
                     splits: splits,
                     eventId: eventScope?.eventId,
                     paidByActorId: paidByActorId,
-                    clientId: UUID().uuidString
+                    clientId: UUID().uuidString,
+                    splitBasis: eventScope != nil ? "explicit" : nil
                 )
             } else {
                 input = RecordExpenseInput(
