@@ -1,6 +1,7 @@
 # MVP2 — Contrato Backend ↔ iOS
 
-**Fecha:** 2026-06-03 · **Fuente:** migrations `mvp2_000`…`r2k` (la definición final de cada
+**Fecha:** 2026-06-03 · **Última actualización:** 2026-06-11 (ver §14 para todo lo
+posterior a `r2k`) · **Fuente:** migrations `mvp2_000`…`r9_g` (la definición final de cada
 función gana — varias se redefinen en migrations posteriores).
 **Consumidor:** `ios/Packages/RuulCore/Sources/RuulCore/API/`.
 
@@ -336,3 +337,96 @@ catálogo (salvo `custom.*`).
 | `why_reservation_won(p_conflict_id)` | `{winner_reservation_id, winner_actor_id, reasons: [text]}` |
 | `why_decision_result(p_decision_id)` | `{status, voting_model, tally: {approve, reject, abstain}, option_tally, result, reasons: [text]}` |
 | `why_obligation_exists(p_obligation_id)` | ver §9b |
+
+## 14. Inventario post-r2k (R.3A → R.9) — actualizado 2026-06-11
+
+Las secciones 1–13 documentan hasta `r2k`. Todo lo siguiente shipped después;
+la fuente de verdad de cada shape es la migración indicada (la definición más
+reciente gana). Esta sección es el índice para que ningún dev/agente vuelva a
+generar código contra un contrato viejo.
+
+### 14.1 Jerarquía de contextos (R.2U) y similitud (R.2V)
+`create_child_context` · `link_child_context` · `unlink_child_context` ·
+`context_tree` · `context_children` · `context_parents` · `context_ancestors` ·
+`context_descendants` (`r2u_1_mutations`) · `context_similarity` ·
+`resource_similarity` · `duplicate_candidates` · merge RPCs (`r2v_*`).
+
+### 14.2 Relaciones, suscripciones y trust (R.3A)
+`subscriptions` + catálogo, `trust_edges`, `activity_feed` personal
+(`r3a_2`…`r3a_4`). Lectura: `MyActivityFeedView` (tab Actividad).
+
+### 14.3 Descriptores y dispatcher (R.5A)
+`resource_detail_descriptor(p_resource_id)` (`r5a_b6`, enriquecido `r5a_b6_1`) ·
+`context_detail_descriptor(p_context_actor_id)` (`r5a_b7`, enriquecido `r5a_b7_1`) ·
+`list_resource_actions` / `execute_resource_action` (`r5a_b8`). Catálogos de
+clases/subtipos/secciones/widgets/forms en `r5a_b0`…`r5a_b5b`.
+
+### 14.4 Notificaciones (R.4D), ledger (R.4C), templates de decisión (R.4B)
+- `notifications` + `notification_deliveries` + RPCs inbox (`r4d`).
+- `ledger_entries` (sombra doble-entrada; mapeos completos desde `r9_d`) +
+  `actor_money_balances`.
+- `decision_templates` + dispatch polimórfico en `execute_decision` (`r4b`).
+
+### 14.5 Gobernanza (R.5 + R.7)
+`governance_action_catalog` (acciones canónicas + aliases) · `governance_actions` ·
+`governance_policies` · `request_governance_action` · `execute_governance_action`
+(`r7_a`…`r7_c`) · `member_available_actions` con governance mode (`r7_d`) ·
+attention de gobernanza en inbox (`r7_g`). RPCs governance-aware:
+`set_membership_state` (`r7_x_1`) · `transfer_resource_ownership` (`r7_x_2`) ·
+`archive_rule` (`r7_x_3`) · `forgive_obligation` (`r7_x_4`).
+
+### 14.6 Rule engine 2.0 (R.6)
+Idempotencia + `rule_attention_items` sink (`r6_a`) · auto-dispatch desde
+activity (`r6_b`) · detectores pg_cron (`r6_c`) · validador DSL de gramática
+cerrada (`r6_d`). Desde `r9_e`: las consecuencias fine/obligation se saltan
+para sujetos sin membership activa.
+
+### 14.7 Placeholders (R.5W)
+`create_placeholder_person` · `find_placeholder_matches_for_me` ·
+`claim_placeholder_actor` (emite `membership.placeholder_claimed` con counts
+de reasignación desde `r9_a`).
+
+### 14.8 Eventos — roster, +N, invitados, host confirm (R.5Z)
+`add_event_participants` · `remove_event_participants` ·
+`set_event_participant_plus_one` · `set_event_participant_plus_count`
+(`20260610170000/180000`) · `add_event_guest` · `remove_event_guest` ·
+`list_event_guests` (`20260610190000`) · `host_confirm_participant`
+(`20260610200000`). Todos emiten activity desde `r9_a`.
+
+### 14.9 Settlement handshake + apelación (R.5Z)
+`mark_settlement_paid` (deudor → `pending_confirmation`) ·
+`confirm_settlement_paid` / `reject_settlement_paid` (acreedor) ·
+`appeal_settlement_paid` (`20260610220000/230000`). `dismiss_attention_item`
+(`20260609220000`). Estados de `settlement_items`: pending →
+pending_confirmation → paid | cancelled | disputed.
+
+### 14.10 Money R.9 (idempotencia + split ponderado server-side)
+- `record_fine(..., p_client_id)` y `record_game_result(..., p_client_id)`
+  idempotentes; ahora anclan `money_transaction` (`r9_b`).
+- `record_expense(..., p_source_event_id, p_split_basis)` con basis
+  `'equal'|'explicit'|'event_weights'`; con `event_weights` el backend calcula
+  pesos (1 + plus_count + count_share de guests del participante) — iOS ya NO
+  calcula pesos (`r9_c`).
+- `preview_event_split(p_event_id, p_amount, p_currency)` →
+  `{event_id, amount, currency, total_weight, splits:[{actor_id, weight, amount}]}`.
+- Gate `expense.large`: solo con policy explícita `large_expense_requires_vote`
+  del contexto (threshold de catálogo o 5000).
+
+### 14.11 Pools (R.8 completo)
+- `pool_accounts` + `pool_basis_entries`; pool = actor collective
+  subtype='pool' del contexto padre (`r8_a`).
+- `create_pool` · `contribute_to_pool` · `list_context_pools` ·
+  `pool_account_detail` (`r8_b`).
+- `preview_pool_resolution(p_pool_account_id)` ·
+  `resolve_pool(p_pool_account_id, p_resolution, p_client_id)` (`r8_c`):
+  `winner_takes_all` (payout pool→ganador; stakes cristalizan) y
+  `equity_target` (shares proporcionales en metadata). Gobernanza:
+  `pool.resolve` en catálogo (PULL gate). Activity: `pool.resolved`/`pool.payout`.
+- Obligations `pending_pool` quedan fuera del neteo de settlement.
+
+### 14.12 Shell / atención (F.NAV)
+`attention_inbox()` — única lectura agregadora (votos, conflictos,
+invitaciones, rule_attention_items del caller, governance pending) ·
+`list_recent_contexts` · `mark_context_visited` · preferencias de contexto
+(`f_nav_0`). `remove_member(..., p_force)` bloquea con
+`member_has_open_obligations` si el miembro tiene deudas abiertas (`r9_e`).
