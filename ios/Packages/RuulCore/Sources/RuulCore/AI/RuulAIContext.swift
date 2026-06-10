@@ -160,6 +160,13 @@ public enum RuulAIContext {
         .upcomingEvents(limit: 5)
     ]
 
+    /// R.6.AI.12 — Reservation necesita miembros (reservedFor name match)
+    /// + próximos eventos (para evitar choques con eventos del calendario).
+    public static let forReservationSuggestion: [Field] = [
+        .members(limit: 20),
+        .upcomingEvents(limit: 5)
+    ]
+
     /// Construye el snapshot con un solo RPC (`context_summary`) y formato
     /// compacto. Items vacíos se omiten del prefix (excepto Rules, que se
     /// reporta explícito "ninguna" para anti-duplicación).

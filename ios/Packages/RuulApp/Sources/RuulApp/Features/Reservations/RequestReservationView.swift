@@ -25,6 +25,10 @@ public struct RequestReservationView: View {
     @State private var reservedForActorId: UUID?
     @State private var runner = ActionRunner()
     @State private var conflictNotice: String?
+    /// R.6.AI.12 — AI hero state.
+    @State private var suggestionService = ReservationSuggestionService()
+    @State private var aiPromptText = ""
+    @State private var lastConsidered: [RuulAIContext.Considered] = []
     /// R.2S.10 — preview de permiso (why_can_reserve).
     @State private var whyCanReserve: WhyCanReserve?
     /// R.2T — eventos del contexto disponibles para asociación.
@@ -54,6 +58,8 @@ public struct RequestReservationView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                aiHero
+
                 whySection
 
                 Section("Fechas") {
@@ -263,6 +269,87 @@ public struct RequestReservationView: View {
         }
         if success && conflictNotice == nil {
             dismiss()
+        }
+    }
+
+    // MARK: - R.6.AI.12 — AI Hero
+
+    private var aiHero: some View {
+        RuulAIHeroView(
+            headline: "Pídele a Ruul",
+            subtitle: "Describe la reservación y la armamos por ti",
+            placeholder: "Ej: Este sábado a las 6pm",
+            ctaLabel: "Pensar reservación",
+            examples: [
+                "Este sábado a las 6pm",
+                "Del viernes al domingo",
+                "Para Maria el lunes 10am",
+                "Mañana de 7pm a 11pm"
+            ],
+            footerWhenIdle: "Descríbela con tus palabras o llena las fechas abajo.",
+            footerWhenLoaded: "La reservación ya está armada. Ajusta si quieres.",
+            prompt: $aiPromptText,
+            considered: $lastConsidered,
+            phase: aiPhase,
+            onSuggest: { await aiSuggest() },
+            onReset: {
+                lastConsidered = []
+                aiPromptText = ""
+                suggestionService.reset()
+            }
+        )
+    }
+
+    private var aiPhase: RuulAIHeroView.HeroPhase {
+        switch suggestionService.phase {
+        case .idle, .loaded: return .idle
+        case .loading:       return .loading
+        case .failed(let m): return .failed(message: m)
+        case .unavailable(let r): return .unavailable(reason: r)
+        }
+    }
+
+    private func aiSuggest() async {
+        await suggestionService.suggest(
+            prompt: aiPromptText,
+            rpc: container.rpc,
+            contextId: reservationContextId
+        )
+        if case .loaded(let suggestion, let considered) = suggestionService.phase {
+            applyAISuggestion(suggestion)
+            lastConsidered = considered
+            suggestionService.reset()
+        }
+    }
+
+    private func applyAISuggestion(_ s: ReservationSuggestion) {
+        if let start = EventSuggestionDateParser.parse(
+            dateHint: s.startDateHint,
+            timeHint: s.startTimeHint
+        ) {
+            startsAt = start
+            datesTouchedByUser = true
+        }
+        // endDateHint vacío → asume mismo día por algunas horas más
+        let endDateEffective = s.endDateHint.isEmpty ? s.startDateHint : s.endDateHint
+        if let end = EventSuggestionDateParser.parse(
+            dateHint: endDateEffective,
+            timeHint: s.endTimeHint
+        ) {
+            // Si end <= start (e.g., usuario dijo solo "6pm" sin hora fin),
+            // asume duración de 2 horas.
+            if end > startsAt {
+                endsAt = end
+            } else {
+                endsAt = startsAt.addingTimeInterval(2 * 3600)
+            }
+            datesTouchedByUser = true
+        }
+        if !s.reservedForName.isEmpty,
+           let match = store.members.first(where: {
+               $0.displayName.lowercased().contains(s.reservedForName.lowercased())
+           }) {
+            reservedForActorId = match.actorId
         }
     }
 }
