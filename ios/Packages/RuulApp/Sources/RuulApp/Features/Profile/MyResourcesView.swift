@@ -14,9 +14,9 @@ import RuulCore
 ///    eran texto monolítico comma-separated.
 /// 5. Estados via componentes Ruul* (RuulLoadingState / RuulErrorState /
 ///    RuulEmptyState) — drop-in replacements de StateViews.swift legacy.
-/// 6. Navegación: mantiene v1 ResourceDetailView (la entry cross-context aún
-///    no tiene context_actor_id real desde my_world() — V2 valida estricto y
-///    rompe con el atajo collective ?? personal).
+/// 6. Navegación (R.9.I): ResourceDetailViewV2 con el contexto dueño real que
+///    my_world() devuelve por recurso (context_actor_id); fallback al contexto
+///    personal cuando el recurso no vive en un contexto operable por mí.
 public struct MyResourcesView: View {
     let container: DependencyContainer
 
@@ -50,9 +50,7 @@ public struct MyResourcesView: View {
         .refreshable { await load() }
         .sheet(item: $selectedResource) { target in
             NavigationStack {
-                // Cross-context shortcut — usa v1 hasta que my_world()
-                // devuelva context_actor_id real por recurso.
-                ResourceDetailView(
+                ResourceDetailViewV2(
                     resourceId: target.resourceId,
                     context: target.context,
                     container: container
@@ -231,9 +229,13 @@ public struct MyResourcesView: View {
     }
 
     private func openResource(_ resource: MyWorldResource) {
-        let collective = container.contextStore.availableContexts.first { !$0.isPersonal }
-        let personal = container.contextStore.availableContexts.first { $0.isPersonal }
-        guard let ctx = collective ?? personal else { return }
+        // R.9.I — el contexto dueño viene del backend (my_world). Fallback al
+        // contexto personal cuando es nil o no está entre mis contextos
+        // (p. ej. recurso de otra persona visible por un right directo).
+        let contexts = container.contextStore.availableContexts
+        let owning = resource.contextActorId.flatMap { id in contexts.first { $0.id == id } }
+        let personal = contexts.first { $0.isPersonal }
+        guard let ctx = owning ?? personal else { return }
         selectedResource = NavigationTarget(resourceId: resource.resourceId, context: ctx)
     }
 
