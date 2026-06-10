@@ -1661,11 +1661,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     public func createCalendarEvent(_ input: CreateEventInput) async throws -> CalendarEvent {
         try throwIfNeeded()
-        // F.EVENT.5 — espejea el backend: location required unless virtual.
-        let trimmedLocation = input.locationText?.trimmingCharacters(in: .whitespaces) ?? ""
-        if !input.isVirtual && trimmedLocation.isEmpty {
-            throw RuulError.unexpected(message: "El evento necesita una ubicación o marcarse como virtual.")
-        }
+        // R.5V.3A — espejea el backend: la ubicación es totalmente opcional
+        // (constraint eliminado en 20260608204500).
         // F.EVENT.9 — bounds require recurrence_rule + non-trivial values.
         if (input.recurrenceCount != nil || input.recurrenceUntil != nil)
             && input.recurrenceRule == nil {
@@ -1746,9 +1743,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
         let newIsVirtual = input.isVirtual ?? current.isVirtual
         let newRecurrence = trimmedOrNil(input.recurrenceRule) ?? current.recurrenceRule
 
-        if !newIsVirtual && (newLocation?.isEmpty ?? true) {
-            throw RuulError.unexpected(message: "El evento necesita una ubicación o marcarse como virtual.")
-        }
+        // R.5V.3A — la ubicación es totalmente opcional; el backend ya no la exige.
         if let s = newStarts, let e = newEnds, e < s {
             throw RuulError.unexpected(message: "El fin del evento no puede ser antes del inicio.")
         }
