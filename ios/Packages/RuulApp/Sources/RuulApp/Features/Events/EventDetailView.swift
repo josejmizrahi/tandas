@@ -230,15 +230,22 @@ public struct EventDetailView: View {
             DecisionsListView(context: context, container: container)
         }
         // F.EVENT.6 — sheet de gasto scoped al evento.
+        // R.5Z.fix.EVENT.1.2 (founder 2026-06-10 "me sale una pantalla blanca")
+        // — antes el `if let moneyStore = moneyStoreForExpense` podía fallar el
+        // render (sheet vacía / pantalla blanca) por race entre el @State assign
+        // y la evaluación del body. Fix: construir MoneyStore inline cuando
+        // todavía no existe.
         .sheet(item: $expenseScope) { scope in
-            if let moneyStore = moneyStoreForExpense {
-                RecordExpenseView(
-                    context: context,
-                    store: moneyStore,
-                    container: container,
-                    eventScope: scope
-                )
-            }
+            let moneyStore = moneyStoreForExpense ?? MoneyStore(
+                rpc: container.rpc,
+                myActorId: container.currentActorStore.actorId
+            )
+            RecordExpenseView(
+                context: context,
+                store: moneyStore,
+                container: container,
+                eventScope: scope
+            )
         }
         // F.EVENT.7 — sheet de edición.
         .sheet(isPresented: $isShowingEdit) { editSheetContent() }
