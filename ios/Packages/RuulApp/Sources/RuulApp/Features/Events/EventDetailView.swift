@@ -1401,8 +1401,14 @@ private struct ParticipantsFullView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            // R.5Z.fix.EVENT.PLUS_ONE — toggle +1 (self-service o admin).
-            if canEditPlusOne(participant) && participant.countsForExpenseSplit {
+            // R.5Z.fix.EVENT.PLUS_ONE.2 — toggle +1 (self-service o admin).
+            // Gate ampliado: cualquier status NO terminal acepta +1, no solo
+            // confirmados. El +1 solo entra al split cuando el participant
+            // eventualmente cuenta (countsForExpenseSplit), pero el flag se
+            // puede setear desde 'invited' / 'maybe' / 'going' / 'checked_in'.
+            if canEditPlusOne(participant)
+                && participant.status != "cancelled"
+                && participant.status != "declined" {
                 Toggle("+1", isOn: Binding(
                     get: { participant.plusOne },
                     set: { newValue in
