@@ -57,6 +57,10 @@ public struct RecordExpenseView: View {
     @State private var splitMethod: SplitMethod = .equal
     @State private var excludedActorIds: Set<UUID> = []
     @State private var customAmounts: [UUID: String] = [:]
+    /// R.5Z.fix.EVENT.SPLIT.SHARES (founder 2026-06-10) — partes por persona
+    /// estilo Splitwise. 0 = excluido. Default 1. Pre-poblado con
+    /// eventScope.weights cuando el gasto viene de un evento.
+    @State private var shareCounts: [UUID: Int] = [:]
     @State private var runner = ActionRunner()
     @State private var resultNotice: String?
     /// R.6.AI.7 — AI hero state.
@@ -70,6 +74,7 @@ public struct RecordExpenseView: View {
 
     private enum SplitMethod: String, CaseIterable, Identifiable {
         case equal = "Partes iguales"
+        case shares = "Por partes"
         case custom = "Montos personalizados"
         var id: String { rawValue }
     }
@@ -206,16 +211,24 @@ public struct RecordExpenseView: View {
                 }
             }
             .task {
-                // R.6.AI.7.fix5 — Fetch directo de context_summary PRIMERO,
-                // independiente de MoneyStore. Garantiza que members estén
-                // disponibles aunque MoneyStore.load rompa o tarde. El
-                // store se carga en paralelo para traer obligations y demás.
                 async let summaryTask = container.rpc.contextSummary(contextId: context.id)
                 async let storeLoad: () = store.load(context: context)
                 if let summary = try? await summaryTask {
                     fallbackMembers = summary.members
                 }
                 _ = await storeLoad
+                // R.5Z.fix.EVENT.SPLIT.SHARES — pre-fill shares from event
+                // weights y default a método "Por partes" cuando el evento
+                // tiene pesos (plus_count + guests). El founder puede
+                // ajustar libremente cada Stepper antes de registrar.
+                if let scope = eventScope, scope.hasWeights, shareCounts.isEmpty {
+                    var initial: [UUID: Int] = [:]
+                    for actorId in scope.participantActorIds {
+                        initial[actorId] = scope.weight(for: actorId)
+                    }
+                    shareCounts = initial
+                    splitMethod = .shares
+                }
             }
             .actionErrorAlert(runner)
             .alert("Gasto registrado", isPresented: Binding(
@@ -272,16 +285,31 @@ public struct RecordExpenseView: View {
             if !isExcluded {
                 switch splitMethod {
                 case .equal:
-                    if let amount {
-                        if let scope = eventScope, scope.hasWeights, scope.totalWeight > 0 {
-                            let share = amount * Double(scope.weight(for: member.actorId)) / Double(scope.totalWeight)
+                    if let amount, !participants.isEmpty {
+                        Text((amount / Double(participants.count)).currencyLabel(nil))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                case .shares:
+                    // R.5Z.fix.EVENT.SPLIT.SHARES — Stepper de partes + preview.
+                    let shares = shareCounts[member.actorId] ?? 1
+                    HStack(spacing: 8) {
+                        Stepper(value: Binding(
+                            get: { shareCounts[member.actorId] ?? 1 },
+                            set: { shareCounts[member.actorId] = max(0, $0) }
+                        ), in: 0...20) {
+                            Text("\(shares) \(shares == 1 ? "parte" : "partes")")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(Theme.Text.secondary)
+                                .frame(minWidth: 56, alignment: .trailing)
+                        }
+                        .labelsHidden()
+                        if let amount, totalShares > 0, shares > 0 {
+                            let share = amount * Double(shares) / Double(totalShares)
                             Text(share.currencyLabel(nil))
                                 .font(.callout.monospacedDigit())
                                 .foregroundStyle(.secondary)
-                        } else if !participants.isEmpty {
-                            Text((amount / Double(participants.count)).currencyLabel(nil))
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
+                                .frame(minWidth: 60, alignment: .trailing)
                         }
                     }
                 case .custom:
@@ -345,15 +373,47 @@ public struct RecordExpenseView: View {
         }
     }
 
+    /// R.5Z.fix.EVENT.SPLIT.SHARES — suma de partes asignadas a participants
+    /// no excluidos. 0 si nadie tiene partes.
+    private var totalShares: Int {
+        participants.reduce(0) { $0 + max(0, shareCounts[$1.actorId] ?? 1) }
+    }
+
     private func record() async {
         guard let amount else { return }
         let success = await runner.run {
             let input: RecordExpenseInput
-            // R.5Z.fix.EVENT.SPLIT.WEIGHTS — cuando el evento tiene pesos
-            // distintos (plus_count + guests), el "equal" se convierte en
-            // proporcional: monto_actor = total × weight / total_weight.
-            // El backend recibe custom splits y crea obligations por monto exacto.
-            if splitMethod == .equal,
+            if splitMethod == .shares, totalShares > 0 {
+                // R.5Z.fix.EVENT.SPLIT.SHARES — Splitwise-style: cada participant
+                // tiene N partes (0 = excluido). Monto = total × shares / sum_shares.
+                // Para evitar drift de redondeo, el último con shares > 0 recibe el
+                // ajuste residual para que sum(amounts) == total exacto.
+                let denom = Double(totalShares)
+                var assignments: [(member: ContextMember, shares: Int, amount: Double)] = []
+                for member in participants {
+                    let shares = max(0, shareCounts[member.actorId] ?? 1)
+                    guard shares > 0 else { continue }
+                    let raw = (amount * Double(shares) / denom * 100).rounded() / 100
+                    assignments.append((member, shares, raw))
+                }
+                let preliminarySum = assignments.reduce(0.0) { $0 + $1.amount }
+                let delta = ((amount - preliminarySum) * 100).rounded() / 100
+                if !assignments.isEmpty, delta != 0 {
+                    assignments[assignments.count - 1].amount += delta
+                }
+                let splits = assignments.map { ExpenseSplit(actorId: $0.member.actorId, amount: $0.amount) }
+                input = RecordExpenseInput(
+                    contextId: context.id,
+                    amount: amount,
+                    currency: currency,
+                    description: description.trimmingCharacters(in: .whitespaces),
+                    splitMethod: "custom",
+                    splits: splits,
+                    eventId: eventScope?.eventId,
+                    paidByActorId: paidByActorId,
+                    clientId: UUID().uuidString
+                )
+            } else if splitMethod == .equal,
                let scope = eventScope, scope.hasWeights {
                 let activeWeights = participants.reduce(into: 0) { acc, m in
                     acc += scope.weight(for: m.actorId)
