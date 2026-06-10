@@ -1367,7 +1367,13 @@ private struct ParticipantsFullView: View {
             AddParticipantsSheet(
                 eventId: eventId,
                 contextId: store.event?.contextActorId,
-                existingActorIds: Set(participants.map(\.participantActorId)),
+                // R.5Z.fix.EVENT.PARTICIPANTS.2 — solo bloquea miembros con
+                // status activo. Cancelled/declined deben ser re-agregables.
+                existingActorIds: Set(
+                    participants
+                        .filter { $0.status != "cancelled" && $0.status != "declined" }
+                        .map(\.participantActorId)
+                ),
                 rpc: rpc,
                 onAdded: { onChanged() }
             )
@@ -1545,7 +1551,7 @@ private struct AddParticipantsSheet: View {
                 RuulEmptyState(
                     title: "Sin miembros para agregar",
                     systemImage: "person.2",
-                    message: "Todos los miembros del contexto ya están en el evento."
+                    message: "Todos los miembros activos del contexto ya son participantes del evento.\n\nPara invitar a alguien externo (familiar, pareja, amigo no-miembro) necesitamos el módulo de Invitados Externos — próximamente."
                 )
             } else {
                 List {
