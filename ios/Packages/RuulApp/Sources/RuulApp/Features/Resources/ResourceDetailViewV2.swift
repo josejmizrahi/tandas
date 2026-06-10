@@ -509,7 +509,7 @@ public struct ResourceDetailViewV2: View {
         // Saldo es el campo headline de cualquier recurso financiero.
         if let balance = d.metrics.balance, let currency = d.metrics.currency {
             LabeledContent("Saldo") {
-                Text(formatCurrency(balance, currency: currency))
+                Text(balance.compactCurrencyLabel(currency))
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(Theme.Tint.success)
             }
@@ -539,7 +539,7 @@ public struct ResourceDetailViewV2: View {
         if let value = d.metrics.estimatedValue, let currency = d.metrics.currency,
            d.metrics.balance == nil {
             // Solo mostrar estimatedValue si no hay balance (ej. security).
-            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
         }
     }
 
@@ -559,7 +559,7 @@ public struct ResourceDetailViewV2: View {
             LabeledContent("Baños", value: bathrooms)
         }
         if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
         }
     }
 
@@ -593,7 +593,7 @@ public struct ResourceDetailViewV2: View {
             LabeledContent("Ubicación", value: location)
         }
         if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
         }
     }
 
@@ -613,7 +613,7 @@ public struct ResourceDetailViewV2: View {
             LabeledContent("Ubicación", value: location)
         }
         if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
         }
     }
 
@@ -670,7 +670,7 @@ public struct ResourceDetailViewV2: View {
             }
         }
         if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
         }
     }
 
@@ -687,7 +687,7 @@ public struct ResourceDetailViewV2: View {
     private func genericFields(_ d: ResourceDetailDescriptor) -> some View {
         LabeledContent("Categoría", value: d.class.displayName)
         if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: formatCurrency(value, currency: currency))
+            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
         }
     }
 
@@ -736,7 +736,7 @@ public struct ResourceDetailViewV2: View {
         switch widget.widgetKey {
         case "balance_summary", "member_balance_summary":
             if let balance = d.metrics.balance, let currency = d.metrics.currency {
-                return (formatCurrency(balance, currency: currency), Theme.Tint.success)
+                return (balance.compactCurrencyLabel(currency), Theme.Tint.success)
             }
         case "open_obligations":
             let count = d.linkedObligations.count
@@ -761,7 +761,7 @@ public struct ResourceDetailViewV2: View {
             }
         case "income_summary":
             if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-                return (formatCurrency(value, currency: currency), Theme.Tint.success)
+                return (value.compactCurrencyLabel(currency), Theme.Tint.success)
             }
         default:
             break
@@ -1477,7 +1477,7 @@ public struct ResourceDetailViewV2: View {
         }
     }
 
-    // MARK: - Chip + currency helpers
+    // MARK: - Chip helpers
 
     @ViewBuilder
     private func chipBadge(_ text: String, tint: Color) -> some View {
@@ -1487,14 +1487,6 @@ public struct ResourceDetailViewV2: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(tint.opacity(0.15), in: Capsule())
-    }
-
-    private func formatCurrency(_ value: Double, currency: String) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = currency
-        f.maximumFractionDigits = 0
-        return f.string(from: NSNumber(value: value)) ?? "\(value) \(currency)"
     }
 }
 
@@ -1662,4 +1654,22 @@ fileprivate struct ConflictResolveAlert: Identifiable {
     let id = UUID()
     let title: String
     let message: String
+}
+
+// MARK: - Previews
+
+#Preview("Recurso — Casa Valle") {
+    NavigationStack {
+        ResourceDetailViewV2(
+            resourceId: MockRuulRPCClient.DemoIds.casaValle,
+            context: AppContext(
+                id: MockRuulRPCClient.DemoIds.familia,
+                kind: .collective,
+                subtype: "family",
+                displayName: "Familia Mizrahi",
+                roles: ["admin"]
+            ),
+            container: .demo()
+        )
+    }
 }

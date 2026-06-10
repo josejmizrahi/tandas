@@ -286,7 +286,7 @@ public struct ObligationDetailView: View {
         Menu {
             ForEach(actions) { action in
                 let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
-                let isDangerous = action.actionKey == "cancel" || action.actionKey == "dispute" || action.actionKey == "forgive"
+                let isDangerous = ActionPresentationCatalog.isDestructive(for: action.actionKey)
                 Button(role: isDangerous ? .destructive : nil) {
                     handleObligationAction(action)
                 } label: {
@@ -304,13 +304,15 @@ public struct ObligationDetailView: View {
     /// Dispatch routing — antes vivía en actionRow inline, ahora compartido
     /// por el toolbar Menu.
     private func handleObligationAction(_ action: AvailableAction) {
-        switch action.actionKey {
-        case "mark_completed":
+        // F.2X — el mapeo key→destino vive en ActionRouter; aquí sólo se
+        // decide el flow local (sheet / governance / coming soon).
+        switch ActionRouter.quickActionDestination(for: action.actionKey) {
+        case .markObligationCompleted:
             completionNotes = ""
             isShowingCompleteSheet = true
-        case "edit_obligation":
+        case .editObligation:
             isShowingEdit = true
-        case "forgive":
+        case .forgiveObligation:
             // R.7.x — branch governance ↔ direct según `mode` del descriptor.
             // Si el descriptor todavía no surface `mode` (default nil → direct),
             // el confirm directo dispara la RPC y el backend devuelve
@@ -552,6 +554,42 @@ private struct WhyObligationSheet: View {
         case "reservation": return "calendar.badge.clock"
         case "manual": return "hand.raised"
         default: return "questionmark.circle"
+        }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Compromiso — Cena Semanal") {
+    NavigationStack {
+        ObligationDetailPreviewWrapper()
+    }
+}
+
+/// El preview necesita resolver el id de la obligación demo de forma async
+/// (mismo patrón que EventDetailPreviewWrapper).
+private struct ObligationDetailPreviewWrapper: View {
+    @State private var obligationId: UUID?
+    private let container = DependencyContainer.demo()
+    private let context = AppContext(
+        id: MockRuulRPCClient.DemoIds.cenaSemanal,
+        kind: .collective,
+        subtype: "friend_group",
+        displayName: "Cena Semanal",
+        roles: ["admin"]
+    )
+
+    var body: some View {
+        Group {
+            if let obligationId {
+                ObligationDetailView(obligationId: obligationId, context: context, container: container)
+            } else {
+                ProgressView()
+            }
+        }
+        .task {
+            let obligations = try? await container.rpc.listObligations(contextId: context.id)
+            obligationId = obligations?.first?.id
         }
     }
 }

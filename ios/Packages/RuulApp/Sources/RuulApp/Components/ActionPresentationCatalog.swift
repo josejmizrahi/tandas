@@ -29,6 +29,19 @@ public enum ActionPresentationCatalog {
         Self.table[actionKey] ?? ActionPresentation(symbolName: "ellipsis.circle", tint: .secondary)
     }
 
+    /// Clasificación de peligro por `action_key`: las acciones listadas se
+    /// presentan con `Button(role: .destructive)` en los Menus. ÚNICA fuente
+    /// de verdad — las vistas NO deben hardcodear esta lista.
+    public static func isDestructive(for actionKey: String) -> Bool {
+        Self.destructiveKeys.contains(actionKey)
+    }
+
+    /// Keys destructivos/irreversibles a nivel obligación (R.2S.9 / R.5V.X).
+    /// Si el backend introduce un key destructivo nuevo, se agrega aquí.
+    private static let destructiveKeys: Set<String> = [
+        "cancel", "dispute", "forgive",
+    ]
+
     // MARK: - Tabla
     // Colores per founder color doctrine:
     //   Resources/Calendar = .orange

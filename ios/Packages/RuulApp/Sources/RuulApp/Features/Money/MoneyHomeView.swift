@@ -419,10 +419,12 @@ public struct MoneyHomeView: View {
     }
 
     private func handle(actionKey: String) {
-        switch actionKey {
-        case "record_expense":     isShowingExpense = true
-        case "record_fine":        isShowingFine = true
-        case "record_game_result": isShowingGameResult = true
+        // F.2X — el mapeo key→destino vive en ActionRouter; aquí sólo se
+        // decide qué sheet local abrir.
+        switch ActionRouter.quickActionDestination(for: actionKey) {
+        case .recordExpense:    isShowingExpense = true
+        case .recordFine:       isShowingFine = true
+        case .recordGameResult: isShowingGameResult = true
         default: break
         }
     }

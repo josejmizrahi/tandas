@@ -684,4 +684,14 @@ public extension Double {
         }
         return "$\(formatted)"
     }
+
+    /// `"$1,300"` — formato compacto sin centavos para chips, métricas y héroes.
+    /// Usa `NumberFormatter` con el código ISO de la moneda (símbolo según locale).
+    func compactCurrencyLabel(_ currency: String) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = currency
+        f.maximumFractionDigits = 0
+        return f.string(from: NSNumber(value: self)) ?? "\(Int(self)) \(currency)"
+    }
 }
