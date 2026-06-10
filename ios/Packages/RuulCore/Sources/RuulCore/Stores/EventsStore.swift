@@ -108,12 +108,22 @@ public final class EventDetailStore {
             async let summaryTask = rpc.contextSummary(contextId: context.id)
             let (detail, summary) = try await (detailTask, summaryTask)
             event = detail.event
-            participants = detail.participants
+            // R.5Z.fix.EVENT.SORT (founder 2026-06-10) — sort estable por
+            // rsvp_at (early first) y luego id como tiebreaker. Antes el
+            // backend `order by rsvp_at nulls last` daba order no-determinístico
+            // cuando todos tienen rsvp_at=null → al modificar plus_count vía
+            // RPC el row volvía a un lugar distinto del mismo grupo.
+            participants = detail.participants.sorted { a, b in
+                switch (a.rsvpAt, b.rsvpAt) {
+                case (let x?, let y?): return x < y
+                case (.some, .none):   return true
+                case (.none, .some):   return false
+                case (.none, .none):   return a.id.uuidString < b.id.uuidString
+                }
+            }
             availableActions = detail.availableActions
             members = summary.members
             myPermissions = summary.myPermissions
-            // R.5Z.fix.EVENT.GUESTS — load en paralelo, fail-silent (un event
-            // sin guests no debe romper el load principal).
             guests = (try? await rpc.listEventGuests(eventId: eventId)) ?? []
             phase = .loaded
             // F.EVENT.8 — preview del próximo anfitrión cuando el evento es

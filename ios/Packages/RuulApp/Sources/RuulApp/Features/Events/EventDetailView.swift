@@ -855,9 +855,23 @@ public struct EventDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } header: {
-                Text("Participantes (\(store.participants.count))")
+                // R.5Z.fix.EVENT.HEADER (founder 2026-06-10) — el header suma
+                // base + plus_count + guests. Antes solo mostraba count de
+                // participants ignorando los +N.
+                Text("Participantes (\(totalPeopleCount))")
             }
         }
+    }
+
+    /// R.5Z.fix.EVENT.HEADER — total real de personas en el evento:
+    /// participants (cada uno cuenta 1 + plus_count) + guests (sum de count_share).
+    /// Solo considera participants no cancelled/declined.
+    private var totalPeopleCount: Int {
+        let participantsTotal = store.participants
+            .filter { $0.status != "cancelled" && $0.status != "declined" }
+            .reduce(0) { $0 + 1 + $1.plusCount }
+        let guestsTotal = store.guests.reduce(0) { $0 + $1.countShare }
+        return participantsTotal + guestsTotal
     }
 
     @ViewBuilder
