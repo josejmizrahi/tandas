@@ -586,10 +586,14 @@ begin
   perform set_config('request.jwt.claims', jsonb_build_object('sub', u_d::text)::text, true);
   perform public.join_by_invite_code(v_code);
 
-  -- A crea el evento (auto-invita a todos los miembros; A queda 'going')
+  -- A crea el evento (auto-invita a todos los miembros como 'invited' —
+  -- p_invite_all_members default true NO marca al creador 'going', r5v3a) y
+  -- confirma explícitamente para contar en el split. [2026-06-10 replay doctor:
+  -- el smoke asumía A='going' automático → total_weight daba 6, no 7.]
   perform set_config('request.jwt.claims', jsonb_build_object('sub', u_a::text)::text, true);
   v_event := ((public.create_calendar_event(
     v_ctx, '_smoke_r9c Carne asada', 'dinner', now() + interval '1 day'))->>'event_id')::uuid;
+  perform public.rsvp_event(v_event, 'going');
 
   -- B confirma +2; C confirma e invita guest (count_share=1); D confirma simple
   perform set_config('request.jwt.claims', jsonb_build_object('sub', u_b::text)::text, true);
