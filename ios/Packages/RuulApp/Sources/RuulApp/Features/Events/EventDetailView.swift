@@ -1185,17 +1185,28 @@ public struct EventDetailView: View {
             myActorId: container.currentActorStore.actorId
         )
         moneyStoreForExpense = store
-        // R.5Z.fix.EVENT.PARTICIPANTS (founder 2026-06-10) — el split solo
-        // aplica a participants confirmados (going/checked_in). Los que dijeron
-        // "maybe" / "declined" / "cancelled" no entran al gasto.
+        // R.5Z.fix.EVENT.PARTICIPANTS — el split solo aplica a participants
+        // confirmados (going/checked_in). 'maybe'/'declined'/'cancelled' fuera.
         let confirmed = self.store.participants.filter { $0.countsForExpenseSplit }
         let participantIds = Set(confirmed.map(\.participantActorId))
+        // R.5Z.fix.EVENT.SPLIT.WEIGHTS — calcular peso por actor:
+        //   base 1 + plus_count + guest_shares (donde guest.invited_by_actor_id
+        //   coincide). Si un guest fue invitado por alguien NO confirmado, ese
+        //   peso se descarta (founder dropea el evento → su esposa también sale).
+        var weights: [UUID: Int] = [:]
+        for participant in confirmed {
+            weights[participant.participantActorId] = 1 + participant.plusCount
+        }
+        for guest in self.store.guests where participantIds.contains(guest.invitedByActorId) {
+            weights[guest.invitedByActorId, default: 1] += guest.countShare
+        }
         Task {
             await store.load(context: context)
             expenseScope = EventScope(
                 eventId: event.id,
                 eventTitle: event.title,
-                participantActorIds: participantIds
+                participantActorIds: participantIds,
+                weights: weights
             )
         }
     }

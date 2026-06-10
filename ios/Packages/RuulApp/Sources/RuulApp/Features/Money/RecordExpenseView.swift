@@ -9,13 +9,33 @@ public struct EventScope: Sendable, Equatable, Identifiable {
     public let eventId: UUID
     public let eventTitle: String
     public let participantActorIds: Set<UUID>
+    /// R.5Z.fix.EVENT.SPLIT — peso por participant (1 + plus_count + guest_shares
+    /// invitados por ese actor). Cuando alguno > 1, el split equal se reparte
+    /// proporcionalmente: monto_por_actor = total * weight / sum(weights).
+    /// Si vacío o todos == 1, se comporta como split equal estándar.
+    public let weights: [UUID: Int]
 
     public var id: UUID { eventId }
 
-    public init(eventId: UUID, eventTitle: String, participantActorIds: Set<UUID>) {
+    public init(eventId: UUID, eventTitle: String, participantActorIds: Set<UUID>, weights: [UUID: Int] = [:]) {
         self.eventId = eventId
         self.eventTitle = eventTitle
         self.participantActorIds = participantActorIds
+        self.weights = weights
+    }
+
+    /// Peso de un actor (default 1). Cuando todos los weights son 1 o vacío,
+    /// el split es equal estándar.
+    public func weight(for actorId: UUID) -> Int {
+        weights[actorId] ?? 1
+    }
+
+    /// `true` si hay al menos un peso > 1 → split se hace proporcional.
+    public var hasWeights: Bool { weights.values.contains(where: { $0 > 1 }) }
+
+    /// Suma de pesos de los actores activos (los de `participantActorIds`).
+    public var totalWeight: Int {
+        participantActorIds.reduce(0) { $0 + weight(for: $1) }
     }
 }
 
@@ -229,19 +249,40 @@ public struct RecordExpenseView: View {
             }
             .buttonStyle(.borderless)
 
-            Text(member.displayName)
-                .foregroundStyle(isExcluded ? .secondary : .primary)
-                .strikethrough(isExcluded)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(member.displayName)
+                        .foregroundStyle(isExcluded ? .secondary : .primary)
+                        .strikethrough(isExcluded)
+                    // R.5Z.fix.EVENT.SPLIT.WEIGHTS — badge ×N cuando este actor
+                    // tiene peso > 1 por plus_count + guests invitados.
+                    if let scope = eventScope, scope.weight(for: member.actorId) > 1 {
+                        Text("×\(scope.weight(for: member.actorId))")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.15), in: Capsule())
+                            .foregroundStyle(Color.accentColor)
+                    }
+                }
+            }
 
             Spacer()
 
             if !isExcluded {
                 switch splitMethod {
                 case .equal:
-                    if let amount, !participants.isEmpty {
-                        Text((amount / Double(participants.count)).currencyLabel(nil))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                    if let amount {
+                        if let scope = eventScope, scope.hasWeights, scope.totalWeight > 0 {
+                            let share = amount * Double(scope.weight(for: member.actorId)) / Double(scope.totalWeight)
+                            Text(share.currencyLabel(nil))
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        } else if !participants.isEmpty {
+                            Text((amount / Double(participants.count)).currencyLabel(nil))
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 case .custom:
                     TextField("0.00", text: Binding(
@@ -308,7 +349,33 @@ public struct RecordExpenseView: View {
         guard let amount else { return }
         let success = await runner.run {
             let input: RecordExpenseInput
-            if splitMethod == .custom {
+            // R.5Z.fix.EVENT.SPLIT.WEIGHTS — cuando el evento tiene pesos
+            // distintos (plus_count + guests), el "equal" se convierte en
+            // proporcional: monto_actor = total × weight / total_weight.
+            // El backend recibe custom splits y crea obligations por monto exacto.
+            if splitMethod == .equal,
+               let scope = eventScope, scope.hasWeights {
+                let activeWeights = participants.reduce(into: 0) { acc, m in
+                    acc += scope.weight(for: m.actorId)
+                }
+                let totalWeight = Double(max(activeWeights, 1))
+                let splits = participants.map { member -> ExpenseSplit in
+                    let w = Double(scope.weight(for: member.actorId))
+                    let share = (amount * w / totalWeight * 100).rounded() / 100
+                    return ExpenseSplit(actorId: member.actorId, amount: share)
+                }
+                input = RecordExpenseInput(
+                    contextId: context.id,
+                    amount: amount,
+                    currency: currency,
+                    description: description.trimmingCharacters(in: .whitespaces),
+                    splitMethod: "custom",
+                    splits: splits,
+                    eventId: eventScope?.eventId,
+                    paidByActorId: paidByActorId,
+                    clientId: UUID().uuidString
+                )
+            } else if splitMethod == .custom {
                 let splits = participants.compactMap { member -> ExpenseSplit? in
                     guard let value = Double(customAmounts[member.actorId] ?? ""), value > 0 else { return nil }
                     return ExpenseSplit(actorId: member.actorId, amount: value)
