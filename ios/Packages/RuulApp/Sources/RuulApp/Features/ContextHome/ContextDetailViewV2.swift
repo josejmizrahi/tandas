@@ -64,24 +64,31 @@ public struct ContextDetailViewV2: View {
     }
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case overview, people, resources, money, more
+        // R.5Z.fix.CONTEXT.TABS (founder 2026-06-10) — tabs nuevos events +
+        // governance para que un grupo de amigos pueda organizarse y convivir
+        // end-to-end sin esconder eventos/decisiones en "Más".
+        case overview, events, people, resources, money, governance, more
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .overview:  return "Resumen"
-            case .people:    return "Personas"
-            case .resources: return "Recursos"
-            case .money:     return "Dinero"
-            case .more:      return "Más"
+            case .overview:   return "Resumen"
+            case .events:     return "Eventos"
+            case .people:     return "Personas"
+            case .resources:  return "Recursos"
+            case .money:      return "Dinero"
+            case .governance: return "Gobierno"
+            case .more:       return "Más"
             }
         }
         var sectionKeys: Set<String> {
             switch self {
-            case .overview:  return ["overview"]
-            case .people:    return ["people"]
-            case .resources: return ["resources"]
-            case .money:     return ["money", "obligations"]
-            case .more:      return ["calendar", "governance", "documents", "activity", "settings"]
+            case .overview:   return ["overview"]
+            case .events:     return ["calendar"]
+            case .people:     return ["people"]
+            case .resources:  return ["resources"]
+            case .money:      return ["money", "obligations"]
+            case .governance: return ["governance"]
+            case .more:       return ["documents", "activity", "settings"]
             }
         }
     }
@@ -324,11 +331,131 @@ public struct ContextDetailViewV2: View {
     @ViewBuilder
     private func tabSections(_ d: ContextDetailDescriptor, tab: Tab) -> some View {
         switch tab {
-        case .overview:  overviewSections(d)
-        case .people:    peopleSections(d)
-        case .resources: resourcesSections(d)
-        case .money:     moneySections(d)
-        case .more:      moreSections(d)
+        case .overview:   overviewSections(d)
+        case .events:     eventsSections(d)
+        case .people:     peopleSections(d)
+        case .resources:  resourcesSections(d)
+        case .money:      moneySections(d)
+        case .governance: governanceSections(d)
+        case .more:       moreSections(d)
+        }
+    }
+
+    // MARK: - Events tab (R.5Z.fix.CONTEXT.TABS)
+
+    @ViewBuilder
+    private func eventsSections(_ d: ContextDetailDescriptor) -> some View {
+        // Quick actions arriba: crear evento + ver calendario.
+        Section {
+            Button {
+                pushedActionDestination = .events
+            } label: {
+                Label("Ver todos los eventos", systemImage: "list.bullet.rectangle")
+            }
+            NavigationLink {
+                ContextCalendarView(context: context, container: container)
+            } label: {
+                Label("Calendario", systemImage: "calendar")
+            }
+        } header: {
+            Text("Eventos del contexto")
+        } footer: {
+            Text("Los gastos del evento se reparten entre los confirmados con sus partes.")
+        }
+
+        // Eventos próximos del descriptor preview.
+        if !d.eventsPreview.isEmpty {
+            Section {
+                ForEach(d.eventsPreview) { ev in
+                    NavigationLink {
+                        EventDetailView(eventId: ev.eventId, context: context, container: container)
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ev.title)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                    .lineLimit(1)
+                                if let starts = ev.startsAt {
+                                    Text(starts.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.secondary)
+                                }
+                            }
+                        } icon: {
+                            Image(systemName: "calendar.badge.clock")
+                                .foregroundStyle(Theme.Tint.primary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Próximos")
+            }
+        } else {
+            Section {
+                Label("Sin eventos próximos", systemImage: "calendar")
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+        }
+    }
+
+    // MARK: - Governance tab (R.5Z.fix.CONTEXT.TABS)
+    //
+    // Tab que un grupo de amigos necesita para organizarse: decisiones
+    // abiertas para votar + reglas vigentes + atajo para crear propuesta.
+
+    @ViewBuilder
+    private func governanceSections(_ d: ContextDetailDescriptor) -> some View {
+        Section {
+            Button {
+                pushedActionDestination = .decisions
+            } label: {
+                Label("Ver todas las decisiones", systemImage: "checkmark.bubble.fill")
+            }
+            Button {
+                pushedActionDestination = .rules
+            } label: {
+                Label("Ver reglas del grupo", systemImage: "ruler.fill")
+            }
+        } header: {
+            Text("Gobierno del contexto")
+        } footer: {
+            Text("Decidan juntos: votos para temas grupales, reglas para convivir bien.")
+        }
+
+        // Decisiones abiertas del descriptor preview.
+        if !d.decisionsPreview.isEmpty {
+            Section {
+                ForEach(d.decisionsPreview) { dec in
+                    NavigationLink {
+                        DecisionDetailView(decisionId: dec.decisionId, context: context, container: container)
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(dec.title)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                    .lineLimit(1)
+                                Text("Decisión abierta · tu voto cuenta")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Tint.warning)
+                            }
+                        } icon: {
+                            Image(systemName: "checkmark.bubble.fill")
+                                .foregroundStyle(Theme.Tint.warning)
+                        }
+                    }
+                }
+            } header: {
+                Text("Decisiones abiertas")
+            }
+        } else {
+            Section {
+                Label("Sin decisiones abiertas", systemImage: "checkmark.circle")
+                    .foregroundStyle(Theme.Text.secondary)
+            } header: {
+                Text("Decisiones abiertas")
+            }
         }
     }
 
