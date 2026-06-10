@@ -222,6 +222,13 @@ public struct EventDetailView: View {
                     canCheckInOthers: hasManageAuthority && (store.event.map { shouldShowCheckIn($0) } ?? false),
                     onCheckIn: { participant in
                         Task { await hostCheckIn(participant) }
+                    },
+                    canManageRoster: isHost || hasManageAuthority,
+                    myActorId: myActorId,
+                    eventId: eventId,
+                    rpc: container.rpc,
+                    onChanged: {
+                        Task { await store.load(eventId: eventId, context: context) }
                     }
                 )
             }
@@ -1178,7 +1185,11 @@ public struct EventDetailView: View {
             myActorId: container.currentActorStore.actorId
         )
         moneyStoreForExpense = store
-        let participantIds = Set(self.store.participants.map(\.participantActorId))
+        // R.5Z.fix.EVENT.PARTICIPANTS (founder 2026-06-10) — el split solo
+        // aplica a participants confirmados (going/checked_in). Los que dijeron
+        // "maybe" / "declined" / "cancelled" no entran al gasto.
+        let confirmed = self.store.participants.filter { $0.countsForExpenseSplit }
+        let participantIds = Set(confirmed.map(\.participantActorId))
         Task {
             await store.load(context: context)
             expenseScope = EventScope(
@@ -1305,36 +1316,32 @@ private struct ParticipantsFullView: View {
     let store: EventDetailStore
     let canCheckInOthers: Bool
     let onCheckIn: (EventParticipant) -> Void
+    // R.5Z.fix.EVENT.PARTICIPANTS (founder 2026-06-10) — edit mode params.
+    let canManageRoster: Bool
+    let myActorId: UUID?
+    let eventId: UUID
+    let rpc: any RuulRPCClient
+    let onChanged: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var isShowingAdd = false
+    @State private var runner = ActionRunner()
 
     var body: some View {
         List {
-            // Agrupar por estado humano (founder doctrine).
             ForEach(groups(), id: \.title) { group in
                 Section(group.title) {
                     ForEach(group.participants) { participant in
-                        HStack(spacing: 12) {
-                            ActorInitialsView(name: store.displayName(for: participant.participantActorId), size: 40)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(store.displayName(for: participant.participantActorId))
-                                Text(humanStatus(participant))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if canCheckInOthers && !participant.checkedIn
-                                && participant.status != "cancelled"
-                                && participant.status != "declined" {
-                                Button {
-                                    onCheckIn(participant)
-                                } label: {
-                                    Image(systemName: "checkmark.circle")
-                                        .font(.title3)
+                        participantRow(participant)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                if canManageRoster && participant.status != "cancelled" {
+                                    Button(role: .destructive) {
+                                        Task { await remove(participant) }
+                                    } label: {
+                                        Label("Remover", systemImage: "person.badge.minus")
+                                    }
                                 }
-                                .buttonStyle(.plain)
                             }
-                        }
                     }
                 }
             }
@@ -1342,10 +1349,98 @@ private struct ParticipantsFullView: View {
         .navigationTitle("Participantes")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            if canManageRoster {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingAdd = true
+                    } label: {
+                        Label("Agregar", systemImage: "person.badge.plus")
+                    }
+                }
+            }
+            ToolbarItem(placement: .cancellationAction) {
                 Button("Cerrar") { dismiss() }
             }
         }
+        .actionErrorAlert(runner)
+        .sheet(isPresented: $isShowingAdd, onDismiss: { onChanged() }) {
+            AddParticipantsSheet(
+                eventId: eventId,
+                contextId: store.event?.contextActorId,
+                existingActorIds: Set(participants.map(\.participantActorId)),
+                rpc: rpc,
+                onAdded: { onChanged() }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func participantRow(_ participant: EventParticipant) -> some View {
+        HStack(spacing: 12) {
+            ActorInitialsView(name: store.displayName(for: participant.participantActorId), size: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(store.displayName(for: participant.participantActorId))
+                    if participant.plusOne {
+                        Text("+1")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.Tint.primary.opacity(0.15), in: Capsule())
+                            .foregroundStyle(Theme.Tint.primary)
+                    }
+                }
+                Text(humanStatus(participant))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            // R.5Z.fix.EVENT.PLUS_ONE — toggle +1 (self-service o admin).
+            if canEditPlusOne(participant) && participant.countsForExpenseSplit {
+                Toggle("+1", isOn: Binding(
+                    get: { participant.plusOne },
+                    set: { newValue in
+                        Task { await setPlusOne(participant, value: newValue) }
+                    }
+                ))
+                .labelsHidden()
+                .tint(Theme.Tint.primary)
+            }
+            if canCheckInOthers && !participant.checkedIn
+                && participant.status != "cancelled"
+                && participant.status != "declined" {
+                Button {
+                    onCheckIn(participant)
+                } label: {
+                    Image(systemName: "checkmark.circle")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func canEditPlusOne(_ p: EventParticipant) -> Bool {
+        guard let myId = myActorId else { return false }
+        return canManageRoster || p.participantActorId == myId
+    }
+
+    private func setPlusOne(_ p: EventParticipant, value: Bool) async {
+        _ = await runner.run {
+            try await rpc.setEventParticipantPlusOne(
+                eventId: eventId,
+                actorId: p.participantActorId,
+                plusOne: value
+            )
+        }
+        onChanged()
+    }
+
+    private func remove(_ p: EventParticipant) async {
+        _ = await runner.run {
+            try await rpc.removeEventParticipants(eventId: eventId, actorIds: [p.participantActorId])
+        }
+        onChanged()
     }
 
     private struct ParticipantGroup {
@@ -1396,6 +1491,125 @@ private extension String {
     var capitalizedFirstLetter: String {
         guard let first = first else { return self }
         return first.uppercased() + dropFirst()
+    }
+}
+
+// MARK: - R.5Z.fix.EVENT.PARTICIPANTS — Add Participants Sheet
+//
+// Sheet con List de members activos del contexto NO presentes aún en el roster.
+// Multi-select (toggle por row). "Agregar" llama add_event_participants.
+
+private struct AddParticipantsSheet: View {
+    let eventId: UUID
+    let contextId: UUID?
+    let existingActorIds: Set<UUID>
+    let rpc: any RuulRPCClient
+    let onAdded: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var members: [ContextMember] = []
+    @State private var selectedIds: Set<UUID> = []
+    @State private var runner = ActionRunner()
+    @State private var phase: StorePhase = .idle
+
+    var body: some View {
+        NavigationStack {
+            content
+                .navigationTitle("Agregar al evento")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancelar") { dismiss() }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Agregar") {
+                            Task { await addSelected() }
+                        }
+                        .disabled(selectedIds.isEmpty || runner.isRunning)
+                    }
+                }
+                .actionErrorAlert(runner)
+                .task { await load() }
+        }
+        .ruulSheet()
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch phase {
+        case .idle, .loading: RuulLoadingState()
+        case .failed(let msg): RuulErrorState(message: msg) { Task { await load() } }
+        case .loaded:
+            let candidates = members.filter { !existingActorIds.contains($0.actorId) }
+            if candidates.isEmpty {
+                RuulEmptyState(
+                    title: "Sin miembros para agregar",
+                    systemImage: "person.2",
+                    message: "Todos los miembros del contexto ya están en el evento."
+                )
+            } else {
+                List {
+                    Section {
+                        ForEach(candidates) { member in
+                            Button {
+                                if selectedIds.contains(member.actorId) {
+                                    selectedIds.remove(member.actorId)
+                                } else {
+                                    selectedIds.insert(member.actorId)
+                                }
+                            } label: {
+                                HStack {
+                                    Label {
+                                        Text(member.displayName)
+                                            .foregroundStyle(Theme.Text.primary)
+                                    } icon: {
+                                        Image(systemName: "person.crop.circle")
+                                            .foregroundStyle(Theme.Tint.primary)
+                                    }
+                                    Spacer()
+                                    if selectedIds.contains(member.actorId) {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(Theme.Tint.primary)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } header: {
+                        Text("Miembros del contexto")
+                    } footer: {
+                        Text("Solo aparecen los miembros activos del contexto que aún no son participantes.")
+                    }
+                }
+                .listStyle(.insetGrouped)
+            }
+        }
+    }
+
+    private func load() async {
+        guard let ctxId = contextId else {
+            phase = .failed(message: "Contexto del evento desconocido")
+            return
+        }
+        if members.isEmpty { phase = .loading }
+        do {
+            let summary = try await rpc.contextSummary(contextId: ctxId)
+            members = summary.members
+            phase = .loaded
+        } catch {
+            phase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+
+    private func addSelected() async {
+        let ids = Array(selectedIds)
+        let success = await runner.run {
+            try await rpc.addEventParticipants(eventId: eventId, actorIds: ids)
+        }
+        if success {
+            onAdded()
+            dismiss()
+        }
     }
 }
 

@@ -941,6 +941,44 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("close_event", params: Params(pEventId: eventId))
     }
 
+    public func addEventParticipants(eventId: UUID, actorIds: [UUID]) async throws {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pActorIds: [UUID]
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pActorIds = "p_actor_ids"
+            }
+        }
+        try await callVoid("add_event_participants", params: Params(pEventId: eventId, pActorIds: actorIds))
+    }
+
+    public func removeEventParticipants(eventId: UUID, actorIds: [UUID]) async throws {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pActorIds: [UUID]
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pActorIds = "p_actor_ids"
+            }
+        }
+        try await callVoid("remove_event_participants", params: Params(pEventId: eventId, pActorIds: actorIds))
+    }
+
+    public func setEventParticipantPlusOne(eventId: UUID, actorId: UUID, plusOne: Bool) async throws {
+        struct Params: Encodable, Sendable {
+            let pEventId: UUID
+            let pActorId: UUID
+            let pPlusOne: Bool
+            enum CodingKeys: String, CodingKey {
+                case pEventId = "p_event_id"
+                case pActorId = "p_actor_id"
+                case pPlusOne = "p_plus_one"
+            }
+        }
+        try await callVoid("set_event_participant_plus_one", params: Params(pEventId: eventId, pActorId: actorId, pPlusOne: plusOne))
+    }
+
     // MARK: - F.EVENT.8 host rotation
 
     public func previewNextHost(eventId: UUID) async throws -> NextHostPreview {

@@ -1946,6 +1946,37 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return CancelParticipationResult(participantId: participantId, sameDayCancellation: sameDay)
     }
 
+    public func addEventParticipants(eventId: UUID, actorIds: [UUID]) async throws {
+        try throwIfNeeded()
+        for actorId in actorIds {
+            participants[eventId, default: []].append(EventParticipant(
+                id: UUID(), eventId: eventId, participantActorId: actorId, status: "invited"
+            ))
+        }
+    }
+
+    public func removeEventParticipants(eventId: UUID, actorIds: [UUID]) async throws {
+        try throwIfNeeded()
+        participants[eventId] = (participants[eventId] ?? []).map { p in
+            actorIds.contains(p.participantActorId)
+                ? EventParticipant(id: p.id, eventId: eventId, participantActorId: p.participantActorId, status: "cancelled", rsvpAt: p.rsvpAt, cancelledAt: Date(), metadata: p.metadata)
+                : p
+        }
+    }
+
+    public func setEventParticipantPlusOne(eventId: UUID, actorId: UUID, plusOne: Bool) async throws {
+        try throwIfNeeded()
+        participants[eventId] = (participants[eventId] ?? []).map { p in
+            guard p.participantActorId == actorId else { return p }
+            return EventParticipant(
+                id: p.id, eventId: eventId, participantActorId: p.participantActorId,
+                status: p.status, rsvpAt: p.rsvpAt, checkedInAt: p.checkedInAt,
+                cancelledAt: p.cancelledAt,
+                metadata: .object(["plus_one": .bool(plusOne)])
+            )
+        }
+    }
+
     public func closeEvent(eventId: UUID) async throws -> CloseEventResult {
         try throwIfNeeded()
         guard let event = events[eventId] else {

@@ -310,6 +310,15 @@ public struct EventParticipant: Codable, Sendable, Equatable, Identifiable {
     public var statusLabel: String { participantStatus?.label ?? status }
     public var minutesLate: Double? { metadata?["minutes_late"]?.numberValue }
     public var checkedIn: Bool { checkedInAt != nil }
+    /// R.5Z.fix.EVENT.PARTICIPANTS — `true` si el participant declaró +1.
+    /// Cuenta como 2 unidades en el split de gastos del evento.
+    public var plusOne: Bool { metadata?["plus_one"]?.boolValue == true }
+    /// Cuántas unidades aporta al split: 2 si plus_one, 1 sino.
+    public var splitUnits: Int { plusOne ? 2 : 1 }
+    /// Status confirmados que cuentan para el split del evento.
+    public var countsForExpenseSplit: Bool {
+        status == "going" || status == "checked_in"
+    }
 }
 
 // MARK: - Resultados de acciones
