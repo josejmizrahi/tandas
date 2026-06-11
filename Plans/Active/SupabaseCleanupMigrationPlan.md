@@ -82,6 +82,19 @@ Estado actualizado 2026-06-11 (segunda tanda del PR #161, `audit_7`…`audit_10`
 
 ## Fase 3 — Mediano plazo (cuando el producto lo pida)
 
+Adelantos ya ejecutados (2026-06-11, "barato hoy, épico mañana"):
+
+- ✅ **PKs particionables** (`audit_16`): `activity_events` y `ledger_entries` (las dos
+  tablas de crecimiento infinito) ahora tienen PK `(id, occurred_at)` — el particionado
+  declarativo por rango queda habilitado sin migración futura. Verificado: cero FKs las
+  referencian.
+- ✅ **Invariante contable en la base** (`audit_17`): constraint trigger DEFERRED sobre
+  `money_splits` que valida al COMMIT `sum(splits) = 2×amount` por transacción (pata del
+  pagador + pata de deudores/beneficiarios). Invariante verificado empíricamente contra
+  toda la data viva y contra la suite completa (incluye pools R8 y settlement handshake).
+
+Pendientes (sin fecha):
+
 - **Baseline squash opcional** de la cadena (231 archivos + ledger con ~250 entradas
   pre-MVP2): `pg_dump --schema-only` como `baseline_v1` + smokes; la cadena actual se
   archiva (no se borra). Solo si el replay de CI se vuelve lento u oneroso.

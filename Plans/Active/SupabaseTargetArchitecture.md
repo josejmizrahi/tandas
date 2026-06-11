@@ -132,8 +132,10 @@ pool_accounts/basis       (capital social: aportes con basis y resolución)
 
 Invariantes objetivo (algunos ya, otros Fase 2/3):
 - Toda mutación de dinero es RPC idempotente con lock (R9B ✓).
-- `voided` solo vía `void_transaction` (Fase 2) que emite ledger compensatorio y
-  actividad `transaction.voided` (catalogado).
+- `sum(money_splits.amount) = 2×amount` por transacción, garantizado por la BASE
+  (constraint trigger deferred, audit_17 ✓) — no solo por los RPCs.
+- `voided` solo vía `void_transaction` (✓ audit_9) con ledger compensatorio y
+  actividad `transaction.voided` catalogada.
 - Moneda: una por contexto de neteo (✓); catálogo ISO + FX cuando exista segunda moneda
   real (Fase 3). No diseñar FX antes de necesitarlo.
 - Si Ruul llega a custodiar fondos: migrar ledger a doble partida estricta
