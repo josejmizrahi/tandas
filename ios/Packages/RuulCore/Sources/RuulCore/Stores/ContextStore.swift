@@ -55,12 +55,29 @@ public final class ContextStore {
         do {
             let candidates = try await rpc.contextCandidates()
             availableContexts = candidates.appContexts
+            // P1.13 — el "Contexto inicial" configurado en Ajustes gana en el
+            // arranque frío (una vez por proceso). No-fatal si falla la lectura.
+            if !didResolveDefaultContext {
+                didResolveDefaultContext = true
+                if currentContext == nil,
+                   let settings = try? await rpc.personalSettingsSummary(),
+                   let defaultId = settings.contexts.defaultContextActorId,
+                   let match = availableContexts.first(where: { $0.id == defaultId }) {
+                    currentContext = match
+                    defaults.set(match.id.uuidString, forKey: Self.persistedIdKey)
+                    phase = .loaded
+                    return
+                }
+            }
             resolveSelectionAfterLoad()
             phase = .loaded
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
         }
     }
+
+    /// P1.13 — el default configurado se evalúa una sola vez por proceso.
+    private var didResolveDefaultContext = false
 
     // MARK: - Selección
 
@@ -76,6 +93,7 @@ public final class ContextStore {
         availableContexts = []
         currentContext = nil
         phase = .idle
+        didResolveDefaultContext = false
         defaults.removeObject(forKey: Self.persistedIdKey)
     }
 
