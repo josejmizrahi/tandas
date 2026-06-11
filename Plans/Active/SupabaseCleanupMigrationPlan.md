@@ -61,10 +61,17 @@ Estado actualizado 2026-06-11 (segunda tanda del PR #161, `audit_7`…`audit_10`
    → catalogados los 2 tipos restantes del handshake r5z (`payment_claimed`,
    `payment_rejected`). Nota: `money.fine_recorded` NO se cataloga — `_emit_activity`
    lo mapea al canónico `fine.created`.
-5. ⬜ **Taxonomía vs primitivas** (decisión producto): flag `is_creatable boolean default
-   true` en `resource_subtypes`; poner `false` a los subtipos de clase
-   `obligation`/`event`, o enrutar como intents. Smoke: `create_resource` con subtipo
-   no-creable falla limpio.
+5. ✅ **Taxonomía vs primitivas** (`audit_14`, reversible flipeando el flag):
+   `resource_subtypes.is_creatable` (false para clases `obligation` y `event`, 9
+   subtipos); el picker (`list_resource_subtypes`, aterrizada en disco como shim de
+   drift junto con `list_resource_classes`) solo lista creables; guard duro en el
+   trigger de derivación SOLO para clase `obligation` (la clase `event` no se
+   bloquea a nivel trigger: el mapping legacy `game→recurring_event` es legítimo).
+   Smoke `_smoke_mvp2_audit_subtype_creatable` con ejecución inline. iOS sin
+   cambios (solo ve menos opciones en el picker).
+   `audit_15`: assert 7 del baseline exenta los fixtures negativos del smoke r2s_4
+   (`custom.%`/`totally.bogus_type`) — el baseline es re-ejecutable en live, no
+   solo en replay fresco.
 6. ✅ **Anti-bypass governance** (`audit_11`, smoke `_smoke_mvp2_audit_governance_antibypass`
    con ejecución inline): con `member_ban_requires_vote` activa, `remove_member` directo
    Y con `p_force => true` quedan bloqueados con la membresía intacta; al desactivar la
