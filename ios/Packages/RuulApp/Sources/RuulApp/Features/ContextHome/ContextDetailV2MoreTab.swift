@@ -10,11 +10,22 @@ struct ContextDetailV2MoreTab: View {
     let context: AppContext
     let container: DependencyContainer
 
+    // P0.2 — revocar códigos de invitación. El descriptor se recarga con el
+    // ciclo normal del padre; aquí ocultamos el row revocado al instante.
+    @State private var revokedInviteIds: Set<UUID> = []
+    @State private var inviteToRevoke: ContextInvitePreview?
+    @State private var revokeRunner = ActionRunner()
+
+    private var canRevokeInvites: Bool {
+        descriptor.permissions.contains("context.invite")
+    }
+
     var body: some View {
         let d = descriptor
-        if !d.pendingInvitationsPreview.isEmpty {
+        let activeInvites = d.pendingInvitationsPreview.filter { !revokedInviteIds.contains($0.inviteId) }
+        if !activeInvites.isEmpty {
             Section {
-                ForEach(d.pendingInvitationsPreview) { inv in
+                ForEach(activeInvites) { inv in
                     HStack(spacing: 12) {
                         Image(systemName: "envelope.fill")
                             .foregroundStyle(Theme.Tint.info)
@@ -34,10 +45,46 @@ struct ContextDetailV2MoreTab: View {
                                 .foregroundStyle(Theme.Text.tertiary)
                         }
                     }
+                    .swipeActions(edge: .trailing) {
+                        if canRevokeInvites {
+                            Button(role: .destructive) {
+                                inviteToRevoke = inv
+                            } label: {
+                                Label("Revocar", systemImage: "xmark.circle")
+                            }
+                        }
+                    }
                 }
             } header: {
-                Text("Invitaciones activas (\(d.pendingInvitationsPreview.count))")
+                Text("Invitaciones activas (\(activeInvites.count))")
+            } footer: {
+                if canRevokeInvites {
+                    Text("Desliza un código para revocarlo. Un código revocado deja de funcionar al instante.")
+                }
             }
+            .confirmationDialog(
+                "¿Revocar el código \(inviteToRevoke?.code ?? "")?",
+                isPresented: Binding(
+                    get: { inviteToRevoke != nil },
+                    set: { if !$0 { inviteToRevoke = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Revocar código", role: .destructive) {
+                    guard let invite = inviteToRevoke else { return }
+                    inviteToRevoke = nil
+                    Task {
+                        let ok = await revokeRunner.run {
+                            try await container.rpc.revokeInvite(inviteId: invite.inviteId)
+                        }
+                        if ok { revokedInviteIds.insert(invite.inviteId) }
+                    }
+                }
+                Button("Cancelar", role: .cancel) { inviteToRevoke = nil }
+            } message: {
+                Text("Nadie podrá unirse con este código. Los miembros que ya entraron no se ven afectados.")
+            }
+            .actionErrorAlert(revokeRunner)
         }
 
         let moreSections = d.sections.filter {

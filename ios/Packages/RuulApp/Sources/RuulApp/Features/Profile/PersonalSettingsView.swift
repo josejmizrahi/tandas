@@ -15,6 +15,8 @@ public struct PersonalSettingsView: View {
     @State private var store: PersonalSettingsStore
     @State private var isShowingEditProfile = false
     @State private var runner = ActionRunner()
+    @State private var isConfirmingDeleteAccount = false
+    @State private var deleteRunner = ActionRunner()
 
     private var appearance: Binding<AppearancePreference> {
         Binding(
@@ -74,6 +76,7 @@ public struct PersonalSettingsView: View {
             calendarSection(settings.calendar)
             contextsSection(settings.contexts)
             integrationsSection(settings.integrations)
+            legalSection
 
             Section {
                 Button(role: .destructive) {
@@ -82,7 +85,57 @@ public struct PersonalSettingsView: View {
                     Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
                 }
             }
+
+            // FE.3 (V.1) — eliminación de cuenta (App Store 5.1.1(v) + ARCO).
+            Section {
+                Button(role: .destructive) {
+                    isConfirmingDeleteAccount = true
+                } label: {
+                    Label("Eliminar cuenta", systemImage: "trash")
+                }
+                .disabled(deleteRunner.isRunning)
+            } footer: {
+                Text("Tu identidad se elimina de forma permanente. El historial de tus grupos se conserva de forma no identificable porque otros miembros dependen de él.")
+            }
+            .confirmationDialog(
+                "¿Eliminar tu cuenta de forma permanente?",
+                isPresented: $isConfirmingDeleteAccount,
+                titleVisibility: .visible
+            ) {
+                Button("Eliminar cuenta", role: .destructive) {
+                    Task { await deleteAccount() }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Esta acción no se puede deshacer. Saldrás de todos tus espacios y tu nombre, teléfono y correo se eliminarán.")
+            }
+            .actionErrorAlert(deleteRunner)
         }
+    }
+
+    private func deleteAccount() async {
+        let ok = await deleteRunner.run {
+            try await container.rpc.deleteMyAccount()
+        }
+        if ok {
+            // El backend ya borró las credenciales; signOut limpia el estado local.
+            await container.signOut()
+        }
+    }
+
+    // MARK: - Legal (V.2)
+
+    @ViewBuilder
+    private var legalSection: some View {
+        Section("Legal") {
+            Link(destination: URL(string: "https://ruul.mx/legal/privacy")!) {
+                Label("Aviso de privacidad", systemImage: "hand.raised")
+            }
+            Link(destination: URL(string: "https://ruul.mx/legal/terms")!) {
+                Label("Términos de servicio", systemImage: "doc.text")
+            }
+        }
+        .foregroundStyle(.primary)
     }
 
     // MARK: - Perfil

@@ -61,6 +61,12 @@ public protocol AuthService: Actor {
     /// state where every PostgREST call 401s silently.
     func verifySession() async -> Bool
 
+    /// Variante tri-estado de `verifySession()` para el gate de sesión:
+    /// distingue "el servidor rechazó el token" (→ evict) de "no pudimos
+    /// preguntar" (red caída → conservar la sesión local). Default delega
+    /// en `verifySession()`.
+    func checkSessionValidity() async -> SessionValidity
+
     /// Sign in anonymously if there's no active session. Used at app launch
     /// so the founder onboarding can create a group at step 2 (before OTP)
     /// — `create_group_with_admin` requires `auth.uid()`. The anon user is
@@ -80,9 +86,24 @@ public protocol AuthService: Actor {
     func confirmEmailChange(otp: String, newEmail: String) async throws
 }
 
+/// Resultado de validar el JWT cacheado contra el auth server (P0.3).
+public enum SessionValidity: Sendable, Equatable {
+    /// El servidor confirmó que la sesión sigue viva.
+    case valid
+    /// El servidor rechazó el token (usuario borrado / token inválido).
+    case invalid
+    /// No se pudo contactar al servidor — conservar la sesión local.
+    case indeterminate
+}
+
 public extension AuthService {
     func signInAnonymouslyIfNeeded() async throws {
         // No-op default. LiveAuthService overrides.
+    }
+
+    func checkSessionValidity() async -> SessionValidity {
+        // Default sin red (Mock): el bool de verifySession es confiable.
+        await verifySession() ? .valid : .invalid
     }
 }
 
@@ -300,6 +321,22 @@ public actor LiveAuthService: AuthService {
             return true
         } catch {
             return false
+        }
+    }
+
+    public func checkSessionValidity() async -> SessionValidity {
+        do {
+            _ = try await client.auth.user()
+            return .valid
+        } catch is URLError {
+            // Sin red: no podemos distinguir — conservar la sesión local.
+            return .indeterminate
+        } catch let error as NSError where error.domain == NSURLErrorDomain {
+            return .indeterminate
+        } catch {
+            // El auth server respondió rechazando el token (usuario borrado
+            // server-side o JWT inválido) → evict.
+            return .invalid
         }
     }
 

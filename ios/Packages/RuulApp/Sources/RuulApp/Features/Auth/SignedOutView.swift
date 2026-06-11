@@ -74,9 +74,27 @@ public struct SignedOutView: View {
                 }
 
                 Spacer()
+
+                legalFooter
             }
             .padding(.horizontal, 24)
         }
+    }
+
+    /// V.2 — al entrar aceptas términos y aviso de privacidad (LFPDPPP / App Store).
+    @ViewBuilder
+    private var legalFooter: some View {
+        VStack(spacing: 4) {
+            Text("Al continuar aceptas los")
+            HStack(spacing: 4) {
+                Link("Términos", destination: URL(string: "https://ruul.mx/legal/terms")!)
+                Text("y el")
+                Link("Aviso de privacidad", destination: URL(string: "https://ruul.mx/legal/privacy")!)
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.bottom, 8)
     }
 
     // MARK: - Sign in with Apple

@@ -105,6 +105,14 @@ public protocol RuulRPCClient: Sendable {
     /// pendiente y queda como miembro activo. Idempotente: `already_member=true`
     /// si ya era miembro.
     func acceptInvitation(contextId: UUID) async throws -> AcceptInvitationResult
+    /// `decline_invitation(p_context_actor_id)` — el caller rechaza una invitación
+    /// pendiente (invited → declined). Idempotente. FE.1 (P0.1).
+    func declineInvitation(contextId: UUID) async throws
+    /// `delete_my_account()` — FE.3 (V.1, App Store 5.1.1(v) + ARCO). Pseudonimiza
+    /// la identidad, sale de los contextos y borra las credenciales; los átomos
+    /// del grupo se conservan no identificables. El cliente debe hacer signOut()
+    /// inmediatamente después.
+    func deleteMyAccount() async throws
     /// Lectura PostgREST: invitaciones pendientes del actor (`actor_memberships`
     /// con `member_actor_id = actor AND membership_status = 'invited'`, embebido
     /// con `actors` para el nombre del contexto).

@@ -50,6 +50,9 @@ public struct RuulAppShell: View {
                 SignedOutView(authService: container.authService)
             } else {
                 actorGate
+                    // P0.3 — evict de sesiones huérfanas (token en Keychain
+                    // cuyo usuario ya no existe server-side). Una vez por proceso.
+                    .task { await container.sessionStore.verifyRestoredSessionIfNeeded() }
             }
         }
     }

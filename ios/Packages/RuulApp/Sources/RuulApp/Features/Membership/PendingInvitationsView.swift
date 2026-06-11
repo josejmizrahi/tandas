@@ -3,6 +3,7 @@ import RuulCore
 
 /// Sheet con las invitaciones pendientes que el actor actual recibió.
 /// Cada fila → "Aceptar" llama `accept_invitation` y refresca los contextos.
+/// Swipe → "Rechazar" llama `decline_invitation` (FE.1, P0.1).
 public struct PendingInvitationsView: View {
     let container: DependencyContainer
 
@@ -10,6 +11,7 @@ public struct PendingInvitationsView: View {
     @State private var runner = ActionRunner()
     @State private var acceptingId: UUID?
     @State private var lastAcceptedName: String?
+    @State private var invitationToDecline: PendingInvitation?
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -61,14 +63,40 @@ public struct PendingInvitationsView: View {
                 Section {
                     ForEach(store.invitations) { invitation in
                         row(for: invitation)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    invitationToDecline = invitation
+                                } label: {
+                                    Label("Rechazar", systemImage: "xmark.circle")
+                                }
+                            }
                     }
                 } footer: {
                     if let lastAcceptedName {
                         Label("Te uniste a \(lastAcceptedName)", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                             .font(.footnote)
+                    } else {
+                        Text("Desliza una invitación para rechazarla.")
                     }
                 }
+            }
+            .confirmationDialog(
+                "¿Rechazar la invitación a \(invitationToDecline?.contextDisplayName ?? "")?",
+                isPresented: Binding(
+                    get: { invitationToDecline != nil },
+                    set: { if !$0 { invitationToDecline = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Rechazar invitación", role: .destructive) {
+                    guard let invitation = invitationToDecline else { return }
+                    invitationToDecline = nil
+                    Task { await decline(invitation) }
+                }
+                Button("Cancelar", role: .cancel) { invitationToDecline = nil }
+            } message: {
+                Text("Pueden volver a invitarte después si cambias de opinión.")
             }
         }
     }
@@ -110,6 +138,15 @@ public struct PendingInvitationsView: View {
             .disabled(acceptingId != nil)
         }
         .padding(.vertical, 2)
+    }
+
+    private func decline(_ invitation: PendingInvitation) async {
+        await runner.run {
+            try await container.invitationsStore.decline(
+                contextId: invitation.contextActorId,
+                actorId: container.currentActorStore.actorId
+            )
+        }
     }
 
     private func accept(_ invitation: PendingInvitation) async {
