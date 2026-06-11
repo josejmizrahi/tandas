@@ -23,6 +23,9 @@ public struct MemberDetailView: View {
     /// Si `member.remove` viene con `mode=request_decision`, el flow de remove abre el
     /// sheet de governance en vez de invocar `remove_member` directo.
     @State private var memberActions: [AvailableAction] = []
+    /// P1.5 — pausa directa (set_membership_state).
+    @State private var isConfirmingPause = false
+    @State private var pauseRunner = ActionRunner()
     /// R.7.F — flow genérico: la action seleccionada para el sheet de governance.
     /// Driver del título/copy dinámico del confirmationDialog.
     @State private var governanceAction: AvailableAction?
@@ -215,6 +218,20 @@ public struct MemberDetailView: View {
         } message: {
             Text("Perderá acceso a todo el contexto: eventos, recursos, dinero y actividad.")
         }
+        // P1.5 — pausa directa (la policy del contexto no exige voto).
+        .confirmationDialog(
+            "¿Pausar a \(member.displayName)?",
+            isPresented: $isConfirmingPause,
+            titleVisibility: .visible
+        ) {
+            Button("Pausar", role: .destructive) {
+                Task { await pauseMember() }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("No podrá operar en el contexto hasta que un administrador lo reactive.")
+        }
+        .actionErrorAlert(pauseRunner)
         // R.7.E/F — Governance sheet genérico para member.remove / pause / promote.
         .confirmationDialog(
             "Esta acción requiere aprobación",
@@ -332,6 +349,28 @@ public struct MemberDetailView: View {
             isShowingGovernanceSheet = true
         } else if actionKey == "member.remove" {
             isConfirmingRemove = true
+        } else if actionKey == "member.pause" {
+            // P1.5 — pausa directa cuando la policy del contexto no exige voto.
+            // set_membership_state se auto-gatea en backend: si la policy cambió,
+            // responde governance_required y el error sale por el runner.
+            isConfirmingPause = true
+        }
+    }
+
+    /// P1.5 — ejecuta la pausa directa.
+    private func pauseMember() async {
+        guard let container else { return }
+        let ok = await pauseRunner.run {
+            try await container.rpc.setMembershipState(
+                contextId: context.id,
+                memberActorId: member.actorId,
+                targetState: "paused",
+                reason: nil
+            )
+        }
+        if ok {
+            await store.load(context: context)
+            await loadMemberActions()
         }
     }
 

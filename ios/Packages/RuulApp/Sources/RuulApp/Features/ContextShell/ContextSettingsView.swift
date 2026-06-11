@@ -19,6 +19,8 @@ public struct ContextSettingsView: View {
     /// D.3 — sheet de delegación de voto.
     @State private var isShowingDelegate = false
     @State private var runner = ActionRunner()
+    /// P1.8 — catálogo declarativo R.7 (solo lectura, informativo).
+    @State private var governanceCatalog: [GovernanceCatalogEntry] = []
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -106,8 +108,43 @@ public struct ContextSettingsView: View {
             reservationsSection(settings.reservationsConfig)
             invitationsSection(settings.invitationsConfig)
             governanceSection()
+            governanceCatalogSection()
             auditSection(settings)
         }
+        .task { await loadGovernanceCatalog() }
+    }
+
+    // MARK: - P1.8 — Qué requiere aprobación (catálogo R.7, read-only)
+
+    @ViewBuilder
+    private func governanceCatalogSection() -> some View {
+        let voteActions = governanceCatalog.filter(\.defaultRequiresDecision)
+        if !voteActions.isEmpty {
+            Section {
+                ForEach(voteActions) { entry in
+                    HStack(spacing: 10) {
+                        Image(systemName: entry.dangerous ? "exclamationmark.shield" : "checkmark.shield")
+                            .foregroundStyle(entry.dangerous ? Color.red : Color.purple)
+                            .frame(width: 22)
+                        Text(entry.displayName)
+                            .font(.callout)
+                        Spacer()
+                        Text("Votación")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.purple)
+                    }
+                }
+            } header: {
+                Text("Qué requiere aprobación (\(voteActions.count))")
+            } footer: {
+                Text("Defaults del sistema. Las políticas de este espacio pueden cambiarlos arriba.")
+            }
+        }
+    }
+
+    private func loadGovernanceCatalog() async {
+        guard governanceCatalog.isEmpty else { return }
+        governanceCatalog = (try? await container.rpc.listGovernanceActionCatalog()) ?? []
     }
 
     // MARK: - Gobierno (R.5)

@@ -124,3 +124,32 @@ public struct VoteDelegation: Decodable, Sendable, Equatable, Hashable, Identifi
         return true
     }
 }
+
+/// P1.8 — fila del catálogo declarativo R.7 (`governance_action_catalog`).
+/// Solo informativa: la fuente de UI sigue siendo `available_actions[]`.
+public struct GovernanceCatalogEntry: Codable, Sendable, Equatable, Identifiable {
+    public let actionKey: String
+    public let displayName: String
+    public let domain: String
+    public let defaultRequiresDecision: Bool
+    public let dangerous: Bool
+
+    public var id: String { actionKey }
+
+    enum CodingKeys: String, CodingKey {
+        case actionKey = "action_key"
+        case displayName = "display_name"
+        case domain
+        case defaultRequiresDecision = "default_requires_decision"
+        case dangerous
+    }
+
+    public init(actionKey: String, displayName: String, domain: String,
+                defaultRequiresDecision: Bool, dangerous: Bool = false) {
+        self.actionKey = actionKey
+        self.displayName = displayName
+        self.domain = domain
+        self.defaultRequiresDecision = defaultRequiresDecision
+        self.dangerous = dangerous
+    }
+}
