@@ -105,6 +105,9 @@ public protocol RuulRPCClient: Sendable {
     /// pendiente y queda como miembro activo. Idempotente: `already_member=true`
     /// si ya era miembro.
     func acceptInvitation(contextId: UUID) async throws -> AcceptInvitationResult
+    /// `decline_invitation(p_context_actor_id)` — el caller rechaza una invitación
+    /// pendiente (invited → declined). Idempotente. FE.1 (P0.1).
+    func declineInvitation(contextId: UUID) async throws
     /// Lectura PostgREST: invitaciones pendientes del actor (`actor_memberships`
     /// con `member_actor_id = actor AND membership_status = 'invited'`, embebido
     /// con `actors` para el nombre del contexto).

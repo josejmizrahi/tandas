@@ -376,6 +376,10 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await call("accept_invitation", params: ContextIdParams(contextId: contextId))
     }
 
+    public func declineInvitation(contextId: UUID) async throws {
+        try await callVoid("decline_invitation", params: ContextIdParams(contextId: contextId))
+    }
+
     public func listMyPendingInvitations(actorId: UUID) async throws -> [PendingInvitation] {
         do {
             // `actor_memberships` tiene 3 FKs a `actors` (context/member/invited_by),

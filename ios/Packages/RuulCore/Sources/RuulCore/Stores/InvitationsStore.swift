@@ -48,6 +48,14 @@ public final class InvitationsStore {
         return result
     }
 
+    /// FE.1 (P0.1) — rechaza una invitación y la remueve del listado local.
+    public func decline(contextId: UUID, actorId: UUID?) async throws {
+        try await rpc.declineInvitation(contextId: contextId)
+        invitations.removeAll { $0.contextActorId == contextId }
+        // Refresh para alinearnos con el backend (por si concurrió otro cambio).
+        await load(actorId: actorId)
+    }
+
     public func reset() {
         invitations = []
         phase = .idle

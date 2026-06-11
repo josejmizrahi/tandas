@@ -1024,6 +1024,15 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return AcceptInvitationResult(membershipId: pending.membershipId, status: "active", alreadyMember: false)
     }
 
+    public func declineInvitation(contextId: UUID) async throws {
+        try throwIfNeeded()
+        guard pendingInvitations[me.id]?.contains(where: { $0.contextActorId == contextId }) == true else {
+            throw RuulError.backend(.unknown(message: "no pending invitation"))
+        }
+        pendingInvitations[me.id]?.removeAll { $0.contextActorId == contextId }
+        emit(contextId, "member.declined", actorId: me.id)
+    }
+
     public func listMyPendingInvitations(actorId: UUID) async throws -> [PendingInvitation] {
         try throwIfNeeded()
         return pendingInvitations[actorId] ?? []

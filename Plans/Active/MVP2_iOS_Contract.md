@@ -473,3 +473,14 @@ recurring_event) ya no aparecen en `list_resource_subtypes` — las primitivas
 correctas son obligations/calendar_events. Guard duro a nivel trigger solo
 para clase `obligation`; el mapping legacy `resource_type 'game' →
 recurring_event` sigue operando. iOS no requiere cambios.
+
+### 15.5 decline_invitation (FE.1, 2026-06-11)
+
+`decline_invitation(p_context_actor_id uuid) → jsonb {membership_id, status,
+already_declined?}` — el invitado rechaza una invitación directa
+(`invited → declined`, estado nuevo en el CHECK de `actor_memberships`).
+Idempotente; emite `member.declined`. `invite_member` reactiva también desde
+`declined` (re-invitar a quien rechazó → `invited` de nuevo). iOS:
+`declineInvitation(contextId:)` + swipe "Rechazar" en PendingInvitationsView.
+Migrations: `fe1_decline_invitation` + `fe1b_decline_smoke_appendonly_fix`;
+smoke `_smoke_mvp2_decline_invitation` (verde contra prod 2026-06-11).
