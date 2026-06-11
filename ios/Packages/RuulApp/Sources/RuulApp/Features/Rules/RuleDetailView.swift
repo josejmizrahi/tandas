@@ -21,6 +21,29 @@ public struct RuleDetailView: View {
     @State private var isShowingArchiveSheet = false
     @State private var governanceClientId: String = UUID().uuidString
     @State private var pendingDecisionId: UUID?
+    /// P1.6/V.4 — evaluaciones de ESTA regla (rule.evaluated por payload.rule_id).
+    @State private var ruleActivity: [ActivityEvent] = []
+
+    private func loadRuleActivity() async {
+        guard let context, let container else { return }
+        let events = (try? await container.rpc.listActivity(
+            contextId: context.id, limit: 100, before: nil, includeDescendants: false
+        )) ?? []
+        ruleActivity = events.filter { event in
+            event.eventType == "rule.evaluated"
+                && event.payload?.objectValue?["rule_id"]?.stringValue?.lowercased()
+                    == rule.id.uuidString.lowercased()
+        }
+    }
+
+    private func outcomeLabel(_ event: ActivityEvent) -> String {
+        switch event.payload?.objectValue?["outcome"]?.stringValue {
+        case "matched", "fired": return "Se cumplió la condición — consecuencia aplicada"
+        case "skipped", "no_match": return "Evaluada sin coincidencia"
+        case let other?: return "Evaluada (\(other))"
+        case nil: return "Evaluada"
+        }
+    }
 
     public init(rule: Rule) {
         self.rule = rule
@@ -121,7 +144,44 @@ public struct RuleDetailView: View {
             } header: {
                 Text("Información")
             }
+
+            // P1.6/V.4 — doctrina R.5V §1: la regla muestra su historial real
+            // (rule.evaluated del motor R.6 filtrado por payload.rule_id) con
+            // KPIs de disparos. Solo cuando el caller trae context+container.
+            if context != nil, container != nil {
+                Section {
+                    if ruleActivity.isEmpty {
+                        Label("Esta regla aún no se ha disparado", systemImage: "moon.zzz")
+                            .font(.callout)
+                            .foregroundStyle(Theme.Text.secondary)
+                    } else {
+                        LabeledContent("Veces evaluada", value: "\(ruleActivity.count)")
+                        if let last = ruleActivity.first?.occurredAt {
+                            LabeledContent("Última vez", value: last.formatted(.relative(presentation: .named)))
+                        }
+                        ForEach(ruleActivity.prefix(5)) { event in
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(outcomeLabel(event))
+                                        .font(.callout)
+                                    if let at = event.occurredAt {
+                                        Text(at.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption)
+                                            .foregroundStyle(Theme.Text.secondary)
+                                    }
+                                }
+                            } icon: {
+                                Image(systemName: "bolt.badge.clock")
+                                    .foregroundStyle(Theme.Tint.warning)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Historial")
+                }
+            }
         }
+        .task { await loadRuleActivity() }
         .listStyle(.insetGrouped)
         .navigationTitle("Regla")
         .navigationBarTitleDisplayMode(.inline)
