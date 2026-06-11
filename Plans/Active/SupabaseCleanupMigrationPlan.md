@@ -94,6 +94,7 @@ Adelantos ya ejecutados (2026-06-11, "barato hoy, épico mañana"):
   smoke r2j (acepta forma legacy o fastpath, sigue exigiendo ramas de obligations y
   rights). Fuera de la tanda (trabajo dedicado): `resources` y `actors` (quals con
   funciones de derechos por fila).
+
 - ✅ **RLS fast-path de membresías** (`audit_18`): `my_context_ids()` STABLE +
   reescritura 1:1 de las 10 policies cuyo qual era exactamente
   `is_context_member(context_actor_id)` (calendar_events, decisions, rules,
