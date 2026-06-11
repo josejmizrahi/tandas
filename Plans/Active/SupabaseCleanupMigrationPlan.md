@@ -28,31 +28,37 @@ comportamiento. Aplicadas a live vía MCP y aterrizadas en disco:
 Verificación: smoke ejecutado en live ✅; advisor `function_search_path_mutable` debe caer
 de 30 → 0 en el próximo run.
 
-## Fase 2 — Corto plazo (requiere decisiones puntuales del founder)
+## Fase 2 — Corto plazo
 
-Orden sugerido; cada ítem es 1 migración + smoke:
+Estado actualizado 2026-06-11 (segunda tanda del PR #161, `audit_7`…`audit_10`):
 
-1. **Registro de deprecación de RPCs** (sin drop): `COMMENT ON FUNCTION ... 'DEPRECATED:
-   usar X'` + sección §15 en `MVP2_iOS_Contract.md` para: `set_event_participant_plus_one`,
-   `request_governed_action`, `governance_policy`, `actor_inbox_items`, `decision_results`,
-   `current_person_actor_id`, variantes 1-arg de `*_available_actions`.
-2. **Drop de overloads viejos** (uno por migración, tras grep de call-sites internos en
+1. ✅ **Registro de deprecación de RPCs** (`audit_8`, COMMENT ON sin drops):
+   `set_event_participant_plus_one`, `request_governed_action`, `actor_inbox_items`,
+   `decision_results` (drift live-only; el DO block la salta en replay). Excluidas tras
+   verificar callers: `governance_policy` (la consume record_expense R.9.C),
+   `update_governance_policy`, `current_person_actor_id` (alias intencional R.4A),
+   `mark_notification_*` (R.4D pendiente), overloads `*_available_actions` (→ ítem 2).
+   Contrato §15.2.
+2. ⬜ **Drop de overloads viejos** (uno por migración, tras grep de call-sites internos en
    toda la cadena + iOS): `create_rule` 8-args, `record_game_result` winner/loser,
    `resolve_reservation_conflict` 2-args, `*_available_actions` 1-arg si los descriptors
    ya cubren 100%.
-3. **Policies `{public}` → `TO authenticated`** (6 tablas: actor_context_preferences,
-   decision_options, event_guests, pool_accounts, pool_basis_entries,
-   rule_attention_items). Cosmético-defensivo, no-op funcional.
-4. **`void_transaction`**: RPC de reversa (status→voided + ledger compensatorio +
-   `transaction.voided` catalogado + idempotencia). Cierra el hueco de reversas.
-5. **Taxonomía vs primitivas** (decisión producto): flag `is_creatable boolean default
+3. ✅ **Policies `{public}` → `TO authenticated`** (`audit_7`, 6 tablas, quals idénticos).
+4. ✅ **`void_transaction`** (`audit_9` + smoke `_smoke_mvp2_audit_void_transaction`):
+   reversa append-only de ledger, cancelación de obligaciones `open` vinculadas, guards
+   (no settlement, no referenciada, no obligaciones netted), idempotente. Contrato §15.1.
+   Bonus `audit_10`: el baseline cazó en vivo `settlement.payment_claimed` sin catalogar
+   → catalogados los 2 tipos restantes del handshake r5z (`payment_claimed`,
+   `payment_rejected`). Nota: `money.fine_recorded` NO se cataloga — `_emit_activity`
+   lo mapea al canónico `fine.created`.
+5. ⬜ **Taxonomía vs primitivas** (decisión producto): flag `is_creatable boolean default
    true` en `resource_subtypes`; poner `false` a los subtipos de clase
    `obligation`/`event`, o enrutar como intents. Smoke: `create_resource` con subtipo
    no-creable falla limpio.
-6. **Anti-bypass governance**: smoke dedicado que active una policy
+6. ⬜ **Anti-bypass governance**: smoke dedicado que active una policy
    (`member.remove` p.ej.) y verifique que `remove_member(p_force)` y el resto de caminos
    directos quedan bloqueados para no-admins y redirigidos a governance.
-7. **Auth dashboard**: habilitar leaked password protection; revisar rate limits OTP.
+7. ⬜ **Auth dashboard**: habilitar leaked password protection; revisar rate limits OTP.
    (No es migración; checklist de release.)
 
 ## Fase 3 — Mediano plazo (cuando el producto lo pida)

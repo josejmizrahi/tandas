@@ -430,3 +430,37 @@ invitaciones, rule_attention_items del caller, governance pending) ·
 `list_recent_contexts` · `mark_context_visited` · preferencias de contexto
 (`f_nav_0`). `remove_member(..., p_force)` bloquea con
 `member_has_open_obligations` si el miembro tiene deudas abiertas (`r9_e`).
+
+## 15. Auditoría 2026-06-11 (AUDIT.1–10) — higiene, void y deprecaciones
+
+Migrations `audit_1`…`audit_10` (PR #161). Docs:
+`Plans/Active/SupabaseArchitectureAudit.md` / `SupabaseTargetArchitecture.md` /
+`SupabaseCleanupMigrationPlan.md`.
+
+### 15.1 Nueva RPC: `void_transaction` (audit_9)
+
+| RPC | Firma | Devuelve |
+|---|---|---|
+| `void_transaction(p_transaction_id, p_reason?)` | solo txns `posted`; creador o `money.settle` | `{transaction_id, status: 'voided', cancelled_obligations: [uuid], reversed_ledger_entries: int}`; replay sobre voided → `{…, idempotent_replay: true}` |
+
+Reglas: `transaction_type='settlement'` y txns referenciadas por
+`settlement_items` se rechazan (usar handshake confirm/reject/appeal);
+obligaciones vinculadas fuera de `open` (settled/netted) bloquean el void;
+las `open` se cancelan con provenance. Ledger: entrada espejo append-only por
+cada entrada (balances netos). Activity: `transaction.voided`.
+
+### 15.2 Deprecaciones (COMMENT ON, sin drops — audit_8)
+
+| Deprecada | Usar en su lugar |
+|---|---|
+| `set_event_participant_plus_one` | `set_event_participant_plus_count` |
+| `request_governed_action` (R.5) | `request_governance_action` (R.7) |
+| `actor_inbox_items` | `attention_inbox()` |
+| `decision_results` | `decision_detail()` |
+
+### 15.3 Invariantes estructurales de CI (audit_5)
+
+`_smoke_mvp2_audit_baseline()`: RLS+policy en toda tabla, anon sin superficie,
+search_path pineado en toda función app, touch triggers, actividad emitida ⊆
+`activity_event_catalog` (cazó `settlement.payment_claimed` → audit_10),
+índices hot. Toda migración nueva debe dejar estos asserts verdes.
