@@ -44,11 +44,15 @@ Estado actualizado 2026-06-11 (segunda tanda del PR #161, `audit_7`…`audit_10`
      (iOS usa winner/loser; el batch jsonb es API de motor) y los 3
      `*_available_actions` (1-arg = caller-derived usada por descriptors/smokes;
      2-arg = actor-explícito del governance-mode r7_d).
-   - Legacy reales, marcados con COMMENT LEGACY; drop diferido a su propia
-     migración con refactor de smokes posicionales: `create_rule` 8-args
-     (⚠️ posición 6 cambia p_body→p_target_scope, ambos text → breakage
-     silencioso si se dropea sin refactor) y `resolve_reservation_conflict`
-     2-args.
+   - Legacy reales **consolidados como wrappers delegantes** (`audit_13`): las dos
+     firmas eran implementaciones independientes duplicadas; ahora `create_rule`
+     8-args delega a la firma con targeting (defaults originales conservados:
+     42P13 exige replicarlos) y `resolve_reservation_conflict` 2-args delega al
+     modelo `'winner'` de r2s_7 (equivalencia verificada rama por rama: loser→
+     rejected, winner→approved, mismos activity events, no_op sobre no-open).
+     Verificado con la suite `_smoke_mvp2_*` COMPLETA en live. El drop físico de
+     las firmas queda para cuando se modernicen el dispatcher r7_x y los smokes
+     posicionales — ya sin lógica duplicada, solo firmas de cortesía.
 3. ✅ **Policies `{public}` → `TO authenticated`** (`audit_7`, 6 tablas, quals idénticos).
 4. ✅ **`void_transaction`** (`audit_9` + smoke `_smoke_mvp2_audit_void_transaction`):
    reversa append-only de ledger, cancelación de obligaciones `open` vinculadas, guards
