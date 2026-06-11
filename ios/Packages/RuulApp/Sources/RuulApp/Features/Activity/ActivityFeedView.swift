@@ -9,6 +9,9 @@ public struct ActivityFeedView: View {
 
     @State private var store: ActivityStore
     @State private var selectedEvent: ActivityEvent?
+    /// V.3 — export de la memoria institucional (CSV vía ShareLink).
+    @State private var exportItem: ExportedHistory?
+    @State private var isExporting = false
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -52,9 +55,62 @@ public struct ActivityFeedView: View {
                     .toggleStyle(.button)
                 }
             }
+            // V.3 — "memoria institucional exportable": la promesa de la
+            // visión ("historial completo, export simple") en CSV.
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task { await exportHistory() }
+                } label: {
+                    if isExporting {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "square.and.arrow.up")
+                            .accessibilityLabel("Exportar historial")
+                    }
+                }
+                .disabled(isExporting || !store.phase.isLoaded)
+            }
         }
         .sheet(item: $selectedEvent) { event in
             ActivityDetailView(event: event, context: context, store: store)
+        }
+        .sheet(item: $exportItem) { item in
+            ExportHistorySheet(item: item, contextName: context.displayName)
+        }
+    }
+
+    /// V.3 — descarga hasta 500 eventos frescos y arma el CSV
+    /// (fecha · evento · actor · detalle compacto del payload).
+    private func exportHistory() async {
+        isExporting = true
+        defer { isExporting = false }
+        let events = (try? await container.rpc.listActivity(
+            contextId: context.id, limit: 500, before: nil,
+            includeDescendants: store.includeDescendants
+        )) ?? store.events
+
+        var csv = "fecha,evento,actor,detalle\n"
+        let formatter = ISO8601DateFormatter()
+        for event in events {
+            let date = event.occurredAt.map(formatter.string(from:)) ?? ""
+            let actor = store.displayName(for: event.actorId, contextId: context.id, contextName: context.displayName)
+            let detail = (event.payload?.objectValue ?? [:])
+                .compactMap { key, value in value.stringValue.map { "\(key): \($0)" } }
+                .sorted()
+                .joined(separator: " · ")
+            csv += [date, event.eventType, actor, detail]
+                .map { "\"\($0.replacingOccurrences(of: "\"", with: "\"\""))\"" }
+                .joined(separator: ",") + "\n"
+        }
+
+        let safeName = context.displayName.replacingOccurrences(of: "/", with: "-")
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(safeName) — historial.csv")
+        do {
+            try csv.data(using: .utf8)?.write(to: url, options: .atomic)
+            exportItem = ExportedHistory(url: url, eventCount: events.count)
+        } catch {
+            // Sin alert dedicado: el botón simplemente no abre el sheet.
         }
     }
 
@@ -252,5 +308,51 @@ public struct ActivityDetailView: View {
             ),
             container: .demo()
         )
+    }
+}
+
+// MARK: - V.3 Export
+
+/// Item exportado (Identifiable para `.sheet(item:)`).
+struct ExportedHistory: Identifiable {
+    let url: URL
+    let eventCount: Int
+    var id: URL { url }
+}
+
+/// Sheet mínima con el resumen del export + ShareLink al CSV.
+struct ExportHistorySheet: View {
+    let item: ExportedHistory
+    let contextName: String
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.tint)
+                Text("Historial de \(contextName)")
+                    .font(.headline)
+                Text("\(item.eventCount) eventos en CSV. La memoria del grupo, portable.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                ShareLink(item: item.url) {
+                    Label("Compartir CSV", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+            }
+            .padding(24)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cerrar") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
