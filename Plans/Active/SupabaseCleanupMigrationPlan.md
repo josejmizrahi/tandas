@@ -55,9 +55,11 @@ Estado actualizado 2026-06-11 (segunda tanda del PR #161, `audit_7`…`audit_10`
    true` en `resource_subtypes`; poner `false` a los subtipos de clase
    `obligation`/`event`, o enrutar como intents. Smoke: `create_resource` con subtipo
    no-creable falla limpio.
-6. ⬜ **Anti-bypass governance**: smoke dedicado que active una policy
-   (`member.remove` p.ej.) y verifique que `remove_member(p_force)` y el resto de caminos
-   directos quedan bloqueados para no-admins y redirigidos a governance.
+6. ✅ **Anti-bypass governance** (`audit_11`, smoke `_smoke_mvp2_audit_governance_antibypass`
+   con ejecución inline): con `member_ban_requires_vote` activa, `remove_member` directo
+   Y con `p_force => true` quedan bloqueados con la membresía intacta; al desactivar la
+   policy el camino directo vuelve a operar. El happy path request→vote→execute ya lo
+   cubren los smokes R.5/R.7.
 7. ⬜ **Auth dashboard**: habilitar leaked password protection; revisar rate limits OTP.
    (No es migración; checklist de release.)
 
