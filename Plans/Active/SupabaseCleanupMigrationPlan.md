@@ -84,6 +84,16 @@ Estado actualizado 2026-06-11 (segunda tanda del PR #161, `audit_7`…`audit_10`
 
 Adelantos ya ejecutados (2026-06-11, "barato hoy, épico mañana"):
 
+- ✅ **RLS fast-path de membresías** (`audit_18`): `my_context_ids()` STABLE +
+  reescritura 1:1 de las 10 policies cuyo qual era exactamente
+  `is_context_member(context_actor_id)` (calendar_events, decisions, rules,
+  context_invites, governance_actions/policies, roles, role_assignments,
+  vote_delegations, resource_conflicts) a `context_actor_id IN (SELECT
+  my_context_ids())`. Verificado con EXPLAIN: `hashed SubPlan` (una evaluación
+  por query) en vez del lookup SPI por fila. Las policies compuestas
+  (activity_events, actors, resources, money) quedan para reescritura dedicada
+  por tabla cuando su tamaño lo amerite.
+
 - ✅ **PKs particionables** (`audit_16`): `activity_events` y `ledger_entries` (las dos
   tablas de crecimiento infinito) ahora tienen PK `(id, occurred_at)` — el particionado
   declarativo por rango queda habilitado sin migración futura. Verificado: cero FKs las
