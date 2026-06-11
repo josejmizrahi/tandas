@@ -39,12 +39,13 @@ public final class CurrentActorStore {
         }
     }
 
-    /// Actualiza el perfil del usuario.
-    public func updateProfile(fullName: String?, preferredName: String?) async throws {
+    /// Actualiza el perfil del usuario. `avatarUrl` solo se manda si cambió
+    /// (nil = no tocar el avatar actual).
+    public func updateProfile(fullName: String?, preferredName: String?, avatarUrl: String? = nil) async throws {
         actor = try await rpc.updateMyProfile(
             fullName: fullName,
             preferredName: preferredName,
-            avatarUrl: nil
+            avatarUrl: avatarUrl
         )
     }
 
