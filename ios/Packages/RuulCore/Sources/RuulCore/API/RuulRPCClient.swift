@@ -113,6 +113,18 @@ public protocol RuulRPCClient: Sendable {
     /// del grupo se conservan no identificables. El cliente debe hacer signOut()
     /// inmediatamente después.
     func deleteMyAccount() async throws
+
+    // MARK: - Notificaciones (R.4D, P1.1)
+
+    /// Lectura PostgREST: `notifications` del caller (RLS recipient-only),
+    /// sin archivadas, `created_at DESC`.
+    func listMyNotifications(limit: Int) async throws -> [RuulNotification]
+    /// `mark_notification_read(p_notification_id)`
+    func markNotificationRead(notificationId: UUID) async throws
+    /// `mark_notification_archived(p_notification_id)`
+    func markNotificationArchived(notificationId: UUID) async throws
+    /// `mark_all_notifications_read(p_context_actor_id default null)`
+    func markAllNotificationsRead(contextId: UUID?) async throws
     /// Lectura PostgREST: invitaciones pendientes del actor (`actor_memberships`
     /// con `member_actor_id = actor AND membership_status = 'invited'`, embebido
     /// con `actors` para el nombre del contexto).

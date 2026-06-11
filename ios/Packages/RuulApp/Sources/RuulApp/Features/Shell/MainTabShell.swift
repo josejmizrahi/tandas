@@ -103,6 +103,26 @@ public struct MainTabShell: View {
                 NavigationStack {
                     MyActivityFeedView(container: container)
                         .navigationTitle("Actividad")
+                        // R.4D (P1.1) — centro de notificaciones con badge de
+                        // no-leídas en el toolbar de la tab Actividad.
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                NavigationLink {
+                                    NotificationCenterView(container: container)
+                                } label: {
+                                    Image(systemName: container.notificationsStore.unreadCount > 0
+                                          ? "bell.badge.fill" : "bell")
+                                        .symbolRenderingMode(.palette)
+                                        .foregroundStyle(.red, Color.accentColor)
+                                        .accessibilityLabel(
+                                            container.notificationsStore.unreadCount > 0
+                                            ? "Notificaciones, \(container.notificationsStore.unreadCount) sin leer"
+                                            : "Notificaciones"
+                                        )
+                                }
+                            }
+                        }
+                        .task { await container.notificationsStore.load() }
                 }
             }
 

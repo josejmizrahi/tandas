@@ -1029,6 +1029,54 @@ public actor MockRuulRPCClient: RuulRPCClient {
         // Mock: la app hace signOut() después; no hay estado de auth que simular aquí.
     }
 
+    // MARK: - Notificaciones (R.4D, P1.1)
+
+    var notifications: [RuulNotification] = []
+
+    public func listMyNotifications(limit: Int) async throws -> [RuulNotification] {
+        try throwIfNeeded()
+        return Array(notifications.filter { $0.status != "archived" }
+            .sorted { $0.createdAt > $1.createdAt }
+            .prefix(limit))
+    }
+
+    public func markNotificationRead(notificationId: UUID) async throws {
+        try throwIfNeeded()
+        notifications = notifications.map { n in
+            guard n.id == notificationId, n.status == "unread" else { return n }
+            return RuulNotification(
+                id: n.id, contextActorId: n.contextActorId, notificationType: n.notificationType,
+                title: n.title, body: n.body, targetType: n.targetType, targetId: n.targetId,
+                status: "read", createdAt: n.createdAt, readAt: Date()
+            )
+        }
+    }
+
+    public func markNotificationArchived(notificationId: UUID) async throws {
+        try throwIfNeeded()
+        notifications = notifications.map { n in
+            guard n.id == notificationId else { return n }
+            return RuulNotification(
+                id: n.id, contextActorId: n.contextActorId, notificationType: n.notificationType,
+                title: n.title, body: n.body, targetType: n.targetType, targetId: n.targetId,
+                status: "archived", createdAt: n.createdAt, readAt: n.readAt
+            )
+        }
+    }
+
+    public func markAllNotificationsRead(contextId: UUID?) async throws {
+        try throwIfNeeded()
+        notifications = notifications.map { n in
+            guard n.status == "unread",
+                  contextId == nil || n.contextActorId == contextId else { return n }
+            return RuulNotification(
+                id: n.id, contextActorId: n.contextActorId, notificationType: n.notificationType,
+                title: n.title, body: n.body, targetType: n.targetType, targetId: n.targetId,
+                status: "read", createdAt: n.createdAt, readAt: Date()
+            )
+        }
+    }
+
     public func declineInvitation(contextId: UUID) async throws {
         try throwIfNeeded()
         guard pendingInvitations[me.id]?.contains(where: { $0.contextActorId == contextId }) == true else {
@@ -5577,6 +5625,31 @@ extension MockRuulRPCClient {
                 contextActorKind: viaje.actorKind,
                 contextActorSubtype: viaje.actorSubtype,
                 invitedAt: Date().addingTimeInterval(-3600)
+            )
+        ]
+
+        // Notificaciones R.4D (P1.1) para el centro de notificaciones.
+        notifications = [
+            RuulNotification(
+                id: UUID(),
+                contextActorId: cena.id,
+                notificationType: "decision.opened",
+                title: "Nueva decisión en Cena Semanal",
+                body: "David propuso: ¿Cambiamos la cena al jueves?",
+                targetType: "decision",
+                status: "unread",
+                createdAt: Date().addingTimeInterval(-1800)
+            ),
+            RuulNotification(
+                id: UUID(),
+                contextActorId: familia.id,
+                notificationType: "event.reminder",
+                title: "Comida familiar mañana",
+                body: "Domingo 14:00 en Casa Valle",
+                targetType: "event",
+                status: "read",
+                createdAt: Date().addingTimeInterval(-86400),
+                readAt: Date().addingTimeInterval(-80000)
             )
         ]
     }

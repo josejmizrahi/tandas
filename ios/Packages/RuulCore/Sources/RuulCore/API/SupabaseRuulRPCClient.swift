@@ -385,6 +385,48 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callVoid("delete_my_account", params: Empty())
     }
 
+    // MARK: - Notificaciones (R.4D, P1.1)
+
+    public func listMyNotifications(limit: Int) async throws -> [RuulNotification] {
+        do {
+            // RLS limita a recipient_actor_id = current_actor_id().
+            return try await client
+                .from("notifications")
+                .select()
+                .neq("status", value: "archived")
+                .order("created_at", ascending: false)
+                .limit(limit)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func markNotificationRead(notificationId: UUID) async throws {
+        struct Params: Encodable, Sendable {
+            let pNotificationId: UUID
+            enum CodingKeys: String, CodingKey { case pNotificationId = "p_notification_id" }
+        }
+        try await callVoid("mark_notification_read", params: Params(pNotificationId: notificationId))
+    }
+
+    public func markNotificationArchived(notificationId: UUID) async throws {
+        struct Params: Encodable, Sendable {
+            let pNotificationId: UUID
+            enum CodingKeys: String, CodingKey { case pNotificationId = "p_notification_id" }
+        }
+        try await callVoid("mark_notification_archived", params: Params(pNotificationId: notificationId))
+    }
+
+    public func markAllNotificationsRead(contextId: UUID?) async throws {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID?
+            enum CodingKeys: String, CodingKey { case pContextActorId = "p_context_actor_id" }
+        }
+        try await callVoid("mark_all_notifications_read", params: Params(pContextActorId: contextId))
+    }
+
     public func listMyPendingInvitations(actorId: UUID) async throws -> [PendingInvitation] {
         do {
             // `actor_memberships` tiene 3 FKs a `actors` (context/member/invited_by),

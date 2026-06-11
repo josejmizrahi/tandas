@@ -506,3 +506,18 @@ activity (FE.1 ahora emite el naming canónico). iOS: `deleteMyAccount()` +
 botón destructivo con confirmación en PersonalSettingsView → signOut().
 Migrations fe3/fe3b/fe3c; smokes `_smoke_mvp2_delete_my_account` y
 `_smoke_mvp2_decline_invitation` verdes contra prod.
+
+### 15.8 Centro de notificaciones R.4D activado (FE.4, 2026-06-11)
+
+iOS consume R.4D por primera vez: lectura PostgREST de `notifications` (RLS
+recipient-only, sin archivadas, created_at DESC) + RPCs
+`mark_notification_read/archived` y `mark_all_notifications_read`. Nuevos:
+modelo `RuulNotification`, `NotificationsStore` (long-lived, badge de
+no-leídas), `NotificationCenterView` (leído/no-leído, archivar por swipe,
+marcar todas) colgada del toolbar de la tab Actividad.
+
+Primer emisor real: trigger `trg_decisions_notify_opened` (migration
+`fe4_decision_opened_notifications`) emite `decision.opened` a los miembros
+activos (excepto el proponente) al crear cualquier decisión — antes NADIE
+emitía y el centro habría nacido vacío. Smoke
+`_smoke_mvp2_decision_opened_notification` verde contra prod.

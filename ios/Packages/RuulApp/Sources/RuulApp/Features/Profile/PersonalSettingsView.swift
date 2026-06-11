@@ -17,6 +17,7 @@ public struct PersonalSettingsView: View {
     @State private var runner = ActionRunner()
     @State private var isConfirmingDeleteAccount = false
     @State private var deleteRunner = ActionRunner()
+    @State private var changeContactKind: ChangeContactSheet.Kind?
 
     private var appearance: Binding<AppearancePreference> {
         Binding(
@@ -166,11 +167,28 @@ public struct PersonalSettingsView: View {
                 }
             }
 
-            if let phone = profile.phone, !phone.isEmpty {
-                InfoRow(symbolName: "phone", title: "Teléfono", value: phone)
+            // P1.3 — teléfono/correo editables vía OTP (antes read-only).
+            Button {
+                changeContactKind = .phone
+            } label: {
+                InfoRow(symbolName: "phone", title: "Teléfono",
+                        value: (profile.phone?.isEmpty == false) ? profile.phone : "Agregar")
             }
-            if let email = profile.email, !email.isEmpty {
-                InfoRow(symbolName: "envelope", title: "Email", value: email)
+            .foregroundStyle(.primary)
+            Button {
+                changeContactKind = .email
+            } label: {
+                InfoRow(symbolName: "envelope", title: "Email",
+                        value: (profile.email?.isEmpty == false) ? profile.email : "Agregar")
+            }
+            .foregroundStyle(.primary)
+        }
+        .sheet(item: $changeContactKind) { kind in
+            ChangeContactSheet(kind: kind, authService: container.authService) {
+                Task {
+                    await store.load()
+                    await container.currentActorStore.load()
+                }
             }
         }
     }
