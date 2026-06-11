@@ -39,10 +39,16 @@ Estado actualizado 2026-06-11 (segunda tanda del PR #161, `audit_7`…`audit_10`
    `update_governance_policy`, `current_person_actor_id` (alias intencional R.4A),
    `mark_notification_*` (R.4D pendiente), overloads `*_available_actions` (→ ítem 2).
    Contrato §15.2.
-2. ⬜ **Drop de overloads viejos** (uno por migración, tras grep de call-sites internos en
-   toda la cadena + iOS): `create_rule` 8-args, `record_game_result` winner/loser,
-   `resolve_reservation_conflict` 2-args, `*_available_actions` 1-arg si los descriptors
-   ya cubren 100%.
+2. ✅(veredicto)/⬜(drops) **Overloads** (`audit_12`, verificación completa iOS + cadena):
+   - NO legacy (APIs duales intencionales, no dropear): `record_game_result`
+     (iOS usa winner/loser; el batch jsonb es API de motor) y los 3
+     `*_available_actions` (1-arg = caller-derived usada por descriptors/smokes;
+     2-arg = actor-explícito del governance-mode r7_d).
+   - Legacy reales, marcados con COMMENT LEGACY; drop diferido a su propia
+     migración con refactor de smokes posicionales: `create_rule` 8-args
+     (⚠️ posición 6 cambia p_body→p_target_scope, ambos text → breakage
+     silencioso si se dropea sin refactor) y `resolve_reservation_conflict`
+     2-args.
 3. ✅ **Policies `{public}` → `TO authenticated`** (`audit_7`, 6 tablas, quals idénticos).
 4. ✅ **`void_transaction`** (`audit_9` + smoke `_smoke_mvp2_audit_void_transaction`):
    reversa append-only de ledger, cancelación de obligaciones `open` vinculadas, guards
