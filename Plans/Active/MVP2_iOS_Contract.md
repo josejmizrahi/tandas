@@ -464,3 +464,12 @@ cada entrada (balances netos). Activity: `transaction.voided`.
 search_path pineado en toda función app, touch triggers, actividad emitida ⊆
 `activity_event_catalog` (cazó `settlement.payment_claimed` → audit_10),
 índices hot. Toda migración nueva debe dejar estos asserts verdes.
+
+### 15.4 Picker de subtipos (audit_14)
+
+`resource_subtypes.is_creatable`: los subtipos de clase `obligation`
+(iou/fine/loan/contribution/dues) y `event` (dinner/meeting/community_event/
+recurring_event) ya no aparecen en `list_resource_subtypes` — las primitivas
+correctas son obligations/calendar_events. Guard duro a nivel trigger solo
+para clase `obligation`; el mapping legacy `resource_type 'game' →
+recurring_event` sigue operando. iOS no requiere cambios.
