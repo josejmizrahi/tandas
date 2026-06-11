@@ -74,6 +74,7 @@ public struct PersonalSettingsView: View {
             calendarSection(settings.calendar)
             contextsSection(settings.contexts)
             integrationsSection(settings.integrations)
+            legalSection
 
             Section {
                 Button(role: .destructive) {
@@ -83,6 +84,21 @@ public struct PersonalSettingsView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Legal (V.2)
+
+    @ViewBuilder
+    private var legalSection: some View {
+        Section("Legal") {
+            Link(destination: URL(string: "https://ruul.mx/legal/privacy")!) {
+                Label("Aviso de privacidad", systemImage: "hand.raised")
+            }
+            Link(destination: URL(string: "https://ruul.mx/legal/terms")!) {
+                Label("Términos de servicio", systemImage: "doc.text")
+            }
+        }
+        .foregroundStyle(.primary)
     }
 
     // MARK: - Perfil

@@ -47,6 +47,21 @@ public final class SessionStore {
         }
     }
 
+    /// P0.3 — valida la sesión restaurada contra el auth server una sola vez
+    /// por proceso. Si el servidor rechaza el token (usuario borrado, JWT
+    /// huérfano en Keychain), cierra sesión limpio y la UI vuelve a
+    /// SignedOutView en lugar de dejar al usuario en un estado zombie donde
+    /// todos los RPCs fallan con errores crípticos. Fallo de red NO desloguea.
+    public func verifyRestoredSessionIfNeeded() async {
+        guard !didVerifyRestoredSession, case .signedIn = state else { return }
+        didVerifyRestoredSession = true
+        if await authService.checkSessionValidity() == .invalid {
+            await signOut()
+        }
+    }
+
+    private var didVerifyRestoredSession = false
+
     private func apply(_ session: AppSession?) {
         if let session {
             state = .signedIn(session)
