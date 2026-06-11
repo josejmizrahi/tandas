@@ -93,7 +93,6 @@ Adelantos ya ejecutados (2026-06-11, "barato hoy, épico mañana"):
   por query) en vez del lookup SPI por fila. Las policies compuestas
   (activity_events, actors, resources, money) quedan para reescritura dedicada
   por tabla cuando su tamaño lo amerite.
-
 - ✅ **PKs particionables** (`audit_16`): `activity_events` y `ledger_entries` (las dos
   tablas de crecimiento infinito) ahora tienen PK `(id, occurred_at)` — el particionado
   declarativo por rango queda habilitado sin migración futura. Verificado: cero FKs las
