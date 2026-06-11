@@ -1,8 +1,10 @@
 import SwiftUI
+import PhotosUI
 import RuulCore
 
-/// Editar el perfil del usuario (`update_my_profile`): nombre completo y
-/// nombre corto. El nombre corto es el `display_name` que ven los demás.
+/// Editar el perfil del usuario (`update_my_profile`): nombre completo,
+/// nombre corto y foto (P1.2 — sube a Storage `avatars/` y guarda la URL).
+/// El nombre corto es el `display_name` que ven los demás.
 public struct EditProfileView: View {
     let container: DependencyContainer
 
@@ -10,6 +12,9 @@ public struct EditProfileView: View {
     @State private var fullName = ""
     @State private var preferredName = ""
     @State private var runner = ActionRunner()
+    // P1.2 — avatar
+    @State private var photoItem: PhotosPickerItem?
+    @State private var pickedImageData: Data?
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -29,7 +34,8 @@ public struct EditProfileView: View {
         let preferred = preferredName.trimmingCharacters(in: .whitespaces)
         let full = fullName.trimmingCharacters(in: .whitespaces)
         guard !preferred.isEmpty || !full.isEmpty else { return false }
-        return preferred != (actorStore.actor?.profile?.preferredName ?? "")
+        return pickedImageData != nil
+            || preferred != (actorStore.actor?.profile?.preferredName ?? "")
             || full != (actorStore.actor?.profile?.fullName ?? "")
     }
 
@@ -37,12 +43,25 @@ public struct EditProfileView: View {
         NavigationStack {
             Form {
                 Section {
-                    HStack {
-                        Spacer()
-                        ActorInitialsView(name: displayedName, size: 72)
-                        Spacer()
+                    VStack(spacing: 10) {
+                        avatarPreview
+                        PhotosPicker(selection: $photoItem, matching: .images) {
+                            Text(pickedImageData == nil ? "Cambiar foto" : "Foto seleccionada ✓")
+                                .font(.footnote.weight(.medium))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
+                }
+                .onChange(of: photoItem) {
+                    Task {
+                        guard let item = photoItem,
+                              let data = try? await item.loadTransferable(type: Data.self),
+                              let image = UIImage(data: data) else { return }
+                        // Downscale a 512pt y JPEG (< 2MB, límite del bucket).
+                        pickedImageData = image.ruulResized(maxDimension: 512)
+                            .jpegData(compressionQuality: 0.8)
+                    }
                 }
 
                 Section {
@@ -87,6 +106,28 @@ public struct EditProfileView: View {
     }
 
     @ViewBuilder
+    private var avatarPreview: some View {
+        if let data = pickedImageData, let image = UIImage(data: data) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 72, height: 72)
+                .clipShape(Circle())
+        } else if let urlString = actorStore.actor?.profile?.avatarUrl,
+                  let url = URL(string: urlString) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                ActorInitialsView(name: displayedName, size: 72)
+            }
+            .frame(width: 72, height: 72)
+            .clipShape(Circle())
+        } else {
+            ActorInitialsView(name: displayedName, size: 72)
+        }
+    }
+
+    @ViewBuilder
     private func accountSection(_ profile: PersonProfile) -> some View {
         let phone = profile.phone ?? ""
         let email = profile.email ?? ""
@@ -115,12 +156,32 @@ public struct EditProfileView: View {
         let preferred = preferredName.trimmingCharacters(in: .whitespaces)
         let full = fullName.trimmingCharacters(in: .whitespaces)
         let success = await runner.run {
+            var avatarUrl: String?
+            if let data = pickedImageData, let actorId = actorStore.actorId {
+                avatarUrl = try await container.rpc.uploadAvatar(
+                    actorId: actorId, data: data, contentType: "image/jpeg"
+                ).absoluteString
+            }
             try await actorStore.updateProfile(
                 fullName: full.isEmpty ? nil : full,
-                preferredName: preferred.isEmpty ? nil : preferred
+                preferredName: preferred.isEmpty ? nil : preferred,
+                avatarUrl: avatarUrl
             )
         }
         if success { dismiss() }
+    }
+}
+
+private extension UIImage {
+    /// Reescala manteniendo proporción para que el lado mayor sea `maxDimension`.
+    func ruulResized(maxDimension: CGFloat) -> UIImage {
+        let largest = max(size.width, size.height)
+        guard largest > maxDimension else { return self }
+        let scale = maxDimension / largest
+        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+        return UIGraphicsImageRenderer(size: newSize).image { _ in
+            draw(in: CGRect(origin: .zero, size: newSize))
+        }
     }
 }
 

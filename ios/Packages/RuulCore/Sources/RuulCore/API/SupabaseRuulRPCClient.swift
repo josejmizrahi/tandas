@@ -385,6 +385,19 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await callVoid("delete_my_account", params: Empty())
     }
 
+    public func uploadAvatar(actorId: UUID, data: Data, contentType: String) async throws -> URL {
+        do {
+            // Nombre único por subida → la URL cambia y AsyncImage no sirve caché viejo.
+            let path = "\(actorId.uuidString)/avatar-\(Int(Date().timeIntervalSince1970)).jpg"
+            _ = try await client.storage
+                .from("avatars")
+                .upload(path, data: data, options: FileOptions(contentType: contentType, upsert: true))
+            return try client.storage.from("avatars").getPublicURL(path: path)
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Notificaciones (R.4D, P1.1)
 
     public func listMyNotifications(limit: Int) async throws -> [RuulNotification] {

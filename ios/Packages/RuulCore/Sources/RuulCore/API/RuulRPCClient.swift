@@ -114,6 +114,10 @@ public protocol RuulRPCClient: Sendable {
     /// inmediatamente después.
     func deleteMyAccount() async throws
 
+    /// P1.2 — sube el avatar a Storage (`avatars/{actorId}/...`, bucket público)
+    /// y devuelve la URL pública para guardarla vía `update_my_profile`.
+    func uploadAvatar(actorId: UUID, data: Data, contentType: String) async throws -> URL
+
     // MARK: - Notificaciones (R.4D, P1.1)
 
     /// Lectura PostgREST: `notifications` del caller (RLS recipient-only),

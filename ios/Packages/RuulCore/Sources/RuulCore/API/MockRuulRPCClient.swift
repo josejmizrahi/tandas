@@ -1029,6 +1029,11 @@ public actor MockRuulRPCClient: RuulRPCClient {
         // Mock: la app hace signOut() después; no hay estado de auth que simular aquí.
     }
 
+    public func uploadAvatar(actorId: UUID, data: Data, contentType: String) async throws -> URL {
+        try throwIfNeeded()
+        return URL(string: "https://example.com/avatars/\(actorId.uuidString)/avatar.jpg")!
+    }
+
     // MARK: - Notificaciones (R.4D, P1.1)
 
     var notifications: [RuulNotification] = []
