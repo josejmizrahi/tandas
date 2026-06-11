@@ -398,6 +398,38 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func setMembershipState(contextId: UUID, memberActorId: UUID, targetState: String, reason: String?) async throws {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            let pMemberActorId: UUID
+            let pTargetState: String
+            let pReason: String?
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+                case pMemberActorId = "p_member_actor_id"
+                case pTargetState = "p_target_state"
+                case pReason = "p_reason"
+            }
+        }
+        try await callVoid("set_membership_state", params: Params(
+            pContextActorId: contextId, pMemberActorId: memberActorId,
+            pTargetState: targetState, pReason: reason
+        ))
+    }
+
+    public func listGovernanceActionCatalog() async throws -> [GovernanceCatalogEntry] {
+        do {
+            return try await client
+                .from("governance_action_catalog")
+                .select("action_key,display_name,domain,default_requires_decision,dangerous")
+                .order("domain")
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     // MARK: - Notificaciones (R.4D, P1.1)
 
     public func listMyNotifications(limit: Int) async throws -> [RuulNotification] {

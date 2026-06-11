@@ -114,6 +114,16 @@ public protocol RuulRPCClient: Sendable {
     /// inmediatamente después.
     func deleteMyAccount() async throws
 
+    /// P1.5 — `set_membership_state(p_context, p_member, p_target_state, p_reason)`.
+    /// target ∈ active/paused/banned. El backend se auto-gatea: si la policy del
+    /// contexto exige voto, lanza `governance_required` (42501) y la UI enruta
+    /// a request_governance_action.
+    func setMembershipState(contextId: UUID, memberActorId: UUID, targetState: String, reason: String?) async throws
+
+    /// P1.8 — lectura PostgREST del catálogo R.7 (`governance_action_catalog`,
+    /// RLS read-all authenticated): qué acciones requieren decisión por default.
+    func listGovernanceActionCatalog() async throws -> [GovernanceCatalogEntry]
+
     /// P1.2 — sube el avatar a Storage (`avatars/{actorId}/...`, bucket público)
     /// y devuelve la URL pública para guardarla vía `update_my_profile`.
     func uploadAvatar(actorId: UUID, data: Data, contentType: String) async throws -> URL

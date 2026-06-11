@@ -81,6 +81,16 @@ roles personalizados (P1.16 — mantener placeholder).
 
 ---
 
+### Cierre de Fase 2 (2026-06-11)
+
+Completados: P1.1, P1.2, P1.3, P1.5, P1.6/V.4, P1.7, P1.8, P1.13, V.3.
+Falsos positivos de la auditoría descubiertos al implementar: P1.11 (los
+pickers nativos de actor/recurso YA existían — el UUID TextField es solo
+fallback sin contexto) y P1.12 (BreadcrumbView SÍ se renderiza).
+**P1.9 (void_transaction) diferido a P2 con razón:** iOS no tiene superficie
+de transacciones individuales; un botón "Anular" sin lista de transacciones
+sería una pantalla falsa. Requiere primero un browser de ledger (P2).
+
 ## Fase 3 — P1 pulido de confianza
 
 1. `whyCanReserve` render completo (P1.14).

@@ -1034,6 +1034,28 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return URL(string: "https://example.com/avatars/\(actorId.uuidString)/avatar.jpg")!
     }
 
+    public func setMembershipState(contextId: UUID, memberActorId: UUID, targetState: String, reason: String?) async throws {
+        try throwIfNeeded()
+        if targetState != "active" {
+            memberships[contextId]?.removeAll { $0.actorId == memberActorId }
+        }
+        emit(contextId, "membership.state_changed", actorId: memberActorId)
+    }
+
+    public func listGovernanceActionCatalog() async throws -> [GovernanceCatalogEntry] {
+        try throwIfNeeded()
+        return [
+            GovernanceCatalogEntry(actionKey: "member.remove", displayName: "Remover miembro",
+                                   domain: "membership", defaultRequiresDecision: true, dangerous: true),
+            GovernanceCatalogEntry(actionKey: "member.pause", displayName: "Pausar miembro",
+                                   domain: "membership", defaultRequiresDecision: true),
+            GovernanceCatalogEntry(actionKey: "resource.transfer_ownership", displayName: "Transferir propiedad",
+                                   domain: "resources", defaultRequiresDecision: true),
+            GovernanceCatalogEntry(actionKey: "rule.archive", displayName: "Archivar regla",
+                                   domain: "rules", defaultRequiresDecision: true)
+        ]
+    }
+
     // MARK: - Notificaciones (R.4D, P1.1)
 
     var notifications: [RuulNotification] = []
