@@ -27,6 +27,8 @@ public final class DependencyContainer {
     public let attentionInboxStore: AttentionInboxStore
     /// F.NAV.0 — favoritos + contextos recientes del caller.
     public let contextPreferencesStore: ContextPreferencesStore
+    /// R.4D (P1.1) — centro de notificaciones (badge transversal).
+    public let notificationsStore: NotificationsStore
 
     /// Rutea universal links / ruul:// (hoy: invitaciones).
     public let deepLinks: DeepLinkRouter
@@ -49,6 +51,7 @@ public final class DependencyContainer {
         self.subscriptionsStore = SubscriptionsStore(rpc: rpcClient)
         self.attentionInboxStore = AttentionInboxStore(rpc: rpcClient)
         self.contextPreferencesStore = ContextPreferencesStore(rpc: rpcClient)
+        self.notificationsStore = NotificationsStore(rpc: rpcClient)
         self.deepLinks = DeepLinkRouter()
     }
 
@@ -66,6 +69,7 @@ public final class DependencyContainer {
         self.subscriptionsStore = SubscriptionsStore(rpc: rpc)
         self.attentionInboxStore = AttentionInboxStore(rpc: rpc)
         self.contextPreferencesStore = ContextPreferencesStore(rpc: rpc)
+        self.notificationsStore = NotificationsStore(rpc: rpc)
         self.deepLinks = DeepLinkRouter()
     }
 
@@ -98,5 +102,6 @@ public final class DependencyContainer {
         subscriptionsStore.reset()
         attentionInboxStore.reset()
         contextPreferencesStore.reset()
+        notificationsStore.reset()
     }
 }
