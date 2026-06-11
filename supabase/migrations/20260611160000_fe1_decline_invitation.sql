@@ -58,7 +58,7 @@ begin
      set membership_status = 'declined', left_at = now()
    where id = v_membership;
 
-  perform public._emit_activity(p_context_actor_id, v_caller, 'member.declined', 'membership', v_membership,
+  perform public._emit_activity(p_context_actor_id, v_caller, 'membership.declined', 'membership', v_membership,
     '{}'::jsonb);
 
   return jsonb_build_object('membership_id', v_membership, 'status', 'declined');
@@ -69,6 +69,10 @@ grant execute on function public.decline_invitation(uuid) to authenticated, serv
 
 comment on function public.decline_invitation(uuid) is
   'FE.1: el invitado rechaza una invitación directa (invited → declined). Idempotente.';
+
+insert into public.activity_event_catalog (event_type, domain, description, expected_subject_type)
+values ('membership.declined', 'membership', 'El invitado rechazó la invitación al contexto', 'membership')
+on conflict (event_type) do nothing;
 
 -- 3) invite_member: reactivar también desde 'declined' (además de left/removed).
 create or replace function public.invite_member(
@@ -152,7 +156,7 @@ begin
   end if;
   if not exists (
     select 1 from public.activity_events
-    where context_actor_id = v_ctx and event_type = 'member.declined' and actor_id = v_b
+    where context_actor_id = v_ctx and event_type = 'membership.declined' and actor_id = v_b
   ) then
     raise exception 'decline smoke: activity member.declined no emitida';
   end if;

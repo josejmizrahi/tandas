@@ -43,7 +43,7 @@ begin
   end if;
   if not exists (
     select 1 from public.activity_events
-    where context_actor_id = v_ctx and event_type = 'member.declined' and actor_id = v_b
+    where context_actor_id = v_ctx and event_type = 'membership.declined' and actor_id = v_b
   ) then
     raise exception 'decline smoke: activity member.declined no emitida';
   end if;

@@ -493,3 +493,16 @@ el pago de obligaciones money fluye por settlement (neteo por novación) — sin
 `pay_obligation` directo. Quedan `mark_completed` (non-money) · `forgive` ·
 `edit_obligation`, 1:1 con `wiredActionKeys` de ObligationDetailView.
 Migration: `fe2_obligation_actions_honest`.
+
+### 15.7 delete_my_account (FE.3, 2026-06-11)
+
+`delete_my_account() → jsonb {deleted, actor_id, memberships_left}` —
+eliminación de cuenta (App Store 5.1.1(v) + ARCO). Pseudonimiza
+person_profiles + actors ('Usuario eliminado', actor archived), memberships →
+left, cierra trust/delegaciones/suscripciones, revoca invites creados, emite
+`membership.left` (via account_deletion) por contexto y borra auth.users. Los
+átomos del grupo se preservan. `membership.declined` agregado al catálogo de
+activity (FE.1 ahora emite el naming canónico). iOS: `deleteMyAccount()` +
+botón destructivo con confirmación en PersonalSettingsView → signOut().
+Migrations fe3/fe3b/fe3c; smokes `_smoke_mvp2_delete_my_account` y
+`_smoke_mvp2_decline_invitation` verdes contra prod.

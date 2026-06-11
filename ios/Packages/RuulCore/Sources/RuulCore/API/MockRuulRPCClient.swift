@@ -1024,6 +1024,11 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return AcceptInvitationResult(membershipId: pending.membershipId, status: "active", alreadyMember: false)
     }
 
+    public func deleteMyAccount() async throws {
+        try throwIfNeeded()
+        // Mock: la app hace signOut() después; no hay estado de auth que simular aquí.
+    }
+
     public func declineInvitation(contextId: UUID) async throws {
         try throwIfNeeded()
         guard pendingInvitations[me.id]?.contains(where: { $0.contextActorId == contextId }) == true else {
