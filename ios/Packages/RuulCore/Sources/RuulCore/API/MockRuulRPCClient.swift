@@ -659,11 +659,26 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 }
             }
             guard !reasons.isEmpty else { return nil }
+            // R.9.I — contexto dueño: canonical owner colectivo/legal, o el
+            // person actor del caller para recursos personales (mismo cálculo
+            // que my_world() en el backend).
+            let owner = resource.canonicalOwnerActorId.flatMap { actors[$0] }
+            var contextActorId: UUID?
+            var contextDisplayName: String?
+            if let owner, owner.actorKind != .person {
+                contextActorId = owner.id
+                contextDisplayName = owner.displayName
+            } else if resource.canonicalOwnerActorId == me.id {
+                contextActorId = me.id
+                contextDisplayName = me.displayName
+            }
             return MyWorldResource(
                 resourceId: resource.id,
                 displayName: resource.displayName,
                 resourceType: resource.resourceType,
-                reasons: reasons
+                reasons: reasons,
+                contextActorId: contextActorId,
+                contextDisplayName: contextDisplayName
             )
         }
         let myObligations = obligations.values

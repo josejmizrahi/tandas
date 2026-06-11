@@ -78,19 +78,35 @@ public struct MyWorldResource: Codable, Sendable, Equatable, Identifiable {
     public let resourceType: String
     /// p. ej. `["USE", "GOVERN via Familia Mizrahi"]`
     public let reasons: [String]
+    /// R.9.I — contexto dueño del recurso (canonical owner colectivo, o el
+    /// person actor del caller para recursos personales). `nil` si el dueño
+    /// es otra persona (recurso visible solo vía un right directo).
+    public let contextActorId: UUID?
+    public let contextDisplayName: String?
 
     enum CodingKeys: String, CodingKey {
         case resourceId = "resource_id"
         case displayName = "display_name"
         case resourceType = "resource_type"
         case reasons
+        case contextActorId = "context_actor_id"
+        case contextDisplayName = "context_display_name"
     }
 
-    public init(resourceId: UUID, displayName: String, resourceType: String, reasons: [String] = []) {
+    public init(
+        resourceId: UUID,
+        displayName: String,
+        resourceType: String,
+        reasons: [String] = [],
+        contextActorId: UUID? = nil,
+        contextDisplayName: String? = nil
+    ) {
         self.resourceId = resourceId
         self.displayName = displayName
         self.resourceType = resourceType
         self.reasons = reasons
+        self.contextActorId = contextActorId
+        self.contextDisplayName = contextDisplayName
     }
 
     public init(from decoder: Decoder) throws {
@@ -99,6 +115,8 @@ public struct MyWorldResource: Codable, Sendable, Equatable, Identifiable {
         self.displayName = try c.decode(String.self, forKey: .displayName)
         self.resourceType = try c.decode(String.self, forKey: .resourceType)
         self.reasons = try c.decodeIfPresent([String].self, forKey: .reasons) ?? []
+        self.contextActorId = try c.decodeIfPresent(UUID.self, forKey: .contextActorId)
+        self.contextDisplayName = try c.decodeIfPresent(String.self, forKey: .contextDisplayName)
     }
 
     public var id: UUID { resourceId }

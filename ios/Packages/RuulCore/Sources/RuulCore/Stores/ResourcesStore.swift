@@ -88,42 +88,5 @@ public final class ResourcesStore {
     }
 }
 
-/// F.6 — store del detalle de un recurso (recurso + derechos activos).
-@MainActor
-@Observable
-public final class ResourceDetailStore {
-    public private(set) var detail: ResourceDetail?
-    public private(set) var phase: StorePhase = .idle
-
-    private let rpc: any RuulRPCClient
-
-    public init(rpc: any RuulRPCClient) {
-        self.rpc = rpc
-    }
-
-    public init(rpc: any RuulRPCClient, previewDetail: ResourceDetail) {
-        self.rpc = rpc
-        self.detail = previewDetail
-        self.phase = .loaded
-    }
-
-    public func load(resourceId: UUID) async {
-        if detail == nil { phase = .loading }
-        do {
-            detail = try await rpc.resourceDetail(resourceId: resourceId)
-            phase = .loaded
-        } catch {
-            phase = .failed(message: UserFacingError.from(error).message)
-        }
-    }
-
-    public func grantRight(_ input: GrantRightInput) async throws {
-        _ = try await rpc.grantRight(input)
-        await load(resourceId: input.resourceId)
-    }
-
-    public func revokeRight(rightId: UUID, resourceId: UUID) async throws {
-        try await rpc.revokeRight(rightId: rightId)
-        await load(resourceId: resourceId)
-    }
-}
+// R.9.I — `ResourceDetailStore` (F.6, store de ResourceDetailView V1) fue
+// eliminado junto con la vista: ResourceDetailViewV2 usa ResourceDescriptorStore.

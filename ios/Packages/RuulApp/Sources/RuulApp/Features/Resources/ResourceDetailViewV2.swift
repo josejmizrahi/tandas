@@ -27,7 +27,8 @@ import RuulCore
 ///
 /// Lógica preservada: descriptor store, conflicts dialog modifier, capability
 /// alert, native sheets (grant_right / attach_document / edit_resource),
-/// classic fallback sheet, action dispatcher (handleActionTap), all parsers.
+/// action dispatcher (handleActionTap), all parsers.
+/// R.9.I: removido el fallback "Vista clásica" (V1) — V2 es canónico.
 /// Removido: ResourceLinkedDocumentsCard separado (inline ahora con documentsStore).
 public struct ResourceDetailViewV2: View {
     let resourceId: UUID
@@ -36,7 +37,6 @@ public struct ResourceDetailViewV2: View {
 
     @State private var store: ResourceDescriptorStore
     @State private var pendingAction: PendingAction?
-    @State private var isShowingClassicSheet = false
     @State private var documentsStore: DocumentsStore
     @State private var isShowingGrantRight = false
     @State private var isShowingAttachDocument = false
@@ -93,8 +93,7 @@ public struct ResourceDetailViewV2: View {
         // P0 fix 2026-06-08 — toolbar específico del recurso:
         //   - Trailing "+": Menu con descriptor.actions enabled (acciones rápidas
         //     más comunes — attach_document / grant_right / edit_resource / etc.).
-        //   - Trailing "ellipsis": Menu con drill-downs específicos del recurso
-        //     (Configuración, Vista clásica) en vez de solo legacy "Vista clásica".
+        //   - Trailing "ellipsis": Menu con drill-downs específicos del recurso.
         .toolbar {
             if let descriptor = store.descriptor, !descriptor.actions.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -121,12 +120,6 @@ public struct ResourceDetailViewV2: View {
                         } label: {
                             Label("Transferir propiedad", systemImage: "arrow.left.arrow.right")
                         }
-                    }
-                    Divider()
-                    Button {
-                        isShowingClassicSheet = true
-                    } label: {
-                        Label("Vista clásica", systemImage: "rectangle.stack")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -205,16 +198,6 @@ public struct ResourceDetailViewV2: View {
             Button("OK", role: .cancel) {}
         } message: { cap in
             Text(capabilityDescription(cap))
-        }
-        .sheet(isPresented: $isShowingClassicSheet) {
-            NavigationStack {
-                ResourceDetailView(resourceId: resourceId, context: context, container: container)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Cerrar") { isShowingClassicSheet = false }
-                        }
-                    }
-            }
         }
         .modifier(ConflictsModifier(
             pendingConflict: $pendingConflict,

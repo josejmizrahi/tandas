@@ -1,11 +1,10 @@
 import Foundation
 import Observation
 
-/// R.5A.F.1 — store del nuevo `resource_detail_descriptor`. Una sola fuente:
-/// `rpc.resourceDetailDescriptor(resourceId)`. Reemplaza eventualmente a
-/// `ResourceDetailStore` cuando ResourceDetailView v2 alcance paridad con v1.
+/// R.5A.F.1 — store del `resource_detail_descriptor`. Una sola fuente:
+/// `rpc.resourceDetailDescriptor(resourceId)`.
 ///
-/// Co-existe con `ResourceDetailStore` durante la transición.
+/// R.9.I: reemplazó definitivamente a `ResourceDetailStore` (V1, eliminado).
 @MainActor
 @Observable
 public final class ResourceDescriptorStore {

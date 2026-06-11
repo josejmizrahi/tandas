@@ -282,6 +282,8 @@ struct DecodingTests {
               "resource_id": "c8098c1a-f86e-11da-bd1a-00112444be1e",
               "display_name": "Casa Valle",
               "resource_type": "house",
+              "context_actor_id": "b8098c1a-f86e-11da-bd1a-00112444be1e",
+              "context_display_name": "Familia Mizrahi",
               "reasons": ["USE", "GOVERN via Familia Mizrahi"]
             }
           ],
@@ -302,6 +304,9 @@ struct DecodingTests {
         #expect(world.contexts.count == 1)
         #expect(world.resources[0].reasons.count == 2)
         #expect(world.resources[0].reasons.contains("USE"))
+        // R.9.I — contexto dueño por recurso (aditivo, opcional).
+        #expect(world.resources[0].contextActorId == UUID(uuidString: "b8098c1a-f86e-11da-bd1a-00112444be1e"))
+        #expect(world.resources[0].contextDisplayName == "Familia Mizrahi")
         #expect(world.openObligations[0].iOwe)
     }
 
