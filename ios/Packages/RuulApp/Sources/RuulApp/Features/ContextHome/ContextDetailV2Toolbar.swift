@@ -75,7 +75,19 @@ struct ContextDetailV2Toolbar: ToolbarContent {
                             Button {
                                 quickActionsRouter.open(ActionRouter.destination(for: action, in: .context(context.id)))
                             } label: {
-                                Label(action.label, systemImage: presentation.symbolName)
+                                // P0.5 (doctrina §0.4): una acción disabled muestra su
+                                // reason como subtitle del menu item — el usuario sabe
+                                // POR QUÉ no puede, no solo que no puede.
+                                if !action.enabled, let reason = action.reason, !reason.isEmpty {
+                                    Label {
+                                        Text(action.label)
+                                        Text(reason)
+                                    } icon: {
+                                        Image(systemName: presentation.symbolName)
+                                    }
+                                } else {
+                                    Label(action.label, systemImage: presentation.symbolName)
+                                }
                             }
                             .disabled(!action.enabled)
                         }

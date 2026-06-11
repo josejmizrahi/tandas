@@ -78,10 +78,19 @@ public struct MoneyHomeView: View {
                             Button {
                                 handle(actionKey: action.actionKey)
                             } label: {
-                                Label(
-                                    action.label,
-                                    systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
-                                )
+                                if !action.enabled, let reason = action.reason, !reason.isEmpty {
+                                    Label {
+                                        Text(action.label)
+                                        Text(reason)
+                                    } icon: {
+                                        Image(systemName: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName)
+                                    }
+                                } else {
+                                    Label(
+                                        action.label,
+                                        systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
+                                    )
+                                }
                             }
                             .disabled(!action.enabled)
                         }
@@ -401,10 +410,19 @@ public struct MoneyHomeView: View {
                 Button {
                     handle(actionKey: action.actionKey)
                 } label: {
-                    Label(
-                        action.label,
-                        systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
-                    )
+                    if !action.enabled, let reason = action.reason, !reason.isEmpty {
+                        Label {
+                            Text(action.label)
+                            Text(reason)
+                        } icon: {
+                            Image(systemName: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName)
+                        }
+                    } else {
+                        Label(
+                            action.label,
+                            systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
+                        )
+                    }
                 }
                 .disabled(!action.enabled)
                 .accessibilityHint(action.reason ?? "")
