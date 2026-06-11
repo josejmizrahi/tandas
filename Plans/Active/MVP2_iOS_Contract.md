@@ -484,3 +484,12 @@ Idempotente; emite `member.declined`. `invite_member` reactiva también desde
 `declineInvitation(contextId:)` + swipe "Rechazar" en PendingInvitationsView.
 Migrations: `fe1_decline_invitation` + `fe1b_decline_smoke_appendonly_fix`;
 smoke `_smoke_mvp2_decline_invitation` (verde contra prod 2026-06-11).
+
+### 15.6 Obligation actions honestas (FE.2, 2026-06-11)
+
+`obligation_available_actions` ya NO emite `pay` / `dispute` / `cancel`
+(acciones sin RPC de dispatch; iOS las filtraba a "Próximamente"). Decisión:
+el pago de obligaciones money fluye por settlement (neteo por novación) — sin
+`pay_obligation` directo. Quedan `mark_completed` (non-money) · `forgive` ·
+`edit_obligation`, 1:1 con `wiredActionKeys` de ObligationDetailView.
+Migration: `fe2_obligation_actions_honest`.
