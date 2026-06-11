@@ -117,6 +117,18 @@ intersección se computa SOLO en backend (`member_available_actions`, descriptor
   `Plans/Active/Task_Primitive_Evaluation.md`), `location` (hoy `location_text`/metadata;
   primitiva propia solo si aparecen casos geo).
 
+### 5.1 Conflictos: tabla tipada + superficie (regla canónica)
+
+`reservation_conflicts` (hecho relacional entre dos reservas, con FKs, unique del
+par y maquinaria winner/split/decision) es la FUENTE DE VERDAD de su dominio;
+`resource_conflicts` es la SUPERFICIE unificada de atención (proyección, hoy vía
+triggers espejo r5b_2; la resolución enruta de vuelta al dominio — verificado en
+`resolve_resource_conflict`). Regla para toda fuente de conflicto futura:
+¿tiene maquinaria propia de resolución? → tabla tipada + proyección a la
+superficie. ¿Solo es "avisar y dismissear"? → directo a `resource_conflicts`
+como los detectores. Fase 3 opcional: sustituir el espejo físico por
+union/vista en las RPCs de lectura.
+
 ## 6. Money — modelo objetivo
 
 ```

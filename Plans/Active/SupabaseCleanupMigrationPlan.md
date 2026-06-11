@@ -84,6 +84,17 @@ Estado actualizado 2026-06-11 (segunda tanda del PR #161, `audit_7`…`audit_10`
 
 Adelantos ya ejecutados (2026-06-11, "barato hoy, épico mañana"):
 
+- ✅ **RLS fast-path II — tablas calientes** (`audit_19` + `audit_20`): las 9 tablas
+  de mayor lectura con quals compuestos (activity_events, obligations,
+  money_transactions/splits, event_participants, decision_votes, documents,
+  settlement_batches/items) reescritas al patrón initplan: `(SELECT
+  current_actor_id())` por query (no por fila) + membresías hasheadas + puentes
+  EXISTS → semi-joins `IN (SELECT ...)`. EXPLAIN sobre activity_events: TODAS las
+  ramas como InitPlan/hashed SubPlan. `audit_20` alinea la aserción estructural del
+  smoke r2j (acepta forma legacy o fastpath, sigue exigiendo ramas de obligations y
+  rights). Fuera de la tanda (trabajo dedicado): `resources` y `actors` (quals con
+  funciones de derechos por fila).
+
 - ✅ **RLS fast-path de membresías** (`audit_18`): `my_context_ids()` STABLE +
   reescritura 1:1 de las 10 policies cuyo qual era exactamente
   `is_context_member(context_actor_id)` (calendar_events, decisions, rules,
