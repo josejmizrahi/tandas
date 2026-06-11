@@ -255,6 +255,11 @@ public struct DecisionDetailView: View {
                         text: decision.statusLabel,
                         tint: statusColor(decision.status)
                     )
+                    // P1.7 — countdown reactivo al cierre (Text relativo se
+                    // auto-actualiza) + participación visible antes de votar.
+                    if decision.isOpen, let closesAt = decision.closesAt {
+                        countdownChip(closesAt: closesAt)
+                    }
                     if let hint = heroHint(decision) {
                         heroChip(symbol: hint.symbol, text: hint.text, tint: hint.tint)
                     }
@@ -282,21 +287,39 @@ public struct DecisionDetailView: View {
         .background(tint.badgeFillSubtle, in: Capsule())
     }
 
-    private func heroHint(_ decision: Decision) -> (text: String, symbol: String, tint: Color)? {
-        guard decision.isOpen else { return nil }
-        if let closesAt = decision.closesAt {
-            let days = Calendar.current.dateComponents([.day], from: Date(), to: closesAt).day ?? 0
-            if days <= 2, days >= 0 {
-                let text = days == 0 ? "Cierra hoy" : (days == 1 ? "Cierra mañana" : "Cierra en \(days) días")
-                return (text: text, symbol: "clock", tint: .orange)
+    /// P1.7 — chip con cuenta regresiva viva al cierre. `Text(_:style:.relative)`
+    /// se auto-actualiza cada segundo sin timers manuales.
+    @ViewBuilder
+    private func countdownChip(closesAt: Date) -> some View {
+        let expired = closesAt <= Date()
+        HStack(spacing: 6) {
+            Image(systemName: "clock")
+                .font(.caption.weight(.semibold))
+            if expired {
+                Text("Cierre vencido")
+                    .font(.caption.weight(.semibold))
+            } else {
+                (Text("Cierra en ") + Text(closesAt, style: .relative))
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
             }
         }
-        let pending = max(0, store.members.count - store.votes.count)
-        if pending > 0 {
+        .foregroundStyle(Color.orange)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.orange.badgeFillSubtle, in: Capsule())
+    }
+
+    private func heroHint(_ decision: Decision) -> (text: String, symbol: String, tint: Color)? {
+        guard decision.isOpen else { return nil }
+        // P1.7 — participación explícita: cuántos han votado del total.
+        let total = store.members.count
+        let voted = store.votes.count
+        if total > 0 {
             return (
-                text: "\(pending) \(pending == 1 ? "voto pendiente" : "votos pendientes")",
+                text: "\(voted) de \(total) \(total == 1 ? "voto" : "votos")",
                 symbol: "person.badge.clock",
-                tint: .blue
+                tint: voted < total ? .blue : .green
             )
         }
         return nil
