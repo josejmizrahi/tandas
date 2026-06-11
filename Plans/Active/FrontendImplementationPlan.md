@@ -33,9 +33,12 @@ para eliminar los huecos visibles, en orden de riesgo para el usuario.
 | 1.3 | **Sesión huérfana** (P0.3) | Llamar `verifySession()` al transicionar a `.signedIn`; si falla → `signOut()` limpio y volver a SignedOutView | `RuulAppShell.swift:40-54`, `SessionStore.swift` |
 | 1.4 | **Obligation pay/dispute/cancel** (P0.4) | Decisión de producto primero. Camino corto recomendado: migration que quita esas acciones del descriptor hasta que existan los RPCs (el botón "Próximamente" desaparece). Camino largo (post-fase): RPC `pay_obligation` que cree el settlement item correspondiente | migration de `obligation_detail`, o nuevos RPCs + `ObligationDetailView.swift` |
 | 1.5 | **Razones de acciones deshabilitadas** (P0.5) | Componente `DisabledActionLabel(action:)` que muestre `AvailableAction.reason`; aplicarlo en toolbars/menus de ContextDetailV2, ResourceDetail, EventDetail, DecisionDetail, MemberDetail | `Components/`, vistas de detalle |
+| 1.6 | **Eliminación de cuenta** (V.1) | Backend: RPC de delete con pseudonimización de identidad preservando átomos no personales (doctrina de la visión: identidad desacoplada del acto). iOS: botón destructivo en PersonalSettings con doble confirmación + signOut. **Bloquea App Store review (5.1.1(v)) y ARCO** | migration nueva, `PersonalSettingsView.swift` |
+| 1.7 | **Aviso de privacidad + términos** (V.2) | Publicar `/legal/privacidad` y `/legal/terminos` en `web/public` (ruul.mx) + `Link` en footer de SignedOutView y sección legal en PersonalSettings | `web/public/`, `SignedOutView.swift`, `PersonalSettingsView.swift` |
 
 **Salida de fase:** Flujo C (invitación) completo en ambas direcciones; cero botones
-visibles sin acción; sesión inválida se autorepara.
+visibles sin acción; sesión inválida se autorepara; la app es submittable a App Store
+(cuenta borrable + privacy policy).
 
 ---
 
@@ -54,8 +57,14 @@ Orden por valor/esfuerzo:
    flujo OTP de AuthService (`startPhoneChange`/`confirmPhoneChange`).
 4. **Quorum + countdown en decisiones** (P1.7) — chip "Se aprueba con X de Y" +
    `TimelineView` para closesAt; datos ya presentes en `decision_detail`.
-5. **Historial/consecuencias de reglas** (P1.6) — sección en RuleDetailView con
-   `list_activity` filtrada por rule_id + obligations emitidas linkeadas.
+5. **RuleDetailView conforme a doctrina R.5V** (P1.6 + V.4) — completar el patrón
+   universal: widgets KPIs (trigger count / last fired), attention (violations
+   recientes), activity (`rule.fired`) + consecuencias emitidas (obligations linkeadas)
+   con `list_activity` filtrada por rule_id.
+5b. **Export de memoria institucional** (V.3) — "Exportar historial" por contexto
+   (CSV vía ShareLink: actividad + balances + decisiones con votos + reglas vigentes);
+   es la promesa central de la visión ("historial completo, export simple") y hoy no
+   es demostrable.
 6. **Breadcrumb en subcontextos** (P1.12) — cablear `BreadcrumbView` (ya existe el
    environment `navigateToContext`); decidir destino de `ContextTreeView` (tab More o
    borrar).
@@ -85,6 +94,11 @@ Search en eventos/decisiones/obligaciones → búsqueda global; skeletons
 integraciones (Calendar/Wise/WhatsApp); documentos sign/approve/versions (FQ-2/FQ-4,
 requiere backend); relaciones de recursos editables (R.0D); audit log completo;
 offline/cache; widgets; accesibilidad profunda.
+
+De la visión (V.5–V.7): monetización **por grupo + módulos activables** (nunca por
+seat — no construir hasta validar wedges de GTM); MFA promovido para admins de
+contextos con fondos; pasada de copy institucional en onboarding/empty states
+("vivir, decidir y recordar como institución pequeña").
 
 ---
 

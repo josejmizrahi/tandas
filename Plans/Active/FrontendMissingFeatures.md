@@ -18,6 +18,27 @@ P2 = escalabilidad/pulido. "Backend ✅" = el RPC/tabla ya existe en migrations.
 | P0.5 | Permisos | Superficies con acciones disabled | `AvailableAction.reason` no se muestra consistentemente | ✅ (reason viene en el payload) | descriptors | Render uniforme del `reason` cuando una acción está deshabilitada | Usuario no entiende por qué no puede hacer algo (pedido explícito del founder) | `Components/`, vistas de detalle | Componente común `DisabledActionRow(reason:)` aplicado en toolbars/menus |
 | P0.6 | F.14 | Todos | Smoke manual end-to-end en iPhone nunca ejecutado (founder) | ✅ | — | Ejecutar los 5 escenarios de F.14 y registrar resultados | Sin validación real en device, cualquier gap de integración pasa desapercibido | `Plans/Active/Frontend_MVP2_Rebuild.md:61-78` | Ejecutar F.14 ANTES de construir más features; archivar resultados en R5Z |
 
+## V — Faltantes derivados de la visión (Plans/Archive/Vision.md)
+
+Auditados contra los pilares de la visión canónica (memoria institucional verificable,
+acto > estado, compliance desde el diseño, AI propone-no-ejecuta, doctrina UX R.5V).
+
+| # | Pilar | Pantalla | Estado actual | Backend | RPC | Qué falta | Prioridad | Riesgo | Archivo Swift | Recomendación |
+|---|---|---|---|---|---|---|---|---|---|---|
+| V.1 | Compliance ARCO + App Store | PersonalSettingsView | **No existe eliminación de cuenta** | ❌ (requiere RPC de delete/anonimización) | — | RPC backend (pseudonimizar identidad, preservar átomos no personales según doctrina de la visión §migración) + botón "Eliminar cuenta" con doble confirmación | **P0** | **Bloquea App Store review** (guideline 5.1.1(v)); incumple ARCO/LFPDPPP y CCPA | `Features/Profile/PersonalSettingsView.swift` | Diseñar el delete desacoplando identidad de actos (la visión ya lo prevé: "bloqueo/pseudonimización cuando la ley exija conservar registros") |
+| V.2 | Compliance | SignedOutView | Sin links a aviso de privacidad ni términos | ✅ (ruul.mx es estático; basta publicar `/legal/*`) | — | Footer con links "Aviso de privacidad" y "Términos" en login + entrada en ajustes | **P0** | App Store exige privacy policy URL; LFPDPPP exige aviso no decorativo | `Features/Auth/SignedOutView.swift`, `web/public/` | Páginas estáticas en ruul.mx + `Link` en SignedOutView y PersonalSettings |
+| V.3 | Memoria institucional exportable | ActivityFeedView / ContextSettings | Sin export de actividad, ledger, decisiones ni reglas vigentes | ⚠️ (los datos existen; falta RPC/format de export) | `list_activity`, settlement/obligations reads | "Exportar historial" (CSV/PDF) por contexto: actividad + balances + decisiones con quién votó + reglas vigentes a una fecha | **P1** | La promesa central del producto ("memoria verificable", "export simple" en plan gratis) no es demostrable hoy | `Features/ContextShell/ContextSettingsView.swift` | Empezar con CSV de activity + balances vía ShareLink; PDF después |
+| V.4 | Doctrina UX R.5V §1 | RuleDetailView | Incumple el patrón universal: sin widgets (trigger count / last fired), sin attention (violations recientes), sin activity (`rule.fired`) | ✅ (activity ya registra; KPIs derivables) | `list_activity` filtrada | Completar las 3 secciones que exige la tabla §1 de la doctrina congelada | **P1** (absorbe P1.6) | Drift contra doctrina FROZEN firmada por founder | `Features/Rules/RuleDetailView.swift` | Mismo slice que P1.6: historial + consecuencias emitidas + KPIs |
+| V.5 | Pricing por grupo + módulos | (no existe) | Cero superficie de monetización (planes, módulos activables) | ❌ | — | Paywall por grupo, catálogo de módulos (Funds+, Governance+, Documents, AI) | **P2** | Ninguno hoy; decisión de negocio post-validación de wedges | nuevo | No construir hasta validar GTM; la visión la define por grupo, NUNCA por seat |
+| V.6 | Seguridad baseline | PersonalSettingsView | Sin MFA promovido para admins | ✅ (Supabase Auth soporta MFA) | Supabase Auth | Sección "Seguridad" con enrolamiento MFA opcional | **P2** | Bajo en MVP; sube al custodiar más valor | `Features/Profile/PersonalSettingsView.swift` | Promoverlo a admins de contextos con fondos |
+| V.7 | Posicionamiento | Onboarding / empty states | Los empty states son funcionales pero no comunican la tesis ("vivir, decidir y recordar como institución") | n/a | — | Pasada de copy en NoContextsView, CreateContextView y empty states clave | **P2** | Percepción de "otra app de gastos" en vez de categoría nueva | varios | Alinear copy con el mensaje público de la visión |
+
+Verificado y **conforme a la visión** (sin acción): AI heroes solo proponen y citan el
+contexto considerado (cero write-paths de AI); settlement corrige con asientos nuevos
+(acto > estado); decisiones cross-context visibles vía attention_inbox (cumple el
+espíritu del tab Decisions de la visión, derogado por F.NAV); documents inmutables con
+versiones por `supersedes`.
+
 ## P1 — core avanzado
 
 | # | Flow | Pantalla | Estado actual | Backend | RPC | Qué falta | Riesgo | Archivo Swift | Recomendación |
@@ -61,11 +82,13 @@ P2 = escalabilidad/pulido. "Backend ✅" = el RPC/tabla ya existe en migrations.
 
 ## Resumen ejecutivo
 
-- **6 ítems P0**, de los cuales 2 requieren decisión/trabajo de backend (P0.1 decline,
-  P0.4 pay) y 4 son puramente frontend y pequeños (P0.2, P0.3, P0.5) más el smoke F.14 (P0.6).
-- **18 ítems P1**: la mitad son "backend listo, falta UI" (notificaciones R.4D, avatar,
-  phone change, void_transaction, set_membership_state, breadcrumb).
-- **P2** es cola de pulido sin riesgo.
+- **8 ítems P0**: 6 de flujo (P0.1–P0.6) + 2 de visión/compliance (**V.1 eliminación de
+  cuenta** — bloquea App Store — y **V.2 aviso de privacidad/términos**).
+- **20 ítems P1**: la mitad son "backend listo, falta UI" (notificaciones R.4D, avatar,
+  phone change, void_transaction, set_membership_state, breadcrumb), más los de visión
+  (V.3 export de memoria institucional, V.4 RuleDetail conforme a doctrina R.5V).
+- **P2** es cola de pulido sin riesgo (incluye V.5 monetización por grupo, V.6 MFA,
+  V.7 copy institucional).
 - Lo que NO hay: pantallas rotas, RPCs inexistentes, drift de contrato, lógica de
   permisos duplicada en cliente. La regla final ("no botones que no hagan nada") se
   viola solo en P0.4 y P1.13 — el resto de los botones inertes están honestamente

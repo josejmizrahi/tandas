@@ -28,6 +28,30 @@ botones inertes están marcados explícitamente como "Próximamente" con `.disab
 
 ---
 
+## 0. Alineación con la visión (Plans/Archive/Vision.md, founder 2026-05-14)
+
+La visión define a Ruul como **memoria institucional verificable para grupos** ("Ruul
+ayuda a que los grupos vivan, decidan y recuerden como instituciones pequeñas"), con
+cuatro decisiones no negociables: acto > estado, obligación derivada/explicable, AI que
+propone pero nunca ejecuta, y compliance de privacidad desde el diseño. Cómo está el
+frontend frente a cada pilar:
+
+| Pilar de la visión | Estado en el frontend | Evidencia |
+|---|---|---|
+| Acto > estado (la verdad es el log) | ✅ | Activity append-only por contexto/recurso/actor; settlement corrige con asientos nuevos, no edita; documents inmutables con supersedes |
+| Obligación derivada + explicabilidad | ✅ parcial | Why-engine cableado (`why_obligation_exists`, `why_decision_result`, `why_reservation_won`); `whyCanReserve` render parcial (P1.14) |
+| AI propone, no ejecuta, citando contexto | ✅ | Los 8 AI heroes solo prellenan forms (el humano confirma) y muestran chips de "datos considerados" (`CreateRuleWizard.swift:190-225`); cero write-paths de AI |
+| UI capability-driven / Universal Detail View | ✅ | Descriptors server-driven (R.5V §0.2); render sin hardcode por subtype |
+| Memoria institucional consultable y **exportable** | ❌ | No existe export (CSV/PDF) de actividad, ledger ni decisiones — prometido hasta en el plan gratis de la visión ("historial completo, export simple") |
+| Compliance privacidad (ARCO/LFPDPPP/CCPA) | ❌ | **Sin eliminación de cuenta** (también la exige App Store 5.1.1(v)), sin aviso de privacidad/términos en SignedOutView (solo existe el path muerto `ruul.mx/legal/terms` en un test de DeepLink) |
+| Doctrina UX R.5V (Detail = Hero→Attention→Widgets→Sections→Actions→Activity) | ✅ parcial | Context/Resource/Event/Decision/Document cumplen; **RuleDetailView incumple** — sin widgets (KPIs trigger count/last fired), sin attention (violations) ni activity (`rule.fired`), todos exigidos por la tabla §1 de la doctrina |
+| Pricing por grupo + módulos activables | ❌ (esperado) | Cero superficie de monetización; decisión de producto post-validación |
+| Estados de acción honestos (5 estados, §0.4) | ✅ parcial | `coming_soon` con badge "Próximamente" ✅; `disabled` con `reason` visible inconsistente (P0.5) |
+
+Estos hallazgos se integran como ítems V-* en `FrontendMissingFeatures.md`.
+
+---
+
 ## 1. Arquitectura general — ✅ sólida
 
 ### Navegación
