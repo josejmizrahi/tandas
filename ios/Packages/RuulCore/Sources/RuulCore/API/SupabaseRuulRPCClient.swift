@@ -1868,6 +1868,36 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         }
     }
 
+    public func listContextTransactions(contextId: UUID) async throws -> [MoneyTransaction] {
+        do {
+            return try await client
+                .from("money_transactions")
+                .select()
+                .eq("context_actor_id", value: contextId.uuidString)
+                .order("occurred_at", ascending: false)
+                .limit(200)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
+    public func voidTransaction(transactionId: UUID, reason: String?) async throws -> TransactionVoided {
+        struct Params: Encodable, Sendable {
+            let pTransactionId: UUID
+            let pReason: String?
+            enum CodingKeys: String, CodingKey {
+                case pTransactionId = "p_transaction_id"
+                case pReason = "p_reason"
+            }
+        }
+        return try await call("void_transaction", params: Params(
+            pTransactionId: transactionId,
+            pReason: reason
+        ))
+    }
+
     // MARK: - R.2R Obligations universales
 
     public func createActionObligation(_ input: CreateActionObligationInput) async throws -> ActionObligationCreated {

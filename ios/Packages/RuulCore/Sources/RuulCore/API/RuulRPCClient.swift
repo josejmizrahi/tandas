@@ -394,6 +394,13 @@ public protocol RuulRPCClient: Sendable {
     func recordGameResult(_ input: RecordGameResultInput) async throws -> GameResultRecorded
     /// Lectura PostgREST: `obligations` del contexto.
     func listObligations(contextId: UUID) async throws -> [Obligation]
+    /// Lectura PostgREST: `money_transactions` del contexto (ledger). RLS:
+    /// creador, partes from/to o miembros del contexto. Orden `occurred_at desc`.
+    func listContextTransactions(contextId: UUID) async throws -> [MoneyTransaction]
+    /// `void_transaction(p_transaction_id, p_reason?)` — audit_9. Anula una
+    /// transacción `posted` (revierte ledger + cancela obligaciones abiertas
+    /// ligadas). Autoridad: creador o `money.settle`. Las settlement se rechazan.
+    func voidTransaction(transactionId: UUID, reason: String?) async throws -> TransactionVoided
     /// `create_action_obligation(...)` — R.2R obligaciones de acción (no money).
     func createActionObligation(_ input: CreateActionObligationInput) async throws -> ActionObligationCreated
     /// `complete_obligation(p_obligation_id, p_completion_notes?, p_completion_metadata?)` — R.2R.
