@@ -46,7 +46,7 @@ public struct SignedOutView: View {
                         .foregroundStyle(.tint)
                     Text("Ruul")
                         .font(.largeTitle.bold())
-                    Text("Tu mundo compartido: contextos, recursos,\neventos, reglas y dinero.")
+                    Text("Tus grupos viven, deciden y recuerdan aquí:\neventos, reglas, decisiones y dinero.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
