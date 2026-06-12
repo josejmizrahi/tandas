@@ -35,7 +35,7 @@ public struct NoContextsView: View {
             VStack(spacing: 8) {
                 Text("Bienvenido a Ruul")
                     .font(.title2.weight(.semibold))
-                Text("Crea tu primer contexto (una cena semanal, tu familia, un viaje…) o únete a uno con un código de invitación.")
+                Text("Donde tus grupos viven, deciden y recuerdan. Crea tu primer espacio (una cena semanal, tu familia, un viaje…) o únete con un código de invitación.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
