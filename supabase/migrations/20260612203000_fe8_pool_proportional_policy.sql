@@ -549,11 +549,12 @@ begin
 
   -- Cleanup (activity append-only — residuo aceptado).
   perform set_config('request.jwt.claims', null, true);
+  -- pool_basis_entries referencia money_transactions: borrar entries primero.
+  delete from public.pool_basis_entries where pool_account_id = v_pool;
   delete from public.money_splits ms using public.money_transactions mt
     where mt.id = ms.transaction_id and mt.context_actor_id = v_ctx;
   delete from public.money_transactions where context_actor_id = v_ctx;
   delete from public.obligations where context_actor_id = v_ctx;
-  delete from public.pool_basis_entries where pool_account_id = v_pool;
   delete from public.pool_accounts where id = v_pool;
   delete from public.context_invites where context_actor_id = v_ctx;
   delete from public.role_assignments where context_actor_id = v_ctx;
