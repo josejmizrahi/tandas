@@ -21,9 +21,22 @@ struct EventDetailInfoSection: View {
             }
             if let starts = event.startsAt {
                 LabeledContent("Fecha") {
-                    Text(EventDetailFormatting.headerDateLine(starts))
+                    Text(EventDetailFormatting.infoDateLine(starts))
                         .multilineTextAlignment(.trailing)
                 }
+                if let range = EventDetailFormatting.timeRangeLine(event) {
+                    LabeledContent("Horario") {
+                        Text(range)
+                    }
+                }
+                if let duration = EventDetailFormatting.durationLabel(event) {
+                    LabeledContent("Duración") {
+                        Text(duration)
+                    }
+                }
+            }
+            LabeledContent("Tipo") {
+                Text(event.type.label)
             }
             if event.isVirtual {
                 LabeledContent("Ubicación") {
@@ -52,13 +65,21 @@ struct EventDetailInfoSection: View {
                 }
             }
             if let until = event.recurrenceUntil {
-                LabeledContent("Termina") {
+                // "Fin de la serie" — no confundir con la hora de fin del
+                // evento (row "Horario" arriba).
+                LabeledContent("Fin de la serie") {
                     Text(until.formatted(date: .abbreviated, time: .omitted))
                 }
             }
             LabeledContent("Contexto") {
                 Text(context.displayName)
                     .multilineTextAlignment(.trailing)
+            }
+            if let created = event.createdAt {
+                LabeledContent("Creado") {
+                    Text(created.formatted(date: .abbreviated, time: .omitted))
+                        .foregroundStyle(Theme.Text.secondary)
+                }
             }
         } header: {
             Text("Información")

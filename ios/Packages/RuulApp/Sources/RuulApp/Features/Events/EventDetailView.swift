@@ -8,19 +8,24 @@ import RuulCore
 /// qué tiene que hacer, quién más participa.
 ///
 /// Scroll order founder-locked:
-/// 1. **Header** — icon inline + título + contexto tappable + fecha + chips
-///    de ubicación/recurrencia + summary "N asistentes"
+/// 1. **Header** — icon inline + título + status terminal + rango horario +
+///    chips de tipo/ubicación/recurrencia + summary "N asistentes"
 /// 2. **Acción principal** — zona dinámica por estado:
 ///    - Evento finalizado / cancelado → row gris informativo
 ///    - Llegada registrada → confirmación + tiempo
 ///    - Evento en curso → botón prominente "Llegué"
 ///    - Sin responder → heading "Responde tu asistencia" + segmented RSVP
 ///    - Ya respondí → heading "Vas a asistir" + segmented RSVP para cambiar
-/// 3. **Participantes** — avatar strip + breakdown
-/// 4. **Recursos relacionados** (oculta si vacío)
-/// 5. **Decisiones relacionadas** (oculta si vacío)
-/// 6. **Información** — Organizador / Fecha / Ubicación / Repetición / Contexto
-/// 7. **Más acciones** — botón único `••• Más acciones` con Menu
+/// 3. **Descripción** — notas del organizador (oculta si vacía)
+/// 4. **Serie** — sesión anterior / siguiente vía previous/next_event_id
+///    (oculta para eventos sueltos)
+/// 5. **Ubicación** — snippet de mapa nativo + tap → Apple Maps
+/// 6. **Participantes** — avatar strip + breakdown (incluye guests externos)
+/// 7. **Recursos relacionados** (oculta si vacío)
+/// 8. **Decisiones relacionadas** (oculta si vacío)
+/// 9. **Información** — Organizador / Fecha / Horario / Duración / Tipo /
+///    Ubicación / Repetición / Serie / Contexto / Creado
+/// 10. **Más acciones** — Menu en toolbar trailing
 ///
 /// Eliminado: hero icon enorme, sección Actividad reciente, sección
 /// Administración visible, sección Auditoría, action strip con `•••` arriba.
@@ -109,7 +114,16 @@ public struct EventDetailView: View {
 
     @ViewBuilder
     private func moreActionButton(for item: MoreActionItem) -> some View {
-        if item.isDestructive {
+        if let action = item.action {
+            // P0.5 — componente canónico: una acción disabled del backend se
+            // muestra deshabilitada con su `reason` como subtítulo del item.
+            ActionMenuButton(
+                action: action,
+                role: item.isDestructive ? .destructive : nil
+            ) {
+                handleMoreAction(item.kind)
+            }
+        } else if item.isDestructive {
             Button(role: .destructive) {
                 handleMoreAction(item.kind)
             } label: {
@@ -332,7 +346,9 @@ public struct EventDetailView: View {
                 context: context,
                 onSelfCheckIn: { await selfCheckIn() }
             )
+            EventDetailDescriptionSection(event: event)
             EventDetailNextSessionSection(event: event, store: store)
+            EventDetailSeriesSection(event: event, context: context, container: container)
             EventDetailLinkedReservationsSection(
                 linkedReservations: linkedReservations,
                 linkedResourceNames: linkedResourceNames,

@@ -18,6 +18,7 @@ struct EventDetailHeroSection: View {
                 subtitle: heroSubtitle(event),
                 systemImage: event.type.symbolName,
                 tint: Theme.Tint.primary,
+                status: heroStatus(event),
                 chips: heroChips(event)
             )
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -27,16 +28,21 @@ struct EventDetailHeroSection: View {
     }
 
     private func heroSubtitle(_ event: CalendarEvent) -> String? {
-        if let starts = event.startsAt {
-            return EventDetailFormatting.headerDateLine(starts)
-        }
-        return context.displayName
+        EventDetailFormatting.headerDateTimeLine(event) ?? context.displayName
+    }
+
+    /// Doctrina §0.2 — el Hero lleva identidad + estado. Para eventos agendados
+    /// el badge "Activo" sería ruido (la zona de acción principal ya comunica
+    /// el estado vivo); solo los estados terminales se muestran arriba.
+    private func heroStatus(_ event: CalendarEvent) -> RuulStatusBadge.State? {
+        let state = RuulStatusBadge.State.event(event.status)
+        return state == .active ? nil : state
     }
 
     /// Chips del Hero — text-only (RuulDetailHero los renderiza como pills).
-    /// Ubicación, recurrencia, número de sesión, asistentes summary.
+    /// Tipo, ubicación, recurrencia, número de sesión, asistentes summary.
     private func heroChips(_ event: CalendarEvent) -> [String] {
-        var chips: [String] = []
+        var chips: [String] = [event.type.label]
         if event.isVirtual {
             chips.append("Virtual")
         } else if let location = event.locationText, !location.isEmpty {

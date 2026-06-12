@@ -17,17 +17,19 @@ struct EventDetailMoneySection: View {
     let onRecordExpense: () -> Void
 
     var body: some View {
-        if let action = store.availableActions.first(where: { $0.actionKey == "record_expense" && $0.enabled }) {
+        // P0.5 — la acción disabled también se muestra (con su reason como
+        // subtítulo vía ActionMenuButton), no solo desaparece.
+        if let action = store.availableActions.first(where: { $0.actionKey == "record_expense" }) {
             Section {
-                Button {
+                ActionMenuButton(action: action) {
                     onRecordExpense()
-                } label: {
-                    Label(action.label, systemImage: "dollarsign.circle.fill")
                 }
             } header: {
                 Text("Dinero del evento")
             } footer: {
-                Text("El gasto se divide automáticamente entre los participantes del evento.")
+                if action.enabled {
+                    Text("El gasto se divide automáticamente entre los participantes del evento.")
+                }
             }
         }
     }

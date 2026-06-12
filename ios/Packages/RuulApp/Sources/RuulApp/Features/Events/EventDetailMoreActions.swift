@@ -28,6 +28,12 @@ extension EventDetailView {
         let label: String
         let symbol: String
         let isDestructive: Bool
+        /// P0.5 — la `AvailableAction` original del backend cuando el item
+        /// viene de `available_actions[]`. nil para los items derivados
+        /// localmente (changeNextHost / configureHostRotation / reserveResource)
+        /// que aún no se modelan como action_key. Con la action presente, el
+        /// Menu renderiza vía `ActionMenuButton` (reason visible si disabled).
+        let action: AvailableAction?
     }
 
     /// P0 fix 2026-06-08 — clasificación semántica de MoreActionKind para
@@ -63,41 +69,48 @@ extension EventDetailView {
     /// Las acciones del menú salen verbatim de `event_detail.available_actions`
     /// — el frontend no infiere ni hardcodea. Las acciones de participación
     /// (rsvp, check-in) NO van acá porque viven en la zona primaria arriba.
+    /// P0.5 — las acciones disabled TAMBIÉN entran al menú: `ActionMenuButton`
+    /// las muestra deshabilitadas con su `reason` como subtítulo.
     func moreActions(
         _ event: CalendarEvent,
         availableActions: [AvailableAction],
         hasManageAuthority: Bool
     ) -> [MoreActionItem] {
         var out: [MoreActionItem] = []
-        for action in availableActions where action.enabled {
+        for action in availableActions {
             switch action.actionKey {
             case "record_expense":
                 out.append(MoreActionItem(
                     kind: .recordExpense, label: action.label,
-                    symbol: "dollarsign.circle", isDestructive: false
+                    symbol: "dollarsign.circle", isDestructive: false,
+                    action: action
                 ))
             case "create_decision":
                 out.append(MoreActionItem(
                     kind: .createDecision, label: action.label,
-                    symbol: "checkmark.seal", isDestructive: false
+                    symbol: "checkmark.seal", isDestructive: false,
+                    action: action
                 ))
             case "close_event":
                 if event.isScheduled {
                     out.append(MoreActionItem(
                         kind: .closeEvent, label: action.label,
-                        symbol: "checkmark.seal", isDestructive: false
+                        symbol: "checkmark.seal", isDestructive: false,
+                        action: action
                     ))
                 }
             case "cancel_participation":
                 out.append(MoreActionItem(
                     kind: .cancelParticipation, label: action.label,
-                    symbol: "xmark.circle", isDestructive: true
+                    symbol: "xmark.circle", isDestructive: true,
+                    action: action
                 ))
             case "edit_event":
                 if event.isScheduled || event.status == "in_progress" {
                     out.append(MoreActionItem(
                         kind: .editEvent, label: action.label,
-                        symbol: "pencil", isDestructive: false
+                        symbol: "pencil", isDestructive: false,
+                        action: action
                     ))
                 }
             default:
@@ -111,14 +124,16 @@ extension EventDetailView {
         if event.isRecurring && event.isScheduled && hasManageAuthority {
             out.append(MoreActionItem(
                 kind: .changeNextHost, label: "Cambiar próximo anfitrión",
-                symbol: "person.crop.circle.badge.checkmark", isDestructive: false
+                symbol: "person.crop.circle.badge.checkmark", isDestructive: false,
+                action: nil
             ))
             // F.EVENT.10 — sólo tiene sentido cuando la rotación natural aplica
             // (weekly). Para daily/monthly/yearly el host se mantiene, no rota.
             if EventDetailFormatting.recurrenceLabel(event) == "Semanal" {
                 out.append(MoreActionItem(
                     kind: .configureHostRotation, label: "Configurar rotación",
-                    symbol: "arrow.triangle.2.circlepath", isDestructive: false
+                    symbol: "arrow.triangle.2.circlepath", isDestructive: false,
+                    action: nil
                 ))
             }
         }
@@ -128,7 +143,8 @@ extension EventDetailView {
         if event.isScheduled || event.status == "in_progress" {
             out.append(MoreActionItem(
                 kind: .reserveResource, label: "Reservar recurso",
-                symbol: "calendar.badge.checkmark", isDestructive: false
+                symbol: "calendar.badge.checkmark", isDestructive: false,
+                action: nil
             ))
         }
         return out

@@ -114,6 +114,16 @@ public extension RuulStatusBadge.State {
         }
     }
 
+    /// Mapea status de CalendarEvent (`scheduled/completed/cancelled`).
+    static func event(_ raw: String) -> RuulStatusBadge.State {
+        switch raw {
+        case "scheduled": return .active
+        case "completed": return .completed
+        case "cancelled": return .cancelled
+        default:          return .active
+        }
+    }
+
     /// Mapea status legacy de Obligation
     /// (`open/accepted/in_progress/completed/expired/settled/cancelled/forgiven/disputed`).
     static func obligation(_ raw: String) -> RuulStatusBadge.State {

@@ -602,9 +602,11 @@ no puede. Unifica el patrón que vivía inline y disperso. `ActionMenuButton.der
 deriva el rol destructivo desde `ActionPresentationCatalog`.
 
 Aplicado a: `ContextDetailV2Toolbar`, `MoneyHomeView` (toolbar + "Qué puedes
-hacer") y `ObligationDetailView` (gap: antes ocultaba el reason). Pendientes de
-follow-up (pipelines de acción bespoke que no renderizan `AvailableAction`
-directo): `EventDetail` (mapea a `MoreActionItem` y filtra a enabled),
+hacer"), `ObligationDetailView` (gap: antes ocultaba el reason) y `EventDetail`
+(2026-06-12: `MoreActionItem` ahora carga la `AvailableAction` original y el
+menú + la Section "Dinero del evento" renderizan vía `ActionMenuButton`; las
+acciones disabled ya no se filtran). Pendientes de follow-up (pipelines de
+acción bespoke que no renderizan `AvailableAction` directo):
 `ResourceDetailViewV2` (`ResourceDescriptorAction`, filtra a enabled),
 `PoolDetailView` (accessor enabled-only + controles a medida) y `MemberDetailView`
 (menú de roles, no `available_actions`). `DecisionDetailView` ya cumplía.

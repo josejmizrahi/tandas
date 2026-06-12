@@ -89,6 +89,12 @@ struct EventDetailParticipantsSection: View {
         if pending > 0 && parts.isEmpty {
             parts.append("\(pending) sin respuesta")
         }
+        // R.5Z.fix.EVENT.GUESTS — los invitados externos cuentan en el header
+        // total; el breakdown también los nombra para que el número cuadre.
+        let guests = store.guests.reduce(0) { $0 + $1.countShare }
+        if guests > 0 {
+            parts.append("\(guests) \(guests == 1 ? "invitado externo" : "invitados externos")")
+        }
         return parts.isEmpty ? "Sin respuestas todavía" : parts.joined(separator: " · ")
     }
 }

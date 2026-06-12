@@ -13,6 +13,40 @@ enum EventDetailFormatting {
         return "\(dayMonth.capitalizedFirstLetter) · \(time)"
     }
 
+    /// "Viernes 5 de junio · 19:00 – 22:00" — variante del header que incluye
+    /// la hora de fin cuando `ends_at` existe (Apple Calendar muestra siempre
+    /// el rango completo, no solo el inicio).
+    static func headerDateTimeLine(_ event: CalendarEvent) -> String? {
+        guard let starts = event.startsAt else { return nil }
+        let dayMonth = starts.formatted(.dateTime.weekday(.wide).day().month(.wide)).capitalizedFirstLetter
+        guard let range = timeRangeLine(event) else { return dayMonth }
+        return "\(dayMonth) · \(range)"
+    }
+
+    /// "Viernes 5 de junio de 2026" — fecha completa para la Info row.
+    static func infoDateLine(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.wide).day().month(.wide).year()).capitalizedFirstLetter
+    }
+
+    /// "19:00 – 22:00" (mismo día), "19:00 – 6 jun, 2:00" (cruza medianoche)
+    /// o "19:00" si no hay hora de fin.
+    static func timeRangeLine(_ event: CalendarEvent) -> String? {
+        guard let starts = event.startsAt else { return nil }
+        let startTime = starts.formatted(date: .omitted, time: .shortened)
+        guard let ends = event.endsAt, ends > starts else { return startTime }
+        let endLabel = Calendar.current.isDate(starts, inSameDayAs: ends)
+            ? ends.formatted(date: .omitted, time: .shortened)
+            : ends.formatted(.dateTime.day().month(.abbreviated).hour().minute())
+        return "\(startTime) – \(endLabel)"
+    }
+
+    /// "3 h, 30 min" — duración del evento cuando hay hora de fin.
+    static func durationLabel(_ event: CalendarEvent) -> String? {
+        guard let starts = event.startsAt, let ends = event.endsAt, ends > starts else { return nil }
+        return Duration.seconds(ends.timeIntervalSince(starts))
+            .formatted(.units(allowed: [.hours, .minutes], width: .abbreviated))
+    }
+
     static func recurrenceLabel(_ event: CalendarEvent) -> String {
         guard let raw = event.recurrenceRule?.trimmingCharacters(in: .whitespaces).lowercased(),
               !raw.isEmpty else { return "Recurrente" }

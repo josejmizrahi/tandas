@@ -5669,12 +5669,15 @@ extension MockRuulRPCClient {
         ]
 
         // Evento: cena de esta semana (recurrente, host José)
+        let cenaStarts = Calendar.current.date(byAdding: .day, value: 2, to: Date())
         let cenaEvent = CalendarEvent(
             id: UUID(),
             contextActorId: cena.id,
             title: "Cena de los jueves",
+            description: "Trae algo para compartir. El anfitrión pone el plato fuerte y la casa.",
             eventType: EventType.dinner.rawValue,
-            startsAt: Calendar.current.date(byAdding: .day, value: 2, to: Date()),
+            startsAt: cenaStarts,
+            endsAt: cenaStarts.flatMap { Calendar.current.date(byAdding: .hour, value: 3, to: $0) },
             locationText: "Casa de José",
             recurrenceRule: "weekly",
             hostActorId: DemoIds.jose,
