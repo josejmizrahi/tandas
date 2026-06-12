@@ -1,36 +1,113 @@
 import SwiftUI
 import RuulCore
 
-// MARK: - Dinero del evento
+// MARK: - Dinero del evento (sección unificada)
 //
-// Extraído mecánicamente de `EventDetailView.swift` (split por tamaño del
-// archivo).
+// Founder 2026-06-12 "quiero ver todo organizado: gastos de ese evento, pools,
+// votaciones, reglas, miembros" — antes el CTA "Registrar gasto"
+// (R.5Z.fix.EVENT.1) y la lista de gastos reales (insights 2026-06-12) eran
+// DOS secciones separadas. Ahora es una sola: gastos del evento (obligations
+// con `source_event_id = event.id`) + total + CTA al final.
 //
-// R.5Z.fix.EVENT.1 (founder 2026-06-10 Bros/Campo Marte) — Section "Dinero
-// del evento" con CTA prominente "Registrar gasto" cuando el caller tiene
-// permiso. Antes la acción solo vivía escondida en el "+" Menu del toolbar
-// y founder no la encontraba. Section solo se renderiza si record_expense
-// está enabled en availableActions del backend.
+// P0.5 — el CTA renderiza vía `ActionMenuButton`: si record_expense viene
+// disabled del backend se muestra deshabilitado con su `reason`, no desaparece.
 
 struct EventDetailMoneySection: View {
+    let eventId: UUID
+    let context: AppContext
+    let container: DependencyContainer
     let store: EventDetailStore
     let onRecordExpense: () -> Void
 
+    @State private var obligations: [Obligation] = []
+    @State private var didLoad = false
+
+    private var recordExpenseAction: AvailableAction? {
+        store.availableActions.first { $0.actionKey == "record_expense" }
+    }
+
     var body: some View {
-        // P0.5 — la acción disabled también se muestra (con su reason como
-        // subtítulo vía ActionMenuButton), no solo desaparece.
-        if let action = store.availableActions.first(where: { $0.actionKey == "record_expense" }) {
+        if recordExpenseAction != nil || !obligations.isEmpty {
             Section {
-                ActionMenuButton(action: action) {
-                    onRecordExpense()
+                ForEach(obligations) { obligation in
+                    NavigationLink {
+                        ObligationDetailView(obligationId: obligation.id, context: context, container: container)
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "banknote")
+                                .foregroundStyle(Theme.Tint.success)
+                                .frame(width: 22)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(obligation.title ?? "Gasto")
+                                    .font(.callout)
+                                    .foregroundStyle(Theme.Text.primary)
+                                    .lineLimit(1)
+                                Text(obligationSubtitle(obligation))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            }
+                            Spacer()
+                            if let amount = obligation.amount, let currency = obligation.currency {
+                                Text(amount, format: .currency(code: currency))
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(obligation.status == "settled" || obligation.status == "completed"
+                                                     ? Theme.Text.tertiary : Theme.Text.primary)
+                            }
+                        }
+                    }
+                }
+                if let action = recordExpenseAction {
+                    ActionMenuButton(action: action) {
+                        onRecordExpense()
+                    }
                 }
             } header: {
-                Text("Dinero del evento")
+                Text(obligations.isEmpty
+                     ? "Dinero del evento"
+                     : "Dinero del evento (\(obligations.count))")
             } footer: {
-                if action.enabled {
-                    Text("El gasto se divide automáticamente entre los participantes del evento.")
-                }
+                footerText
             }
         }
+        // El .task vive fuera del if: corre aunque la section aún no exista.
+        Color.clear
+            .frame(height: 0)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .task { await loadIfNeeded() }
+    }
+
+    @ViewBuilder
+    private var footerText: some View {
+        if let total = totalLabel {
+            Text("Total repartido: \(total)")
+        } else if recordExpenseAction?.enabled == true {
+            Text("El gasto se divide automáticamente entre los participantes del evento.")
+        }
+    }
+
+    private func loadIfNeeded() async {
+        guard !didLoad else { return }
+        didLoad = true
+        let all = (try? await container.rpc.listObligations(contextId: context.id)) ?? []
+        obligations = all
+            .filter { $0.sourceEventId == eventId }
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+    }
+
+    private func obligationSubtitle(_ o: Obligation) -> String {
+        let debtor = container.currentActorStore.actorId == o.debtorActorId ? "Tú" : "Miembro"
+        switch o.status {
+        case "settled", "completed": return "\(debtor) · liquidado"
+        case "forgiven": return "\(debtor) · condonado"
+        default: return "\(debtor) · pendiente"
+        }
+    }
+
+    private var totalLabel: String? {
+        guard let currency = obligations.first?.currency else { return nil }
+        let total = obligations.compactMap(\.amount).reduce(0, +)
+        guard total > 0 else { return nil }
+        return total.formatted(.currency(code: currency))
     }
 }

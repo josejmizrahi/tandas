@@ -52,50 +52,88 @@ struct EventDetailRelatedResourcesSection: View {
     }
 }
 
-// MARK: - 5. Decisiones relacionadas (Section + NavigationLink nativo)
+// MARK: - 5. Votaciones (Section + NavigationLink nativo)
+//
+// Founder 2026-06-12 "quiero ver todo organizado: ... votaciones" — antes solo
+// se listaban decisiones referenciadas en la actividad del evento (con título
+// sacado del payload). Ahora la section carga `decisions` del contexto (RLS
+// read-only) y muestra: las votaciones ABIERTAS del espacio + cualquier
+// decisión vinculada a este evento vía actividad (cerradas incluidas), con su
+// estado real (mapping canónico §0.3).
 
-struct EventDetailRelatedDecisionsSection: View {
+struct EventDetailDecisionsSection: View {
     let eventActivity: [ActivityEvent]
     let context: AppContext
     let container: DependencyContainer
 
+    @State private var decisions: [Decision] = []
+    @State private var didLoad = false
+
     var body: some View {
-        let items = relatedDecisions
+        let items = visibleDecisions
         if !items.isEmpty {
             Section {
-                ForEach(items) { item in
+                ForEach(items) { decision in
                     NavigationLink {
-                        DecisionDetailView(decisionId: item.id, context: context, container: container)
+                        DecisionDetailView(decisionId: decision.id, context: context, container: container)
                     } label: {
                         Label {
-                            Text(item.title)
-                                .font(.callout)
-                                .foregroundStyle(Theme.Text.primary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(decision.title)
+                                    .font(.callout)
+                                    .foregroundStyle(Theme.Text.primary)
+                                    .lineLimit(1)
+                                Text(subtitle(decision))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            }
                         } icon: {
-                            Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(.indigo)
+                            let state = RuulStatusBadge.State.decision(decision.status)
+                            Image(systemName: state.systemImage)
+                                .foregroundStyle(state.tint)
                         }
                     }
                 }
             } header: {
-                Text("Decisiones")
+                Text("Votaciones (\(items.count))")
+            } footer: {
+                Text("Votaciones abiertas de \(context.displayName) y las vinculadas a este evento.")
             }
         }
+        // El .task vive fuera del if: corre aunque la section aún no exista.
+        Color.clear
+            .frame(height: 0)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .task { await loadIfNeeded() }
     }
 
-    /// Decisiones únicas referenciadas en la actividad del evento.
-    private var relatedDecisions: [EventDetailRelatedItem] {
-        var seen: Set<UUID> = []
-        var out: [EventDetailRelatedItem] = []
-        for activity in eventActivity {
-            guard let id = activity.decisionId, !seen.contains(id) else { continue }
-            seen.insert(id)
-            let title = activity.payload?["title"]?.stringValue ?? "Decisión"
-            // El status no está fácilmente disponible sin un fetch extra —
-            // F.EVENT.5 puede resolverlo via decision_detail batch.
-            out.append(EventDetailRelatedItem(id: id, title: title, trailing: nil))
+    /// Abiertas del contexto + referenciadas por la actividad del evento
+    /// (dedup por id). Abiertas primero, luego por creación descendente.
+    private var visibleDecisions: [Decision] {
+        let relatedIds = Set(eventActivity.compactMap(\.decisionId))
+        return decisions
+            .filter { $0.isOpen || relatedIds.contains($0.id) }
+            .sorted {
+                if $0.isOpen != $1.isOpen { return $0.isOpen }
+                return ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast)
+            }
+    }
+
+    private func subtitle(_ decision: Decision) -> String {
+        if decision.isOpen {
+            if let closes = decision.closesAt {
+                return "Abierta · cierra \(closes.formatted(date: .abbreviated, time: .shortened))"
+            }
+            return "Abierta — puedes votar"
         }
-        return out
+        return RuulStatusBadge.State.decision(decision.status).label
+    }
+
+    private func loadIfNeeded() async {
+        guard !didLoad else { return }
+        didLoad = true
+        decisions = (try? await container.rpc.listDecisions(contextId: context.id)) ?? []
     }
 }
 

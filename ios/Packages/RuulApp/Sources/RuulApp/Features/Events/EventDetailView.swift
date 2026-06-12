@@ -7,25 +7,33 @@ import RuulCore
 /// El usuario debe entender en <3 segundos: qué es, por qué le importa,
 /// qué tiene que hacer, quién más participa.
 ///
-/// Scroll order founder-locked:
+/// Scroll order founder-locked (2026-06-12 "quiero ver todo organizado:
+/// gastos de ese evento, pools, votaciones, reglas, miembros"):
+///
+/// **El evento en sí**
 /// 1. **Header** — icon inline + título + status terminal + rango horario +
 ///    chips de tipo/ubicación/recurrencia + summary "N asistentes"
-/// 2. **Acción principal** — zona dinámica por estado:
-///    - Evento finalizado / cancelado → row gris informativo
-///    - Llegada registrada → confirmación + tiempo
-///    - Evento en curso → botón prominente "Llegué"
-///    - Sin responder → heading "Responde tu asistencia" + segmented RSVP
-///    - Ya respondí → heading "Vas a asistir" + segmented RSVP para cambiar
+/// 2. **Acción principal** — zona dinámica por estado (RSVP / Llegué / ended)
 /// 3. **Descripción** — notas del organizador (oculta si vacía)
-/// 4. **Serie** — sesión anterior / siguiente vía previous/next_event_id
-///    (oculta para eventos sueltos)
+/// 4. **Próxima reunión / Serie** — preview de host + navegación
+///    anterior/siguiente vía previous/next_event_id
 /// 5. **Ubicación** — snippet de mapa nativo + tap → Apple Maps
+///
+/// **Dominios** (sección vacía se omite, orden no cambia — R.5V §0.2)
 /// 6. **Participantes** — avatar strip + breakdown (incluye guests externos)
-/// 7. **Recursos relacionados** (oculta si vacío)
-/// 8. **Decisiones relacionadas** (oculta si vacío)
-/// 9. **Información** — Organizador / Fecha / Horario / Duración / Tipo /
-///    Ubicación / Repetición / Serie / Contexto / Creado
-/// 10. **Más acciones** — Menu en toolbar trailing
+/// 7. **Dinero del evento** — gastos (obligations con source_event_id) +
+///    total + CTA registrar gasto (ActionMenuButton, P0.5)
+/// 8. **Fondos del espacio** — pools abiertos del contexto
+/// 9. **Votaciones** — abiertas del contexto + vinculadas al evento
+/// 10. **Reglas que aplican** — triggers event.* activos
+/// 11. **Recursos** — reservados para el evento + relacionados por actividad
+/// 12. **Información** — Organizador / Fecha / Horario / Duración / Tipo /
+///     Ubicación / Repetición / Serie / Contexto / Creado
+///
+/// **Toolbar `+`** — TODAS las acciones de `available_actions[]` agrupadas
+/// por section semántica: asistencia (RSVP submenu + check-in), registrar,
+/// editar, anfitrión, estado, cancelar, otras. Disabled → reason visible
+/// (P0.5); sin dispatcher iOS → "Próximamente" (R.5X.fix.A). Nada se dropea.
 ///
 /// Eliminado: hero icon enorme, sección Actividad reciente, sección
 /// Administración visible, sección Auditoría, action strip con `•••` arriba.
@@ -104,7 +112,9 @@ public struct EventDetailView: View {
                             }
                         }
                     } label: {
-                        Image(systemName: "plus")
+                        // HIG: el menú lleva TODAS las acciones del evento
+                        // (no solo crear) → "More" (ellipsis), no "+".
+                        Image(systemName: "ellipsis.circle")
                             .accessibilityLabel("Más acciones")
                     }
                 }
@@ -114,7 +124,12 @@ public struct EventDetailView: View {
 
     @ViewBuilder
     private func moreActionButton(for item: MoreActionItem) -> some View {
-        if let action = item.action {
+        if item.kind == .rsvp, item.action?.enabled != false {
+            // rsvp_event como submenu nativo: Picker dentro de Menu renderiza
+            // las 3 opciones con checkmark en la selección actual. Si viniera
+            // disabled cae al ActionMenuButton (reason visible).
+            rsvpSubmenu(item)
+        } else if let action = item.action {
             // P0.5 — componente canónico: una acción disabled del backend se
             // muestra deshabilitada con su `reason` como subtítulo del item.
             ActionMenuButton(
@@ -135,6 +150,31 @@ public struct EventDetailView: View {
             } label: {
                 Label(item.label, systemImage: item.symbol)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func rsvpSubmenu(_ item: MoreActionItem) -> some View {
+        let current: RSVPStatus? = store.myParticipation(myActorId: myActorId)
+            .flatMap { RSVPStatus(rawValue: $0.status) }
+        Menu {
+            Picker("Asistencia", selection: Binding<RSVPStatus?>(
+                get: { current },
+                set: { newValue in
+                    guard let newValue else { return }
+                    Task {
+                        await runner.run {
+                            try await store.rsvp(newValue, eventId: eventId, context: context)
+                        }
+                    }
+                }
+            )) {
+                Text("Voy").tag(RSVPStatus?.some(.going))
+                Text("Tal vez").tag(RSVPStatus?.some(.maybe))
+                Text("No voy").tag(RSVPStatus?.some(.declined))
+            }
+        } label: {
+            Label(item.label, systemImage: item.symbol)
         }
     }
 
@@ -336,6 +376,7 @@ public struct EventDetailView: View {
     @ViewBuilder
     private func detailList(_ event: CalendarEvent) -> some View {
         List {
+            // — El evento en sí —
             EventDetailHeroSection(event: event, context: context, store: store)
             EventDetailPrimaryActionSection(
                 event: event,
@@ -349,36 +390,36 @@ public struct EventDetailView: View {
             EventDetailDescriptionSection(event: event)
             EventDetailNextSessionSection(event: event, store: store)
             EventDetailSeriesSection(event: event, context: context, container: container)
+            EventDetailLocationSection(event: event)
+            // — Personas —
+            EventDetailParticipantsSection(
+                store: store,
+                isShowingAllParticipants: $isShowingAllParticipants
+            )
+            // — Dinero (gastos del evento + CTA) / Fondos —
+            EventDetailMoneySection(
+                eventId: eventId,
+                context: context,
+                container: container,
+                store: store,
+                onRecordExpense: { openExpenseSheet() }
+            )
+            EventDetailPoolsSection(context: context, container: container)
+            // — Votaciones / Reglas —
+            EventDetailDecisionsSection(
+                eventActivity: eventActivity,
+                context: context,
+                container: container
+            )
+            EventDetailRulesSection(context: context, container: container)
+            // — Recursos —
             EventDetailLinkedReservationsSection(
                 linkedReservations: linkedReservations,
                 linkedResourceNames: linkedResourceNames,
                 context: context,
                 container: container
             )
-            EventDetailLocationSection(event: event)
-            EventDetailParticipantsSection(
-                store: store,
-                isShowingAllParticipants: $isShowingAllParticipants
-            )
-            EventDetailMoneySection(
-                store: store,
-                onRecordExpense: { openExpenseSheet() }
-            )
-            // Insights del evento (founder 2026-06-12): gastos reales del
-            // evento, reglas que le aplican y fondos del espacio.
-            EventDetailExpensesSection(
-                eventId: eventId,
-                context: context,
-                container: container
-            )
-            EventDetailRulesSection(context: context, container: container)
-            EventDetailPoolsSection(context: context, container: container)
             EventDetailRelatedResourcesSection(
-                eventActivity: eventActivity,
-                context: context,
-                container: container
-            )
-            EventDetailRelatedDecisionsSection(
                 eventActivity: eventActivity,
                 context: context,
                 container: container
@@ -403,6 +444,8 @@ public struct EventDetailView: View {
 
     private func handleMoreAction(_ kind: MoreActionKind) {
         switch kind {
+        case .rsvp:                    break // submenu Picker — no pasa por acá
+        case .selfCheckIn:             Task { await selfCheckIn() }
         case .recordExpense:           openExpenseSheet()
         case .createDecision:          pushedDecisions = true
         case .closeEvent:              isConfirmingClose = true
@@ -411,6 +454,7 @@ public struct EventDetailView: View {
         case .changeNextHost:          isShowingNextHostPicker = true
         case .configureHostRotation:   isShowingRotationOrder = true
         case .reserveResource:         isShowingReserveResourceFlow = true
+        case .unsupported:             break // disabled — el tap nunca llega
         }
     }
 

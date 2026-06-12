@@ -9,6 +9,11 @@ import RuulCore
 
 extension EventDetailView {
     enum MoreActionKind {
+        /// Founder 2026-06-12 — el toolbar lista TODAS las acciones del evento.
+        /// rsvp_event renderiza como submenu Picker (Voy/Tal vez/No voy).
+        case rsvp
+        /// check_in_participant sobre uno mismo ("Marcar mi llegada").
+        case selfCheckIn
         case recordExpense
         case createDecision
         case closeEvent
@@ -20,6 +25,10 @@ extension EventDetailView {
         case configureHostRotation
         /// R.2T — reservar un recurso del contexto para este evento.
         case reserveResource
+        /// Action_key del backend sin dispatcher iOS todavía — se muestra
+        /// deshabilitado con "Próximamente" (doctrina R.5X.fix.A), nunca se
+        /// dropea en silencio.
+        case unsupported
     }
 
     struct MoreActionItem: Identifiable {
@@ -39,30 +48,36 @@ extension EventDetailView {
     /// P0 fix 2026-06-08 — clasificación semántica de MoreActionKind para
     /// agrupar en el Menu toolbar.
     enum MoreActionSection: CaseIterable {
+        case asistencia
         case registrar
         case editar
         case anfitrion
         case estado
         case cancelar
+        case otras
 
         var label: String {
             switch self {
-            case .registrar: return "Registrar"
-            case .editar:    return "Editar"
-            case .anfitrion: return "Anfitrión"
-            case .estado:    return "Estado"
-            case .cancelar:  return "Cancelar"
+            case .asistencia: return "Asistencia"
+            case .registrar:  return "Registrar"
+            case .editar:     return "Editar"
+            case .anfitrion:  return "Anfitrión"
+            case .estado:     return "Estado"
+            case .cancelar:   return "Cancelar"
+            case .otras:      return "Otras"
             }
         }
     }
 
     func moreActionSection(_ kind: MoreActionKind) -> MoreActionSection {
         switch kind {
+        case .rsvp, .selfCheckIn:                     return .asistencia
         case .recordExpense, .createDecision, .reserveResource: return .registrar
         case .editEvent:                              return .editar
         case .changeNextHost, .configureHostRotation: return .anfitrion
         case .closeEvent:                             return .estado
         case .cancelParticipation:                    return .cancelar
+        case .unsupported:                            return .otras
         }
     }
 
@@ -79,6 +94,18 @@ extension EventDetailView {
         var out: [MoreActionItem] = []
         for action in availableActions {
             switch action.actionKey {
+            case "rsvp_event":
+                out.append(MoreActionItem(
+                    kind: .rsvp, label: action.label,
+                    symbol: "person.crop.circle.badge.questionmark", isDestructive: false,
+                    action: action
+                ))
+            case "check_in_participant":
+                out.append(MoreActionItem(
+                    kind: .selfCheckIn, label: action.label,
+                    symbol: "checkmark.circle", isDestructive: false,
+                    action: action
+                ))
             case "record_expense":
                 out.append(MoreActionItem(
                     kind: .recordExpense, label: action.label,
@@ -114,7 +141,17 @@ extension EventDetailView {
                     ))
                 }
             default:
-                break
+                // Doctrina R.5X.fix.A — action_key sin dispatcher iOS: visible,
+                // deshabilitado y honesto ("Próximamente"). Nunca se dropea.
+                out.append(MoreActionItem(
+                    kind: .unsupported, label: action.label,
+                    symbol: "hourglass", isDestructive: false,
+                    action: AvailableAction(
+                        actionKey: action.actionKey, label: action.label,
+                        section: action.section, enabled: false,
+                        reason: "Próximamente"
+                    )
+                ))
             }
         }
         // F.EVENT.8 — "Cambiar próximo anfitrión" sólo para eventos

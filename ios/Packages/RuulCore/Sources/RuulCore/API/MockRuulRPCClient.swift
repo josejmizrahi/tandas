@@ -5793,6 +5793,22 @@ extension MockRuulRPCClient {
             "display_name": .string("Bote — Cena Semanal")
         ]))
 
+        // Votación abierta del grupo — para que la section "Votaciones" del
+        // Event Detail tenga datos en previews (founder 2026-06-12).
+        let menuDecision = Decision(
+            id: UUID(),
+            contextActorId: cena.id,
+            decisionType: "generic",
+            title: "¿Cambiamos la cena al sábado?",
+            description: "Moisés no puede los jueves este mes.",
+            status: "open",
+            votingModel: "yes_no_abstain",
+            createdByActorId: DemoIds.moises,
+            closesAt: Calendar.current.date(byAdding: .day, value: 3, to: Date()),
+            createdAt: Date().addingTimeInterval(-86400)
+        )
+        decisions[menuDecision.id] = menuDecision
+
         // Ledger seed (R.4C) — money_transactions del browser de movimientos.
         let txnExpense = MoneyTransaction(
             id: UUID(),
