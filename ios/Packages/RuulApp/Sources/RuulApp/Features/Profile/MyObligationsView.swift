@@ -14,6 +14,8 @@ public struct MyObligationsView: View {
     @State private var phase: StorePhase = .idle
     @State private var aggregated: [Entry] = []
     @State private var filter: ObligationFilter = .active
+    /// P2.1 — búsqueda por título o contexto.
+    @State private var query: String = ""
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -43,7 +45,14 @@ public struct MyObligationsView: View {
     @ViewBuilder
     private var content: some View {
         let myActorId = container.currentActorStore.actorId
-        let filtered = aggregated.filter { matches(filter, status: $0.obligation.status) }
+        let trimmedQuery = query.trimmingCharacters(in: .whitespaces)
+        let filtered = aggregated
+            .filter { matches(filter, status: $0.obligation.status) }
+            .filter { entry in
+                guard !trimmedQuery.isEmpty else { return true }
+                return entry.obligation.title.localizedCaseInsensitiveContains(trimmedQuery)
+                    || entry.context.displayName.localizedCaseInsensitiveContains(trimmedQuery)
+            }
         let debts = filtered
             .filter { $0.obligation.debtorActorId == myActorId }
             .sorted(by: dueAtAsc)
@@ -70,6 +79,7 @@ public struct MyObligationsView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .searchable(text: $query, prompt: "Buscar compromiso")
     }
 
     @ViewBuilder
