@@ -16,6 +16,11 @@ public struct CreateDecisionView: View {
     @State private var votingModel: VotingModel
     @State private var optionDrafts: [DecisionOptionDraft] = []
     @State private var newOptionText: String = ""
+    /// R.4B — plantilla seleccionada (nil = decisión libre). Las plantillas
+    /// `coming_soon` se pueden elegir pero el submit queda deshabilitado.
+    @State private var selectedTemplateKey: String?
+    /// R.4B — valores crudos del form de payload, por nombre de campo.
+    @State private var formText: [String: String] = [:]
     @State private var runner = ActionRunner()
     /// R.6.AI.8 — AI hero state.
     @State private var suggestionService = DecisionSuggestionService()
@@ -43,9 +48,15 @@ public struct CreateDecisionView: View {
 
     public var body: some View {
         Form {
-            // R.6.AI.8 — Hero AI sólo cuando no viene de un conflicto pre-poblado.
-            if conflictReference == nil {
+            // R.6.AI.8 — Hero AI sólo cuando no viene de un conflicto pre-poblado
+            // ni de una plantilla (la plantilla ya estructura la decisión).
+            if conflictReference == nil && selectedTemplate == nil {
                 aiHero
+            }
+
+            // R.4B — picker de plantillas (no aplica a disputas de reservación).
+            if conflictReference == nil {
+                templateSection
             }
 
             Section("Propuesta") {
@@ -55,34 +66,10 @@ public struct CreateDecisionView: View {
                     .lineLimit(2...5)
             }
 
-            Section("Tipo") {
-                Picker("Tipo", selection: $decisionType) {
-                    ForEach(DecisionType.allCases) { type in
-                        Text(type.label).tag(type)
-                    }
-                }
-                .pickerStyle(.navigationLink)
-            }
-
-            // R.2Q — voting model picker
-            // En conflictos de reservación el modo es fijo (single_choice con
-            // 4 opciones auto-seedeadas). En el resto, el usuario elige.
-            if conflictReference == nil {
-                Section {
-                    Picker("Modo de votación", selection: $votingModel) {
-                        ForEach(supportedVotingModels, id: \.self) { model in
-                            Text(model.label).tag(model)
-                        }
-                    }
-                    .pickerStyle(.navigationLink)
-                } footer: {
-                    Text(votingModelHint)
-                }
-            }
-
-            // R.2Q — opciones manuales para single_choice y multiple_choice no-disputa
-            if (votingModel == .singleChoice || votingModel == .multipleChoice) && conflictReference == nil {
-                optionsSection
+            if let template = selectedTemplate {
+                templateBody(template)
+            } else {
+                freeFormBody
             }
 
             Section {
@@ -107,8 +94,228 @@ public struct CreateDecisionView: View {
                 Button("Cancelar") { dismiss() }
             }
         }
+        .task {
+            if conflictReference == nil {
+                await store.loadCreateCatalog(context: context)
+            }
+        }
         .actionErrorAlert(runner)
         .ruulSheet()
+    }
+
+    // MARK: - Free-form (R.2Q) — sin plantilla
+
+    @ViewBuilder
+    private var freeFormBody: some View {
+        Section("Tipo") {
+            Picker("Tipo", selection: $decisionType) {
+                ForEach(DecisionType.allCases) { type in
+                    Text(type.label).tag(type)
+                }
+            }
+            .pickerStyle(.navigationLink)
+        }
+
+        // R.2Q — voting model picker
+        // En conflictos de reservación el modo es fijo (single_choice con
+        // 4 opciones auto-seedeadas). En el resto, el usuario elige.
+        if conflictReference == nil {
+            Section {
+                Picker("Modo de votación", selection: $votingModel) {
+                    ForEach(supportedVotingModels, id: \.self) { model in
+                        Text(model.label).tag(model)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+            } footer: {
+                Text(votingModelHint)
+            }
+        }
+
+        // R.2Q — opciones manuales para single_choice y multiple_choice no-disputa
+        if (votingModel == .singleChoice || votingModel == .multipleChoice) && conflictReference == nil {
+            optionsSection
+        }
+    }
+
+    // MARK: - R.4B — Plantillas
+
+    /// Plantilla seleccionada resuelta desde el catálogo cargado.
+    private var selectedTemplate: DecisionTemplate? {
+        guard let key = selectedTemplateKey else { return nil }
+        return store.templates.first { $0.templateKey == key }
+    }
+
+    /// Plantillas ofrecidas en el picker: ejecutables primero, luego las
+    /// `coming_soon`; ambas alfabéticas. `reservation_award` se excluye (entra
+    /// por el flujo de conflicto de reservación, F.9).
+    private var offeredTemplates: [DecisionTemplate] {
+        let usable = store.templates.filter { !$0.isReservationAward }
+        let executable = usable.filter(\.isExecutable).sorted { $0.displayName < $1.displayName }
+        let comingSoon = usable.filter(\.isComingSoon).sorted { $0.displayName < $1.displayName }
+        return executable + comingSoon
+    }
+
+    @ViewBuilder
+    private var templateSection: some View {
+        if !offeredTemplates.isEmpty {
+            Section {
+                Picker("Plantilla", selection: $selectedTemplateKey) {
+                    Text("Sin plantilla (libre)").tag(String?.none)
+                    ForEach(offeredTemplates) { template in
+                        HStack {
+                            Text(template.displayName)
+                            if template.isComingSoon {
+                                Spacer()
+                                Text("Próximamente")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .tag(Optional(template.templateKey))
+                    }
+                }
+                .pickerStyle(.navigationLink)
+                .onChange(of: selectedTemplateKey) { _, _ in onTemplateChange() }
+            } header: {
+                Text("Plantilla")
+            } footer: {
+                Text("Las plantillas estructuran la decisión y ejecutan su efecto al aprobarse. Déjala en «libre» para una decisión sin plantilla.")
+            }
+        }
+    }
+
+    /// Cuerpo dependiente de la plantilla: descripción, parámetros (form de
+    /// payload) o aviso `coming_soon`, y el modo de votación heredado.
+    @ViewBuilder
+    private func templateBody(_ template: DecisionTemplate) -> some View {
+        if let detail = template.description {
+            Section { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
+        }
+
+        if template.isComingSoon {
+            Section {
+                Label("Próximamente", systemImage: "hourglass")
+                    .foregroundStyle(.secondary)
+            } footer: {
+                Text("Esta plantilla aún no ejecuta su efecto en el backend. Pronto la habilitamos.")
+            }
+        } else if template.hasPayloadForm {
+            templateFormSection(template)
+        }
+
+        Section {
+            LabeledContent("Modo de votación", value: template.voting.label)
+        } footer: {
+            Text("Heredado de la plantilla. Se aprueba con mayoría simple.")
+        }
+    }
+
+    @ViewBuilder
+    private func templateFormSection(_ template: DecisionTemplate) -> some View {
+        Section {
+            ForEach(template.payloadSchema.fields) { field in
+                templateField(field)
+            }
+        } header: {
+            Text("Parámetros")
+        } footer: {
+            Text("Define el objeto de la decisión. Estos valores se aplican cuando se aprueba.")
+        }
+    }
+
+    @ViewBuilder
+    private func templateField(_ field: DecisionTemplatePayloadSchema.Field) -> some View {
+        let label = fieldLabel(field)
+        switch field.name {
+        case "resource_id":
+            Picker(label, selection: bindingFor(field.name)) {
+                Text("Selecciona…").tag("")
+                ForEach(store.resources) { resource in
+                    Text(resource.displayName).tag(resource.resourceId.uuidString)
+                }
+            }
+            .pickerStyle(.navigationLink)
+        case "rule_id":
+            Picker(label, selection: bindingFor(field.name)) {
+                Text("Selecciona…").tag("")
+                ForEach(store.rules) { rule in
+                    Text(rule.title).tag(rule.id.uuidString)
+                }
+            }
+            .pickerStyle(.navigationLink)
+        case "holder_actor_id":
+            Picker(label, selection: bindingFor(field.name)) {
+                Text("Selecciona…").tag("")
+                ForEach(store.members) { member in
+                    Text(member.displayName).tag(member.actorId.uuidString)
+                }
+            }
+            .pickerStyle(.navigationLink)
+        case "right_kind":
+            Picker(label, selection: bindingFor(field.name)) {
+                Text("Selecciona…").tag("")
+                ForEach(RightKind.allCases) { kind in
+                    Text(kind.label).tag(kind.rawValue)
+                }
+            }
+            .pickerStyle(.navigationLink)
+        case "percent":
+            TextField(label, text: bindingFor(field.name))
+                .keyboardType(.decimalPad)
+        default:
+            TextField(label, text: bindingFor(field.name))
+        }
+    }
+
+    private func bindingFor(_ fieldName: String) -> Binding<String> {
+        Binding(
+            get: { formText[fieldName] ?? "" },
+            set: { formText[fieldName] = $0 }
+        )
+    }
+
+    private func fieldLabel(_ field: DecisionTemplatePayloadSchema.Field) -> String {
+        let base: String
+        switch field.name {
+        case "resource_id": base = "Recurso"
+        case "rule_id": base = "Regla"
+        case "holder_actor_id": base = "Beneficiario"
+        case "right_kind": base = "Derecho"
+        case "percent": base = "Porcentaje (%)"
+        case "scope": base = "Alcance"
+        case "reason": base = "Motivo"
+        case "description": base = "Descripción"
+        default: base = field.name.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+        return field.required ? base : "\(base) (opcional)"
+    }
+
+    /// Al cambiar de plantilla limpiamos el form y prefilleamos el título con
+    /// el nombre de la plantilla si el usuario aún no escribió nada.
+    private func onTemplateChange() {
+        formText = [:]
+        if let template = selectedTemplate,
+           title.trimmingCharacters(in: .whitespaces).isEmpty {
+            title = template.displayName
+        }
+    }
+
+    /// Valores no vacíos del form, convertidos a JSONValue por tipo.
+    private var collectedFormValues: [String: JSONValue] {
+        guard let template = selectedTemplate else { return [:] }
+        var values: [String: JSONValue] = [:]
+        for field in template.payloadSchema.fields {
+            let raw = (formText[field.name] ?? "").trimmingCharacters(in: .whitespaces)
+            guard !raw.isEmpty else { continue }
+            switch field.kind {
+            case .numeric:
+                if let n = Double(raw) { values[field.name] = .number(n) }
+            default:
+                values[field.name] = .string(raw)
+            }
+        }
+        return values
     }
 
     // MARK: - Opciones (R.2Q)
@@ -180,6 +387,12 @@ public struct CreateDecisionView: View {
     private var canSubmit: Bool {
         let titleOK = !title.trimmingCharacters(in: .whitespaces).isEmpty
         guard titleOK else { return false }
+        // R.4B — con plantilla: las `coming_soon` no se pueden proponer; las
+        // ejecutables exigen sus campos `required`.
+        if let template = selectedTemplate {
+            guard template.isExecutable else { return false }
+            return template.missingRequiredFields(in: collectedFormValues).isEmpty
+        }
         if (votingModel == .singleChoice || votingModel == .multipleChoice) && conflictReference == nil {
             return optionDrafts.count >= 2
         }
@@ -187,6 +400,12 @@ public struct CreateDecisionView: View {
     }
 
     private var submitFooter: String {
+        if let template = selectedTemplate {
+            if template.isComingSoon {
+                return "Esta plantilla aún no está disponible para proponerse."
+            }
+            return "Se aprueba con mayoría simple. Al ejecutarse aplica el efecto de «\(template.displayName)»."
+        }
         switch votingModel {
         case .yesNoAbstain:
             return "Se aprueba con mayoría simple."
@@ -260,6 +479,25 @@ public struct CreateDecisionView: View {
 
     private func create() async {
         let success = await runner.run {
+            // R.4B — flujo de plantilla: el backend hereda voting model y
+            // despacha el efecto al ejecutar según `execution_kind`.
+            if let template = selectedTemplate {
+                let values = collectedFormValues
+                let input = CreateDecisionInput(
+                    contextId: context.id,
+                    decisionType: .generic,
+                    title: title.trimmingCharacters(in: .whitespaces),
+                    description: description.isEmpty ? nil : description,
+                    payload: values.isEmpty ? nil : .object(values),
+                    clientId: UUID().uuidString,
+                    votingModel: nil,
+                    templateKey: template.templateKey,
+                    decisionTypeRaw: template.decisionType
+                )
+                _ = try await store.createDecision(input, context: context)
+                return
+            }
+
             var payload: JSONValue?
             if let conflictReference {
                 payload = .object(["conflict_id": .string(conflictReference.uuidString)])

@@ -375,6 +375,9 @@ public protocol RuulRPCClient: Sendable {
     func unvoteOption(decisionId: UUID, optionId: UUID) async throws -> UnvoteResult
     /// `create_decision_option(...)` — R.2Q.
     func createDecisionOption(_ input: CreateDecisionOptionInput) async throws -> DecisionOption
+    /// R.4B — lectura PostgREST: catálogo de plantillas de decisión
+    /// (`decision_templates_catalog`, RLS `select` a `authenticated`).
+    func listDecisionTemplates() async throws -> [DecisionTemplate]
 
     // MARK: - Money
 
@@ -1087,8 +1090,18 @@ public struct CreateDecisionInput: Sendable, Equatable {
     public var closesAt: Date?
     public var payload: JSONValue?
     public var clientId: String?
-    /// R.2Q — override del voting_model. Si es nil, el backend autodetecta.
+    /// R.2Q — override del voting_model. Si es nil, el backend autodetecta
+    /// (o hereda el `default_voting_model` de la plantilla cuando hay `templateKey`).
     public var votingModel: VotingModel?
+    /// R.4B — plantilla (`p_template_key`). El backend hereda voting model y
+    /// despacha el efecto al ejecutar según `execution_kind`.
+    public var templateKey: String?
+    /// R.4B — `decision_type` crudo del catálogo (`governance`/`money`/…), que no
+    /// mapea 1:1 al enum `DecisionType`. Si está presente, manda este en el wire.
+    public var decisionTypeRaw: String?
+
+    /// `decision_type` efectivo enviado al backend.
+    public var decisionTypeWire: String { decisionTypeRaw ?? decisionType.rawValue }
 
     public init(
         contextId: UUID,
@@ -1098,7 +1111,9 @@ public struct CreateDecisionInput: Sendable, Equatable {
         closesAt: Date? = nil,
         payload: JSONValue? = nil,
         clientId: String? = nil,
-        votingModel: VotingModel? = nil
+        votingModel: VotingModel? = nil,
+        templateKey: String? = nil,
+        decisionTypeRaw: String? = nil
     ) {
         self.contextId = contextId
         self.decisionType = decisionType
@@ -1108,6 +1123,8 @@ public struct CreateDecisionInput: Sendable, Equatable {
         self.payload = payload
         self.clientId = clientId
         self.votingModel = votingModel
+        self.templateKey = templateKey
+        self.decisionTypeRaw = decisionTypeRaw
     }
 }
 
