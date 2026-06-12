@@ -348,6 +348,15 @@ public struct EventDetailView: View {
                 store: store,
                 onRecordExpense: { openExpenseSheet() }
             )
+            // Insights del evento (founder 2026-06-12): gastos reales del
+            // evento, reglas que le aplican y fondos del espacio.
+            EventDetailExpensesSection(
+                eventId: eventId,
+                context: context,
+                container: container
+            )
+            EventDetailRulesSection(context: context, container: container)
+            EventDetailPoolsSection(context: context, container: container)
             EventDetailRelatedResourcesSection(
                 eventActivity: eventActivity,
                 context: context,
