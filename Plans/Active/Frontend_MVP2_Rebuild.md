@@ -22,7 +22,7 @@
 | F.11 Money | MoneyHome (balances + obligations) + RecordExpense (SplitEditor) + GameResult + Fine | ✅ | ⬜ |
 | F.12 Settlement | SettlementView (generar + items + marcar pagado) | ✅ | ⬜ |
 | F.13 Activity | ActivityFeed (paginado, agrupado por día) + ActivityDetail | ✅ | ⬜ |
-| F.14 Full App Flow | Smokes manuales end-to-end | — | ⬜ **pendiente founder** |
+| F.14 Full App Flow | Smokes manuales end-to-end | — | ✅ founder 2026-06-12 |
 
 ## Arquitectura final
 

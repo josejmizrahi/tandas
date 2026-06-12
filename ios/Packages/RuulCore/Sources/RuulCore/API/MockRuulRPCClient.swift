@@ -4814,7 +4814,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
         )
     }
 
-    public func activityFeed(actorId: UUID?, limit: Int) async throws -> ActivityFeed {
+    public func activityFeed(actorId: UUID?, limit: Int, offset: Int) async throws -> ActivityFeed {
         try throwIfNeeded()
         let actor = actorId ?? me.id
         guard actor == me.id else {
@@ -4886,7 +4886,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
             if lhs.score != rhs.score { return lhs.score > rhs.score }
             return (lhs.occurredAt ?? .distantPast) > (rhs.occurredAt ?? .distantPast)
         }
-        return ActivityFeed(actorId: actor, limit: limit, items: Array(items.prefix(min(limit, 200))))
+        let clampedOffset = max(0, offset)
+        return ActivityFeed(actorId: actor, limit: limit, items: Array(items.dropFirst(clampedOffset).prefix(min(limit, 200))))
     }
 
     public func addTrust(targetActorId: UUID, trustLevel: Int, trustType: TrustType, notes: String?) async throws -> UUID {

@@ -2372,16 +2372,18 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await call("list_my_subscriptions")
     }
 
-    public func activityFeed(actorId: UUID?, limit: Int) async throws -> ActivityFeed {
+    public func activityFeed(actorId: UUID?, limit: Int, offset: Int) async throws -> ActivityFeed {
         struct Params: Encodable, Sendable {
             let pActorId: UUID?
             let pLimit: Int
+            let pOffset: Int
             enum CodingKeys: String, CodingKey {
                 case pActorId = "p_actor_id"
                 case pLimit   = "p_limit"
+                case pOffset  = "p_offset"
             }
         }
-        return try await call("activity_feed", params: Params(pActorId: actorId, pLimit: limit))
+        return try await call("activity_feed", params: Params(pActorId: actorId, pLimit: limit, pOffset: offset))
     }
 
     public func addTrust(targetActorId: UUID, trustLevel: Int, trustType: TrustType, notes: String?) async throws -> UUID {
