@@ -153,13 +153,33 @@ public struct RequestReservationView: View {
                     Text(why.canReserve ? "Puedes reservar" : "No puedes reservar")
                         .font(.callout.weight(.semibold))
                 }
-                ForEach(why.reasons, id: \.self) { reason in
-                    Text(reason)
+                // P1.14 — explicación completa del why-engine: razones del
+                // backend, o fallback honesto + capability requerida si faltan.
+                if why.reasons.isEmpty {
+                    Text(why.canReserve
+                         ? "Tienes un derecho vigente sobre este recurso."
+                         : "Necesitas que un administrador te otorgue un derecho de uso (USE) sobre este recurso.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                } else {
+                    ForEach(why.reasons, id: \.self) { reason in
+                        Label {
+                            Text(reason)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } icon: {
+                            Image(systemName: "key.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                if !why.canReserve {
+                    LabeledContent("Capability requerida", value: why.requiredCapability)
+                        .font(.caption)
                 }
             } header: {
-                Text("Permisos")
+                Text("Por qué puedes (o no) reservar")
             }
         }
     }

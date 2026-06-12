@@ -77,6 +77,18 @@ para el founder en device:
 Criterio final del plan: todo corre desde iPhone, sin SQL manual, sin mocks, sin
 pantallas legacy.
 
+## Estado post-auditoría FE (2026-06-12)
+
+Las Fases 1–3 de `FrontendImplementationPlan.md` están completas y en main
+(PRs #169–#174 + Fase 3): invitaciones bidireccionales (decline/revoke),
+evict de sesiones huérfanas, legal + eliminación de cuenta (App Store
+5.1.1(v)/ARCO), descriptor de obligaciones honesto, centro de notificaciones
+R.4D con primer emisor real, foto de perfil, cambio de teléfono/correo,
+countdown/participación en decisiones, historial real de reglas, export CSV
+de la memoria, pausa directa de miembros y catálogo de governance visible.
+F.14 (smoke manual en iPhone) sigue pendiente del founder e incluye ahora
+los flujos nuevos.
+
 ## Pendientes conocidos (post-rebuild)
 
 - ~~`update_my_profile` no tiene pantalla~~ → **hecho**: `EditProfileView`
