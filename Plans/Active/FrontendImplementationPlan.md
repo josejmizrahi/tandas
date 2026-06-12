@@ -132,6 +132,11 @@ contextos con fondos; pasada de copy institucional en onboarding/empty states
    ya en prod) gateada por creador/`money.settle`, nunca settlement. Cierra el
    diferido de P1.9 ("faltaba superficie de transacciones individuales").
    Frontend-only. Detalle en contrato §15.12.
+4. ◑ **Razones de acción deshabilitada** (P0.5) — componente canónico
+   `ActionMenuButton` (muestra el `reason` del backend cuando una acción está
+   disabled) aplicado a Context/Money/Obligation. Quedan como follow-up las
+   vistas con pipeline de acción bespoke (Event/Resource/Pool/Member). Detalle
+   en contrato §15.13.
 
 ---
 
