@@ -9,6 +9,12 @@ public final class DecisionsStore {
     public private(set) var myPermissions: [String] = []
     public private(set) var members: [ContextMember] = []
     public private(set) var phase: StorePhase = .idle
+    /// R.4B — catálogo de plantillas (`decision_templates_catalog`) para el picker.
+    public private(set) var templates: [DecisionTemplate] = []
+    /// R.4B — recursos del contexto (para los pickers de payload que apuntan a un recurso).
+    public private(set) var resources: [ContextResource] = []
+    /// R.4B — reglas activas del contexto (para `archive_rule`).
+    public private(set) var rules: [Rule] = []
 
     private let rpc: any RuulRPCClient
     /// Para resolver "Tú" cuando el actor no está en members
@@ -44,6 +50,25 @@ public final class DecisionsStore {
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
         }
+    }
+
+    /// R.4B — carga el catálogo de plantillas + los datos que alimentan los
+    /// pickers del form (miembros del summary, recursos y reglas). Todo best-effort:
+    /// si algo falla (RLS, red), el form cae a sólo las plantillas que sí cargaron.
+    public func loadCreateCatalog(context: AppContext) async {
+        async let templatesTask: [DecisionTemplate]? = try? await rpc.listDecisionTemplates()
+        async let summaryTask: ContextSummary? = try? await rpc.contextSummary(contextId: context.id)
+        async let resourcesTask: [ContextResource]? = try? await rpc.listContextResources(contextId: context.id)
+        async let rulesTask: [Rule]? = try? await rpc.listRules(contextId: context.id)
+        let (loadedTemplates, summary, loadedResources, loadedRules) =
+            await (templatesTask, summaryTask, resourcesTask, rulesTask)
+        if let loadedTemplates { templates = loadedTemplates }
+        if let summary {
+            members = summary.members
+            myPermissions = summary.myPermissions
+        }
+        if let loadedResources { resources = loadedResources.filter { $0.status != "archived" } }
+        if let loadedRules { rules = loadedRules.filter(\.isActive) }
     }
 
     public func displayName(for actorId: UUID?) -> String {

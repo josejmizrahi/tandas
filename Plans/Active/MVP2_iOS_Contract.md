@@ -542,3 +542,32 @@ authority members.manage; emite `context.archived` (catalogado). iOS: botón
 request_governance_action → DecisionDetail; si la policy está en false,
 ejecuta directo y refresca contextos. Smoke
 `_smoke_mvp2_archive_context` verde contra prod.
+
+### 15.11 Picker de plantillas de decisión R.4B (FE Fase 5b, 2026-06-12)
+
+Frontend-only — no toca el backend. Expone en `CreateDecisionView` las
+plantillas de `decision_templates_catalog` (lectura PostgREST, RLS `select` a
+`authenticated`; modelo `DecisionTemplate` + `listDecisionTemplates()`).
+`create_decision` ya acepta `p_template_key` y hereda `default_voting_model`;
+iOS manda además el `decision_type` crudo del catálogo
+(`governance`/`money`/`resources`/…) vía `CreateDecisionInput.decisionTypeRaw`
+porque ese valor no mapea 1:1 al enum `DecisionType`.
+
+Clasificación de `execution_kind` (espeja el dispatch real de
+`execute_decision`):
+- **Ejecutables** (form de payload derivado de `payload_schema`): `noop`
+  (genérica, sin form), `archive_resource`, `archive_rule`,
+  `grant_resource_right`. Los campos `uuid` conocidos se resuelven con pickers
+  (recurso / regla / miembro) y `right_kind` con `RightKind`; el resto es
+  texto/numérico. El submit valida los `required` (`missingRequiredFields`).
+- **Coming soon** (los 7 que `execute_decision` rechaza con `0A000`:
+  `activate_membership`, `create_expense`, `create_payout`,
+  `mark_resource_approved`, `set_membership_banned`, `upsert_rule`,
+  `set_membership_removed`): se ofrecen en el picker con badge "Próximamente"
+  (doctrina UX §0.4 / R.5V) y el submit queda deshabilitado.
+- `reservation_award` (`resolve_reservation_conflict`) se excluye del picker —
+  entra por el flujo de disputa de reservación (F.9, `conflictReference`).
+
+Sin migration ni smoke nuevos: el catálogo, `p_template_key` y el dispatch ya
+están en prod. Tests en `DecisionTemplateTests` (decoding, clasificación,
+validación de required, herencia de voting model en el mock).

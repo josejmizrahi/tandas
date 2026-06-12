@@ -1515,6 +1515,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pPayload: JSONValue?
             let pClientId: String?
             let pVotingModel: String?
+            let pTemplateKey: String?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pDecisionType = "p_decision_type"
@@ -1524,17 +1525,19 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pPayload = "p_payload"
                 case pClientId = "p_client_id"
                 case pVotingModel = "p_voting_model"
+                case pTemplateKey = "p_template_key"
             }
         }
         let created: DecisionCreated = try await call("create_decision", params: Params(
             pContextActorId: input.contextId,
-            pDecisionType: input.decisionType.rawValue,
+            pDecisionType: input.decisionTypeWire,
             pTitle: input.title,
             pDescription: input.description,
             pClosesAt: input.closesAt,
             pPayload: input.payload,
             pClientId: input.clientId,
-            pVotingModel: input.votingModel?.rawValue
+            pVotingModel: input.votingModel?.rawValue,
+            pTemplateKey: input.templateKey
         ))
         return created.decision
     }
@@ -1697,6 +1700,19 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pSortOrder: input.sortOrder
         ))
         return response.option
+    }
+
+    public func listDecisionTemplates() async throws -> [DecisionTemplate] {
+        do {
+            return try await client
+                .from("decision_templates_catalog")
+                .select()
+                .order("display_name", ascending: true)
+                .execute()
+                .value
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
     }
 
     // MARK: - Money

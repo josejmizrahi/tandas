@@ -2836,12 +2836,17 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     public func createDecision(_ input: CreateDecisionInput) async throws -> Decision {
         try throwIfNeeded()
+        // R.4B — con plantilla, hereda su `default_voting_model` (como el backend).
+        let templateVoting = input.templateKey.flatMap { key in
+            Self.decisionTemplateCatalog.first { $0.templateKey == key }?.defaultVotingModel
+        }
         let votingModel = input.votingModel?.rawValue
+            ?? templateVoting
             ?? inferVotingModel(decisionType: input.decisionType, payload: input.payload)
         let decision = Decision(
             id: UUID(),
             contextActorId: input.contextId,
-            decisionType: input.decisionType.rawValue,
+            decisionType: input.decisionTypeWire,
             title: input.title,
             description: input.description,
             status: "open",
@@ -3246,6 +3251,130 @@ public actor MockRuulRPCClient: RuulRPCClient {
         decisionOptions[input.decisionId] = existing + [option]
         return option
     }
+
+    public func listDecisionTemplates() async throws -> [DecisionTemplate] {
+        try throwIfNeeded()
+        return Self.decisionTemplateCatalog
+    }
+
+    /// R.4B — espejo del `decision_templates_catalog` real (prod). Permite que el
+    /// picker de plantillas tenga datos en previews/tests sin tocar la red.
+    static let decisionTemplateCatalog: [DecisionTemplate] = [
+        DecisionTemplate(
+            templateKey: "generic", decisionType: "generic",
+            displayName: "Decisión genérica",
+            description: "Decisión sin efecto secundario en el backend; sólo registra el resultado.",
+            executionKind: "noop"
+        ),
+        DecisionTemplate(
+            templateKey: "archive_resource", decisionType: "resources",
+            displayName: "Archivar recurso",
+            description: "Marcar un recurso como archivado (soft delete).",
+            payloadSchema: .init(fields: [
+                .init(name: "resource_id", type: "uuid", required: true),
+                .init(name: "reason", type: "text", required: false)
+            ]),
+            executionKind: "archive_resource"
+        ),
+        DecisionTemplate(
+            templateKey: "archive_rule", decisionType: "governance",
+            displayName: "Archivar regla",
+            description: "Desactivar una regla del contexto.",
+            payloadSchema: .init(fields: [
+                .init(name: "rule_id", type: "uuid", required: true)
+            ]),
+            executionKind: "archive_rule"
+        ),
+        DecisionTemplate(
+            templateKey: "grant_resource_right", decisionType: "resources",
+            displayName: "Otorgar derecho sobre recurso",
+            description: "Crear un right activo (OWN/USE/MANAGE/VIEW/BENEFICIARY) sobre un recurso.",
+            payloadSchema: .init(fields: [
+                .init(name: "resource_id", type: "uuid", required: true),
+                .init(name: "holder_actor_id", type: "uuid", required: true),
+                .init(name: "right_kind", type: "text", required: true),
+                .init(name: "percent", type: "numeric", required: false),
+                .init(name: "scope", type: "text", required: false)
+            ]),
+            executionKind: "grant_resource_right"
+        ),
+        DecisionTemplate(
+            templateKey: "admit_member", decisionType: "governance",
+            displayName: "Admitir miembro",
+            description: "Aprobar el ingreso de un actor como miembro del contexto.",
+            payloadSchema: .init(fields: [
+                .init(name: "member_actor_id", type: "uuid", required: true),
+                .init(name: "membership_type", type: "text", required: false)
+            ]),
+            executionKind: "activate_membership"
+        ),
+        DecisionTemplate(
+            templateKey: "approve_expense", decisionType: "money",
+            displayName: "Aprobar gasto",
+            description: "Autorizar un gasto y crear la transacción + obligaciones.",
+            payloadSchema: .init(fields: [
+                .init(name: "paid_by_actor_id", type: "uuid", required: true),
+                .init(name: "amount", type: "numeric", required: true),
+                .init(name: "currency", type: "text", required: true),
+                .init(name: "description", type: "text", required: false),
+                .init(name: "beneficiaries", type: "array", required: true)
+            ]),
+            executionKind: "create_expense"
+        ),
+        DecisionTemplate(
+            templateKey: "approve_payout", decisionType: "money",
+            displayName: "Aprobar payout",
+            description: "Autorizar una distribución de dinero a un actor.",
+            payloadSchema: .init(fields: [
+                .init(name: "to_actor_id", type: "uuid", required: true),
+                .init(name: "amount", type: "numeric", required: true),
+                .init(name: "currency", type: "text", required: true),
+                .init(name: "description", type: "text", required: false)
+            ]),
+            executionKind: "create_payout"
+        ),
+        DecisionTemplate(
+            templateKey: "approve_resource_purchase", decisionType: "money",
+            displayName: "Aprobar compra de recurso",
+            description: "Autorizar la adquisición de un recurso.",
+            payloadSchema: .init(fields: [
+                .init(name: "description", type: "text", required: true),
+                .init(name: "estimated_value", type: "numeric", required: false),
+                .init(name: "currency", type: "text", required: false)
+            ]),
+            executionKind: "mark_resource_approved"
+        ),
+        DecisionTemplate(
+            templateKey: "ban_member", decisionType: "governance",
+            displayName: "Banear miembro",
+            description: "Bloquear permanentemente a un miembro del contexto.",
+            payloadSchema: .init(fields: [
+                .init(name: "member_actor_id", type: "uuid", required: true),
+                .init(name: "reason", type: "text", required: true)
+            ]),
+            executionKind: "set_membership_banned"
+        ),
+        DecisionTemplate(
+            templateKey: "change_rule", decisionType: "governance",
+            displayName: "Cambiar regla",
+            description: "Crear o modificar una regla del contexto.",
+            payloadSchema: .init(fields: [
+                .init(name: "trigger_event_type", type: "text", required: true),
+                .init(name: "consequences", type: "jsonb", required: true)
+            ]),
+            executionKind: "upsert_rule"
+        ),
+        DecisionTemplate(
+            templateKey: "remove_member", decisionType: "governance",
+            displayName: "Remover miembro",
+            description: "Quitar a un miembro del contexto.",
+            payloadSchema: .init(fields: [
+                .init(name: "member_actor_id", type: "uuid", required: true),
+                .init(name: "reason", type: "text", required: false)
+            ]),
+            executionKind: "set_membership_removed"
+        )
+    ]
 
     public func closeDecision(decisionId: UUID) async throws -> VoteResult {
         try throwIfNeeded()

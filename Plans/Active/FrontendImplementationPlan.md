@@ -113,6 +113,20 @@ seat — no construir hasta validar wedges de GTM); MFA promovido para admins de
 contextos con fondos; pasada de copy institucional en onboarding/empty states
 ("vivir, decidir y recordar como institución pequeña").
 
+## Fase 5 — política de pools + plantillas de decisión
+
+1. ✅ **Pools política `proportional`** (FE Fase 5a, PR #180) — opción
+   "Proporcional" en `CreatePoolSheet`; backend `fe8a`/`fe8b` en prod + smoke
+   `_smoke_mvp2_pool_proportional`. Incluyó el fix del bug de gastos en eventos
+   (`countsForExpenseSplit` espeja `going|attended|late`).
+2. ✅ **Plantillas de decisión R.4B** (P1.17, FE Fase 5b) — picker en
+   `CreateDecisionView` leyendo `decision_templates_catalog` (PostgREST). Las 4
+   plantillas con dispatch real (`noop`, `archive_resource`, `archive_rule`,
+   `grant_resource_right`) van ejecutables con form de payload (pickers nativos
+   para recurso/regla/miembro/right_kind); las 7 deferred (`0A000`) como
+   `coming_soon` "Próximamente". Frontend-only (sin migration). Detalle en
+   contrato §15.11.
+
 ---
 
 ## Reglas de ejecución
