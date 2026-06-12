@@ -50,7 +50,7 @@ public struct MyObligationsView: View {
             .filter { matches(filter, status: $0.obligation.status) }
             .filter { entry in
                 guard !trimmedQuery.isEmpty else { return true }
-                return entry.obligation.title.localizedCaseInsensitiveContains(trimmedQuery)
+                return (entry.obligation.title ?? "").localizedCaseInsensitiveContains(trimmedQuery)
                     || entry.context.displayName.localizedCaseInsensitiveContains(trimmedQuery)
             }
         let debts = filtered
