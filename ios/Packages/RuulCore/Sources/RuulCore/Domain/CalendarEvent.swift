@@ -324,7 +324,11 @@ public struct EventParticipant: Codable, Sendable, Equatable, Identifiable {
     public var splitUnits: Int { 1 + plusCount }
     /// Status confirmados que cuentan para el split del evento.
     public var countsForExpenseSplit: Bool {
-        status == "going" || status == "checked_in"
+        // Espejo EXACTO de _event_split_weights (R.9.C §1, backend = autoridad):
+        // going, attended y late reparten gasto. "checked_in" NO es un estado
+        // de la base (post check-in el status es attended/late) — compararlo
+        // excluía del split local a todo el que ya llegó al evento.
+        status == "going" || status == "attended" || status == "late"
     }
 }
 
