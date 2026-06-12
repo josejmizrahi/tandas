@@ -21,6 +21,11 @@ public struct ContextSettingsView: View {
     @State private var runner = ActionRunner()
     /// P1.8 — catálogo declarativo R.7 (solo lectura, informativo).
     @State private var governanceCatalog: [GovernanceCatalogEntry] = []
+    /// FE.7 (P1.4) — archivar espacio vía governance.
+    @State private var isConfirmingArchive = false
+    @State private var archiveClientId = UUID().uuidString
+    @State private var archivePendingDecisionId: UUID?
+    @State private var archiveRunner = ActionRunner()
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -110,8 +115,78 @@ public struct ContextSettingsView: View {
             governanceSection()
             governanceCatalogSection()
             auditSection(settings)
+            archiveSection()
         }
         .task { await loadGovernanceCatalog() }
+        .confirmationDialog(
+            "¿Archivar \(context.displayName)?",
+            isPresented: $isConfirmingArchive,
+            titleVisibility: .visible
+        ) {
+            Button("Solicitar archivado", role: .destructive) {
+                archiveClientId = UUID().uuidString
+                Task { await requestArchiveContext() }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("El espacio desaparecerá de las listas de todos los miembros; la historia se conserva. Por default requiere votación colectiva.")
+        }
+        .actionErrorAlert(archiveRunner)
+        .sheet(item: Binding(
+            get: { archivePendingDecisionId.map { ArchiveDecisionSheetWrapper(id: $0) } },
+            set: { archivePendingDecisionId = $0?.id }
+        )) { wrapper in
+            NavigationStack {
+                DecisionDetailView(decisionId: wrapper.id, context: context, container: container)
+            }
+        }
+    }
+
+    // MARK: - FE.7 — Archivar espacio (governance)
+
+    @ViewBuilder
+    private func archiveSection() -> some View {
+        if store.can("edit_general"), !context.isPersonal {
+            Section {
+                Button(role: .destructive) {
+                    isConfirmingArchive = true
+                } label: {
+                    Label("Archivar espacio", systemImage: "archivebox")
+                }
+                .disabled(archiveRunner.isRunning)
+            } footer: {
+                Text("Acción peligrosa: por default requiere una decisión aprobada por el grupo (política context_archive_requires_vote).")
+            }
+        }
+    }
+
+    /// FE.7 — pide aprobación colectiva para `context.archive` (mismo patrón
+    /// que rule.archive). Si la decisión se aprueba, el backend ejecuta
+    /// archive_context y el espacio sale de context_candidates.
+    private func requestArchiveContext() async {
+        let input = RequestGovernanceActionInput(
+            contextActorId: context.id,
+            actionKey: "context.archive",
+            targetType: "actor",
+            targetId: context.id,
+            payload: .object([:]),
+            title: "Archivar espacio: \(context.displayName)",
+            closesAt: nil,
+            clientId: archiveClientId
+        )
+        var capturedDecisionId: UUID?
+        let success = await archiveRunner.run {
+            let result = try await container.rpc.requestGovernanceAction(input)
+            capturedDecisionId = result.decisionId
+        }
+        if success {
+            if let decisionId = capturedDecisionId {
+                archivePendingDecisionId = decisionId
+            } else {
+                // Policy en false → ejecutado directo: refrescar y salir.
+                await container.contextStore.load()
+            }
+        }
     }
 
     // MARK: - P1.8 — Qué requiere aprobación (catálogo R.7, read-only)
@@ -1061,4 +1136,10 @@ private struct DelegateVoteSheet: View {
         }
         if success { dismiss() }
     }
+}
+
+
+/// FE.7 — wrapper Identifiable para presentar la decisión de archivado.
+private struct ArchiveDecisionSheetWrapper: Identifiable {
+    let id: UUID
 }

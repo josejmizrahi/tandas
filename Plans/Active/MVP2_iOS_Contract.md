@@ -530,3 +530,15 @@ el digest). Se dropeó el overload de 2 params (doctrina AUDIT.12/13). iOS:
 `activityFeed(actorId:limit:offset:)`, `ActivityFeedStore.loadMore()` con
 dedup por id, y scroll infinito en MyActivityFeedView. F.14 en device:
 ejecutado por el founder 2026-06-12 ✅.
+
+### 15.10 archive_context (FE.7, 2026-06-12)
+
+`archive_context(p_context_actor_id) → jsonb {archived, already_archived?}` —
+archiva el contexto (actors.archived_at + status; context_candidates ya lo
+excluía desde F.NAV.3). PULL gate: default requiere decisión aprobada
+(catálogo `context.archive`, policy `context_archive_requires_vote`);
+authority members.manage; emite `context.archived` (catalogado). iOS: botón
+"Archivar espacio" en ContextSettings (gated edit_general) →
+request_governance_action → DecisionDetail; si la policy está en false,
+ejecuta directo y refresca contextos. Smoke
+`_smoke_mvp2_archive_context` verde contra prod.
