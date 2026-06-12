@@ -71,25 +71,11 @@ struct ContextDetailV2Toolbar: ToolbarContent {
                 if let sectionActions = grouped[sectionKey], !sectionActions.isEmpty {
                     Section(contextActionSectionLabel(sectionKey)) {
                         ForEach(sectionActions.sorted(by: { $0.label < $1.label })) { action in
-                            let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
-                            Button {
+                            // P0.5 — componente canónico: una acción disabled muestra su
+                            // reason como subtitle del menu item.
+                            ActionMenuButton(action: action) {
                                 quickActionsRouter.open(ActionRouter.destination(for: action, in: .context(context.id)))
-                            } label: {
-                                // P0.5 (doctrina §0.4): una acción disabled muestra su
-                                // reason como subtitle del menu item — el usuario sabe
-                                // POR QUÉ no puede, no solo que no puede.
-                                if !action.enabled, let reason = action.reason, !reason.isEmpty {
-                                    Label {
-                                        Text(action.label)
-                                        Text(reason)
-                                    } icon: {
-                                        Image(systemName: presentation.symbolName)
-                                    }
-                                } else {
-                                    Label(action.label, systemImage: presentation.symbolName)
-                                }
                             }
-                            .disabled(!action.enabled)
                         }
                     }
                 }

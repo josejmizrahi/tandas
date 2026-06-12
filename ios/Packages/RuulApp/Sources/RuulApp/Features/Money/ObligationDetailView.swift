@@ -285,14 +285,12 @@ public struct ObligationDetailView: View {
     private func actionsToolbarMenu(actions: [AvailableAction]) -> some View {
         Menu {
             ForEach(actions) { action in
-                let presentation = ActionPresentationCatalog.presentation(for: action.actionKey)
-                let isDangerous = ActionPresentationCatalog.isDestructive(for: action.actionKey)
-                Button(role: isDangerous ? .destructive : nil) {
+                // P0.5 — componente canónico: muestra el reason cuando la acción
+                // está deshabilitada (antes se ocultaba). `runner.isRunning` la
+                // bloquea mientras corre otra acción.
+                ActionMenuButton.deriving(action: action, extraDisabled: runner.isRunning) {
                     handleObligationAction(action)
-                } label: {
-                    Label(action.label, systemImage: presentation.symbolName)
                 }
-                .disabled(!action.enabled || runner.isRunning)
             }
         } label: {
             Image(systemName: "plus.circle.fill")

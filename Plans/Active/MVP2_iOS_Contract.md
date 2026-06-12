@@ -591,3 +591,20 @@ pide motivo opcional vía alert y recarga; errores vía `UserFacingError`.
 Sin migration ni smoke nuevos (la RPC y la tabla ya existen). Tests en
 `LedgerTests` (decoding de transacción + resultado del void, lista y void
 idempotente en el mock, gateado de `canVoid`).
+
+### 15.13 Componente canónico de razones de acción deshabilitada (P0.5, 2026-06-12)
+
+Frontend-only, doctrina UX (R.5V §0.4). Nuevo componente `ActionMenuButton`
+(`Components/`) que renderiza una `AvailableAction` del backend en menús y
+secciones: cuando `enabled == false` muestra el `reason` como subtítulo del item
+(+ accessibility hint), para que el usuario sepa **por qué** no puede, no sólo que
+no puede. Unifica el patrón que vivía inline y disperso. `ActionMenuButton.deriving`
+deriva el rol destructivo desde `ActionPresentationCatalog`.
+
+Aplicado a: `ContextDetailV2Toolbar`, `MoneyHomeView` (toolbar + "Qué puedes
+hacer") y `ObligationDetailView` (gap: antes ocultaba el reason). Pendientes de
+follow-up (pipelines de acción bespoke que no renderizan `AvailableAction`
+directo): `EventDetail` (mapea a `MoreActionItem` y filtra a enabled),
+`ResourceDetailViewV2` (`ResourceDescriptorAction`, filtra a enabled),
+`PoolDetailView` (accessor enabled-only + controles a medida) y `MemberDetailView`
+(menú de roles, no `available_actions`). `DecisionDetailView` ya cumplía.

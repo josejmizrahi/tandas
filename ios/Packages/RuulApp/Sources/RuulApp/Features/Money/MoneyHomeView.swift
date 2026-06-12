@@ -75,24 +75,10 @@ public struct MoneyHomeView: View {
                 Menu {
                     Section("Registrar") {
                         ForEach(recordActions) { action in
-                            Button {
+                            // P0.5 — componente canónico con reason en disabled.
+                            ActionMenuButton(action: action) {
                                 handle(actionKey: action.actionKey)
-                            } label: {
-                                if !action.enabled, let reason = action.reason, !reason.isEmpty {
-                                    Label {
-                                        Text(action.label)
-                                        Text(reason)
-                                    } icon: {
-                                        Image(systemName: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName)
-                                    }
-                                } else {
-                                    Label(
-                                        action.label,
-                                        systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
-                                    )
-                                }
                             }
-                            .disabled(!action.enabled)
                         }
                     }
                 } label: {
@@ -408,25 +394,10 @@ public struct MoneyHomeView: View {
         let backendActions = store.availableActions.filter { moneyActionKeys.contains($0.actionKey) }
         Section {
             ForEach(backendActions) { action in
-                Button {
+                // P0.5 — componente canónico con reason en disabled.
+                ActionMenuButton(action: action) {
                     handle(actionKey: action.actionKey)
-                } label: {
-                    if !action.enabled, let reason = action.reason, !reason.isEmpty {
-                        Label {
-                            Text(action.label)
-                            Text(reason)
-                        } icon: {
-                            Image(systemName: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName)
-                        }
-                    } else {
-                        Label(
-                            action.label,
-                            systemImage: ActionPresentationCatalog.presentation(for: action.actionKey).symbolName
-                        )
-                    }
                 }
-                .disabled(!action.enabled)
-                .accessibilityHint(action.reason ?? "")
             }
             NavigationLink {
                 ActivityFeedView(context: context, container: container)
