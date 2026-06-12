@@ -32,7 +32,7 @@ public struct MoneyHomeView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                RuulLoadingState()
+                RuulSkeletonList()
 
             case .failed(let message):
                 RuulErrorState(message: message) {

@@ -46,7 +46,7 @@ public struct ContextsListView: View {
             Group {
                 switch contextStore.phase {
                 case .idle, .loading:
-                    SessionLoadingView(message: "Cargando tus espacios…")
+                    RuulSkeletonList(rows: 7)
 
                 case .failed(let message):
                     RuulErrorState(title: "No pudimos cargar tus espacios", message: message) {
