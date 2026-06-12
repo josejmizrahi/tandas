@@ -515,6 +515,7 @@ declare
   v_a uuid;
   v_ctx uuid;
   v_pool uuid;
+  v_pool_actor uuid;
   v_result jsonb;
 begin
   v_a := public._create_person_actor_for_auth_user(v_auth_a, 'Smoke Prop A', '+520000000950', null);
@@ -526,6 +527,7 @@ begin
   v_result := public.create_pool(v_ctx, '_smoke_prop Fondo', 'proportional',
     p_currency := 'MXN');
   v_pool := (v_result->>'pool_account_id')::uuid;
+  select pool_actor_id into v_pool_actor from public.pool_accounts where id = v_pool;
 
   perform public.contribute_to_pool(v_pool, 'cash', 300, 'MXN');
 
@@ -563,10 +565,11 @@ begin
   delete from public.roles where context_actor_id = v_ctx;
   delete from public.actor_memberships where context_actor_id = v_ctx;
   delete from public.actor_relationships
-    where subject_actor_id in (v_a, v_ctx) or object_actor_id in (v_a, v_ctx)
-       or subject_actor_id in (select pool_actor_id from public.pool_accounts where id = v_pool)
-       or object_actor_id in (select pool_actor_id from public.pool_accounts where id = v_pool);
-  delete from public.actors where id in (select pool_actor_id from public.pool_accounts where id = v_pool);
+    where subject_actor_id in (v_a, v_ctx, v_pool_actor)
+       or object_actor_id in (v_a, v_ctx, v_pool_actor);
+  -- El pool actor fue creado por A (actors.created_by_actor_id): borrarlo
+  -- ANTES que la persona — el id se capturó antes de borrar pool_accounts.
+  delete from public.actors where id = v_pool_actor;
   delete from public.actors where id = v_ctx;
   delete from public.person_profiles where actor_id = v_a;
   delete from public.actors where id = v_a;
