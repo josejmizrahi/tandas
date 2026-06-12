@@ -133,6 +133,14 @@ public struct ActivityFeedView: View {
                                 eventRow(event)
                             }
                             .buttonStyle(.plain)
+                            // P2.3 — scroll infinito: al aparecer el último row
+                            // se carga la siguiente página (el botón queda de
+                            // fallback si el usuario llega más rápido que la red).
+                            .onAppear {
+                                guard event.id == store.events.last?.id,
+                                      store.hasMore, !store.isLoadingMore else { return }
+                                Task { await store.loadMore(context: context) }
+                            }
                         }
                     }
                 }
