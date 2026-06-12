@@ -4,17 +4,16 @@ import RuulCore
 /// R.8.MiMundo.S4 — Vista cross-context de decisiones donde participo. Mismo
 /// patrón que `MyObligationsView`: fan-out paralelo + filtro Activas/Cerradas.
 ///
-/// Por ahora muestra TODAS las decisiones visibles del contexto (no filtra por
-/// "ya voté"). El backend ya filtra por RLS lo que puedo ver; el refinamiento
-/// "necesito votar todavía" requiere `listDecisionVotes` adicional y queda
-/// como follow-up. Para urgencia, `attention_inbox().decision_vote` cubre los
-/// votos pendientes prioritarios desde Home/Yo Atención.
+/// P1.15 — el filtro "Por votar" cruza las decisiones abiertas con
+/// `decision_votes` para mostrar solo las que esperan tu voto (y badge
+/// "Te falta votar" en Activas). `attention_inbox().decision_vote` sigue
+/// cubriendo la urgencia desde Home.
 public struct MyDecisionsView: View {
     let container: DependencyContainer
 
     @State private var phase: StorePhase = .idle
     @State private var aggregated: [Entry] = []
-    @State private var filter: DecisionFilter = .active
+    @State private var filter: DecisionFilter = .toVote
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -44,7 +43,7 @@ public struct MyDecisionsView: View {
     @ViewBuilder
     private var content: some View {
         let filtered = aggregated
-            .filter { matches(filter, status: $0.decision.status) }
+            .filter { matches(filter, entry: $0) }
             .sorted(by: closesAtAsc)
 
         List {
@@ -61,13 +60,13 @@ public struct MyDecisionsView: View {
                                 container: container
                             )
                         } label: {
-                            row(entry.decision, contextName: entry.context.displayName)
+                            row(entry.decision, contextName: entry.context.displayName,
+                                needsMyVote: entry.needsMyVote)
                         }
                     }
                 } header: {
-                    Label(filter == .active ? "Abiertas" : "Cerradas",
-                          systemImage: filter == .active ? "checkmark.bubble.fill" : "archivebox.fill")
-                        .foregroundStyle(filter == .active ? Color.purple : Theme.Text.secondary)
+                    Label(filter.sectionLabel, systemImage: filter.sectionSymbol)
+                        .foregroundStyle(filter == .closed ? Theme.Text.secondary : Color.purple)
                 }
             }
         }
@@ -94,9 +93,9 @@ public struct MyDecisionsView: View {
     private var emptySection: some View {
         Section {
             HStack(spacing: Theme.Spacing.sm) {
-                Image(systemName: filter == .active ? "checkmark.circle.fill" : "tray")
-                    .foregroundStyle(filter == .active ? Theme.Tint.success : Theme.Text.tertiary)
-                Text(filter == .active ? "Sin decisiones abiertas" : "Sin decisiones cerradas")
+                Image(systemName: filter == .closed ? "tray" : "checkmark.circle.fill")
+                    .foregroundStyle(filter == .closed ? Theme.Text.tertiary : Theme.Tint.success)
+                Text(filter.emptyLabel)
                     .font(.callout)
                     .foregroundStyle(Theme.Text.secondary)
             }
@@ -105,7 +104,7 @@ public struct MyDecisionsView: View {
     }
 
     @ViewBuilder
-    private func row(_ d: Decision, contextName: String) -> some View {
+    private func row(_ d: Decision, contextName: String, needsMyVote: Bool) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "checkmark.bubble.fill")
                 .foregroundStyle(.purple)
@@ -128,9 +127,18 @@ public struct MyDecisionsView: View {
                 .foregroundStyle(Theme.Text.secondary)
             }
             Spacer(minLength: 8)
-            Text(statusLabel(d))
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(statusTint(d))
+            if needsMyVote {
+                Text("Te falta votar")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.purple, in: Capsule())
+            } else {
+                Text(statusLabel(d))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(statusTint(d))
+            }
         }
     }
 
@@ -169,12 +177,14 @@ public struct MyDecisionsView: View {
 
     // MARK: - Filter logic
 
-    private func matches(_ filter: DecisionFilter, status: String) -> Bool {
+    private func matches(_ filter: DecisionFilter, entry: Entry) -> Bool {
         switch filter {
+        case .toVote:
+            return entry.needsMyVote
         case .active:
-            return status == "open"
+            return entry.decision.status == "open"
         case .closed:
-            return status != "open"
+            return entry.decision.status != "open"
         }
     }
 
@@ -188,17 +198,31 @@ public struct MyDecisionsView: View {
             phase = .loaded
             return
         }
+        let myActorId = container.currentActorStore.actorId
         await withTaskGroup(of: ContextSlice.self) { group in
             for ctx in contexts {
                 group.addTask {
                     let decisions: [Decision] = (try? await container.rpc.listDecisions(contextId: ctx.id)) ?? []
-                    return ContextSlice(context: ctx, decisions: decisions)
+                    // P1.15 — para las abiertas, ¿ya voté? (tolerante a fallos:
+                    // sin votos cargados se asume que falta mi voto solo si open).
+                    var votedIds: Set<UUID> = []
+                    for d in decisions where d.isOpen {
+                        let votes = (try? await container.rpc.listDecisionVotes(decisionId: d.id)) ?? []
+                        if votes.contains(where: { $0.voterActorId == myActorId }) {
+                            votedIds.insert(d.id)
+                        }
+                    }
+                    return ContextSlice(context: ctx, decisions: decisions, votedIds: votedIds)
                 }
             }
             var all: [Entry] = []
             for await slice in group {
                 for d in slice.decisions {
-                    all.append(Entry(decision: d, context: slice.context))
+                    all.append(Entry(
+                        decision: d,
+                        context: slice.context,
+                        needsMyVote: d.isOpen && !slice.votedIds.contains(d.id)
+                    ))
                 }
             }
             aggregated = all
@@ -211,21 +235,45 @@ public struct MyDecisionsView: View {
     private struct Entry: Identifiable, Sendable {
         let decision: Decision
         let context: AppContext
+        let needsMyVote: Bool
         var id: UUID { decision.id }
     }
 
     private struct ContextSlice: Sendable {
         let context: AppContext
         let decisions: [Decision]
+        let votedIds: Set<UUID>
     }
 
     private enum DecisionFilter: String, CaseIterable, Identifiable {
-        case active, closed
+        case toVote, active, closed
         var id: String { rawValue }
         var label: String {
             switch self {
+            case .toVote: return "Por votar"
             case .active: return "Activas"
             case .closed: return "Cerradas"
+            }
+        }
+        var sectionLabel: String {
+            switch self {
+            case .toVote: return "Esperan tu voto"
+            case .active: return "Abiertas"
+            case .closed: return "Cerradas"
+            }
+        }
+        var sectionSymbol: String {
+            switch self {
+            case .toVote: return "person.badge.clock"
+            case .active: return "checkmark.bubble.fill"
+            case .closed: return "archivebox.fill"
+            }
+        }
+        var emptyLabel: String {
+            switch self {
+            case .toVote: return "Nada espera tu voto — al día"
+            case .active: return "Sin decisiones abiertas"
+            case .closed: return "Sin decisiones cerradas"
             }
         }
     }

@@ -91,11 +91,14 @@ fallback sin contexto) y P1.12 (BreadcrumbView SÍ se renderiza).
 de transacciones individuales; un botón "Anular" sin lista de transacciones
 sería una pantalla falsa. Requiere primero un browser de ledger (P2).
 
-## Fase 3 — P1 pulido de confianza
+## Fase 3 — P1 pulido de confianza ✅ (2026-06-12)
 
-1. `whyCanReserve` render completo (P1.14).
-2. Filtro "necesito votar" en MyDecisionsView (P1.15).
-3. Humanizar payloads de R.6 en activity (P1.18) — usar `activity_event_catalog`.
+1. ✅ `whyCanReserve` render completo (P1.14) — razones con fallback honesto +
+   capability requerida cuando se deniega.
+2. ✅ Filtro "Por votar" en MyDecisionsView (P1.15) — cruza decision_votes,
+   badge "Te falta votar", default del picker.
+3. ✅ Humanizar payloads de R.6 en activity (P1.18) — claves del rule engine
+   y settlement en español + valores canónicos traducidos.
 
 ## Fase 4 — P2 escalabilidad (cola, sin orden fijo)
 

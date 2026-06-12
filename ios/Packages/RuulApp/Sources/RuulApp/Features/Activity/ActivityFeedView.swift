@@ -284,12 +284,38 @@ public struct ActivityDetailView: View {
         case "obligation_type": return "Tipo de obligación"
         case "rule_title": return "Regla"
         case "paid_by": return "Pagado por"
-        default: return key
+        // P1.18 — claves emitidas por el motor de reglas R.6 y settlement.
+        case "rule_id", "source_rule_id": return "ID de regla"
+        case "outcome": return "Resultado"
+        case "triggered_by_event_type": return "Disparada por"
+        case "consequences_applied": return "Consecuencias aplicadas"
+        case "evaluation_id": return "ID de evaluación"
+        case "via": return "Vía"
+        case "reason": return "Razón"
+        case "member_actor_id": return "ID del miembro"
+        case "settlement_batch_id": return "ID de liquidación"
+        case "settlement_item_id": return "ID de transferencia"
+        case "split_basis": return "Base del reparto"
+        case "source_event_id": return "ID del evento origen"
+        case "system": return "Automático"
+        case "uncatalogued": return "Fuera de catálogo"
+        default: return key.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 
     private func payloadValueLabel(_ value: JSONValue) -> String {
-        if let s = value.stringValue { return s }
+        if let s = value.stringValue {
+            // P1.18 — valores canónicos del motor R.6 en español.
+            switch s {
+            case "matched", "fired": return "Se cumplió la condición"
+            case "skipped", "no_match": return "Sin coincidencia"
+            case "account_deletion": return "Eliminación de cuenta"
+            case "invite_code": return "Código de invitación"
+            case "invitation": return "Invitación directa"
+            case "event_weights": return "Pesos del evento"
+            default: return s
+            }
+        }
         if let n = value.numberValue { return n.formatted(.number) }
         if let b = value.boolValue { return b ? "Sí" : "No" }
         return "—"
