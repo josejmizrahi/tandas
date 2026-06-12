@@ -126,6 +126,12 @@ contextos con fondos; pasada de copy institucional en onboarding/empty states
    para recurso/regla/miembro/right_kind); las 7 deferred (`0A000`) como
    `coming_soon` "Próximamente". Frontend-only (sin migration). Detalle en
    contrato §15.11.
+3. ✅ **Browser de ledger + void_transaction** (P1.9, FE Fase 5c) —
+   `LedgerBrowserView` colgada de `MoneyHomeView` ("Movimientos"): lista
+   `money_transactions` (PostgREST) + acción admin `void_transaction` (audit_9,
+   ya en prod) gateada por creador/`money.settle`, nunca settlement. Cierra el
+   diferido de P1.9 ("faltaba superficie de transacciones individuales").
+   Frontend-only. Detalle en contrato §15.12.
 
 ---
 

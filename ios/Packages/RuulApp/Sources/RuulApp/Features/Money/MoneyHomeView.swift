@@ -131,6 +131,7 @@ public struct MoneyHomeView: View {
             }
             accionesSection
             fondosSection
+            movimientosSection
             if !moneyActivity.isEmpty {
                 actividadSection
             }
@@ -462,6 +463,20 @@ public struct MoneyHomeView: View {
             Text("Fondos")
         } footer: {
             Text("Botes y fondos con meta del contexto.")
+        }
+    }
+
+    // MARK: - Movimientos (P1.9 — ledger browser)
+
+    private var movimientosSection: some View {
+        Section {
+            NavigationLink {
+                LedgerBrowserView(context: context, container: container)
+            } label: {
+                Label("Movimientos", systemImage: "list.bullet.rectangle")
+            }
+        } footer: {
+            Text("El registro de gastos, pagos y liquidaciones del contexto.")
         }
     }
 

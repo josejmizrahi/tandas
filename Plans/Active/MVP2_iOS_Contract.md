@@ -571,3 +571,23 @@ Clasificación de `execution_kind` (espeja el dispatch real de
 Sin migration ni smoke nuevos: el catálogo, `p_template_key` y el dispatch ya
 están en prod. Tests en `DecisionTemplateTests` (decoding, clasificación,
 validación de required, herencia de voting model en el mock).
+
+### 15.12 Browser de ledger + void_transaction (P1.9, FE Fase 5c, 2026-06-12)
+
+Frontend-only — desbloquea P1.9 (antes diferido: "iOS no tiene superficie de
+transacciones individuales"). Nueva pantalla `LedgerBrowserView` colgada de
+`MoneyHomeView` (sección "Movimientos") que lista `money_transactions` del
+contexto (lectura PostgREST, RLS: creador / partes from-to / miembros; orden
+`occurred_at desc`). Modelo `MoneyTransaction` + `listContextTransactions()`.
+
+Acción admin `void_transaction(p_transaction_id, p_reason?)` (audit_9, ya en
+prod) expuesta como `voidTransaction(transactionId:reason:)` → `TransactionVoided`
+(`{transaction_id, status, cancelled_obligations[], reversed_ledger_entries,
+idempotent_replay?}`). El gateado iOS (`LedgerStore.canVoid`) espeja la
+autoridad del backend: creador **o** `money.settle`, sólo transacciones `posted`,
+nunca `settlement` (se revierten por el handshake confirm/reject/appeal). El void
+pide motivo opcional vía alert y recarga; errores vía `UserFacingError`.
+
+Sin migration ni smoke nuevos (la RPC y la tabla ya existen). Tests en
+`LedgerTests` (decoding de transacción + resultado del void, lista y void
+idempotente en el mock, gateado de `canVoid`).

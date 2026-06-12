@@ -37,6 +37,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
     var votes: [UUID: [DecisionVote]] = [:]                  // decisionId → votes
     var decisionOptions: [UUID: [DecisionOption]] = [:]      // decisionId → options
     var obligations: [UUID: Obligation] = [:]
+    var moneyTransactions: [UUID: MoneyTransaction] = [:]    // ledger crudo del contexto
     var batches: [UUID: SettlementBatch] = [:]
     var settlementItems: [UUID: [SettlementItem]] = [:]      // batchId → items
     var activity: [UUID: [ActivityEvent]] = [:]              // contextId → events
@@ -3599,6 +3600,54 @@ public actor MockRuulRPCClient: RuulRPCClient {
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
     }
 
+    public func listContextTransactions(contextId: UUID) async throws -> [MoneyTransaction] {
+        try throwIfNeeded()
+        return moneyTransactions.values
+            .filter { $0.contextActorId == contextId }
+            .sorted { ($0.occurredAt ?? .distantPast) > ($1.occurredAt ?? .distantPast) }
+    }
+
+    public func voidTransaction(transactionId: UUID, reason: String?) async throws -> TransactionVoided {
+        try throwIfNeeded()
+        guard let txn = moneyTransactions[transactionId] else {
+            throw RuulError.unexpected(message: "Transacción no encontrada")
+        }
+        if txn.isVoided {
+            return TransactionVoided(transactionId: transactionId, idempotentReplay: true)
+        }
+        guard txn.isPosted else {
+            throw RuulError.unexpected(message: "Solo se pueden anular transacciones registradas.")
+        }
+        guard !txn.isSettlement else {
+            throw RuulError.unexpected(message: "Las liquidaciones se revierten por el handshake, no se anulan.")
+        }
+        var meta = txn.metadata.objectValue ?? [:]
+        meta["voided_at"] = .string(ISO8601DateFormatter().string(from: Date()))
+        if let reason, !reason.isEmpty { meta["void_reason"] = .string(reason) }
+        moneyTransactions[transactionId] = MoneyTransaction(
+            id: txn.id,
+            contextActorId: txn.contextActorId,
+            fromActorId: txn.fromActorId,
+            toActorId: txn.toActorId,
+            transactionType: txn.transactionType,
+            amount: txn.amount,
+            currency: txn.currency,
+            status: "voided",
+            occurredAt: txn.occurredAt,
+            resourceId: txn.resourceId,
+            decisionId: txn.decisionId,
+            eventId: txn.eventId,
+            obligationId: txn.obligationId,
+            metadata: .object(meta),
+            createdByActorId: txn.createdByActorId,
+            createdAt: txn.createdAt
+        )
+        if let contextId = txn.contextActorId {
+            emit(contextId, "transaction.voided")
+        }
+        return TransactionVoided(transactionId: transactionId)
+    }
+
     // MARK: - Pools (R.8)
 
     /// R.8 — pools in-memory: poolAccountId → pool / basis entries.
@@ -5740,6 +5789,54 @@ extension MockRuulRPCClient {
             "policy_key": .string("winner_takes_all"),
             "display_name": .string("Bote — Cena Semanal")
         ]))
+
+        // Ledger seed (R.4C) — money_transactions del browser de movimientos.
+        let txnExpense = MoneyTransaction(
+            id: UUID(),
+            contextActorId: cena.id,
+            fromActorId: david,
+            toActorId: cena.id,
+            transactionType: "expense",
+            amount: 1300,
+            currency: "MXN",
+            status: "posted",
+            occurredAt: Date().addingTimeInterval(-86400 * 6),
+            metadata: .object(["description": .string("Cena de la semana pasada")]),
+            createdByActorId: david,
+            createdAt: Date().addingTimeInterval(-86400 * 6)
+        )
+        let txnGame = MoneyTransaction(
+            id: UUID(),
+            contextActorId: cena.id,
+            fromActorId: DemoIds.moises,
+            toActorId: DemoIds.jose,
+            transactionType: "game_result",
+            amount: 200,
+            currency: "MXN",
+            status: "posted",
+            occurredAt: Date().addingTimeInterval(-86400 * 3),
+            metadata: .object(["game_name": .string("Póker")]),
+            createdByActorId: DemoIds.jose,
+            createdAt: Date().addingTimeInterval(-86400 * 3)
+        )
+        let txnVoided = MoneyTransaction(
+            id: UUID(),
+            contextActorId: cena.id,
+            fromActorId: DemoIds.isaac,
+            toActorId: cena.id,
+            transactionType: "expense",
+            amount: 450,
+            currency: "MXN",
+            status: "voided",
+            occurredAt: Date().addingTimeInterval(-86400 * 2),
+            metadata: .object([
+                "description": .string("Postres (duplicado)"),
+                "void_reason": .string("Gasto cargado dos veces")
+            ]),
+            createdByActorId: DemoIds.isaac,
+            createdAt: Date().addingTimeInterval(-86400 * 2)
+        )
+        for txn in [txnExpense, txnGame, txnVoided] { moneyTransactions[txn.id] = txn }
 
         // Activity seed
         emit(cena.id, "context.created", actorId: DemoIds.jose)
