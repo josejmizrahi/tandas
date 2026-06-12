@@ -30,7 +30,8 @@ public struct CreatePoolSheet: View {
                     TextField("Nombre (Bote de la cena, JV Nave…)", text: $name)
                     Picker("Tipo", selection: $policyKey) {
                         Text("Bote").tag("winner_takes_all")
-                        Text("Fondo con meta").tag("equity_target")
+                        Text("Con meta").tag("equity_target")
+                        Text("Proporcional").tag("proportional")
                     }
                     .pickerStyle(.segmented)
                 }
@@ -59,7 +60,9 @@ public struct CreatePoolSheet: View {
                     }
                     .disabled(!isValid || runner.isRunning)
                 } footer: {
-                    if policyKey == "winner_takes_all" {
+                    if policyKey == "proportional" {
+                        Text("Al resolver, cada participante queda con su parte proporcional a lo aportado.")
+                    } else if policyKey == "winner_takes_all" {
                         Text("Bote: todo lo aportado se paga a una persona ganadora al resolver.")
                     } else {
                         Text("Fondo con meta: cada quien aporta y al resolver quedan fijadas las participaciones.")
