@@ -521,3 +521,12 @@ Primer emisor real: trigger `trg_decisions_notify_opened` (migration
 activos (excepto el proponente) al crear cualquier decisión — antes NADIE
 emitía y el centro habría nacido vacío. Smoke
 `_smoke_mvp2_decision_opened_notification` verde contra prod.
+
+### 15.9 activity_feed paginado (FE.6, 2026-06-12)
+
+`activity_feed(p_actor_id, p_limit, p_offset default 0)` — paginación por
+offset preservando el orden rankeado por score (un cursor temporal rompería
+el digest). Se dropeó el overload de 2 params (doctrina AUDIT.12/13). iOS:
+`activityFeed(actorId:limit:offset:)`, `ActivityFeedStore.loadMore()` con
+dedup por id, y scroll infinito en MyActivityFeedView. F.14 en device:
+ejecutado por el founder 2026-06-12 ✅.

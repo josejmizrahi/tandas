@@ -80,21 +80,33 @@ public struct MyActivityFeedView: View {
                 ForEach(groupedItems, id: \.label) { group in
                     Section {
                         ForEach(group.items) { item in
-                            if let destination = subjectDestination(for: item) {
-                                Button {
-                                    pushedSubject = destination
-                                } label: {
+                            Group {
+                                if let destination = subjectDestination(for: item) {
+                                    Button {
+                                        pushedSubject = destination
+                                    } label: {
+                                        feedRow(item)
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
                                     feedRow(item)
                                 }
-                                .buttonStyle(.plain)
-                            } else {
-                                feedRow(item)
+                            }
+                            // FE.6 — paginación por offset al llegar al final.
+                            .onAppear {
+                                guard item.id == store.items.last?.id else { return }
+                                Task { await store.loadMore() }
                             }
                         }
                     } header: {
                         Text(group.label)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
+                    }
+                }
+                if store.isLoadingMore {
+                    Section {
+                        ProgressView().frame(maxWidth: .infinity)
                     }
                 }
             }

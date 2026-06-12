@@ -540,7 +540,7 @@ public protocol RuulRPCClient: Sendable {
     /// `list_my_subscriptions()` — todas las subs activas del caller.
     func listMySubscriptions() async throws -> SubscriptionList
     /// `activity_feed(p_actor_id?, p_limit?)` — feed personalizado del caller.
-    func activityFeed(actorId: UUID?, limit: Int) async throws -> ActivityFeed
+    func activityFeed(actorId: UUID?, limit: Int, offset: Int) async throws -> ActivityFeed
     /// `add_trust(p_target_actor_id, p_trust_level, p_trust_type, p_notes?)` —
     /// idempotente por (caller, target, type).
     func addTrust(targetActorId: UUID, trustLevel: Int, trustType: TrustType, notes: String?) async throws -> UUID
