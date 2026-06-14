@@ -150,30 +150,46 @@ public struct SettlementView: View {
     private var paidItems: [SettlementItem] {
         store.batches.flatMap { store.items(for: $0.id) }.filter { $0.isPaid }
     }
-    /// Items donde yo soy creditor activos.
+    /// D4 (re-audit 2026-06-14) — items en disputa que el admin debe resolver.
+    /// El backend (`appeal_settlement_paid`) emite attention a admins; aquí
+    /// los exponemos como sección dedicada para cerrar el handshake. Admin
+    /// resuelve con los mismos `confirm_settlement_paid` / `reject_settlement_paid`
+    /// (ver contrato §settlement L457, L464-466).
+    private var disputedItems: [SettlementItem] {
+        guard canResolveAsAdmin else { return [] }
+        return activeItems.filter(\.isDisputed)
+    }
+    /// Items donde yo soy creditor activos (excluyendo disputed surfaced en la
+    /// sección admin dedicada para no duplicar).
     private var theyOweMe: [SettlementItem] {
-        activeItems.filter { $0.toActorId == myActorId }
+        activeItems.filter { $0.toActorId == myActorId && !(canResolveAsAdmin && $0.isDisputed) }
     }
-    /// Items donde yo soy debtor activos.
+    /// Items donde yo soy debtor activos (excluyendo disputed surfaced en la
+    /// sección admin dedicada para no duplicar).
     private var iOwe: [SettlementItem] {
-        activeItems.filter { $0.fromActorId == myActorId }
+        activeItems.filter { $0.fromActorId == myActorId && !(canResolveAsAdmin && $0.isDisputed) }
     }
-    /// Items que no me involucran (admin view).
+    /// Items que no me involucran (admin view), excluyendo disputed.
     private var others: [SettlementItem] {
-        activeItems.filter { $0.fromActorId != myActorId && $0.toActorId != myActorId }
+        activeItems.filter {
+            $0.fromActorId != myActorId &&
+            $0.toActorId != myActorId &&
+            !(canResolveAsAdmin && $0.isDisputed)
+        }
     }
 
     @ViewBuilder
     private var settlementList: some View {
         List {
             heroSection
-            if theyOweMe.isEmpty && iOwe.isEmpty && others.isEmpty && paidItems.isEmpty {
+            if theyOweMe.isEmpty && iOwe.isEmpty && others.isEmpty && paidItems.isEmpty && disputedItems.isEmpty {
                 emptyStateSection
             } else {
-                if !theyOweMe.isEmpty { theyOweMeSection }
-                if !iOwe.isEmpty       { iOweSection }
-                if !others.isEmpty     { othersSection }
-                if !paidItems.isEmpty  { paidHistorySection }
+                if !disputedItems.isEmpty { disputesSection }
+                if !theyOweMe.isEmpty     { theyOweMeSection }
+                if !iOwe.isEmpty          { iOweSection }
+                if !others.isEmpty        { othersSection }
+                if !paidItems.isEmpty     { paidHistorySection }
             }
         }
         .listStyle(.insetGrouped)
@@ -232,6 +248,25 @@ public struct SettlementView: View {
                 message: "No hay transferencias pendientes. Cuando registres gastos, las liquidaciones aparecen acá con el mínimo de transferencias para quedar a mano."
             )
             .listRowBackground(Color.clear)
+        }
+    }
+
+    @ViewBuilder
+    private var disputesSection: some View {
+        Section {
+            ForEach(disputedItems) { item in
+                Button {
+                    selectedItemId = item.id
+                } label: {
+                    itemRow(item, role: roleFor(item))
+                }
+                .buttonStyle(.plain)
+            }
+        } header: {
+            Label("Disputas por resolver (\(disputedItems.count))", systemImage: "exclamationmark.bubble.fill")
+                .foregroundStyle(Theme.Tint.critical)
+        } footer: {
+            Text("Como admin, toca una disputa para resolver a favor del acreedor (confirmar pago) o del deudor (rechazar y volver a pendiente).")
         }
     }
 
@@ -354,6 +389,15 @@ public struct SettlementView: View {
                 .labelStyle(.iconOnly)
                 .foregroundStyle(Theme.Tint.success)
                 .font(.title3)
+        } else if item.isDisputed {
+            // D4 (re-audit 2026-06-14) — badge visible para items que esperan
+            // resolución del admin tras un appeal del debtor.
+            Label("En disputa", systemImage: "exclamationmark.bubble.fill")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Theme.Tint.critical.opacity(0.15), in: Capsule())
+                .foregroundStyle(Theme.Tint.critical)
         } else if item.isPendingConfirmation {
             if role == .creditor {
                 Label("Por confirmar", systemImage: "bell.badge.fill")

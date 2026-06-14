@@ -138,6 +138,42 @@ contextos con fondos; pasada de copy institucional en onboarding/empty states
    vistas con pipeline de acción bespoke (Event/Resource/Pool/Member). Detalle
    en contrato §15.13.
 
+## Fase 6 — deltas detectados en re-audit 2026-06-14
+
+Cinco gaps detectados al cruzar audit fresco contra el doc (R.8.A se firmó un día
+antes; R.7.x dejó expuesto NotificationCenter y Settlement admin loop). Detalle de
+cada uno en `FrontendMissingFeatures.md` §Deltas.
+
+1. **D1 — Tesorería ≠ Fondos en MoneyHomeView (P0)** — implementar doctrina R.8.A
+   Option C: `pendientesSection` → `tesoreriaSection` con filtro `paired_obligation_id
+   IS NULL`; `fondosSection` deja de ser link y muestra inline cada pool con balance.
+   Backend ya tiene la columna (`mig 20260610230000`). Smoke: registrar un gasto y una
+   contribución a pool en demo world; los items deben aparecer en sections distintas.
+   Archivo: `Features/Money/MoneyHomeView.swift:312-323, 426-438`.
+2. **D2 — NotificationCenterView routea via AttentionDispatcher (P1)** — inyectar
+   `AttentionDispatcher` en `NotificationCenterView`; en el tap, resolver
+   `notification.scope_kind`/`scope_id` → `AttentionDestination` y navegar. Mantener
+   `markRead` como side-effect. Actualizar el comentario L4-6 para reflejar la
+   implementación real.
+3. **D3 — Confirmation antes de logout (P1)** — agregar `confirmationDialog("Cerrar
+   sesión?", role: .destructive)` en `PersonalSettingsView.swift:84` y
+   `MeView.swift:635`. Copy: "Tu sesión se cerrará en este dispositivo."
+4. **D4 — Admin disputed/appealed handler en SettlementView (P1)** — primero confirmar
+   con backend si admin reutiliza `confirm/reject_settlement_paid` o si requiere RPC
+   nuevo. Si reutiliza: section "Disputas" en `SettlementView` gated por
+   `money.settle`, mostrando items con status `disputed`/`appealed` y acciones
+   "Resolver a favor del acreedor" / "Resolver a favor del deudor". Archivo:
+   `Features/Settlement/SettlementView.swift:496`.
+5. **D5 — Auto-dismiss attention items al resolver subject (P2)** — ideal: trigger
+   backend `AFTER UPDATE` en decisions/rules/obligations que dismissee attention items
+   del subject. Fallback iOS: en `onAppear` de cada DetailView, si attention item del
+   subject está abierto y status del subject es terminal, llamar
+   `dismiss_attention_item`.
+
+**Salida de fase:** doctrina R.8.A reflejada en UI; centro de notificaciones funcional
+end-to-end (no solo decorativo); logout no accidentable; admin cierra el loop de
+disputas en settlement; inbox sin items zombie.
+
 ---
 
 ## Reglas de ejecución

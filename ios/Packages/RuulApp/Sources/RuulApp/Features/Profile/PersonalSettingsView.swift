@@ -18,6 +18,7 @@ public struct PersonalSettingsView: View {
     @State private var isConfirmingDeleteAccount = false
     @State private var deleteRunner = ActionRunner()
     @State private var changeContactKind: ChangeContactSheet.Kind?
+    @State private var isConfirmingSignOut = false
 
     private var appearance: Binding<AppearancePreference> {
         Binding(
@@ -81,10 +82,22 @@ public struct PersonalSettingsView: View {
 
             Section {
                 Button(role: .destructive) {
-                    Task { await container.signOut() }
+                    isConfirmingSignOut = true
                 } label: {
                     Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
                 }
+            }
+            .confirmationDialog(
+                "¿Cerrar sesión?",
+                isPresented: $isConfirmingSignOut,
+                titleVisibility: .visible
+            ) {
+                Button("Cerrar sesión", role: .destructive) {
+                    Task { await container.signOut() }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Tu sesión se cerrará en este dispositivo.")
             }
 
             // FE.3 (V.1) — eliminación de cuenta (App Store 5.1.1(v) + ARCO).

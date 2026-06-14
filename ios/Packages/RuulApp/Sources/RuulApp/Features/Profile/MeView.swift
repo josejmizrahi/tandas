@@ -35,6 +35,8 @@ public struct MeView: View {
     /// FoundationModels graceful degradation: si Apple Intelligence no está
     /// disponible, la sección se oculta entera.
     @State private var summaryService = ActivitySummaryService()
+    /// D3 (re-audit 2026-06-14) — confirmation antes de cerrar sesión.
+    @State private var isConfirmingSignOut = false
 
     // Stores eagerly instanciados — mismo patrón que `FormDestination` en
     // `CreateIntentSheet`: lazy `@State?` + `.task` resulta frágil cuando
@@ -632,10 +634,22 @@ public struct MeView: View {
     private var signOutSection: some View {
         Section {
             Button(role: .destructive) {
-                Task { await container.signOut() }
+                isConfirmingSignOut = true
             } label: {
                 Label("Cerrar sesión", systemImage: "rectangle.portrait.and.arrow.right")
             }
+        }
+        .confirmationDialog(
+            "¿Cerrar sesión?",
+            isPresented: $isConfirmingSignOut,
+            titleVisibility: .visible
+        ) {
+            Button("Cerrar sesión", role: .destructive) {
+                Task { await container.signOut() }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Tu sesión se cerrará en este dispositivo.")
         }
     }
 

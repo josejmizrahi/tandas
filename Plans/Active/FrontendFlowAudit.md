@@ -1,11 +1,14 @@
 # Frontend Flow Audit — Ruul iOS (MVP 2.0)
 
-**Fecha:** 2026-06-11
+**Fecha:** 2026-06-11 (revisión 2026-06-14 — 5 deltas post R.7.x/R.8.A integrados)
 **Alcance:** Auditoría completa del frontend iOS/SwiftUI (RuulCore + RuulApp) para detectar
 qué falta para que todos los flujos funcionen end-to-end: navegación, estados, conexión
 real a Supabase/RPCs, errores, permisos, empty states y UX.
 **Método:** Revisión exhaustiva de las ~120 vistas y ~35 stores con referencias `file:line`,
 cruzada contra `Plans/Active/MVP2_iOS_Contract.md` y las migrations `supabase/migrations/2026*`.
+La revisión 2026-06-14 cruzó 5 agentes paralelos (Auth/Contexts/Resources+Events/Money/Governance)
+contra este doc; los deltas reales viven en `FrontendMissingFeatures.md` §Deltas y
+`FrontendImplementationPlan.md` §Fase 6.
 
 **Documentos hermanos:**
 - `FrontendMissingFeatures.md` — lista priorizada de faltantes (P0/P1/P2)
@@ -95,7 +98,7 @@ Estos hallazgos se integran como ítems V-* en `FrontendMissingFeatures.md`.
 
 ---
 
-## 2. Auth / onboarding — ✅ completo con 3 gaps
+## 2. Auth / onboarding — ⚠️ 3 gaps + D3 logout sin confirmation (re-audit 2026-06-14)
 
 | Ítem | Estado | Evidencia |
 |---|---|---|
@@ -108,6 +111,7 @@ Estos hallazgos se integran como ítems V-* en `FrontendMissingFeatures.md`.
 | Crear/editar perfil | ⚠️ | Nombre completo + corto OK; **sin upload de avatar** (`avatarUrl: nil` hardcoded, `EditProfileView.swift:47,119`) |
 | Cambiar teléfono/email | ❌ | RPCs existen (`AuthService.swift:321-335`) pero **sin pantalla** |
 | Validación de sesión huérfana | ⚠️ | `verifySession()` existe (`AuthService.swift:294-304`) pero **nunca se llama** en bootstrap |
+| **D3 — Logout sin confirmation** (re-audit 2026-06-14) | ❌ | `PersonalSettingsView.swift:84` y `MeView.swift:635` llaman `container.signOut()` directo. El doc §1 afirma "confirmaciones destructivas en todos los flujos sensibles" — drift |
 
 ## 3. Contextos (grupos) — ✅ completo con 2 gaps
 
@@ -184,7 +188,7 @@ con pesos (`preview_event_split` + `split_basis='event_weights'`); calendarios m
 de contexto y personal cross-context (eventos+reservas+votos+obligaciones).
 Archivos: `Features/Events/*`, `EventsStore.swift:37-202`.
 
-## 8. Money — ✅ completo con 1 gap visible
+## 8. Money — ⚠️ R.8.A drift detectado (re-audit 2026-06-14)
 
 - Gasto: 3 métodos de split (equal/shares estilo Splitwise con ajuste residual/custom
   con validación de suma exacta), AI hero, preview ponderado, idempotencia
@@ -196,13 +200,24 @@ Archivos: `Features/Events/*`, `EventsStore.swift:37-202`.
   pero iOS no tiene RPC cableada → whitelist `wiredActionKeys` + alert "Próximamente"
   (`ObligationDetailView.swift:37-45,103-117`). El pago hoy solo fluye vía settlement.
 - ❌ `void_transaction` (AUDIT.1, reversar) existe en backend sin UI.
+- ❌ **D1 (P0) — Doctrina R.8.A Option C NO implementada**: `pendientesSection` muestra
+  TODAS las obligaciones sin filtrar `paired_obligation_id IS NULL` (Tesorería); y
+  `fondosSection` es un link a `PoolsListView` en vez de mostrar pools inline. La
+  doctrina firmada por el founder el 2026-06-10 exige separación semántica
+  (Tesorería = dinero pairwise; Fondos = pools R.8). `grep paired_obligation_id` en
+  iOS = 0 hits. Ver `FrontendMissingFeatures.md` §Deltas D1.
 
-## 9. Settlement — ✅ completo
+## 9. Settlement — ⚠️ handshake completo pero admin loop incompleto (re-audit 2026-06-14)
 
 Generación automática + manual del batch (neteo min-cashflow), handshake de 2 vías
 (debtor marca pagado → creditor confirma/rechaza con razón → debtor apela → admin
 resuelve), estados pending/pending_confirmation/disputed/paid, secciones por rol,
 historial colapsable (`SettlementView.swift`, rediseño R.5Z).
+
+- ⚠️ **D4 (P1) — admin disputed/appealed sin handler**: `SettlementView.swift:496`
+  menciona el caso "admin resuelve" pero no hay sección admin dedicada para items en
+  estado `disputed`/`appealed`. El handshake queda colgado del lado del usuario sin
+  loop final. Ver `FrontendMissingFeatures.md` §Deltas D4.
 
 ## 10. Pools — ✅ completo para las 2 políticas MVP
 
@@ -231,13 +246,20 @@ con deep links al objeto (resource/event/decision/obligation) + resumen AI on-de
 agrupado por día, metadata humanizada (`payloadKeyLabel`), actores resueltos con
 fallback "Tú"/"Sistema". ⚠️ Claves de payload nuevas de R.6 pueden no estar mapeadas.
 
-## 13. Notificaciones — ❌ el dominio menos cubierto
+## 13. Notificaciones — ⚠️ centro cableado pero no enruta (re-audit 2026-06-14)
 
 Lo que existe: `attention_inbox()` + dismiss + badge + bottom accessory + cards — el
-modelo "pull de atención" funciona bien. Lo que falta: el backend ya tiene
-`notifications` R.4D (`mark_notification_read/archived`, `mark_all_notifications_read`,
-`emit_notification`) y iOS **no las consume**: no hay centro de notificaciones, ni
-leído/no-leído, ni push (APNs fuera de alcance MVP2 por doctrina).
+modelo "pull de atención" funciona bien. **NotificationCenterView R.4D shipped** (Fase
+2, P1.1) con leído/no-leído/archivar/marcar-todas. Lo que falta:
+
+- ⚠️ **D2 (P1) — bifurcación AttentionItem ↔ RuulNotification + tap sin routing**:
+  `NotificationCenterView` renderiza `RuulNotification` (tabla R.4D) pero el tap
+  (L76-79) solo hace `markRead`, NO enruta vía `AttentionDispatcher`. El comentario
+  inline L4-6 dice "Tap → marca leída y navega al objeto vía AttentionDispatcher
+  (scope-based)" — drift documental. Además, el centro y el bottom accessory consumen
+  fuentes distintas (`notifications` vs `attention_inbox`) sin unificación. Ver
+  `FrontendMissingFeatures.md` §Deltas D2.
+- Push (APNs) sigue fuera de alcance MVP2 por doctrina (pull-based).
 
 ## 14. Perfil / actor personal — ✅ completo con gaps menores
 

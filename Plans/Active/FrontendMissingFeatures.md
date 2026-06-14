@@ -1,9 +1,27 @@
 # Frontend Missing Features — Ruul iOS (priorizado)
 
-**Fecha:** 2026-06-11
+**Fecha:** 2026-06-11 (revisión 2026-06-14 — sección "Deltas" agregada)
 **Fuente:** `FrontendFlowAudit.md` (auditoría completa con file:line).
 **Criterio:** P0 = rompe un flujo obligatorio hoy · P1 = core avanzado incompleto ·
 P2 = escalabilidad/pulido. "Backend ✅" = el RPC/tabla ya existe en migrations.
+
+## Deltas detectados en re-audit 2026-06-14 (post R.7/R.8)
+
+Auditoría paralela fresca cruzada contra este backlog. Cinco gaps reales que el doc
+original no captura (R.8.A se firmó el 2026-06-10, un día antes del doc; R.7.x cerró
+2026-06-09 dejando expuestos huecos en NotificationCenter y Settlement admin loop).
+
+| # | Flow | Pantalla | Estado actual | Backend | RPC | Qué falta | Prioridad | Riesgo | Archivo Swift | Recomendación |
+|---|---|---|---|---|---|---|---|---|---|---|
+| D1 | Money | MoneyHomeView | `pendientesSection` muestra TODAS las obligaciones; `fondosSection` es solo `NavigationLink → PoolsListView`. Cero uso de `paired_obligation_id` en iOS (`grep` en Packages = 0 hits) | ✅ R.8.A mig `20260610230000` agregó la columna | PostgREST `obligations` filtrado | Doctrina **Option C firmada 2026-06-10**: separar `tesoreriaSection` (filter `paired_obligation_id IS NULL`) ≠ `fondosSection` (lista pools R.8) | **P0** | Doctrina firmada por el founder NO implementada; el tab Dinero da señales semánticamente incorrectas (gastos vs aportes a botes se mezclan) | `Features/Money/MoneyHomeView.swift:312-323, 426-438` | Renombrar `pendientesSection` → `tesoreriaSection` aplicando el filtro; expandir `fondosSection` a lista inline de pools con balances |
+| D2 | Notificaciones | NotificationCenterView | Comentario L4-6 dice "Tap → marca leída y navega al objeto vía AttentionDispatcher (scope-based)" pero L76-79 sólo llama `store.markRead(notification)`. Render usa `RuulNotification` (R.4D), bifurcado de `AttentionItem` | ✅ AttentionDispatcher existe y routea 10 kinds | mismos | Cablear `AttentionDispatcher` en el tap (resolver `scope_kind`/`scope_id` → destino), igual que HomeView/Context | **P1** | Usuario tap notificación, queda en el centro sin navegar al objeto; el comentario inline miente sobre el comportamiento | `Features/Notifications/NotificationCenterView.swift:74-110` | Inyectar `AttentionDispatcher`; mapear `RuulNotification` → `AttentionDestination` por `scope_kind`/`scope_id`; mantener `markRead` como side-effect |
+| D3 | Auth | PersonalSettingsView + MeView | Botón "Cerrar sesión" llama `container.signOut()` directo sin `confirmationDialog` | ✅ | — | Confirmation destructive antes de signOut (consistente con resto del flujo: leave_context, archive_resource, etc.) | **P1** | Tap accidental cierra sesión y vacía stores; `FrontendFlowAudit.md` §1 afirma "confirmaciones destructivas en todos los flujos sensibles" — drift documental | `Features/Profile/PersonalSettingsView.swift:84`, `Features/Profile/MeView.swift:635` | `confirmationDialog("Cerrar sesión?", role: .destructive)` con copy "Tu sesión se cerrará en este dispositivo." |
+| D4 | Settlement | SettlementView | Handshake 2 vías cubre debtor→creditor→appeal, pero **no hay UI admin** para resolver items en estado `disputed`/`appealed`. L496 menciona el caso sin handler | ⚠️ por confirmar si el contrato expone RPC admin (`resolve_settlement_dispute`) o si admin usa los mismos `confirm/reject` | mismos `mark/confirm/reject/appeal_settlement_paid` | Sección admin (gated por `money.settle`) con disputed/appealed items + acción "Resolver disputa" | **P1** | Disputas quedan en limbo; admin invisible al ciclo final del handshake | `Features/Settlement/SettlementView.swift:496` | Si backend usa mismos RPCs: section admin con `if me.canSettle && item.status in (disputed, appealed)`. Si no: solicitar RPC nuevo |
+| D5 | Atención | DecisionDetail / RuleDetail / ObligationDetail | Attention items no se auto-dismissean cuando el objeto subyacente se resuelve (decisión ejecutada/regla archivada/obligación pagada). Sólo `NotificationCenterView` permite dismiss manual | ✅ `dismiss_attention_item` existe | `dismiss_attention_item` | Llamar dismiss en `onAppear` de detail cuando `attention.kind` matches y `subject.status == resolved` (o desde backend al cierre del objeto) | **P2** | Inbox de atención muestra items zombie ("vota esta decisión" tras haber votado); pulido UX, no rompe flujo | `Features/Decisions/DecisionDetailView.swift`, `Features/Rules/RuleDetailView.swift`, `Features/Money/ObligationDetailView.swift` | Mejor en backend: trigger `AFTER UPDATE` que dismissee attention items del subject. Si no: matching en `onAppear` con kind+subject |
+
+**Plan de cierre de deltas:** ver `FrontendImplementationPlan.md` §Fase 6.
+
+---
 
 ---
 
@@ -82,13 +100,16 @@ versiones por `supersedes`.
 
 ## Resumen ejecutivo
 
-- **8 ítems P0**: 6 de flujo (P0.1–P0.6) + 2 de visión/compliance (**V.1 eliminación de
-  cuenta** — bloquea App Store — y **V.2 aviso de privacidad/términos**).
-- **20 ítems P1**: la mitad son "backend listo, falta UI" (notificaciones R.4D, avatar,
-  phone change, void_transaction, set_membership_state, breadcrumb), más los de visión
-  (V.3 export de memoria institucional, V.4 RuleDetail conforme a doctrina R.5V).
+- **9 ítems P0** (8 originales + **D1 R.8.A doctrine drift**): 6 de flujo (P0.1–P0.6) +
+  2 de visión/compliance (**V.1 eliminación de cuenta** — bloquea App Store — y **V.2
+  aviso de privacidad/términos**) + 1 de doctrina (**D1** — Tesorería ≠ Fondos).
+- **23 ítems P1** (20 originales + D2/D3/D4): la mitad son "backend listo, falta UI"
+  (notificaciones R.4D, avatar, phone change, void_transaction, set_membership_state,
+  breadcrumb), más los de visión (V.3 export de memoria institucional, V.4 RuleDetail
+  conforme a doctrina R.5V), más **D2 (NotificationCenter→AttentionDispatcher)**,
+  **D3 (logout confirmation)**, **D4 (Settlement admin disputed handler)**.
 - **P2** es cola de pulido sin riesgo (incluye V.5 monetización por grupo, V.6 MFA,
-  V.7 copy institucional).
+  V.7 copy institucional, **D5 attention auto-dismiss**).
 - Lo que NO hay: pantallas rotas, RPCs inexistentes, drift de contrato, lógica de
   permisos duplicada en cliente. La regla final ("no botones que no hagan nada") se
   viola solo en P0.4 y P1.13 — el resto de los botones inertes están honestamente

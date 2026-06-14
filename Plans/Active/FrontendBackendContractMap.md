@@ -1,13 +1,19 @@
 # Frontend ↔ Backend Contract Map — Ruul iOS
 
-**Fecha:** 2026-06-11
+**Fecha:** 2026-06-11 (revisión 2026-06-14)
 **Fuentes:** `RuulCore/API/RuulRPCClient.swift` (protocolo, 167 métodos),
 `SupabaseRuulRPCClient.swift` (live), `Plans/Active/MVP2_iOS_Contract.md`,
 migrations `supabase/migrations/2026*`.
 
 **Estado del contrato: COMPLETO Y COHERENTE.** 167/167 métodos iOS mapean 1:1 a RPCs
-del backend o a lecturas PostgREST legítimas. Cero drift. Idempotencia (`p_client_id`)
-consistente en los 11 RPCs que la soportan.
+del backend o a lecturas PostgREST legítimas. Cero drift de protocolo. Idempotencia
+(`p_client_id`) consistente en los 11 RPCs que la soportan.
+
+**Drift detectado en la capa de consumo** (no en el contrato): el centro de
+notificaciones y el AttentionInbox consumen tablas distintas (`notifications` R.4D vs
+`attention_inbox()` RPC) sin unificación en la UI; el tap de `NotificationCenterView`
+no usa el `AttentionDispatcher` que sí enruta correctamente desde HomeView/Context.
+Ver `FrontendMissingFeatures.md` §Deltas D2.
 
 ---
 
@@ -171,10 +177,24 @@ consistente en los 11 RPCs que la soportan.
 - **`p_location_text`** con semántica nil=skip / ""=clear (F.RESOURCE.4) ✓
 - **`p_include_descendants`** en list_activity (R.2U.2) ✓
 
-## 6. Discrepancia conocida (única)
+## 6. Discrepancias conocidas
 
+### 6.1 — Descriptor obligation (drift backend)
 El descriptor de obligaciones (`obligation_detail.available_actions`) **anuncia**
 `pay`, `dispute` y `cancel` pero no existen RPCs correspondientes; iOS las filtra con
 una whitelist (`ObligationDetailView.swift:37-45`). Es drift del lado backend
 (descriptor promete más de lo que el contrato ofrece). Resolver según P0.4 de
 `FrontendMissingFeatures.md`.
+
+### 6.2 — Consumo de obligaciones no doctrinario (re-audit 2026-06-14)
+`MoneyHomeView` consume `obligations` vía PostgREST sin filtrar por
+`paired_obligation_id`, violando la doctrina R.8.A Option C firmada 2026-06-10. El
+contrato (columna + RPCs) está completo; el drift está en cómo iOS lo consume.
+Ver `FrontendMissingFeatures.md` §Deltas D1.
+
+### 6.3 — Bifurcación notifications ↔ attention_inbox (re-audit 2026-06-14)
+Dos fuentes paralelas: `RuulNotification` (tabla `notifications` R.4D, consumida por
+`NotificationCenterView`) y `AttentionItem` (RPC `attention_inbox`, consumida por
+HomeView/Context/AttentionBottomAccessory). El contrato soporta ambas, pero la UI
+no unifica el modelo de "qué me requiere atención". Ver `FrontendMissingFeatures.md`
+§Deltas D2.

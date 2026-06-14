@@ -15,15 +15,21 @@ public struct MoneyHomeView: View {
     let container: DependencyContainer
 
     @State private var store: MoneyStore
+    /// D1 (re-audit 2026-06-14) — doctrina R.8.A Option C exige separar
+    /// Tesorería (obligaciones pairwise) de Fondos (pools R.8). La sección de
+    /// Fondos ahora muestra pools inline en vez de un solo `NavigationLink`.
+    @State private var poolsStore: PoolsStore
     @State private var isShowingExpense = false
     @State private var isShowingGameResult = false
     @State private var isShowingFine = false
+    @State private var isShowingCreatePool = false
     @State private var selectedObligationId: UUID?
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
         self.container = container
         _store = State(initialValue: MoneyStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
+        _poolsStore = State(initialValue: PoolsStore(rpc: container.rpc))
     }
 
     private var myActorId: UUID? { container.currentActorStore.actorId }
@@ -44,10 +50,17 @@ public struct MoneyHomeView: View {
             }
         }
         .navigationTitle("Dinero")
-        .task { await store.load(context: context) }
-        .refreshable { await store.load(context: context) }
+        .task {
+            await store.load(context: context)
+            await poolsStore.load(context: context)
+        }
+        .refreshable {
+            await store.load(context: context)
+            await poolsStore.load(context: context)
+        }
         .refreshOnReappear(if: store.phase.isLoaded) {
             await store.load(context: context)
+            await poolsStore.load(context: context)
         }
         .toolbar { toolbarPlus }
         .sheet(isPresented: $isShowingExpense) {
@@ -58,6 +71,9 @@ public struct MoneyHomeView: View {
         }
         .sheet(isPresented: $isShowingFine) {
             RecordFineView(context: context, store: store, container: container)
+        }
+        .sheet(isPresented: $isShowingCreatePool) {
+            CreatePoolSheet(context: context, store: poolsStore)
         }
         .sheet(item: Binding(
             get: { selectedObligationId.map { ObligationSheetItem(id: $0) } },
@@ -112,8 +128,8 @@ public struct MoneyHomeView: View {
     private var content: some View {
         List {
             heroSection
-            if !visiblePending.isEmpty {
-                pendientesSection
+            if !tesoreriaPending.isEmpty {
+                tesoreriaSection
             }
             accionesSection
             fondosSection
@@ -132,8 +148,11 @@ public struct MoneyHomeView: View {
         store.openObligations.filter(\.isMoneyKind)
     }
 
-    private var visiblePending: [Obligation] {
-        store.openObligations
+    /// D1 (re-audit 2026-06-14) — doctrina R.8.A Option C: la Tesorería del
+    /// contexto excluye aportaciones a pools (`obligation_type='contribution'`),
+    /// que viven en su propia sección "Fondos".
+    private var tesoreriaPending: [Obligation] {
+        store.openObligations.filter { $0.obligationType != "contribution" }
     }
 
     private var owedToMe: Double {
@@ -306,12 +325,12 @@ public struct MoneyHomeView: View {
         }
     }
 
-    // MARK: - Pendientes
+    // MARK: - Tesorería (D1 — doctrina R.8.A Option C)
 
     @ViewBuilder
-    private var pendientesSection: some View {
+    private var tesoreriaSection: some View {
         Section {
-            ForEach(visiblePending) { obligation in
+            ForEach(tesoreriaPending) { obligation in
                 Button {
                     selectedObligationId = obligation.id
                 } label: {
@@ -319,7 +338,9 @@ public struct MoneyHomeView: View {
                 }
             }
         } header: {
-            Text("Pendientes (\(visiblePending.count))")
+            Text("Tesorería (\(tesoreriaPending.count))")
+        } footer: {
+            Text("Saldos pairwise del contexto: gastos compartidos, multas y deudas de juego.")
         }
     }
 
@@ -420,21 +441,64 @@ public struct MoneyHomeView: View {
         }
     }
 
-    // MARK: - Fondos (R.8.E)
+    // MARK: - Fondos (R.8.E + D1 doctrina R.8.A Option C)
 
     @ViewBuilder
     private var fondosSection: some View {
         Section {
-            NavigationLink {
-                PoolsListView(context: context, container: container)
-            } label: {
-                Label("Fondos", systemImage: "banknote.fill")
+            if poolsStore.pools.isEmpty {
+                Button {
+                    isShowingCreatePool = true
+                } label: {
+                    Label("Crear fondo", systemImage: "plus.circle")
+                }
+            } else {
+                ForEach(poolsStore.pools) { pool in
+                    NavigationLink {
+                        PoolDetailView(
+                            poolAccountId: pool.poolAccountId,
+                            context: context,
+                            container: container
+                        )
+                    } label: {
+                        fondoRow(pool)
+                    }
+                }
+                NavigationLink {
+                    PoolsListView(context: context, container: container)
+                } label: {
+                    Label("Ver todos los fondos", systemImage: "rectangle.stack")
+                }
             }
         } header: {
-            Text("Fondos")
+            Text(poolsStore.pools.isEmpty ? "Fondos" : "Fondos (\(poolsStore.pools.count))")
         } footer: {
-            Text("Botes y fondos con meta del contexto.")
+            Text("Botes, fondos con meta y otros pools con atribución diferida.")
         }
+    }
+
+    @ViewBuilder
+    private func fondoRow(_ pool: PoolAccount) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: pool.policyKey == "equity_target" ? "target" : "banknote.fill")
+                .foregroundStyle(pool.isOpen ? Theme.Tint.success : Theme.Text.tertiary)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(pool.displayName)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Theme.Text.primary)
+                    .lineLimit(1)
+                Text(pool.policyLabel)
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 12)
+            Text((pool.totals?.basisTotal ?? 0).compactCurrencyLabel(pool.currency ?? "MXN"))
+                .font(.callout.weight(.semibold).monospacedDigit())
+                .foregroundStyle(Theme.Text.primary)
+        }
+        .contentShape(Rectangle())
     }
 
     // MARK: - Movimientos (P1.9 — ledger browser)
