@@ -15,6 +15,7 @@ public struct HostRotationOrderSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var ordered: [ContextMember] = []
     @State private var isSaving = false
+    @State private var isConfirmingClear = false
 
     public init(
         members: [ContextMember],
@@ -50,12 +51,7 @@ public struct HostRotationOrderSheet: View {
                 if currentOrder != nil {
                     Section {
                         Button(role: .destructive) {
-                            Task {
-                                isSaving = true
-                                await onClear()
-                                isSaving = false
-                                dismiss()
-                            }
+                            isConfirmingClear = true
                         } label: {
                             Label("Restaurar rotación automática", systemImage: "arrow.uturn.backward.circle")
                         }
@@ -85,6 +81,23 @@ public struct HostRotationOrderSheet: View {
                 }
             }
             .onAppear { resetOrdered() }
+            .confirmationDialog(
+                "¿Restaurar el orden automático?",
+                isPresented: $isConfirmingClear,
+                titleVisibility: .visible
+            ) {
+                Button("Restaurar", role: .destructive) {
+                    Task {
+                        isSaving = true
+                        await onClear()
+                        isSaving = false
+                        dismiss()
+                    }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("Se perderá el orden manual que configuraste. La rotación volverá al orden por antigüedad en el contexto.")
+            }
         }
         .ruulSheet()
     }

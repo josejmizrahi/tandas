@@ -257,10 +257,10 @@ public struct HomeView: View {
         let items = Array(activityStore.items.prefix(3))
         Section {
             if activityStore.phase.isLoading && activityStore.items.isEmpty {
-                HStack {
-                    ProgressView()
-                    Text("Cargando…").foregroundStyle(Theme.Text.secondary)
-                }
+                // Skeleton coherente con el resto de la app (en vez de ProgressView genérico).
+                RuulSkeletonList(rows: 3)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
             } else if items.isEmpty {
                 Text("Sin actividad reciente.")
                     .font(.callout)
@@ -326,13 +326,16 @@ public struct HomeView: View {
     @ViewBuilder
     private var toolsSection: some View {
         Section {
-            Label("Buscar", systemImage: "magnifyingglass")
+            Label("Búsqueda inteligente", systemImage: "magnifyingglass")
+                .foregroundStyle(Theme.Text.tertiary)
             Label("Preguntar a Ruul", systemImage: "sparkles")
-            Label("Escanear", systemImage: "qrcode.viewfinder")
+                .foregroundStyle(Theme.Text.tertiary)
+            Label("Escanear QR", systemImage: "qrcode.viewfinder")
+                .foregroundStyle(Theme.Text.tertiary)
         } header: {
-            Text("Herramientas")
+            Text("Próximamente")
         } footer: {
-            Text("Funciones que estamos desarrollando.")
+            Text("Pronto podrás buscar entre todos tus espacios, preguntar cualquier cosa a Ruul y escanear códigos para unirte rápido.")
         }
         .disabled(true)
     }

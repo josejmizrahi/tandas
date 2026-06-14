@@ -105,7 +105,7 @@ public struct ContextsListView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Mis Contextos")
+        .navigationTitle("Mis espacios")
         .searchable(
             text: $searchText,
             placement: .navigationBarDrawer(displayMode: .automatic),

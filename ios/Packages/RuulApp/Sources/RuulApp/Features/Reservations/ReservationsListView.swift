@@ -18,6 +18,8 @@ public struct ReservationsListView: View {
     @State private var store: ReservationsStore
     @State private var isShowingRequest = false
     @State private var viewMode: ViewMode = .list
+    /// Slice 7.A.3 — confirmation antes de cancelar por swipe (fat-finger safety).
+    @State private var pendingCancel: Reservation?
 
     public init(resource: Resource, context: AppContext, reservationContextId: UUID? = nil, container: DependencyContainer) {
         self.resource = resource
@@ -72,6 +74,25 @@ public struct ReservationsListView: View {
                 store: store,
                 container: container
             )
+        }
+        .confirmationDialog(
+            "¿Cancelar esta reservación?",
+            isPresented: Binding(
+                get: { pendingCancel != nil },
+                set: { if !$0 { pendingCancel = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingCancel
+        ) { target in
+            Button("Cancelar reservación", role: .destructive) {
+                Task {
+                    try? await store.cancel(reservationId: target.id, resourceId: resource.id, context: context)
+                    pendingCancel = nil
+                }
+            }
+            Button("No cancelar", role: .cancel) {}
+        } message: { target in
+            Text("La reservación del \(target.startsAt.formatted(date: .abbreviated, time: .omitted)) quedará cancelada y liberará el horario.")
         }
     }
 
@@ -208,9 +229,7 @@ public struct ReservationsListView: View {
         }
         if (isMine || store.canManage(in: context)) && (reservation.isPending || reservation.isActive) {
             Button("Cancelar", role: .destructive) {
-                Task {
-                    try? await store.cancel(reservationId: reservation.id, resourceId: resource.id, context: context)
-                }
+                pendingCancel = reservation
             }
         }
     }

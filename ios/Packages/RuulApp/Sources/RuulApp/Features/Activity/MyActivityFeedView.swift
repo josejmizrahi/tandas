@@ -29,7 +29,7 @@ public struct MyActivityFeedView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                RuulSkeletonList()
+                RuulSkeletonList(rows: 8)
 
             case .failed(let message):
                 RuulErrorState(message: message) {
@@ -70,9 +70,9 @@ public struct MyActivityFeedView: View {
     private var feedList: some View {
         if store.items.isEmpty {
             RuulEmptyState(
-                title: "Sin señales todavía",
-                systemImage: "antenna.radiowaves.left.and.right",
-                message: "Suscríbete a contextos, recursos, decisiones o eventos. Aquí verás las últimas actualizaciones de lo que te importa."
+                title: "Sin actualizaciones todavía",
+                systemImage: "tray",
+                message: "Suscríbete a espacios, recursos, decisiones o eventos. Aquí verás los movimientos de lo que te importa."
                 )
         } else {
             List {
