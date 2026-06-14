@@ -100,7 +100,7 @@ private struct QuickActionRow: View {
             actions: [
                 AvailableAction(actionKey: "create_resource", label: "Crear recurso",
                                 section: "resources", enabled: true,
-                                reason: "Tienes permiso para crear recursos en este contexto"),
+                                reason: "Tienes permiso para crear recursos en este espacio"),
                 AvailableAction(actionKey: "create_event", label: "Crear evento",
                                 section: "calendar", enabled: true,
                                 reason: "Tienes permiso para crear eventos"),

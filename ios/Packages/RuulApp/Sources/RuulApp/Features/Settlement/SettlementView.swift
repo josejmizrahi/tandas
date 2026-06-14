@@ -480,7 +480,8 @@ public struct SettlementView: View {
                     generateNotice = "No hay nada que liquidar."
                 }
             } else {
-                generateNotice = "Liquidación generada: \(result.items.count) transferencia(s)."
+                let count = result.items.count
+                generateNotice = "Liquidación generada: \(count) \(count == 1 ? "transferencia" : "transferencias")."
             }
         }
     }

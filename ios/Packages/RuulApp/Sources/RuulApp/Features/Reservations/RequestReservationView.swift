@@ -298,7 +298,8 @@ public struct RequestReservationView: View {
                 context: context
             )
             if result.conflictsDetected > 0 {
-                conflictNotice = "Tu solicitud quedó registrada, pero hay \(result.conflictsDetected) conflicto(s) de fechas. Un admin tendrá que resolverlo."
+                let conflictCount = result.conflictsDetected
+                conflictNotice = "Tu solicitud quedó registrada, pero hay \(conflictCount) \(conflictCount == 1 ? "conflicto" : "conflictos") de fechas. Un admin tendrá que resolverlo\(conflictCount == 1 ? "" : "s")."
             }
         }
         if success && conflictNotice == nil {

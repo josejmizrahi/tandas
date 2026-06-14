@@ -19,7 +19,7 @@ public enum ActionScope: Sendable, Equatable, Hashable {
 
     public var label: String {
         switch self {
-        case .context:     return "contexto"
+        case .context:     return "espacio"
         case .resource:    return "recurso"
         case .event:       return "evento"
         case .decision:    return "decisión"

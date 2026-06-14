@@ -162,7 +162,10 @@ public struct RecordExpenseView: View {
                             Spacer()
                         }
                     } footer: {
-                        Text("El reparto se limita a los \(scope.participantActorIds.count) invitado(s) del evento.")
+                        Text({
+                            let n = scope.participantActorIds.count
+                            return "El reparto se limita a \(n) \(n == 1 ? "invitado" : "invitados") del evento."
+                        }())
                     }
                 }
 
