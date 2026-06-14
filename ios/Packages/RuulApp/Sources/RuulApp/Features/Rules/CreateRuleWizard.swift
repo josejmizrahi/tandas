@@ -471,18 +471,21 @@ public struct CreateRuleWizard: View {
         }
     }
 
+    /// 7.C.2 (audit 2026-06-14) — copy conversacional: cero "backend",
+    /// cero "check-in" (jerga R.2S), narrativa "Si pasa X, entonces Y"
+    /// como leería un humano.
     private var footerText: String {
         switch template {
         case .lateFee:
-            return "Cuando alguien haga check-in con más de \(Int(thresholdMinutes)) minutos de retraso, el backend le genera automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency) a favor del contexto."
+            return "Si alguien llega más de \(Int(thresholdMinutes)) minutos tarde a un evento, se le cobra automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency) al espacio."
         case .sameDayCancellation:
-            return "Cuando alguien cancele su asistencia el mismo día del evento, se le genera automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency)."
+            return "Si alguien cancela su asistencia el mismo día del evento, se le cobra automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency)."
         case .lateReservationCancel:
-            return "Cuando alguien cancele una reservación con menos de \(Int(lateCancelHours)) h de anticipación, se le genera una multa de $\(fineAmount.formatted(.number)) \(currency)."
+            return "Si alguien cancela una reservación con menos de \(Int(lateCancelHours)) horas de anticipación, se le cobra una multa de $\(fineAmount.formatted(.number)) \(currency)."
         case .expenseAlert:
-            return "Cualquier gasto mayor a $\(expenseThreshold.formatted(.number)) \(currency) queda marcado con severidad alta para revisión."
+            return "Si alguien registra un gasto mayor a $\(expenseThreshold.formatted(.number)) \(currency), se marca como importante y aparece en Atención para revisión."
         case .textNorm:
-            return "Las normas de texto no generan consecuencias automáticas — son acuerdos visibles para todos."
+            return "Las normas escritas no generan multas ni cargos automáticos. Solo quedan como acuerdos visibles para todos los miembros del espacio."
         }
     }
 

@@ -118,11 +118,37 @@ public struct EditEventView: View {
         return "Puedes agregar la ubicación más tarde. Útil cuando todavía no decides el lugar."
     }
 
+    /// 7.C.1 (audit 2026-06-14) — requiere `hasChanges` para no enviar updates
+    /// vacíos. El backend ya devuelve diff_keys vacío en no-ops, pero queremos
+    /// gatear el botón del lado iOS para que el usuario sepa que no cambió nada.
     private var canSubmit: Bool {
+        isValid && hasChanges && !runner.isRunning
+    }
+
+    private var isValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty
             && locationIsValid
             && (!hasEndsAt || endsAt >= startsAt)
-            && !runner.isRunning
+    }
+
+    private var hasChanges: Bool {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+        let trimmedDescription = description.trimmingCharacters(in: .whitespaces)
+        let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
+        let originalDescription = event.description ?? ""
+        let originalLocation = event.locationText ?? ""
+        let originalStartsAt = event.startsAt ?? startsAt
+        let originalEndsAt = event.endsAt
+        let originalRecurrence = Recurrence.from(event.recurrenceRule)
+        let originalLocationMode = LocationMode.from(event: event)
+
+        return trimmedTitle != event.title
+            || trimmedDescription != originalDescription
+            || startsAt != originalStartsAt
+            || (hasEndsAt ? endsAt : nil) != originalEndsAt
+            || trimmedLocation != originalLocation
+            || locationMode != originalLocationMode
+            || recurrence != originalRecurrence
     }
 
     public var body: some View {

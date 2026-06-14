@@ -59,6 +59,20 @@ public struct CreateObligationView: View {
             case .custom: return "circle.dashed"
             }
         }
+        /// 7.C.2 (audit 2026-06-14) — descripción conversacional de qué
+        /// pasa cuando una persona acepta este tipo de compromiso. Antes
+        /// el usuario veía "Aprobación" sin saber qué implicaba.
+        var helpText: String {
+            switch self {
+            case .action:      return "La persona se compromete a hacer algo concreto."
+            case .approval:    return "La persona aprueba o rechaza algo."
+            case .delivery:    return "La persona entrega un objeto, archivo o entregable."
+            case .attendance:  return "La persona se compromete a asistir a algo."
+            case .document:    return "La persona firma o sube un documento."
+            case .reservation: return "La persona reserva un lugar o un recurso."
+            case .custom:      return "Cualquier otro compromiso que no encaja en los anteriores."
+            }
+        }
     }
 
     public var body: some View {
@@ -85,13 +99,18 @@ public struct CreateObligationView: View {
                     }
                 }
 
-                Section("Tipo") {
+                Section {
                     Picker("Tipo", selection: $kind) {
                         ForEach(ObligationKind.allCases) { k in
                             Label(k.label, systemImage: k.symbolName).tag(k)
                         }
                     }
                     .pickerStyle(.menu)
+                } header: {
+                    Text("Tipo")
+                } footer: {
+                    // 7.C.2 — explica qué implica cada tipo.
+                    Text(kind.helpText)
                 }
 
                 Section("Detalle") {

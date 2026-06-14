@@ -371,14 +371,17 @@ public struct CreateDecisionView: View {
 
     private var supportedVotingModels: [VotingModel] { [.yesNoAbstain, .singleChoice, .multipleChoice] }
 
+    /// 7.C.2 (audit 2026-06-14) — hint específico por modo + ejemplo
+    /// concreto. Antes el usuario veía solo la primera frase sin saber
+    /// cuándo conviene cada modo.
     private var votingModelHint: String {
         switch votingModel {
         case .yesNoAbstain:
-            return "Cada miembro vota a favor, en contra o abstención."
+            return "Cada miembro vota a favor, en contra o abstención. Ideal para preguntas simples como \"¿subimos la cuota?\"."
         case .singleChoice:
-            return "Cada miembro elige una opción de las que definas abajo."
+            return "Cada miembro elige una opción de las que definas abajo. Ideal para elegir entre alternativas, como \"¿a dónde vamos de viaje?\"."
         case .multipleChoice:
-            return "Cada miembro puede elegir varias opciones. El cierre es manual."
+            return "Cada miembro puede elegir varias opciones a la vez. Ideal para priorizar, como \"¿qué actividades te interesan?\". El cierre es manual."
         default:
             return ""
         }

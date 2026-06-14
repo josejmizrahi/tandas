@@ -31,13 +31,38 @@ public struct EditRuleView: View {
         _isActive = State(initialValue: rule.status == "active")
     }
 
+    /// 7.C.1 (audit 2026-06-14) — `canSubmit` ahora requiere `hasChanges`.
     private var canSubmit: Bool {
-        !title.trimmingCharacters(in: .whitespaces).isEmpty && !runner.isRunning
+        isValid && hasChanges && !runner.isRunning
+    }
+
+    private var isValid: Bool {
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var hasChanges: Bool {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+        let trimmedBody = body_.trimmingCharacters(in: .whitespaces)
+        let newStatus = isActive ? "active" : "paused"
+        return trimmedTitle != rule.title
+            || trimmedBody != (rule.body ?? "")
+            || severity != rule.severity
+            || newStatus != rule.status
     }
 
     public var body: some View {
         NavigationStack {
             Form {
+                // 7.C.1 — contexto de qué disparador / scope tiene la regla,
+                // para que el usuario entienda QUÉ está editando antes de
+                // cambiar título o severidad.
+                Section {
+                    LabeledContent("Disparador", value: rule.triggerHumanLabel)
+                    LabeledContent("Estado", value: rule.isActive ? "Activa" : "Pausada")
+                } footer: {
+                    Text("Esta pantalla edita lo legible (título, acuerdo y severidad). El disparador, la condición y la consecuencia se modifican con el asistente.")
+                }
+
                 Section("Regla") {
                     TextField("Título", text: $title)
                     TextField("Acuerdo (opcional)", text: $body_, axis: .vertical)
@@ -46,15 +71,17 @@ public struct EditRuleView: View {
 
                 Section {
                     Stepper(value: $severity, in: 1...5) {
-                        HStack {
+                        HStack(spacing: 10) {
                             Text("Severidad")
                             Spacer()
-                            Text("\(severity)")
-                                .foregroundStyle(.secondary)
+                            // 7.C.1 — escala visual: tint + label semántico.
+                            Label(severityLabel, systemImage: severitySymbol)
+                                .foregroundStyle(severityTint)
+                                .font(.callout.weight(.semibold))
                         }
                     }
                 } footer: {
-                    Text("1 = aviso suave · 5 = consecuencia fuerte. Sirve para ordenar y notificar.")
+                    Text("Sirve para ordenar prioridades y decidir si genera notificación o solo aparece en el historial.")
                 }
 
                 Section {
@@ -89,6 +116,41 @@ public struct EditRuleView: View {
             .actionErrorAlert(runner)
         }
         .ruulSheet()
+    }
+
+    // 7.C.1 — escala semántica de severidad.
+
+    private var severityLabel: String {
+        switch severity {
+        case 1: return "Aviso suave"
+        case 2: return "Recordatorio"
+        case 3: return "Atención"
+        case 4: return "Importante"
+        case 5: return "Consecuencia fuerte"
+        default: return "Nivel \(severity)"
+        }
+    }
+
+    private var severitySymbol: String {
+        switch severity {
+        case 1: return "info.circle.fill"
+        case 2: return "bell.fill"
+        case 3: return "exclamationmark.circle.fill"
+        case 4: return "exclamationmark.triangle.fill"
+        case 5: return "exclamationmark.octagon.fill"
+        default: return "circle.fill"
+        }
+    }
+
+    private var severityTint: Color {
+        switch severity {
+        case 1: return Theme.Tint.info
+        case 2: return Theme.Tint.primary
+        case 3: return Theme.Tint.warning
+        case 4: return Theme.Tint.warning
+        case 5: return Theme.Tint.critical
+        default: return Theme.Text.secondary
+        }
     }
 
     private func save() async {

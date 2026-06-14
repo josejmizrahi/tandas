@@ -30,15 +30,40 @@ public struct EditDecisionView: View {
         _hasClosesAt = State(initialValue: decision.closesAt != nil)
     }
 
+    /// 7.C.1 (audit 2026-06-14) — `canSubmit` ahora requiere `hasChanges`
+    /// para evitar PUT vacíos. Antes el botón Guardar quedaba habilitado
+    /// aunque el usuario no hubiera cambiado nada.
     private var canSubmit: Bool {
+        isValid && hasChanges && !runner.isRunning
+    }
+
+    private var isValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty
             && (!hasClosesAt || closesAt > Date())
-            && !runner.isRunning
+    }
+
+    private var hasChanges: Bool {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+        let trimmedDescription = description.trimmingCharacters(in: .whitespaces)
+        let newClosesAt = hasClosesAt ? closesAt : nil
+        return trimmedTitle != decision.title
+            || trimmedDescription != (decision.description ?? "")
+            || newClosesAt != decision.closesAt
     }
 
     public var body: some View {
         NavigationStack {
             Form {
+                // 7.C.1 — contexto de qué se está editando: voting model + status.
+                // Antes el usuario abría "Editar" y no sabía si modificaba la
+                // pregunta o los parámetros de votación.
+                Section {
+                    LabeledContent("Estado", value: decision.statusLabel)
+                    LabeledContent("Modo de votación", value: decision.voting.label)
+                } footer: {
+                    Text("Esta pantalla solo edita la pregunta, el contexto y la fecha de cierre. El modo de votación y las opciones no se pueden cambiar después de abierta la decisión.")
+                }
+
                 Section("Pregunta") {
                     TextField("Título", text: $title)
                     TextField("Contexto adicional (opcional)", text: $description, axis: .vertical)
@@ -53,7 +78,7 @@ public struct EditDecisionView: View {
                 } header: {
                     Text("Cierre")
                 } footer: {
-                    Text("Al pasar esta fecha la votación se cerrará automáticamente. Déjala en blanco para mantenerla abierta hasta que la cierres manualmente.")
+                    Text("Al pasar esta fecha la votación se cerrará automáticamente y se contarán los votos emitidos hasta ese momento. Déjala en blanco para mantenerla abierta hasta que la cierres manualmente.")
                 }
             }
             .navigationTitle("Editar decisión")

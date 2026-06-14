@@ -40,13 +40,46 @@ public struct EditObligationView: View {
 
     private var isMoney: Bool { detail.kind == "money" }
 
+    /// 7.C.1 (audit 2026-06-14) — `canSubmit` ahora requiere `hasChanges` y
+    /// es más estricto con la validación de monto (visible con `validationHint`).
     private var canSubmit: Bool {
-        if runner.isRunning { return false }
+        isValid && hasChanges && !runner.isRunning
+    }
+
+    private var isValid: Bool {
         if isMoney {
             guard let parsed = parsedAmount, parsed > 0 else { return false }
             _ = parsed
         }
         return true
+    }
+
+    private var hasChanges: Bool {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+        let trimmedDescription = description.trimmingCharacters(in: .whitespaces)
+        let newDueAt = hasDueAt ? dueAt : nil
+        let newAmount = isMoney ? parsedAmount : nil
+        return trimmedTitle != (detail.title ?? "")
+            || trimmedDescription != (detail.description ?? "")
+            || newDueAt != detail.dueAt
+            || newAmount != detail.amount
+            || (isMoney && currency != (detail.currency ?? "MXN"))
+    }
+
+    /// 7.C.1 — copy específico para el caso "el monto es 0 o vacío en una
+    /// obligación de dinero". Antes el botón quedaba disabled mudo.
+    private var amountValidationHint: String? {
+        guard isMoney else { return nil }
+        if amountText.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Debe tener un monto mayor a cero."
+        }
+        if let parsed = parsedAmount, parsed <= 0 {
+            return "El monto debe ser mayor a cero."
+        }
+        if parsedAmount == nil {
+            return "Usa un número válido (ej. 250 o 250.50)."
+        }
+        return nil
     }
 
     private var parsedAmount: Double? {
@@ -57,7 +90,7 @@ public struct EditObligationView: View {
         NavigationStack {
             Form {
                 if isMoney {
-                    Section("Monto") {
+                    Section {
                         TextField("Cantidad", text: $amountText)
                             .keyboardType(.decimalPad)
                         Picker("Moneda", selection: $currency) {
@@ -65,6 +98,14 @@ public struct EditObligationView: View {
                                 Text(c).tag(c)
                             }
                         }
+                        if let hint = amountValidationHint {
+                            // 7.C.1 — feedback inline en vez de botón disabled mudo.
+                            Label(hint, systemImage: "exclamationmark.circle")
+                                .font(.caption)
+                                .foregroundStyle(Theme.Tint.warning)
+                        }
+                    } header: {
+                        Text("Monto")
                     }
                 }
 
