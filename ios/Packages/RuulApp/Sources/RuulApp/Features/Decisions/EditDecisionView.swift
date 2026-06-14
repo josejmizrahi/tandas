@@ -61,7 +61,7 @@ public struct EditDecisionView: View {
                     LabeledContent("Estado", value: decision.statusLabel)
                     LabeledContent("Modo de votación", value: decision.voting.label)
                 } footer: {
-                    Text("Esta pantalla solo edita la pregunta, el contexto y la fecha de cierre. El modo de votación y las opciones no se pueden cambiar después de abierta la decisión.")
+                    Text("Esta pantalla solo edita la pregunta, el detalle y la fecha de cierre. El modo de votación y las opciones no se pueden cambiar después de abierta la decisión.")
                 }
 
                 Section("Pregunta") {

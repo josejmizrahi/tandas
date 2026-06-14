@@ -216,7 +216,7 @@ public struct MemberDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Perderá acceso a todo el contexto: eventos, recursos, dinero y actividad.")
+            Text("Perderá acceso a todo el espacio: eventos, recursos, dinero y actividad.")
         }
         // P1.5 — pausa directa (la policy del contexto no exige voto).
         .confirmationDialog(
@@ -229,7 +229,7 @@ public struct MemberDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("No podrá operar en el contexto hasta que un administrador lo reactive.")
+            Text("No podrá operar en el espacio hasta que un administrador lo reactive.")
         }
         .actionErrorAlert(pauseRunner)
         // R.7.E/F — Governance sheet genérico para member.remove / pause / promote.

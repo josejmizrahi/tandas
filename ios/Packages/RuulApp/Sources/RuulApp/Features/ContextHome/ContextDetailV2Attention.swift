@@ -14,7 +14,7 @@ struct ContextDetailV2AttentionSection: View {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Todo al día").font(.callout.weight(.medium))
-                        Text("Sin pendientes en este contexto")
+                        Text("Sin pendientes en este espacio")
                             .font(.caption)
                             .foregroundStyle(Theme.Text.secondary)
                     }

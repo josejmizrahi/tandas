@@ -340,7 +340,7 @@ public struct MoneyHomeView: View {
         } header: {
             Text("Tesorería (\(tesoreriaPending.count))")
         } footer: {
-            Text("Saldos pairwise del contexto: gastos compartidos, multas y deudas de juego.")
+            Text("Saldos del espacio: gastos compartidos, multas y deudas de juego.")
         }
     }
 
@@ -511,7 +511,7 @@ public struct MoneyHomeView: View {
                 Label("Movimientos", systemImage: "list.bullet.rectangle")
             }
         } footer: {
-            Text("El registro de gastos, pagos y liquidaciones del contexto.")
+            Text("El registro de gastos, pagos y liquidaciones del espacio.")
         }
     }
 

@@ -29,7 +29,7 @@ public struct JoinByCodeView: View {
                         .font(.title3.monospaced())
                         .multilineTextAlignment(.center)
                 } footer: {
-                    Text("Pídele el código a quien administra el contexto.")
+                    Text("Pídele el código a quien administra el espacio.")
                 }
 
                 Section {

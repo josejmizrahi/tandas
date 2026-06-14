@@ -20,6 +20,9 @@ public struct ContextSwitcherSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var switchTrigger: Int = 0
     @State private var isShowingCreateContext = false
+    /// 7.D.1 (audit 2026-06-14) — search bar local. Útil cuando el usuario
+    /// pertenece a muchos espacios y no quiere scrollear hasta encontrar uno.
+    @State private var searchText: String = ""
 
     public init(
         container: DependencyContainer,
@@ -37,17 +40,26 @@ public struct ContextSwitcherSheet: View {
     public var body: some View {
         NavigationStack {
             List {
-                if !preferencesStore.favorites.isEmpty {
-                    favoritesSection
+                if isSearching {
+                    searchResultsSection
+                } else {
+                    if !preferencesStore.favorites.isEmpty {
+                        favoritesSection
+                    }
+                    if !preferencesStore.recents.isEmpty {
+                        recentsSection
+                    }
+                    allContextsSection
                 }
-                if !preferencesStore.recents.isEmpty {
-                    recentsSection
-                }
-                allContextsSection
                 createSection
             }
-            .navigationTitle("Cambiar contexto")
+            .navigationTitle("Cambiar de espacio")
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(
+                text: $searchText,
+                placement: .navigationBarDrawer(displayMode: .automatic),
+                prompt: "Buscar espacios"
+            )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cerrar") { dismiss() }
@@ -122,7 +134,37 @@ public struct ContextSwitcherSheet: View {
             Button {
                 isShowingCreateContext = true
             } label: {
-                Label("Crear contexto", systemImage: "plus.circle.fill")
+                Label("Crear espacio nuevo", systemImage: "plus.circle.fill")
+            }
+        }
+    }
+
+    // MARK: - Search (7.D.1)
+
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var filteredContexts: [AppContext] {
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !query.isEmpty else { return contextStore.availableContexts }
+        return contextStore.availableContexts.filter {
+            $0.displayName.lowercased().contains(query)
+        }
+    }
+
+    @ViewBuilder
+    private var searchResultsSection: some View {
+        let results = filteredContexts
+        if results.isEmpty {
+            Section {
+                ContentUnavailableView.search(text: searchText)
+            }
+        } else {
+            Section("Resultados (\(results.count))") {
+                ForEach(results) { ctx in
+                    contextRow(ctx)
+                }
             }
         }
     }
@@ -145,10 +187,11 @@ public struct ContextSwitcherSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.displayName).font(.callout.weight(.medium))
                     if !context.isPersonal {
-                        Text("\(context.memberCount) miembros")
+                        // 7.D.1 — singular correcto cuando memberCount == 1.
+                        Text(context.memberCount == 1 ? "1 miembro" : "\(context.memberCount) miembros")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Text("Tu contexto personal")
+                        Text("Tu espacio personal")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }

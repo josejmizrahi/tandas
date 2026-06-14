@@ -75,7 +75,7 @@ public struct ContextConflictsListView: View {
                 .foregroundStyle(.green)
             Text("Sin conflictos abiertos")
                 .font(.title3.bold())
-            Text("No hay conflictos pendientes de resolver en este contexto.")
+            Text("No hay conflictos pendientes de resolver en este espacio.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

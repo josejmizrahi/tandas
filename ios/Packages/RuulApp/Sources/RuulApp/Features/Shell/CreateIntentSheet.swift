@@ -61,7 +61,7 @@ public struct CreateIntentSheet: View {
                         isShowingCreateContext = true
                     } label: {
                         intentLabel(icon: "rectangle.split.2x1.fill", tint: .blue,
-                                    label: "Crear contexto",
+                                    label: "Crear espacio",
                                     detail: "Una familia, viaje, proyecto, comunidad…")
                     }
                     .buttonStyle(.plain)

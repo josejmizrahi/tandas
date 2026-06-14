@@ -538,7 +538,7 @@ public struct MeView: View {
                 goToContexts()
             } label: {
                 HStack {
-                    Label("Mis contextos", systemImage: "square.grid.2x2.fill")
+                    Label("Mis espacios", systemImage: "square.grid.2x2.fill")
                         .foregroundStyle(Theme.Text.primary)
                     Spacer()
                     Image(systemName: "arrow.up.right.square")

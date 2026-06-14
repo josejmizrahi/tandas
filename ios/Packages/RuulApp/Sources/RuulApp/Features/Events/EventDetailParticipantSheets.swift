@@ -86,9 +86,9 @@ struct AddParticipantsSheet: View {
                             .buttonStyle(.plain)
                         }
                     } header: {
-                        Text("Miembros del contexto")
+                        Text("Miembros del espacio")
                     } footer: {
-                        Text("Solo aparecen los miembros activos del contexto que aún no son participantes.")
+                        Text("Solo aparecen los miembros activos del espacio que aún no son participantes.")
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -155,7 +155,7 @@ struct AddEventGuestSheet: View {
                 } header: {
                     Text("Datos del invitado")
                 } footer: {
-                    Text("El invitado no será miembro del contexto. Solo aparece en este evento y cuenta en el split del gasto según su share.")
+                    Text("El invitado no será miembro del espacio. Solo aparece en este evento y cuenta en el reparto del gasto según su parte.")
                 }
 
                 Section {
@@ -177,7 +177,7 @@ struct AddEventGuestSheet: View {
                 } header: {
                     Text("Próximamente")
                 } footer: {
-                    Text("Pronto vas a poder seleccionar invitados desde tus otros contextos o tu libreta de contactos de Apple.")
+                    Text("Pronto vas a poder seleccionar invitados desde tus otros espacios o tu libreta de contactos de Apple.")
                 }
             }
             .navigationTitle("Invitar externo")

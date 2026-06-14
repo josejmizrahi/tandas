@@ -110,7 +110,7 @@ public struct CreateContextView: View {
                         if runner.isRunning {
                             ProgressView().frame(maxWidth: .infinity)
                         } else {
-                            Text("Crear contexto").frame(maxWidth: .infinity)
+                            Text("Crear espacio").frame(maxWidth: .infinity)
                         }
                     }
                     .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty || runner.isRunning)
@@ -118,7 +118,7 @@ public struct CreateContextView: View {
                     Text("Tú quedas como fundador con rol de admin. Después puedes invitar miembros con un código.")
                 }
             }
-            .navigationTitle("Nuevo contexto")
+            .navigationTitle("Nuevo espacio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

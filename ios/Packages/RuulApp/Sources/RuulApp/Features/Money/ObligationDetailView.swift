@@ -126,7 +126,7 @@ public struct ObligationDetailView: View {
                     }
                     Button("Cancelar", role: .cancel) {}
                 } message: {
-                    Text("El compromiso queda en estado perdonado. No afecta el ledger del contexto.")
+                    Text("El compromiso queda perdonado. No afecta el balance del espacio.")
                 }
                 // R.7.x — governance sheet (requires_decision path).
                 .confirmationDialog(

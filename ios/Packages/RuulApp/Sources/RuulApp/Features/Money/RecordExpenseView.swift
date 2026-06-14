@@ -224,6 +224,13 @@ public struct RecordExpenseView: View {
                         }
                     }
                     .disabled(!isValid || runner.isRunning)
+                } footer: {
+                    // 7.D.2 — hint inline cuando falta algo.
+                    if let validationHint {
+                        Label(validationHint, systemImage: "exclamationmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Tint.warning)
+                    }
                 }
             }
             .navigationTitle("Registrar gasto")
@@ -438,13 +445,35 @@ public struct RecordExpenseView: View {
     }
 
     private var isValid: Bool {
-        guard let amount, amount > 0,
-              !description.trimmingCharacters(in: .whitespaces).isEmpty,
-              !participants.isEmpty else { return false }
-        if splitMethod == .custom {
-            return abs(customTotal - amount) < 0.01
+        validationHint == nil
+    }
+
+    /// 7.D.2 (audit 2026-06-14) — describe POR QUÉ el botón está disabled.
+    /// Antes el usuario veía "Registrar gasto" en gris sin saber qué le faltaba.
+    /// Ahora el hint aparece inline arriba del botón.
+    private var validationHint: String? {
+        if description.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Falta describir qué se pagó."
         }
-        return true
+        guard let amount else {
+            return "Escribe el monto del gasto."
+        }
+        if amount <= 0 {
+            return "El monto tiene que ser mayor a cero."
+        }
+        if participants.isEmpty {
+            return "Tienes que dejar a alguien dentro del reparto."
+        }
+        if splitMethod == .custom && abs(customTotal - amount) >= 0.01 {
+            let diff = amount - customTotal
+            let absDiff = abs(diff).formatted(.number.precision(.fractionLength(2)))
+            if diff > 0 {
+                return "Faltan \(absDiff) \(currency) por asignar en el reparto."
+            } else {
+                return "Te sobran \(absDiff) \(currency) en el reparto."
+            }
+        }
+        return nil
     }
 
     private func toggleExclusion(_ actorId: UUID) {

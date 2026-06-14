@@ -122,9 +122,9 @@ public struct MyBalanceView: View {
                 .buttonStyle(.plain)
             }
         } header: {
-            Text("Por contexto")
+            Text("Por espacio")
         } footer: {
-            Text("Toca un contexto para resolver el neteo con Settlement.")
+            Text("Toca un espacio para resolver el neteo con liquidaciones.")
         }
     }
 

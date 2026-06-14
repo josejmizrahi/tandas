@@ -53,7 +53,7 @@ public struct ContextSettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Configuración del contexto")
+            .navigationTitle("Configuración del espacio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -329,7 +329,7 @@ public struct ContextSettingsView: View {
                     Label("Revocar delegación", systemImage: "arrow.uturn.backward")
                 }
             } else {
-                Text("No has delegado tu voto en este contexto.")
+                Text("No has delegado tu voto en este espacio.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Button {
@@ -348,7 +348,7 @@ public struct ContextSettingsView: View {
         } header: {
             Text("Mi voto")
         } footer: {
-            Text("Mientras delegues, tu peso de voto se suma al del delegado en decisiones de este contexto.")
+            Text("Mientras delegues, tu peso de voto se suma al del delegado en decisiones de este espacio.")
         }
     }
 
@@ -456,7 +456,7 @@ public struct ContextSettingsView: View {
                 Text(store.can("manage_roles") ? "Editable próximamente" : "Solo lectura")
                     .foregroundStyle(Theme.Text.secondary)
             } label: {
-                Label("Roles del contexto", systemImage: "shield.lefthalf.filled")
+                Label("Roles del espacio", systemImage: "shield.lefthalf.filled")
             }
         } header: {
             Text("Roles")
@@ -800,7 +800,7 @@ private struct EditContextGeneralSheet: View {
         NavigationStack {
             Form {
                 Section("Nombre") {
-                    TextField("Nombre del contexto", text: $displayName)
+                    TextField("Nombre del espacio", text: $displayName)
                 }
                 Section("Descripción") {
                     TextField("Descripción (opcional)", text: $description, axis: .vertical)

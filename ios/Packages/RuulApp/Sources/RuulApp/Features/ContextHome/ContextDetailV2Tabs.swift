@@ -24,7 +24,7 @@ struct ContextDetailV2EventsTab: View {
                 Label("Calendario", systemImage: "calendar")
             }
         } header: {
-            Text("Eventos del contexto")
+            Text("Eventos del espacio")
         } footer: {
             Text("Los gastos del evento se reparten entre los confirmados con sus partes.")
         }
@@ -91,7 +91,7 @@ struct ContextDetailV2GovernanceTab: View {
                 Label("Ver reglas del grupo", systemImage: "ruler.fill")
             }
         } header: {
-            Text("Gobierno del contexto")
+            Text("Gobierno del espacio")
         } footer: {
             Text("Decidan juntos: votos para temas grupales, reglas para convivir bien.")
         }
@@ -247,7 +247,7 @@ struct ContextDetailV2ResourcesTab: View {
             } header: {
                 Text("Recursos")
             } footer: {
-                Text("Crea un recurso desde el botón ＋ del toolbar del contexto.")
+                Text("Crea un recurso desde el botón ＋ del toolbar del espacio.")
             }
         } else {
             // R.5A.B.0 class catalog (founder-seeded 17 classes). Header label

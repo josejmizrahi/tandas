@@ -96,7 +96,7 @@ struct ReserveResourceForEventSheet: View {
                     }
                 }
             } header: {
-                Text("Recursos del contexto (\(resources.count))")
+                Text("Recursos del espacio (\(resources.count))")
             } footer: {
                 if let event {
                     Text("La reserva quedará asociada a “\(event.title)”.")

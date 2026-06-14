@@ -57,7 +57,7 @@ public struct HostRotationOrderSheet: View {
                         }
                         .disabled(isSaving)
                     } footer: {
-                        Text("La rotación volverá al orden por antigüedad en el contexto.")
+                        Text("La rotación volverá al orden por antigüedad en el espacio.")
                     }
                 }
             }
@@ -96,7 +96,7 @@ public struct HostRotationOrderSheet: View {
                 }
                 Button("Cancelar", role: .cancel) {}
             } message: {
-                Text("Se perderá el orden manual que configuraste. La rotación volverá al orden por antigüedad en el contexto.")
+                Text("Se perderá el orden manual que configuraste. La rotación volverá al orden por antigüedad en el espacio.")
             }
         }
         .ruulSheet()
