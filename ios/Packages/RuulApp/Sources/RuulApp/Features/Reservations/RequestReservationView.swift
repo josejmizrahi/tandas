@@ -157,8 +157,8 @@ public struct RequestReservationView: View {
                 // backend, o fallback honesto + capability requerida si faltan.
                 if why.reasons.isEmpty {
                     Text(why.canReserve
-                         ? "Tienes un derecho vigente sobre este recurso."
-                         : "Necesitas que un administrador te otorgue un derecho de uso (USE) sobre este recurso.")
+                         ? "Tienes permiso para apartar este recurso."
+                         : "Necesitas que un administrador del espacio te dé permiso para reservar este recurso.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -175,7 +175,7 @@ public struct RequestReservationView: View {
                     }
                 }
                 if !why.canReserve {
-                    LabeledContent("Capability requerida", value: why.requiredCapability)
+                    LabeledContent("Permiso necesario", value: humanCapability(why.requiredCapability))
                         .font(.caption)
                 }
             } header: {
@@ -230,6 +230,20 @@ public struct RequestReservationView: View {
         guard let starts = event.startsAt else { return event.title }
         let date = starts.formatted(date: .abbreviated, time: .shortened)
         return "\(event.title) · \(date)"
+    }
+
+    /// Slice 7.A.5 — traduce el `required_capability` raw del backend
+    /// (e.g. "USE", "MANAGE") a copy conversacional para el usuario.
+    private func humanCapability(_ raw: String) -> String {
+        switch raw.uppercased() {
+        case "USE":         return "Permiso para usarlo"
+        case "MANAGE":      return "Permiso para administrarlo"
+        case "VIEW":        return "Permiso para verlo"
+        case "OWN":         return "Propiedad del recurso"
+        case "BENEFICIARY": return "Ser beneficiario"
+        case "GOVERN":      return "Permiso de gobierno"
+        default:            return raw.replacingOccurrences(of: "_", with: " ").capitalized
+        }
     }
 
     /// Cuando el usuario elige un evento, autorrellena las fechas con las

@@ -72,6 +72,56 @@ public struct Rule: Codable, Sendable, Equatable, Identifiable {
     /// Scope tipado si el backend lo conoce (con fallback a `context` si nil/legacy).
     public var scope: RuleTargetScope { RuleTargetScope(rawValue: targetScope ?? "context") ?? .context }
 
+    /// Slice 7.A.4 (audit 2026-06-14) — label humano del trigger, exhaustivo.
+    /// Antes RulesListView/RuleDetailView caían a `triggerEventType` raw (e.g.
+    /// "event.checked_in") cuando el switch no lo cubría. Ahora cubrimos los 15
+    /// triggers físicos + 5 virtuales del catálogo R.6 + fallback derivado del
+    /// nombre (e.g. "Al disparar event.custom_thing" → "Custom thing").
+    public var triggerHumanLabel: String {
+        guard let trigger = triggerEventType, !trigger.isEmpty else { return "—" }
+        switch trigger {
+        // Eventos
+        case "event.created":                 return "Al crear un evento"
+        case "event.updated":                 return "Al editar un evento"
+        case "event.cancelled":               return "Al cancelar un evento"
+        case "event.closed":                  return "Al cerrar un evento"
+        case "event.checked_in":              return "Al hacer check-in"
+        case "event.participation_cancelled": return "Al cancelar asistencia"
+        // Reservaciones
+        case "reservation.requested":         return "Al solicitar una reservación"
+        case "reservation.approved":          return "Al aprobar una reservación"
+        case "reservation.cancelled":         return "Al cancelar una reservación"
+        case "reservation.starting_soon":     return "Cuando una reservación está por comenzar"
+        // Money
+        case "expense.recorded":              return "Al registrar un gasto"
+        case "payment.recorded":              return "Al registrar un pago"
+        case "fine.created":                  return "Al crear una multa"
+        case "obligation.created":            return "Al crear una obligación"
+        case "obligation.overdue":            return "Cuando una obligación se vence"
+        case "settlement.batch_open":         return "Cuando se abre una liquidación"
+        // Decisiones
+        case "decision.created":              return "Al crear una decisión"
+        case "decision.executed":             return "Al ejecutar una decisión"
+        // Documentos / derechos
+        case "document.expiring":             return "Cuando un documento está por vencer"
+        case "right.expiring":                return "Cuando un derecho está por vencer"
+        // Membresía
+        case "membership.joined":             return "Al unirse alguien"
+        case "membership.removed":            return "Al salir alguien"
+        case "membership.state_changed":      return "Al cambiar estado de un miembro"
+        // Recursos
+        case "resource.created":              return "Al registrar un recurso"
+        case "resource.archived":             return "Al archivar un recurso"
+        case "resource.transferred":          return "Al transferir un recurso"
+        default:
+            // Fallback derivado: "event.something_special" → "Something special"
+            let suffix = trigger.split(separator: ".").last.map(String.init) ?? trigger
+            return suffix
+                .replacingOccurrences(of: "_", with: " ")
+                .capitalized
+        }
+    }
+
     /// Descripción legible de la condición (sin mostrar JSON crudo).
     public var conditionDescription: String {
         guard let tree = conditionTree, tree != .null else { return "Siempre aplica" }

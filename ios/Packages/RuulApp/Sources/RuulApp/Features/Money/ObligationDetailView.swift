@@ -100,9 +100,9 @@ public struct ObligationDetailView: View {
                         )
                     }
                 }
-                // R.5W.P1 — alert canónico "Próximamente" (copy founder-signed
-                // R.5X.fix.A, reutilizado aquí porque sin RPC iOS no hay donde
-                // navegar todavía).
+                // Slice 7.A.4 (audit 2026-06-14) — copy específico por actionKey
+                // en lugar del genérico "Esta funcionalidad ya está modelada en
+                // Ruul". El usuario entiende qué viene en cada caso.
                 .alert(
                     comingSoonAction?.label ?? "",
                     isPresented: Binding(
@@ -112,8 +112,8 @@ public struct ObligationDetailView: View {
                     presenting: comingSoonAction
                 ) { _ in
                     Button("OK", role: .cancel) {}
-                } message: { _ in
-                    Text("Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible.")
+                } message: { action in
+                    Text(comingSoonMessage(for: action.key))
                 }
                 // R.7.x — confirm direct forgive (no-governance path).
                 .confirmationDialog(
@@ -427,6 +427,21 @@ public struct ObligationDetailView: View {
             isShowingCompleteSheet = false
             await load()
             await container.attentionInboxStore.load() // D5
+        }
+    }
+
+    /// Slice 7.A.4 — copy específico por actionKey para el alert "Próximamente".
+    /// El usuario entiende qué viene en cada caso, en lugar de un genérico.
+    private func comingSoonMessage(for actionKey: String) -> String {
+        switch actionKey {
+        case "pay":
+            return "Pronto podrás registrar el pago directamente desde aquí. Por ahora, marca el pago en Liquidaciones cuando aparezca."
+        case "dispute":
+            return "Pronto podrás reportar un problema con este compromiso. Por ahora, habla con la otra persona o con un admin del espacio."
+        case "cancel":
+            return "Pronto podrás cancelar este compromiso. Por ahora, pídele a un admin del espacio que lo haga por ti."
+        default:
+            return "Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible."
         }
     }
 

@@ -281,13 +281,10 @@ public struct RuleDetailView: View {
         }
     }
 
-    private var triggerLabel: String {
-        switch rule.triggerEventType {
-        case RuleTrigger.checkedIn.rawValue: return "Al hacer check-in en un evento"
-        case RuleTrigger.participationCancelled.rawValue: return "Al cancelar asistencia a un evento"
-        default: return rule.triggerEventType ?? "—"
-        }
-    }
+    /// Slice 7.A.4 — usa el helper canónico `rule.triggerHumanLabel` (exhaustivo
+    /// para los 20+ triggers del catálogo R.6) en lugar del switch local de 2
+    /// cases que dejaba expuesto el raw `event.checked_in`.
+    private var triggerLabel: String { rule.triggerHumanLabel }
 }
 
 /// R.7.x — wrapper Identifiable para presentar `DecisionDetailView` via `.sheet(item:)`.
