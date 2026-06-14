@@ -76,10 +76,12 @@ struct ClaimPlaceholdersSheet: View {
                 } header: {
                     Text("Como “\(match.displayName)”")
                 } footer: {
+                    // 7.C.4 (audit 2026-06-14) — copy conversacional sin
+                    // "Match por" (jerga técnica).
                     if let phone = match.contactPhone {
-                        Text("Match por teléfono: \(phone)")
+                        Text("Te identificaron con tu teléfono \(phone).")
                     } else if let email = match.contactEmail {
-                        Text("Match por email: \(email)")
+                        Text("Te identificaron con tu correo \(email).")
                     }
                 }
             }
@@ -102,7 +104,8 @@ struct ClaimPlaceholdersSheet: View {
                 }
                 .disabled(runner.isRunning)
             } footer: {
-                Text("Si reclamas, heredas todos los gastos, eventos y obligaciones que ya estaban a tu nombre. Si cancelas, podrás hacerlo después desde tu perfil.")
+                // 7.C.4 — copy conversacional sin "heredar" (legal/técnico).
+                Text("Si reclamas, se traen todos los gastos, eventos y compromisos que ya estaban a tu nombre. Si lo dejas para después, podrás hacerlo desde tu perfil.")
             }
         }
         .listStyle(.insetGrouped)

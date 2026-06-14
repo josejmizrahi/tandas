@@ -107,6 +107,22 @@ struct ContextDetailV2MoreTab: View {
             Text("Secciones")
         }
 
+        // 7.C.5 (audit 2026-06-14) — `ContextTreeView` antes era código muerto
+        // (solo se autoreferenciaba en Preview). Lo cableamos aquí como link
+        // explícito para que el usuario vea la jerarquía completa del espacio
+        // cuando tiene subespacios. El descriptor ya trae childContextsPreview.
+        if !d.childContextsPreview.isEmpty {
+            Section {
+                NavigationLink {
+                    ContextTreeView(rootContext: context, container: container)
+                } label: {
+                    Label("Ver estructura del espacio", systemImage: "list.bullet.indent")
+                }
+            } footer: {
+                Text("Muestra todos los subespacios anidados bajo este espacio.")
+            }
+        }
+
         if !d.permissions.isEmpty {
             Section {
                 ScrollView(.horizontal, showsIndicators: false) {

@@ -61,7 +61,8 @@ public struct ContextTreeView: View {
                     )
                 }
             } footer: {
-                Text("Toca un contexto para entrar. Los subcontextos restringidos no abren — la doctrina R.2U dice que ver el árbol no transfiere acceso.")
+                // 7.C.5 — copy sin "doctrina R.2U" técnico.
+                Text("Toca un espacio para entrar. Los espacios bloqueados necesitan invitación aparte — ver la estructura no te da acceso automático.")
             }
         }
         .listStyle(.insetGrouped)

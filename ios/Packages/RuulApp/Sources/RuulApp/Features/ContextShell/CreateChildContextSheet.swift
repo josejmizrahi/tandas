@@ -76,6 +76,15 @@ public struct CreateChildContextSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
+                // 7.C.4 (audit 2026-06-14) — parent visible al top. Antes el
+                // usuario abría la sheet desde una jerarquía profunda y no
+                // sabía bajo qué espacio se creaba el subcontexto.
+                Section {
+                    LabeledContent("Dentro de", value: parent.displayName)
+                } footer: {
+                    Text("El nuevo espacio quedará dentro de \(parent.displayName).")
+                }
+
                 Section("Nombre") {
                     TextField("Comidas Miércoles, Mundial Palco…", text: $displayName)
                 }
@@ -109,7 +118,8 @@ public struct CreateChildContextSheet: View {
                 } header: {
                     Text("Tipo")
                 } footer: {
-                    Text("El subcontexto es un contexto real con sus propios miembros, reglas y dinero. La membresía y los rights NO se heredan del padre.")
+                    // 7.C.4 — copy sin "rights" (jerga).
+                    Text("El nuevo espacio tiene sus propios miembros, reglas y dinero. No hereda automáticamente los miembros ni los permisos del espacio padre.")
                 }
 
                 Section {

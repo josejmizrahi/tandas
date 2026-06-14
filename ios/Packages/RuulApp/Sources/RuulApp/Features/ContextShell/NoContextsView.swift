@@ -57,14 +57,16 @@ public struct NoContextsView: View {
                 }
 
                 Button(action: onCreate) {
-                    Label("Crear contexto", systemImage: "plus")
+                    // 7.C.4 (audit 2026-06-14) — terminología "espacios" del
+                    // Slice 7.A.1 + copy más invitacional ("primer espacio").
+                    Label("Crear mi primer espacio", systemImage: "plus")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)
                 .controlSize(.large)
 
                 Button(action: onJoin) {
-                    Label("Unirme con código", systemImage: "ticket")
+                    Label("Unirme con un código", systemImage: "ticket")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glass)

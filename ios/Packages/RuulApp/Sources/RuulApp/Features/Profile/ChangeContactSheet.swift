@@ -76,13 +76,17 @@ struct ChangeContactSheet: View {
                             }
                         }
                         .disabled(code.count < 6 || isWorking)
-
+                    } footer: {
+                        // 7.C.3 — "Usar otro destino" se baja a footer + style
+                        // secundario para no competir con el CTA primario.
                         Button("Usar otro destino") {
                             didSendCode = false
                             code = ""
                             errorMessage = nil
                         }
                         .font(.footnote)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.tint)
                     }
                 }
 
@@ -113,6 +117,13 @@ struct ChangeContactSheet: View {
         isWorking = true
         errorMessage = nil
         defer { isWorking = false }
+        // 7.C.3 — validación de formato ANTES del backend para feedback inmediato.
+        guard isValid(trimmedValue) else {
+            errorMessage = kind == .phone
+                ? "Revisa el número. Usa formato internacional (ej. +52 81 1234 5678)."
+                : "Correo no válido. Revisa que tenga la forma nombre@dominio.com."
+            return
+        }
         do {
             switch kind {
             case .phone: try await authService.startPhoneChange(trimmedValue)
@@ -120,7 +131,11 @@ struct ChangeContactSheet: View {
             }
             didSendCode = true
         } catch {
-            errorMessage = "No pudimos enviar el código. Revisa el dato e intenta de nuevo."
+            errorMessage = changeContactErrorCopy(error, fallback:
+                kind == .phone
+                    ? "No pudimos enviar el código al teléfono. Intenta de nuevo."
+                    : "No pudimos enviar el código al correo. Intenta de nuevo."
+            )
         }
     }
 
@@ -136,7 +151,51 @@ struct ChangeContactSheet: View {
             onChanged()
             dismiss()
         } catch {
-            errorMessage = "Código incorrecto o expirado. Intenta de nuevo."
+            errorMessage = changeContactErrorCopy(error, fallback: "Código incorrecto o expirado. Pide uno nuevo.")
+        }
+    }
+
+    /// 7.C.3 — copy específico cuando el error matchea un caso conocido
+    /// (red, formato, duplicado, expirado). Fallback al copy general.
+    private func changeContactErrorCopy(_ error: Error, fallback: String) -> String {
+        let ns = error as NSError
+        if ns.domain == NSURLErrorDomain {
+            if ns.code == NSURLErrorNotConnectedToInternet {
+                return "Sin conexión a internet. Revisa tu red e intenta de nuevo."
+            }
+            if ns.code == NSURLErrorTimedOut {
+                return "El servidor tardó demasiado en responder. Intenta de nuevo."
+            }
+            return "Problema de red al contactar al servidor. Intenta de nuevo."
+        }
+        let raw = error.localizedDescription.lowercased()
+        if raw.contains("already") || raw.contains("exists") || raw.contains("duplicate") {
+            return kind == .phone
+                ? "Este teléfono ya está en uso por otra cuenta."
+                : "Este correo ya está en uso por otra cuenta."
+        }
+        if raw.contains("rate") || raw.contains("too many") {
+            return "Demasiados intentos. Espera un momento antes de pedir otro código."
+        }
+        if raw.contains("expired") {
+            return "El código ya expiró. Pide uno nuevo."
+        }
+        if raw.contains("invalid") && raw.contains("code") {
+            return "Código incorrecto. Revisa los 6 dígitos."
+        }
+        return fallback
+    }
+
+    /// 7.C.3 — validación lightweight cliente-side.
+    private func isValid(_ value: String) -> Bool {
+        switch kind {
+        case .phone:
+            let digits = value.filter(\.isNumber)
+            return value.hasPrefix("+") && digits.count >= 8
+        case .email:
+            guard let atIndex = value.firstIndex(of: "@") else { return false }
+            let afterAt = value[atIndex...]
+            return afterAt.contains(".") && value.count >= 5
         }
     }
 }
