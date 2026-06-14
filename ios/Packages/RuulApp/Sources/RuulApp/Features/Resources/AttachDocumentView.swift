@@ -98,7 +98,15 @@ public struct AttachDocumentView: View {
                     }
                     .disabled(!canSubmit || runner.isRunning)
                 } footer: {
-                    Text("Adjuntar un documento crea una fila en \(context.displayName) — visible a miembros con permiso de ver documentos.")
+                    // 7.E.2 (audit 2026-06-14) — hint inline cuando falta algo +
+                    // copy sin "fila" (jerga DB) cuando todo está OK.
+                    if let hint = validationHint {
+                        Label(hint, systemImage: "exclamationmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Tint.warning)
+                    } else {
+                        Text("El documento quedará guardado en \(context.displayName) — visible a los miembros con permiso para verlo.")
+                    }
                 }
             }
             .navigationTitle("Adjuntar documento")
@@ -121,7 +129,19 @@ public struct AttachDocumentView: View {
     }
 
     private var canSubmit: Bool {
-        pickedData != nil && !title.trimmingCharacters(in: .whitespaces).isEmpty
+        validationHint == nil
+    }
+
+    /// 7.E.2 — describe POR QUÉ el botón está disabled. Antes el usuario
+    /// veía "Adjuntar al recurso" disabled sin saber qué le faltaba.
+    private var validationHint: String? {
+        if pickedData == nil {
+            return "Falta elegir el archivo a adjuntar."
+        }
+        if title.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Ponle un título al documento."
+        }
+        return nil
     }
 
     private func handleFilePick(_ result: Result<[URL], Error>) {

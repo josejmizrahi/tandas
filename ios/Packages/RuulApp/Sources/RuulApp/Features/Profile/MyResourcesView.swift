@@ -67,7 +67,7 @@ public struct MyResourcesView: View {
             RuulEmptyState(
                 title: "Sin recursos",
                 systemImage: "shippingbox",
-                message: "Aún no tienes ni puedes ver recursos en tus contextos."
+                message: "Aún no tienes ni puedes ver recursos en tus espacios."
             )
         } else {
             let grouped = groupByClass(filter(world.resources))

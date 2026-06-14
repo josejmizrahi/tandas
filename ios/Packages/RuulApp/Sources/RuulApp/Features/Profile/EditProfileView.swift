@@ -83,7 +83,7 @@ public struct EditProfileView: View {
                 } header: {
                     Text("Tu nombre")
                 } footer: {
-                    Text("El nombre corto es el que ven los demás en tus contextos.")
+                    Text("El nombre corto es el que ven los demás en tus espacios.")
                 }
 
                 if let profile = actorStore.actor?.profile {

@@ -141,7 +141,7 @@ public struct MeView: View {
                     HStack(spacing: Theme.Spacing.sm) {
                         metricChip(
                             value: "\(contextCount)",
-                            label: contextCount == 1 ? "contexto" : "contextos",
+                            label: contextCount == 1 ? "espacio" : "espacios",
                             systemImage: "square.grid.2x2.fill",
                             tint: Theme.Tint.primary
                         )
@@ -373,7 +373,7 @@ public struct MeView: View {
         } header: {
             Text("Dashboard")
         } footer: {
-            Text("Todo lo que tienes en tus contextos, agregado en un solo lugar.")
+            Text("Todo lo que tienes en tus espacios, agregado en un solo lugar.")
         }
     }
 

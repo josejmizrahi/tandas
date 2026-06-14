@@ -75,7 +75,15 @@ public struct GrantRightSheet: View {
                     }
                     .disabled(selectedActorId == nil || runner.isRunning)
                 } footer: {
-                    Text(footerText)
+                    // 7.E.2 (audit 2026-06-14) — hint inline cuando falta elegir
+                    // a quién, en lugar de botón disabled mudo.
+                    if selectedActorId == nil {
+                        Label("Elige a quién le vas a otorgar el derecho.", systemImage: "exclamationmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Tint.warning)
+                    } else {
+                        Text(footerText)
+                    }
                 }
             }
             .navigationTitle("Otorgar derecho")

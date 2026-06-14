@@ -420,7 +420,7 @@ public struct PersonalSettingsView: View {
                     title: "Último usado",
                     value: contexts.lastContextActorId == nil ? "—" : "Persistido")
             if options.isEmpty {
-                Text("Cuando tengas contextos vas a poder elegir uno como inicial.")
+                Text("Cuando tengas espacios vas a poder elegir uno como inicial.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

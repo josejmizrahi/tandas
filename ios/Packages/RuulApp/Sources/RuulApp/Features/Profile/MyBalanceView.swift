@@ -102,7 +102,7 @@ public struct MyBalanceView: View {
             HStack(spacing: Theme.Spacing.sm) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Theme.Tint.success)
-                Text("Sin compromisos de dinero abiertos en tus contextos")
+                Text("Sin compromisos de dinero abiertos en tus espacios")
                     .font(.callout)
                     .foregroundStyle(Theme.Text.secondary)
             }

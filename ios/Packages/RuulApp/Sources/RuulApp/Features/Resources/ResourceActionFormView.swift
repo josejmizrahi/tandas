@@ -224,8 +224,9 @@ public struct ResourceActionFormView: View {
     private func actorRefControl(_ field: FormFieldSpec) -> some View {
         let members = membersStore.members
         if members.isEmpty {
-            // Sin contexto o cargando → fallback UUID text
-            TextField(field.placeholder ?? "UUID del actor", text: stringBinding(for: field.key))
+            // 7.E.1 (audit 2026-06-14) — fallback honesto cuando no hay
+            // contexto cargado. Antes "UUID del actor" jerga al usuario.
+            TextField(field.placeholder ?? "Identificador del miembro", text: stringBinding(for: field.key))
                 .font(.system(.body, design: .monospaced))
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
@@ -261,7 +262,10 @@ public struct ResourceActionFormView: View {
                 }
             } label: {
                 HStack {
-                    Text(selectedIds.isEmpty ? "Selecciona…" : "\(selectedIds.count) seleccionado(s)")
+                    // 7.E.1 — singular correcto.
+                    Text(selectedIds.isEmpty
+                         ? "Selecciona…"
+                         : (selectedIds.count == 1 ? "1 seleccionado" : "\(selectedIds.count) seleccionados"))
                         .foregroundStyle(selectedIds.isEmpty ? .secondary : .primary)
                     Spacer()
                     Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.tertiary)
@@ -296,7 +300,8 @@ public struct ResourceActionFormView: View {
     private func resourceRefControl(_ field: FormFieldSpec) -> some View {
         let resources = resourcesStore.resources
         if resources.isEmpty {
-            TextField(field.placeholder ?? "UUID del recurso", text: stringBinding(for: field.key))
+            // 7.E.1 — mismo fix que en actorRefControl.
+            TextField(field.placeholder ?? "Identificador del recurso", text: stringBinding(for: field.key))
                 .font(.system(.body, design: .monospaced))
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
