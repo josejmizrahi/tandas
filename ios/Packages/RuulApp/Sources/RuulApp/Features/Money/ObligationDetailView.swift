@@ -334,7 +334,10 @@ public struct ObligationDetailView: View {
         let success = await runner.run {
             _ = try await rpc.forgiveObligation(obligationId: obligationId, reason: trimmed)
         }
-        if success { await load() }
+        if success {
+            await load()
+            await container.attentionInboxStore.load() // D5
+        }
     }
 
     /// R.7.x — governance path. Pide aprobación colectiva con canonical key
@@ -423,6 +426,7 @@ public struct ObligationDetailView: View {
         if success {
             isShowingCompleteSheet = false
             await load()
+            await container.attentionInboxStore.load() // D5
         }
     }
 

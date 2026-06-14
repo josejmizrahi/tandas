@@ -137,6 +137,10 @@ public struct DecisionDetailView: View {
                     await runner.run {
                         _ = try await store.close(decisionId: decisionId, context: context)
                         await loadDecisionActivity()
+                        // D5 (re-audit 2026-06-14) — el item decision_vote/governance_pending
+                        // queda obsoleto al cerrar; refrescar inbox limpia la UI sin
+                        // esperar al próximo reappear.
+                        await container.attentionInboxStore.load()
                     }
                 }
             }
@@ -148,6 +152,7 @@ public struct DecisionDetailView: View {
                     await runner.run {
                         try await store.execute(decisionId: decisionId, context: context)
                         await loadDecisionActivity()
+                        await container.attentionInboxStore.load() // D5
                     }
                 }
             }
@@ -159,6 +164,7 @@ public struct DecisionDetailView: View {
                     await runner.run {
                         _ = try await store.close(decisionId: decisionId, context: context)
                         await loadDecisionActivity()
+                        await container.attentionInboxStore.load() // D5
                     }
                 }
             }
@@ -439,6 +445,7 @@ public struct DecisionDetailView: View {
                     await runner.run {
                         _ = try await store.vote(for: option, decisionId: decisionId, context: context)
                         await loadDecisionActivity()
+                        await container.attentionInboxStore.load() // D5
                     }
                 }
             }
@@ -479,6 +486,7 @@ public struct DecisionDetailView: View {
                             _ = try await store.vote(for: option, decisionId: decisionId, context: context)
                         }
                         await loadDecisionActivity()
+                        await container.attentionInboxStore.load() // D5
                     }
                 }
             }
@@ -564,6 +572,7 @@ public struct DecisionDetailView: View {
         await runner.run {
             _ = try await store.vote(choice, decisionId: decisionId, context: context)
             await loadDecisionActivity()
+            await container.attentionInboxStore.load() // D5
         }
     }
 

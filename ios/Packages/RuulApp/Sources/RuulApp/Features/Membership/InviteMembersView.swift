@@ -32,6 +32,12 @@ public struct InviteMembersView: View {
     @State private var invite: InviteCreated?
     @State private var isGeneratingInvite = false
 
+    /// P0.2 (re-audit 2026-06-14) — códigos de invitación activos del contexto.
+    /// El backend ya expone `revoke_invite`; aquí superficiamos los códigos que
+    /// vienen en `context_detail_descriptor.pending_invitations_preview`.
+    @State private var activeInvites: [ContextInvitePreview] = []
+    @State private var invitePendingRevoke: ContextInvitePreview?
+
     // Personas en Ruul (other contexts)
     @State private var knownActors: [KnownActor] = []
     @State private var isLoadingKnown = false
@@ -57,6 +63,9 @@ public struct InviteMembersView: View {
         NavigationStack {
             List {
                 shareSection
+                if !activeInvites.isEmpty {
+                    codigosActivosSection
+                }
                 personasEnRuulSection
                 agregarPersonaSection
             }
@@ -71,6 +80,23 @@ public struct InviteMembersView: View {
             .task {
                 await loadKnown()
                 await ensureInvite()
+                await loadActiveInvites()
+            }
+            .confirmationDialog(
+                "¿Revocar este código?",
+                isPresented: Binding(
+                    get: { invitePendingRevoke != nil },
+                    set: { if !$0 { invitePendingRevoke = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: invitePendingRevoke
+            ) { target in
+                Button("Revocar código", role: .destructive) {
+                    Task { await revoke(target) }
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: { target in
+                Text("El código \(target.code) deja de servir de inmediato. Quien lo tenga guardado no podrá unirse.")
             }
             .sheet(isPresented: $isShowingContactPicker) {
                 ContactPickerSheet { picked in
@@ -155,6 +181,93 @@ public struct InviteMembersView: View {
         isGeneratingInvite = true
         defer { isGeneratingInvite = false }
         invite = try? await store.createInvite(contextId: context.id, maxUses: nil)
+        // P0.2 — al generar uno nuevo, también refrescamos la lista de activos
+        // para que aparezca en su sección.
+        await loadActiveInvites()
+    }
+
+    // MARK: - P0.2 — Códigos activos
+
+    @ViewBuilder
+    private var codigosActivosSection: some View {
+        Section {
+            ForEach(activeInvites) { row in
+                inviteRow(row)
+            }
+        } header: {
+            Text("Códigos activos (\(activeInvites.count))")
+        } footer: {
+            Text("Si compartiste un código con la persona equivocada, revócalo aquí. El link generado arriba siempre es el más reciente.")
+        }
+    }
+
+    @ViewBuilder
+    private func inviteRow(_ row: ContextInvitePreview) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "link.circle.fill")
+                .foregroundStyle(Theme.Tint.primary)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.code)
+                    .font(.callout.weight(.semibold).monospaced())
+                    .foregroundStyle(Theme.Text.primary)
+                Text(inviteSubtitle(row))
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 12)
+            Button(role: .destructive) {
+                invitePendingRevoke = row
+            } label: {
+                Label("Revocar", systemImage: "xmark.circle")
+                    .labelStyle(.titleOnly)
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(runner.isRunning)
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func inviteSubtitle(_ row: ContextInvitePreview) -> String {
+        var parts: [String] = []
+        if let max = row.maxUses {
+            parts.append("\(row.usedCount)/\(max) usos")
+        } else if row.usedCount > 0 {
+            parts.append("\(row.usedCount) usos")
+        } else {
+            parts.append("Sin usar")
+        }
+        if let expires = row.expiresAt {
+            parts.append("expira \(expires.formatted(.relative(presentation: .named)))")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func loadActiveInvites() async {
+        do {
+            let descriptor = try await container.rpc.contextDetailDescriptor(contextId: context.id)
+            activeInvites = descriptor.pendingInvitationsPreview
+        } catch {
+            // Silent — la sección simplemente no aparece si falla la carga; el
+            // share link sigue funcionando.
+            activeInvites = []
+        }
+    }
+
+    private func revoke(_ row: ContextInvitePreview) async {
+        await runner.run {
+            try await store.revokeInvite(inviteId: row.inviteId)
+            await loadActiveInvites()
+            // Si el revocado coincide con el invite "activo" del share section,
+            // forzamos regenerar uno nuevo.
+            if invite?.inviteId == row.inviteId {
+                invite = nil
+                await ensureInvite()
+            }
+        }
     }
 
     /// R.5W UX fix — auto-add desde el contact picker. Crea el placeholder
