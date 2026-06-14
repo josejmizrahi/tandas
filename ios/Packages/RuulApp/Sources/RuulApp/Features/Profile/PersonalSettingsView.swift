@@ -428,18 +428,46 @@ public struct PersonalSettingsView: View {
     }
 
     // MARK: - Integraciones
+    //
+    // Slice 7.A.6 (audit 2026-06-14) — antes mostrábamos 4 rows con badge
+    // "Próximamente" repetido (Google/Apple Calendar, Wise, WhatsApp). Era
+    // mockup completo sin valor — usuario veía 4 botones inertes. Compactado a
+    // 1 row con copy honesto, hasta que alguna integración exista realmente.
 
     @ViewBuilder
     private func integrationsSection(_ integrations: IntegrationsState) -> some View {
-        Section("Integraciones") {
-            integrationRow("Google Calendar", icon: "calendar", connected: integrations.googleCalendar.connected)
-            integrationRow("Apple Calendar", icon: "calendar.badge.checkmark", connected: integrations.appleCalendar.connected)
-            integrationRow("Wise", icon: "creditcard", connected: integrations.wise.connected)
-            integrationRow("WhatsApp", icon: "message", connected: integrations.whatsapp.connected)
-            Text("Las integraciones llegan en próximas versiones.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        let hasAny = integrations.googleCalendar.connected
+            || integrations.appleCalendar.connected
+            || integrations.wise.connected
+            || integrations.whatsapp.connected
+
+        Section {
+            if hasAny {
+                // Cuando exista al menos una conectada, listar solo las activas.
+                if integrations.googleCalendar.connected {
+                    integrationRow("Google Calendar", icon: "calendar", connected: true)
+                }
+                if integrations.appleCalendar.connected {
+                    integrationRow("Apple Calendar", icon: "calendar.badge.checkmark", connected: true)
+                }
+                if integrations.wise.connected {
+                    integrationRow("Wise", icon: "creditcard", connected: true)
+                }
+                if integrations.whatsapp.connected {
+                    integrationRow("WhatsApp", icon: "message", connected: true)
+                }
+            } else {
+                Label("Integraciones", systemImage: "link")
+                    .foregroundStyle(Theme.Text.tertiary)
+            }
+        } header: {
+            Text(hasAny ? "Integraciones" : "Próximamente")
+        } footer: {
+            Text(hasAny
+                 ? "Conexiones activas con servicios externos."
+                 : "Pronto podrás conectar Google Calendar, Apple Calendar, Wise y WhatsApp para sincronizar eventos y pagos.")
         }
+        .disabled(!hasAny)
     }
 
     @ViewBuilder

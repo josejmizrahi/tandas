@@ -378,6 +378,11 @@ public struct MeView: View {
     }
 
     // MARK: - 4. Acciones personales (crear cualquier primitiva desde Yo)
+    //
+    // Slice 7.A.6 (audit 2026-06-14) — split visual en 2 sections para que el
+    // usuario entienda cuáles crean cosas en su espacio personal y cuáles
+    // afectan a espacios colectivos. Antes 8 acciones en una sola lista hacían
+    // que pareciera todo equivalente.
 
     @ViewBuilder
     private var actionsSection: some View {
@@ -418,9 +423,16 @@ public struct MeView: View {
                 systemImage: "checkmark.bubble.fill",
                 tint: .indigo
             )
+        } header: {
+            Text("Crear en mi espacio")
+        } footer: {
+            Text("Lo que crees aquí vive en tu espacio personal. Después puedes compartirlo con cualquier espacio.")
+        }
+
+        Section {
             actionRow(
                 .context,
-                label: "Crear contexto nuevo",
+                label: "Crear espacio nuevo",
                 systemImage: "rectangle.split.2x1.fill",
                 tint: Theme.Tint.primary
             )
@@ -431,9 +443,9 @@ public struct MeView: View {
                 tint: Theme.Tint.info
             )
         } header: {
-            Text("Acciones personales")
+            Text("Espacios")
         } footer: {
-            Text("Las acciones contextuales se crean en tu espacio personal. Después puedes compartir con un contexto.")
+            Text("Crea un grupo nuevo o únete a uno con el código que te compartieron.")
         }
     }
 

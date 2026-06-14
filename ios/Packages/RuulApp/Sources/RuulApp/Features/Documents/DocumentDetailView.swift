@@ -78,6 +78,15 @@ public struct DocumentDetailView: View {
                             Label("Compartir", systemImage: "square.and.arrow.up")
                         }
                         .disabled(document.storagePath == nil)
+                        // Slice 7.A.6 (audit 2026-06-14) — antes "Ver completo"
+                        // y "Compartir" quedaban disabled silenciosamente
+                        // cuando faltaba el archivo binario. Ahora un footer
+                        // explícito en el Menu deja claro por qué.
+                        if document.storagePath == nil {
+                            Text("Solo metadatos guardados. No hay archivo adjunto que abrir o compartir.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     if !document.isArchived {
                         Section("Estado") {

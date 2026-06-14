@@ -142,10 +142,39 @@ public struct PoolDetailView: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.Text.secondary)
                 }
+                // Slice 7.A.6 — política explicada en hero (no solo en footer
+                // del bloque Acciones), para que el usuario entienda CUÁL es
+                // la mecánica del bote antes de aportar.
+                if let policyHint = policyHint(detail.poolAccount.policyKey) {
+                    Label {
+                        Text(policyHint)
+                            .font(.caption)
+                            .foregroundStyle(Theme.Text.secondary)
+                    } icon: {
+                        Image(systemName: "info.circle")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.Text.tertiary)
+                    }
+                    .padding(.top, 4)
+                }
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
+        }
+    }
+
+    /// Slice 7.A.6 — copy explícito de las 3 políticas R.8 firmadas.
+    private func policyHint(_ policyKey: String) -> String? {
+        switch policyKey {
+        case "winner_takes_all":
+            return "El bote completo se paga a una sola persona ganadora al cerrarlo."
+        case "equity_target":
+            return "Cada participante recupera su aporte cuando se cierre el fondo."
+        case "proportional":
+            return "Las ganancias se reparten en proporción a lo que aportó cada quien."
+        default:
+            return nil
         }
     }
 
