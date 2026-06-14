@@ -43,7 +43,7 @@ acto > estado, compliance desde el diseño, AI propone-no-ejecuta, doctrina UX R
 
 | # | Pilar | Pantalla | Estado actual | Backend | RPC | Qué falta | Prioridad | Riesgo | Archivo Swift | Recomendación |
 |---|---|---|---|---|---|---|---|---|---|---|
-| V.1 | Compliance ARCO + App Store | PersonalSettingsView | **No existe eliminación de cuenta** | ❌ (requiere RPC de delete/anonimización) | — | RPC backend (pseudonimizar identidad, preservar átomos no personales según doctrina de la visión §migración) + botón "Eliminar cuenta" con doble confirmación | **P0** | **Bloquea App Store review** (guideline 5.1.1(v)); incumple ARCO/LFPDPPP y CCPA | `Features/Profile/PersonalSettingsView.swift` | Diseñar el delete desacoplando identidad de actos (la visión ya lo prevé: "bloqueo/pseudonimización cuando la ley exija conservar registros") |
+| ~~V.1~~ ✅ shipped | Compliance ARCO + App Store | PersonalSettingsView | **Resuelto** — sección "Eliminar cuenta" gated por `confirmationDialog` "¿Eliminar tu cuenta de forma permanente?" con copy ARCO + RPC `deleteMyAccount()`. Pseudonimización backend. | ✅ | `delete_my_account` | — | — | `Features/Profile/PersonalSettingsView.swift:91-113, 117-123` | Falso positivo del audit original (verificado re-audit 2026-06-14). |
 | V.2 | Compliance | SignedOutView | Sin links a aviso de privacidad ni términos | ✅ (ruul.mx es estático; basta publicar `/legal/*`) | — | Footer con links "Aviso de privacidad" y "Términos" en login + entrada en ajustes | **P0** | App Store exige privacy policy URL; LFPDPPP exige aviso no decorativo | `Features/Auth/SignedOutView.swift`, `web/public/` | Páginas estáticas en ruul.mx + `Link` en SignedOutView y PersonalSettings |
 | V.3 | Memoria institucional exportable | ActivityFeedView / ContextSettings | Sin export de actividad, ledger, decisiones ni reglas vigentes | ⚠️ (los datos existen; falta RPC/format de export) | `list_activity`, settlement/obligations reads | "Exportar historial" (CSV/PDF) por contexto: actividad + balances + decisiones con quién votó + reglas vigentes a una fecha | **P1** | La promesa central del producto ("memoria verificable", "export simple" en plan gratis) no es demostrable hoy | `Features/ContextShell/ContextSettingsView.swift` | Empezar con CSV de activity + balances vía ShareLink; PDF después |
 | V.4 | Doctrina UX R.5V §1 | RuleDetailView | Incumple el patrón universal: sin widgets (trigger count / last fired), sin attention (violations recientes), sin activity (`rule.fired`) | ✅ (activity ya registra; KPIs derivables) | `list_activity` filtrada | Completar las 3 secciones que exige la tabla §1 de la doctrina congelada | **P1** (absorbe P1.6) | Drift contra doctrina FROZEN firmada por founder | `Features/Rules/RuleDetailView.swift` | Mismo slice que P1.6: historial + consecuencias emitidas + KPIs |
@@ -64,21 +64,21 @@ versiones por `supersedes`.
 | P1.1 | Notificaciones | (no existe) | Solo attention_inbox (pull); R.4D sin consumir | ✅ R.4D | `mark_notification_read/archived`, `mark_all_notifications_read` | Centro de notificaciones con leído/no-leído + badge real | Usuarios pierden eventos que no son "atención accionable" | nuevo `Features/Notifications/` | NotificationCenterView + store; integrar con tab Actividad |
 | P1.2 | Perfil | EditProfileView | `avatarUrl: nil` hardcoded; solo initials | ✅ (`update_my_profile(p_avatar_url)` + Storage) | `update_my_profile` | PhotosPicker + upload a Storage + URL | Identidad visual pobre en grupos grandes | `Features/Profile/EditProfileView.swift:47,119` | Bucket `avatars` + PhotosPicker + resize client-side |
 | P1.3 | Perfil | PersonalSettingsView | Sin UI para cambiar teléfono/email | ✅ | `startPhoneChange`/`confirmPhoneChange` (AuthService:321-335) | Pantalla de cambio con OTP de verificación | Usuario que cambia de número queda bloqueado | `Features/Profile/PersonalSettingsView.swift` | Sheet "Cambiar teléfono/correo" con flujo OTP |
-| P1.4 | Grupos | ContextSettingsView | Sin archivar contexto | ⚠️ por confirmar (`update_context` no expone status) | — | RPC de archive + UI gated + governance si aplica | Contextos muertos ensucian la lista para siempre | `Features/ContextShell/ContextSettingsView.swift` | Definir semántica backend primero (archive vs leave-all) |
+| ~~P1.4~~ ✅ shipped (Fase 4c) | Grupos | ContextSettingsView | **Resuelto** — `archiveSection()` + `requestArchiveContext()` vía governance (`context.archive`), confirmation dialog, sheet de DecisionDetailView con la propuesta. | ✅ | `request_governance_action(context.archive)` | — | — | `Features/ContextShell/ContextSettingsView.swift:148-190` | Falso positivo del audit original (commit `0218dc8e`). |
 | P1.5 | Membresías | MemberDetailView | Suspender solo vía governance; `set_membership_state` directo sin UI | ✅ | `set_membership_state` | Acción directa para admins donde la policy no exige decisión | Admin no puede pausar a un miembro problemático rápido | `Features/Membership/MemberDetailView.swift:163-168` | Cablear cuando `member_available_actions` lo emita con mode=execute |
 | P1.6 | Reglas | RuleDetailView | Sin historial de versiones ni consecuencias emitidas | ⚠️ parcial (activity registra; sin RPC de versiones) | `list_activity` filtrada | Sección "Historial" + "Consecuencias emitidas" (obligations creadas por la regla) | No se puede auditar qué hizo una regla → desconfianza en el motor R.6 | `Features/Rules/RuleDetailView.swift:112-123` | Filtrar activity por rule_id + linkear obligations generadas |
 | P1.7 | Decisiones | DecisionDetailView | Quorum/threshold no visible antes de votar; sin countdown | ✅ (decision_detail trae result/votes) | `decision_detail` | Mostrar regla de aprobación ("mayoría simple, N/M votos") + countdown a closesAt | Votantes no saben cuánto falta para que pase | `Features/Decisions/DecisionDetailView.swift:330-337` | Chip "Se aprueba con X de Y" + TimelineView para el cierre |
-| P1.8 | Governance | (no existe) | `governance_action_catalog` no navegable | ✅ | `governance_action_catalog` | Vista "Qué requiere aprobación aquí" en ContextSettings | Miembros no saben qué acciones disparan votación | `Features/ContextShell/ContextSettingsView.swift:119-184` | Lista read-only del catálogo con policy actual por acción |
+| ~~P1.8~~ ✅ shipped | Governance | ContextSettingsView | **Resuelto** — `governanceCatalogSection()` carga catálogo via `listGovernanceActionCatalog()`, filtra por `defaultRequiresDecision`, muestra cada acción con badge "Votación" + dangerous shield. | ✅ | `governance_action_catalog` | — | — | `Features/ContextShell/ContextSettingsView.swift:23, 116, 120, 195-223` | Falso positivo del audit original (verificado re-audit 2026-06-14). |
 | P1.9 | Money | (admin) | `void_transaction` (AUDIT.1) sin UI | ✅ | `void_transaction` | Acción admin "Anular transacción" con razón | Errores de captura quedan permanentes en la contabilidad | nuevo en `Features/Money/` | Gated a admin + confirmación + razón obligatoria |
 | P1.10 | Pools | PoolDetailView / CreatePoolSheet | Solo 2 políticas (winner_takes_all, equity_target) | ⚠️ por confirmar qué políticas adicionales soporta `resolve_pool` | `create_pool`, `resolve_pool` | Políticas restantes de R.8 si el backend ya las acepta | Pools de viaje (proporcional) no modelables | `Features/Pools/CreatePoolSheet.swift` | Confirmar contra R8_PoolPrimitive.md y extender el picker |
 | P1.11 | Recursos | ResourceActionFormView | Campos actor_ref/resource_ref caen a TextField de UUID | ✅ | `execute_resource_action` | Pickers nativos poblados de MembersStore/ResourcesStore | Forms server-driven inutilizables para humanos | `Features/Resources/ResourceActionFormView.swift:228,299` | Resolver `format: actor_ref` → Picker de miembros |
 | P1.12 | Navegación | ContextDetailV2 | BreadcrumbView y ContextTreeView definidas, nunca renderizadas | ✅ (`context_ancestors`/`context_tree`) | hierarchy RPCs | Cablear breadcrumb en subcontextos + árbol en tab More, o borrarlas | Código muerto; subcontextos difíciles de navegar hacia arriba | `Features/ContextShell/BreadcrumbView.swift`, `ContextTreeView.swift` | Cablear breadcrumb (ya hay environment `navigateToContext`) |
 | P1.13 | Perfil | MainTabShell | "Contexto inicial" se persiste pero no se aplica | ✅ (metadata) | `personal_settings_summary` | Abrir ese contexto al arrancar si está configurado | Setting que no hace nada (viola regla final) | `Features/Shell/MainTabShell.swift` | Leerlo en bootstrap del tab Contextos |
-| P1.14 | Reservas | RequestReservationView | `whyCanReserve` se carga pero el render es parcial | ✅ | `why_can_reserve` | Sección completa "Por qué puedes reservar" | Menor — transparencia de derechos | `Features/Reservations/RequestReservationView.swift:33` | Completar la sección con los rights del response |
+| ~~P1.14~~ ✅ shipped (Fase 3) | Reservas | RequestReservationView | **Resuelto** — `whySection` con `why.reasons` (Label + key icon), fallback honesto, `LabeledContent` para capability requerida cuando se deniega. | ✅ | `why_can_reserve` | — | — | `Features/Reservations/RequestReservationView.swift:145-185` | Falso positivo del audit original (verificado re-audit 2026-06-14). |
 | P1.15 | Decisiones | MyDecisionsView | No distingue "ya voté" vs "necesito votar" | ✅ | `decision_votes` | Filtro/badge de pendientes de mi voto | Cubierto parcialmente por attention_inbox | `Features/Profile/MyDecisionsView.swift:7-11` | Cruzar con listDecisionVotes en el fan-out |
 | P1.16 | Grupos | ContextSettingsView | Roles personalizados placeholder | ❌ (no hay RPCs de role CRUD) | — | Definición backend primero | Bajo — roles canónicos bastan en MVP | `ContextSettingsView.swift:342-353` | Mantener placeholder; diseñar post-MVP |
 | P1.17 | Decisiones | CreateDecisionView | Templates R.4B sin UI dedicada | ✅ (execute_decision con templates) | `create_decision` | Picker de plantillas de decisión | Decisiones ejecutables se crean "a mano" | `Features/Decisions/CreateDecisionView.swift` | Exponer templates del catálogo R.4B |
-| P1.18 | Activity | ActivityDetailView | Claves de payload de R.6 sin humanizar | ✅ | `list_activity` | Mapear claves nuevas del rule engine | Metadata críptica en eventos automáticos | `Features/Activity/ActivityFeedView.swift:218-240` | Extender `payloadKeyLabel` + fallback legible |
+| ~~P1.18~~ ✅ shipped (Fase 3) | Activity | ActivityFeedView | **Resuelto** — `payloadKeyLabel` cubre rule_id/source_rule_id/outcome/triggered_by_event_type/consequences_applied/evaluation_id/via/settlement_batch_id/etc. `payloadValueLabel` traduce matched/fired/skipped/no_match. | ✅ | `list_activity` | — | — | `Features/Activity/ActivityFeedView.swift:282-330` | Falso positivo del audit original (verificado re-audit 2026-06-14). |
 
 ## P2 — escalabilidad / pulido
 
@@ -100,17 +100,33 @@ versiones por `supersedes`.
 
 ## Resumen ejecutivo
 
-- **9 ítems P0** (8 originales + **D1 R.8.A doctrine drift**): 6 de flujo (P0.1–P0.6) +
-  2 de visión/compliance (**V.1 eliminación de cuenta** — bloquea App Store — y **V.2
-  aviso de privacidad/términos**) + 1 de doctrina (**D1** — Tesorería ≠ Fondos).
-- **23 ítems P1** (20 originales + D2/D3/D4): la mitad son "backend listo, falta UI"
-  (notificaciones R.4D, avatar, phone change, void_transaction, set_membership_state,
-  breadcrumb), más los de visión (V.3 export de memoria institucional, V.4 RuleDetail
-  conforme a doctrina R.5V), más **D2 (NotificationCenter→AttentionDispatcher)**,
-  **D3 (logout confirmation)**, **D4 (Settlement admin disputed handler)**.
-- **P2** es cola de pulido sin riesgo (incluye V.5 monetización por grupo, V.6 MFA,
-  V.7 copy institucional, **D5 attention auto-dismiss**).
-- Lo que NO hay: pantallas rotas, RPCs inexistentes, drift de contrato, lógica de
-  permisos duplicada en cliente. La regla final ("no botones que no hagan nada") se
-  viola solo en P0.4 y P1.13 — el resto de los botones inertes están honestamente
-  marcados como "Próximamente".
+### Estado post Fase 6.x (2026-06-14)
+
+Tras cerrar Fases 6/6.2/6.3, el re-audit detectó **8 falsos positivos** del doc
+original: items marcados como pendientes que en realidad ya estaban shipped en
+Fases 2/3/4/5/5a-d. Estado real:
+
+**P0 reales pendientes (3):**
+- **P0.1** Rechazar invitación — requiere RPC backend `decline_invitation`.
+- **P0.4** Obligation pay/dispute/cancel — requiere decisión backend (drift catálogo).
+- **P0.6** Smoke F.14 — manual en device, sin código.
+
+**P0 falsos positivos (resueltos):** D1, D3, P0.2 (Fase 6.x); P0.3, P0.5 parcial (Fase
+5d); V.1, V.2 (auditor antiguo no vio el shipping reciente).
+
+**P1 reales pendientes (≤4):**
+- **P1.5** Suspensión directa (bloqueada hasta que backend emita con `mode=execute`).
+- **P1.10** Pools políticas adicionales (proportional shipped; resto requiere R.8 backend).
+- **P1.11** Pickers nativos en ResourceActionFormView (verificar — Fase 2 cierre dice falso positivo).
+- **P1.16** Roles personalizados (placeholder; requiere backend).
+
+**P1 falsos positivos (resueltos):** D2, D4 (Fase 6); P1.1, P1.2, P1.3, P1.6/V.4, P1.7,
+P1.8, P1.13, V.3 (Fase 2 explícita); P1.4 (Fase 4c); P1.14, P1.18 (Fase 3); P1.17
+(Fase 5b).
+
+**P2** es cola de pulido sin riesgo (V.5 monetización, V.6 MFA, V.7 copy, **D5 attention
+auto-dismiss shipped Fase 6.2**).
+
+**Conclusión:** el frontend tiene ≤7 items P0/P1 abiertos, de los cuales **3 requieren
+backend nuevo o validación en device**. El backlog de "hacer UI con backend listo"
+quedó esencialmente vacío.
