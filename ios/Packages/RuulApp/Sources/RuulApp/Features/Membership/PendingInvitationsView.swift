@@ -56,7 +56,7 @@ public struct PendingInvitationsView: View {
             RuulEmptyState(
                 title: "Sin invitaciones",
                 systemImage: "tray",
-                message: "Cuando alguien te invite directamente a un contexto, aparecerá aquí."
+                message: "Cuando alguien te invite directamente a un espacio, aparecerá aquí."
                 )
         } else {
             List {
@@ -153,18 +153,25 @@ public struct PendingInvitationsView: View {
         acceptingId = invitation.membershipId
         defer { acceptingId = nil }
 
-        await runner.run {
+        let success = await runner.run {
             let actorId = container.currentActorStore.actorId
             _ = try await container.invitationsStore.accept(
                 contextId: invitation.contextActorId,
                 actorId: actorId
             )
             lastAcceptedName = invitation.contextDisplayName
-            // Refrescar la lista de contextos y saltar al nuevo.
+            // Refrescar la lista de espacios y saltar al nuevo.
             await container.contextStore.load()
             if let new = container.contextStore.availableContexts.first(where: { $0.id == invitation.contextActorId }) {
                 container.contextStore.switchTo(new)
             }
+        }
+        // 7.F.3 (audit 2026-06-14) — dismiss automático tras aceptar (mismo
+        // patrón que JoinByCodeView del Slice 7.C.3): el contexto ya quedó
+        // activo, llevar al usuario directo al espacio en vez de dejarlo
+        // mirando la lista de invitaciones (que ya no tiene esta entry).
+        if success && store.invitations.isEmpty {
+            dismiss()
         }
     }
 }

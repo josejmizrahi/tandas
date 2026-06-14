@@ -38,8 +38,33 @@ public struct EditResourceView: View {
         _locationText = State(initialValue: resource.locationText ?? "")
     }
 
+    /// 7.F.1 (audit 2026-06-14) — pattern universal de los Edit*View:
+    /// `canSubmit = isValid && hasChanges && !runner.isRunning`. Evita PUT
+    /// vacíos al backend cuando el usuario abre Editar y solo toca el
+    /// teclado.
     private var canSubmit: Bool {
-        !displayName.trimmingCharacters(in: .whitespaces).isEmpty && !runner.isRunning
+        isValid && hasChanges && !runner.isRunning
+    }
+
+    private var isValid: Bool {
+        !displayName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var hasChanges: Bool {
+        let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
+        let trimmedDescription = description.trimmingCharacters(in: .whitespaces)
+        let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
+        let originalDescription = resource.description ?? ""
+        let originalLocation = resource.locationText ?? ""
+        let originalCurrency = resource.currency ?? "MXN"
+        let parsedValue = Double(estimatedValue.replacingOccurrences(of: ",", with: "."))
+        let originalValue = resource.estimatedValue
+
+        return trimmedName != resource.displayName
+            || trimmedDescription != originalDescription
+            || trimmedLocation != originalLocation
+            || currency != originalCurrency
+            || parsedValue != originalValue
     }
 
     public var body: some View {

@@ -164,10 +164,24 @@ public struct CreateEventView: View {
     }
 
     private var canSubmit: Bool {
-        !title.trimmingCharacters(in: .whitespaces).isEmpty
-            && locationIsValid
-            && seriesBoundIsValid
-            && !runner.isRunning
+        validationHint == nil && !runner.isRunning
+    }
+
+    /// 7.F.2 (audit 2026-06-14) — feedback inline cuando algo falta para
+    /// poder crear el evento. Antes el usuario veía "Crear evento" disabled
+    /// sin saber qué le faltaba (título, ubicación física, número de
+    /// ocurrencias, etc.).
+    private var validationHint: String? {
+        if title.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Ponle un título al evento."
+        }
+        if locationMode == .physical && locationText.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Escribe la dirección o el lugar del evento."
+        }
+        if recurrence != .none && seriesBound == .count && (parsedOccurrenceCount ?? 0) <= 0 {
+            return "Indica cuántas ocurrencias quieres."
+        }
+        return nil
     }
 
     public var body: some View {
@@ -319,6 +333,13 @@ public struct CreateEventView: View {
                         }
                     }
                     .disabled(!canSubmit)
+                } footer: {
+                    // 7.F.2 — hint inline cuando el botón está disabled.
+                    if let validationHint {
+                        Label(validationHint, systemImage: "exclamationmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Tint.warning)
+                    }
                 }
             }
             .navigationTitle("Nuevo evento")
