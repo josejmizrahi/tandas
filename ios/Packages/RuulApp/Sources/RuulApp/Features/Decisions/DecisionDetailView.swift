@@ -365,6 +365,14 @@ public struct DecisionDetailView: View {
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(.tint)
             }
+            // P1.7 — regla de aprobación explícita ANTES de votar. Lee del
+            // payload de la decisión (override) o cae al default canónico
+            // ("mayoría simple"). Cero RPC nuevo — todo viene en decision_detail.
+            LabeledContent("Se aprueba con") {
+                Text(approvalRuleLabel(decision))
+                    .font(.callout.weight(.semibold))
+                    .multilineTextAlignment(.trailing)
+            }
 
             if !decision.isOpen {
                 Button {
@@ -376,6 +384,42 @@ public struct DecisionDetailView: View {
             }
         } header: {
             Text("Estado")
+        }
+    }
+
+    /// P1.7 — copy explícito de la regla de aprobación. El backend trae los
+    /// overrides en `decision.payload` (quorum + approval_threshold); si la
+    /// decisión los hereda del contexto, caemos al label canónico por
+    /// voting_model.
+    ///
+    /// `quorum` y `approval_threshold` son fracciones `0…1` (catálogo R.4B).
+    /// Convertimos a "N de M votos" cuando sabemos `members.count`.
+    private func approvalRuleLabel(_ decision: Decision) -> String {
+        let total = store.members.count
+        let payload = decision.payload
+        let quorum = payload?["quorum"]?.numberValue
+        let threshold = payload?["approval_threshold"]?.numberValue
+
+        switch decision.voting {
+        case .consent:
+            return "Sin objeciones (consentimiento)"
+        case .singleChoice, .multipleChoice, .rankedChoice, .approvalVote:
+            // Para choice-based models el resultado es ganador por mayoría
+            // relativa entre opciones. Reportamos el threshold cuando existe.
+            if let threshold, total > 0 {
+                let needed = Int((Double(total) * threshold).rounded(.up))
+                return "\(needed) de \(total) votos"
+            }
+            return "Más votos que cualquier otra opción"
+        case .numericAllocation:
+            return "Repartir el presupuesto"
+        case .yesNoAbstain:
+            if let threshold, total > 0 {
+                let needed = Int((Double(total) * threshold).rounded(.up))
+                let quorumNote = quorum.map { ", quórum \(Int(($0 * 100).rounded()))%" } ?? ""
+                return "\(needed) a favor\(quorumNote)"
+            }
+            return "Mayoría simple"
         }
     }
 
