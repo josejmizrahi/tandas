@@ -30,13 +30,24 @@ public struct EditProfileView: View {
         return actorStore.actor?.displayName ?? "?"
     }
 
+    /// 7.B.4 (audit 2026-06-14) — antes el botón Guardar quedaba disabled si
+    /// ambos nombres estaban vacíos, incluso si solo se cambió la foto. Ahora
+    /// permitimos guardar solo avatar mientras exista al menos un nombre
+    /// guardado previo (no se puede crear cuenta sin nombre, pero sí cambiar
+    /// solo la foto si la cuenta ya existía).
     private var canSave: Bool {
         let preferred = preferredName.trimmingCharacters(in: .whitespaces)
         let full = fullName.trimmingCharacters(in: .whitespaces)
+        let storedPreferred = actorStore.actor?.profile?.preferredName ?? ""
+        let storedFull = actorStore.actor?.profile?.fullName ?? ""
+
+        // Hay foto nueva, y la cuenta tiene al menos un nombre persistido: OK.
+        if pickedImageData != nil && (!storedPreferred.isEmpty || !storedFull.isEmpty) {
+            return true
+        }
+        // Cualquier cambio de nombre con al menos uno no-vacío: OK.
         guard !preferred.isEmpty || !full.isEmpty else { return false }
-        return pickedImageData != nil
-            || preferred != (actorStore.actor?.profile?.preferredName ?? "")
-            || full != (actorStore.actor?.profile?.fullName ?? "")
+        return preferred != storedPreferred || full != storedFull
     }
 
     public var body: some View {

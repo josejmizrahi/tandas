@@ -223,6 +223,14 @@ public struct SignedOutView: View {
         errorMessage = nil
         defer { isWorking = false }
         let target = destination.trimmingCharacters(in: .whitespaces)
+        // 7.B.3 (audit 2026-06-14) — validar formato ANTES de pegar al backend
+        // para dar feedback inmediato y diferenciar de errores de red.
+        guard isValid(target, for: channel) else {
+            errorMessage = channel == .phone
+                ? "Revisa el número. Usa formato internacional (ej. +52 81 1234 5678)."
+                : "Correo no válido. Revisa que tenga la forma nombre@dominio.com."
+            return
+        }
         do {
             switch channel {
             case .phone:
@@ -232,7 +240,11 @@ public struct SignedOutView: View {
             }
             step = .enterCode
         } catch {
-            errorMessage = "No pudimos enviar el código. Revisa el dato e intenta de nuevo."
+            errorMessage = authErrorMessage(error, fallback:
+                channel == .phone
+                    ? "No pudimos enviar el código al teléfono. Intenta de nuevo en unos segundos."
+                    : "No pudimos enviar el código al correo. Intenta de nuevo en unos segundos."
+            )
         }
     }
 
@@ -250,7 +262,53 @@ public struct SignedOutView: View {
             }
             // La sesión se propaga sola vía AuthService.sessionStream → SessionStore.
         } catch {
-            errorMessage = "Código incorrecto o expirado. Vuelve a intentar."
+            errorMessage = authErrorMessage(error, fallback: "Código incorrecto o expirado. Vuelve a pedir uno nuevo.")
+        }
+    }
+
+    /// 7.B.3 — discrimina errores de red vs auth real para copy específico.
+    /// Los errores de Supabase Auth con código `otp_expired` o `invalid_otp`
+    /// son distintos de un `URLError` de red.
+    private func authErrorMessage(_ error: Error, fallback: String) -> String {
+        let ns = error as NSError
+        // URLError: sin conexión / timeout.
+        if ns.domain == NSURLErrorDomain {
+            switch ns.code {
+            case NSURLErrorNotConnectedToInternet:
+                return "Sin conexión a internet. Revisa tu red e intenta de nuevo."
+            case NSURLErrorTimedOut:
+                return "El servidor tardó demasiado en responder. Intenta de nuevo."
+            default:
+                return "Problema de red al contactar al servidor. Intenta de nuevo."
+            }
+        }
+        // Mensaje del backend: si menciona "rate" o "many requests", traducimos.
+        let raw = error.localizedDescription.lowercased()
+        if raw.contains("rate") || raw.contains("too many") {
+            return "Demasiados intentos. Espera un momento antes de pedir otro código."
+        }
+        if raw.contains("expired") {
+            return "El código ya expiró. Pide uno nuevo."
+        }
+        if raw.contains("invalid") && raw.contains("code") {
+            return "Código incorrecto. Revisa los 6 dígitos."
+        }
+        return fallback
+    }
+
+    /// 7.B.3 — validación de formato lightweight cliente-side. Evita pegarle
+    /// al backend con destinos obviamente inválidos.
+    private func isValid(_ destination: String, for channel: Channel) -> Bool {
+        switch channel {
+        case .phone:
+            // Mínimo viable: empieza con + y tiene al menos 8 dígitos.
+            let digits = destination.filter(\.isNumber)
+            return destination.hasPrefix("+") && digits.count >= 8
+        case .email:
+            // Mínimo viable: contiene @ y un punto después.
+            guard let atIndex = destination.firstIndex(of: "@") else { return false }
+            let afterAt = destination[atIndex...]
+            return afterAt.contains(".") && destination.count >= 5
         }
     }
 

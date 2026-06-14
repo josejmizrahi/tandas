@@ -325,6 +325,12 @@ private struct CreateResourceForm: View {
         _locationText = State(initialValue: prefilled?.locationText ?? "")
     }
 
+    /// 7.B.2 — count de caracteres del nombre tras trim. Usado para mostrar
+    /// el hint "Mínimo 3 letras" mientras el usuario escribe.
+    private var trimmedNameLength: Int {
+        displayName.trimmingCharacters(in: .whitespaces).count
+    }
+
     var body: some View {
         Form {
             Section {
@@ -338,6 +344,15 @@ private struct CreateResourceForm: View {
 
             Section("Recurso") {
                 TextField("Nombre (Casa Valle, Fondo común…)", text: $displayName)
+                if !displayName.isEmpty && trimmedNameLength < 3 {
+                    // 7.B.2 (audit 2026-06-14) — feedback inline: el botón
+                    // "Crear recurso" se queda disabled hasta que el nombre
+                    // tenga ≥3 chars (regla del CreationGuard backend), y
+                    // antes el usuario no sabía por qué. Ahora lo decimos.
+                    Label("Mínimo 3 letras.", systemImage: "exclamationmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Tint.warning)
+                }
                 TextField("Descripción (opcional)", text: $descriptionText, axis: .vertical)
                     .lineLimit(2...4)
             }
@@ -376,7 +391,7 @@ private struct CreateResourceForm: View {
                 }
                 .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty || runner.isRunning)
             } footer: {
-                Text("\(context.displayName) queda como dueño (OWN 100%). Después puedes otorgar derechos de uso a miembros u otros contextos.")
+                Text("\(context.displayName) queda como dueño del recurso. Después puedes compartir el acceso con miembros u otros espacios.")
             }
         }
         .navigationTitle("Nuevo \(subtype.displayName.lowercased())")
