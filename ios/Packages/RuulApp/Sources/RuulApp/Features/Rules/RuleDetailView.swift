@@ -72,25 +72,21 @@ public struct RuleDetailView: View {
         // Label native con icon/title/subtitle para "Cómo funciona" + LabeledContent
         // para "Información" + RuulStatusBadge V.2 + Theme tokens.
         List {
+            // R.11.K — Hero canonical (RuulDetailHero) — gana glass card +
+            // consistencia con Resource/Document/Decision/Obligation/Context
+            // Detail. Status badge en el slot canonical.
             Section {
-                HStack(spacing: 14) {
-                    Image(systemName: "ruler.fill")
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(Theme.Tint.primary)
-                        .frame(width: 56, height: 56)
-                        .background(Theme.Tint.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(rule.title)
-                            .font(.title3.bold())
-                            .foregroundStyle(Theme.Text.primary)
-                            .lineLimit(2)
-                        RuulStatusBadge(rule.isActive ? .active : .inactive)
-                    }
-                    Spacer(minLength: 0)
-                }
+                RuulDetailHero(
+                    title: rule.title,
+                    subtitle: nil,
+                    systemImage: "ruler.fill",
+                    tint: Theme.Tint.primary,
+                    status: rule.isActive ? .active : .inactive,
+                    chips: []
+                )
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
 
             if let body = rule.body, !body.isEmpty {
