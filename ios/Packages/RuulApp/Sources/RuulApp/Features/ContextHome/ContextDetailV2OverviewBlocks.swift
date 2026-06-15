@@ -1,15 +1,19 @@
 import SwiftUI
 import RuulCore
 
-// MARK: - Eventos consolidado (R.10.E.4, founder firmado 2026-06-14)
+// MARK: - Eventos (R.10.E.5 — Apple Music header pattern, founder firmado 2026-06-15)
 //
-// Antes había 2 surfaces en cascada:
-//   - `QuickSummarySection` mostraba balance + "Ver próximos eventos" cuando
-//     hasBalance. Duplicaba el balance que MoneyTab (E.3) ya renderiza.
-//   - `NextEventSection` mostraba sólo "Ver próximos eventos" como fallback
-//     cuando no había balance pero sí hasNextEventWidget.
-// Ahora UNA sola Section "Eventos" con preview de upcoming + drill al
-// calendario + drill a la lista completa. El balance vive sólo en MoneyTab.
+// Section sólo muestra DATA (próximos eventos). "Ver todos" vive como
+// link trailing en el header (Apple Music / Apple News pattern), no como
+// row del body. Affordances secundarias (Calendario) viven en el
+// toolbar `+` Menu via descriptor.actions section=events.
+//
+// Empty state: row CTA "Crear el primer evento" → EventsListView (donde
+// vive el toolbar `+` para crear). Mismo patrón que D7 Recursos.
+//
+// Histórico: pre-E.5 mezclaba 2 drill rows en el body (Calendario + Ver
+// todos los eventos) que contaminaban la Section con affordances. E.5
+// separa data (Section) de affordances (header link + toolbar).
 
 struct ContextDetailV2EventsSection: View {
     let descriptor: ContextDetailDescriptor
@@ -19,45 +23,56 @@ struct ContextDetailV2EventsSection: View {
     var body: some View {
         let d = descriptor
         Section {
-            // Próximos eventos preview (rich rows con title + fecha).
-            ForEach(d.eventsPreview.prefix(3)) { ev in
+            if d.eventsPreview.isEmpty {
                 NavigationLink {
-                    EventDetailView(eventId: ev.eventId, context: context, container: container)
+                    EventsListView(context: context, container: container)
                 } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(ev.title)
-                                .font(.callout.weight(.medium))
-                                .foregroundStyle(Theme.Text.primary)
-                                .lineLimit(1)
-                            if let starts = ev.startsAt {
-                                Text(starts.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.Text.tertiary)
+                    Label("Crear el primer evento", systemImage: "calendar.badge.plus")
+                        .foregroundStyle(Theme.Tint.primary)
+                }
+            } else {
+                ForEach(d.eventsPreview.prefix(3)) { ev in
+                    NavigationLink {
+                        EventDetailView(eventId: ev.eventId, context: context, container: container)
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ev.title)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                    .lineLimit(1)
+                                if let starts = ev.startsAt {
+                                    Text(starts.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.tertiary)
+                                }
                             }
+                        } icon: {
+                            Image(systemName: "calendar.badge.clock")
+                                .foregroundStyle(Theme.Tint.primary)
                         }
-                    } icon: {
-                        Image(systemName: "calendar.badge.clock")
-                            .foregroundStyle(Theme.Tint.primary)
                     }
                 }
             }
-
-            // Drill al calendario (siempre disponible).
-            NavigationLink {
-                ContextCalendarView(context: context, container: container)
-            } label: {
-                Label("Calendario", systemImage: "calendar")
-            }
-
-            // Drill a la lista completa (siempre disponible).
-            NavigationLink {
-                EventsListView(context: context, container: container)
-            } label: {
-                Label("Ver todos los eventos", systemImage: "list.bullet.rectangle")
-            }
         } header: {
-            Text("Eventos")
+            HStack {
+                Text("Próximos eventos")
+                Spacer()
+                if !d.eventsPreview.isEmpty {
+                    NavigationLink {
+                        EventsListView(context: context, container: container)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Ver todos")
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .foregroundStyle(Theme.Tint.primary)
+                    }
+                    .font(.subheadline.weight(.regular))
+                }
+            }
+            .textCase(nil)
         }
     }
 }
@@ -173,6 +188,10 @@ struct ContextDetailV2ActivitySection: View {
     let context: AppContext
     let container: DependencyContainer
 
+    // R.10.E.5 — Apple Music header pattern. Section sólo muestra DATA
+    // (3 actividades más recientes). "Ver todo" vive en el header trailing,
+    // no como row del body.
+
     var body: some View {
         Section {
             ForEach(events.prefix(3)) { ev in
@@ -192,13 +211,23 @@ struct ContextDetailV2ActivitySection: View {
                         .foregroundStyle(activityEventTint(ev.eventType))
                 }
             }
-            NavigationLink {
-                ActivityFeedView(context: context, container: container)
-            } label: {
-                Label("Ver toda la actividad", systemImage: "list.bullet")
-            }
         } header: {
-            Text("Actividad reciente")
+            HStack {
+                Text("Actividad reciente")
+                Spacer()
+                NavigationLink {
+                    ActivityFeedView(context: context, container: container)
+                } label: {
+                    HStack(spacing: 2) {
+                        Text("Ver todo")
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(Theme.Tint.primary)
+                }
+                .font(.subheadline.weight(.regular))
+            }
+            .textCase(nil)
         }
     }
 

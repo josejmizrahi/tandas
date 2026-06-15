@@ -240,14 +240,11 @@ public struct ContextDetailViewV2: View {
                 container: container
             )
         }
-        // R.10.E.4 (founder firmado 2026-06-14) — Eventos consolidados:
-        // se eliminó el bloque QuickSummary/NextEvent que duplicaba balance
-        // con MoneyTab (E.3) y mezclaba dominios. Ahora Eventos vive en su
-        // propia Section, mostrada cuando hay eventos preview O cuando el
-        // descriptor anuncia el widget next_event.
-        if !d.eventsPreview.isEmpty || hasNextEventWidget(d.widgets) {
-            ContextDetailV2EventsSection(descriptor: d, context: context, container: container)
-        }
+        // R.10.E.5 (founder firmado 2026-06-15) — Eventos siempre visible
+        // para contextos colectivos: cuando hay preview muestra rows + header
+        // "Ver todos"; cuando está vacío muestra empty CTA "Crear el primer
+        // evento" (Camino B firmado).
+        ContextDetailV2EventsSection(descriptor: d, context: context, container: container)
         // Personas, recursos, gobernanza — cada uno con su preview + "Ver todos".
         if visibleKeys.contains("people") {
             ContextDetailV2PeopleTab(descriptor: d, context: context, container: container)
@@ -255,12 +252,11 @@ public struct ContextDetailViewV2: View {
         if visibleKeys.contains("resources") {
             ContextDetailV2ResourcesTab(descriptor: d, context: context, container: container)
         }
+        // R.10.E.5 — Gobierno separado en 2 Sections por data type (decisiones
+        // explícitas vs reglas automáticas). Apple HIG: una Section = un tipo.
         if visibleKeys.contains("governance") {
-            ContextDetailV2GovernanceTab(
-                descriptor: d,
-                context: context,
-                container: container
-            )
+            ContextDetailV2DecisionsSection(descriptor: d, context: context, container: container)
+            ContextDetailV2RulesSection(context: context, container: container)
         }
         // Money tab inline (balance + obligaciones + settlements + history).
         if visibleKeys.contains("money") || visibleKeys.contains("obligations") {

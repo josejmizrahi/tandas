@@ -1,22 +1,21 @@
 import SwiftUI
 import RuulCore
 
-// MARK: - Governance tab (R.10.E.4 — consolidado "Gobierno")
+// MARK: - Gobierno: Decisiones + Reglas (R.10.E.5 — separated by data type)
 //
-// R.10.E.4 (founder firmado 2026-06-14): UNA Section "Gobierno" que agrupa
-// los dos surfaces de gobernanza del modelo Ruul (decisiones explícitas +
-// reglas automáticas). Antes: sólo "Decisiones abiertas" cuando había, sin
-// drill a reglas. Ahora: preview de decisiones abiertas + drill a la lista
-// completa + drill a reglas, todo en una sola card.
+// R.10.E.5 (founder firmado 2026-06-15): la Section consolidada "Gobierno"
+// de E.4 mezclaba 2 data types diferentes (decisiones explícitas + reglas
+// automáticas). Apple HIG: una Section agrupa UN tipo de dato. Ahora:
+//   - "Decisiones abiertas" — preview + header trailing "Ver todas" +
+//     empty CTA "Crear primera decisión".
+//   - "Reglas del espacio" — Section standalone con 1 drill row (no hay
+//     preview de reglas en el descriptor, así que sólo drill).
 //
-// Doctrina: Apple HIG — una Section agrupa contenido relacionado del mismo
-// dominio. Gobierno = decisiones + reglas (CLAUDE.md domain doctrine).
-//
-// Nota histórica: `ContextDetailV2EventsTab` (dead code post-tabs removal
-// en Fase 9.6) eliminado en este slice — los eventos ahora viven en
-// `ContextDetailV2EventsSection` consolidada en OverviewBlocks.swift.
+// Doctrina: Apple Music / Apple News pattern — header trailing link para
+// drill-to-full-list. Affordances secundarias en toolbar `+` Menu via
+// descriptor.actions.
 
-struct ContextDetailV2GovernanceTab: View {
+struct ContextDetailV2DecisionsSection: View {
     let descriptor: ContextDetailDescriptor
     let context: AppContext
     let container: DependencyContainer
@@ -24,43 +23,69 @@ struct ContextDetailV2GovernanceTab: View {
     var body: some View {
         let d = descriptor
         Section {
-            // Decisiones abiertas preview (rich rows, max 3).
-            ForEach(d.decisionsPreview.prefix(3)) { dec in
+            if d.decisionsPreview.isEmpty {
                 NavigationLink {
-                    DecisionDetailView(decisionId: dec.decisionId, context: context, container: container)
+                    DecisionsListView(context: context, container: container)
                 } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(dec.title)
-                                .font(.callout.weight(.medium))
-                                .foregroundStyle(Theme.Text.primary)
-                                .lineLimit(1)
-                            Text("Decisión abierta · tu voto cuenta")
-                                .font(.caption)
+                    Label("Crear primera decisión", systemImage: "checkmark.bubble.fill")
+                        .foregroundStyle(Theme.Tint.primary)
+                }
+            } else {
+                ForEach(d.decisionsPreview.prefix(3)) { dec in
+                    NavigationLink {
+                        DecisionDetailView(decisionId: dec.decisionId, context: context, container: container)
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(dec.title)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                    .lineLimit(1)
+                                Text("Decisión abierta · tu voto cuenta")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Tint.warning)
+                            }
+                        } icon: {
+                            Image(systemName: "checkmark.bubble.fill")
                                 .foregroundStyle(Theme.Tint.warning)
                         }
-                    } icon: {
-                        Image(systemName: "checkmark.bubble.fill")
-                            .foregroundStyle(Theme.Tint.warning)
                     }
                 }
             }
-
-            // Drill a todas las decisiones (siempre disponible).
-            NavigationLink {
-                DecisionsListView(context: context, container: container)
-            } label: {
-                Label("Ver todas las decisiones", systemImage: "checkmark.bubble.fill")
+        } header: {
+            HStack {
+                Text("Decisiones abiertas")
+                Spacer()
+                if !d.decisionsPreview.isEmpty {
+                    NavigationLink {
+                        DecisionsListView(context: context, container: container)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Ver todas")
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .foregroundStyle(Theme.Tint.primary)
+                    }
+                    .font(.subheadline.weight(.regular))
+                }
             }
+            .textCase(nil)
+        }
+    }
+}
 
-            // Drill a reglas del espacio (siempre disponible).
+struct ContextDetailV2RulesSection: View {
+    let context: AppContext
+    let container: DependencyContainer
+
+    var body: some View {
+        Section {
             NavigationLink {
                 RulesListView(context: context, container: container)
             } label: {
                 Label("Reglas del espacio", systemImage: "ruler.fill")
             }
-        } header: {
-            Text("Gobierno")
         }
     }
 }
