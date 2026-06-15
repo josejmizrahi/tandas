@@ -63,6 +63,33 @@ struct ContextDetailV2EventsTab: View {
                     .foregroundStyle(Theme.Text.secondary)
             }
         }
+
+        // Fase 9 (audit 2026-06-14) — extensión del fix Issue 1 founder.
+        if !d.childContextsPreview.isEmpty {
+            Section {
+                ForEach(d.childContextsPreview) { child in
+                    let childContext = AppContext(
+                        id: child.id,
+                        kind: ActorKind(rawValue: child.actorKind) ?? .collective,
+                        subtype: child.actorSubtype ?? "other",
+                        displayName: child.displayName
+                    )
+                    NavigationLink {
+                        ContextDetailViewV2(
+                            contextId: child.id,
+                            context: childContext,
+                            container: container
+                        )
+                    } label: {
+                        Label(child.displayName, systemImage: childContext.symbolName)
+                    }
+                }
+            } header: {
+                Text("Eventos en subespacios (\(d.childContextsPreview.count))")
+            } footer: {
+                Text("Cada subespacio tiene su propio calendario.")
+            }
+        }
     }
 }
 
@@ -284,6 +311,37 @@ struct ContextDetailV2ResourcesTab: View {
 
     var body: some View {
         let d = descriptor
+        resourcesContent(d)
+        // Fase 9 (audit 2026-06-14) — extensión del fix Issue 1 founder.
+        if !d.childContextsPreview.isEmpty {
+            Section {
+                ForEach(d.childContextsPreview) { child in
+                    let childContext = AppContext(
+                        id: child.id,
+                        kind: ActorKind(rawValue: child.actorKind) ?? .collective,
+                        subtype: child.actorSubtype ?? "other",
+                        displayName: child.displayName
+                    )
+                    NavigationLink {
+                        ContextDetailViewV2(
+                            contextId: child.id,
+                            context: childContext,
+                            container: container
+                        )
+                    } label: {
+                        Label(child.displayName, systemImage: childContext.symbolName)
+                    }
+                }
+            } header: {
+                Text("Recursos en subespacios (\(d.childContextsPreview.count))")
+            } footer: {
+                Text("Cada subespacio tiene sus propios recursos.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func resourcesContent(_ d: ContextDetailDescriptor) -> some View {
         if d.resourcesPreview.isEmpty {
             Section {
                 Label("Sin recursos en este contexto", systemImage: "shippingbox")
