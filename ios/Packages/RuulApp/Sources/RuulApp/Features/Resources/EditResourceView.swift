@@ -5,8 +5,13 @@ import MapKit
 /// F.RESOURCE.3 — editar campos generales del recurso (nombre / descripción /
 /// valor estimado / moneda / ubicación) sin pasar por Settings. Action
 /// canónica `update_resource` gateada por OWN/MANAGE en backend.
+///
+/// R.12.E — si el caller pasa `subtypeKey`, se carga el `ResourceSubtype` con
+/// sus fields y se muestra un section "Detalles <subtipo>" con DynamicForm
+/// prefilled del `resource.metadata` actual.
 public struct EditResourceView: View {
     let resource: Resource
+    let subtypeKey: String?
     let container: DependencyContainer
     let onSaved: () -> Void
 
@@ -19,15 +24,22 @@ public struct EditResourceView: View {
     @State private var locationCompleter = LocationCompleter()
     @State private var suppressNextQueryUpdate = false
     @State private var runner = ActionRunner()
+    /// R.12.E — schema + values del subtype (carga async via listResourceSubtypes).
+    @State private var subtypeFields: [FormFieldSpec] = []
+    @State private var subtypeDisplayName: String = ""
+    @State private var subtypeMetadata: [String: JSONValue] = [:]
+    @State private var initialSubtypeMetadata: [String: JSONValue] = [:]
 
     private let currencyOptions = ["MXN", "USD", "EUR"]
 
     public init(
         resource: Resource,
+        subtypeKey: String? = nil,
         container: DependencyContainer,
         onSaved: @escaping () -> Void
     ) {
         self.resource = resource
+        self.subtypeKey = subtypeKey
         self.container = container
         self.onSaved = onSaved
         _displayName = State(initialValue: resource.displayName)
@@ -36,6 +48,13 @@ public struct EditResourceView: View {
         _estimatedValue = State(initialValue: value > 0 ? String(format: "%.2f", value) : "")
         _currency = State(initialValue: resource.currency ?? "MXN")
         _locationText = State(initialValue: resource.locationText ?? "")
+        // Pre-cargar metadata existente del resource para que el form arranque
+        // con los valores actuales. Si resource.metadata es .object lo usamos
+        // directo; si no, dejamos vacío.
+        if case .object(let obj) = resource.metadata {
+            _subtypeMetadata = State(initialValue: obj)
+            _initialSubtypeMetadata = State(initialValue: obj)
+        }
     }
 
     /// 7.F.1 (audit 2026-06-14) — pattern universal de los Edit*View:
@@ -65,6 +84,7 @@ public struct EditResourceView: View {
             || trimmedLocation != originalLocation
             || currency != originalCurrency
             || parsedValue != originalValue
+            || subtypeMetadata != initialSubtypeMetadata
     }
 
     public var body: some View {
@@ -132,7 +152,19 @@ public struct EditResourceView: View {
                 } footer: {
                     Text("Sirve para reportes y liquidaciones. Déjalo en blanco si no aplica.")
                 }
+
+                if !subtypeFields.isEmpty {
+                    Section {
+                        DynamicForm(
+                            schema: FormSchema(fields: subtypeFields),
+                            values: $subtypeMetadata
+                        )
+                    } header: {
+                        Text("Detalles \(subtypeDisplayName.lowercased())")
+                    }
+                }
             }
+            .task { await loadSubtypeFields() }
             .navigationTitle("Editar recurso")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -159,12 +191,18 @@ public struct EditResourceView: View {
         // F.RESOURCE.4 — mismo patrón que EditEventView: mandamos valores del
         // form siempre; el backend usa coalesce + sentinela "" para limpiar
         // location_text.
+        // R.12.E — metadata se envía solo si el form de subtype cambió, para
+        // no sobrescribir campos preexistentes que iOS no conoce.
+        let metadataPayload: JSONValue? = (subtypeMetadata != initialSubtypeMetadata)
+            ? .object(subtypeMetadata)
+            : nil
         let input = UpdateResourceInput(
             resourceId: resource.id,
             displayName: trimmedName,
             description: trimmedDescription,
             estimatedValue: parsedValue,
             currency: currency,
+            metadata: metadataPayload,
             // "" explícito limpia el campo en backend; nil = no cambiar.
             locationText: trimmedLocation
         )
@@ -174,6 +212,23 @@ public struct EditResourceView: View {
         if success {
             onSaved()
             dismiss()
+        }
+    }
+
+    /// R.12.E — carga el subtype con sus FormFieldSpec[] desde el catalog. Si
+    /// el caller no pasó `subtypeKey`, no aparece el section. Falla silencioso
+    /// (subtypeFields queda vacío y la section no se renderea).
+    private func loadSubtypeFields() async {
+        guard let key = subtypeKey, !key.isEmpty else { return }
+        guard subtypeFields.isEmpty else { return }
+        do {
+            let all = try await container.rpc.listResourceSubtypes(classKey: nil)
+            if let match = all.first(where: { $0.subtypeKey == key }) {
+                subtypeFields = match.fields
+                subtypeDisplayName = match.displayName
+            }
+        } catch {
+            // Sin schema disponible — section no aparece.
         }
     }
 

@@ -167,7 +167,13 @@ public struct ResourceDetailViewV2: View {
         }
         .sheet(isPresented: $isShowingEditResource) {
             if let d = store.descriptor {
-                EditResourceView(resource: d.resource, container: container) {
+                // R.12.E — pasamos subtypeKey para que EditResourceView
+                // renderee section "Detalles <subtipo>" con el schema actual.
+                EditResourceView(
+                    resource: d.resource,
+                    subtypeKey: d.subtype.subtypeKey,
+                    container: container
+                ) {
                     Task { await store.load(resourceId: resourceId) }
                 }
             }
