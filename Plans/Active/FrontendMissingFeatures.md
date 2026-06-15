@@ -21,6 +21,18 @@ original no captura (R.8.A se firmó el 2026-06-10, un día antes del doc; R.7.x
 
 **Plan de cierre de deltas:** ver `FrontendImplementationPlan.md` §Fase 6.
 
+## Gaps device-detected (founder report 2026-06-14, post Fase 7)
+
+Tras usar la app en device, founder detectó 4 issues funcionales / UX que las
+auditorías automatizadas no encontraron:
+
+| # | Issue | Root cause | Estado | Plan |
+|---|---|---|---|---|
+| F1 | Contexto padre no muestra miembros de subespacios | `descriptor.membersPreview` solo trae directos; iOS no agregaba childContextsPreview en PeopleTab | ✅ shipped Fase 8.2 | Sección "Subespacios (N)" con NavigationLink a ContextDetailV2 del hijo |
+| F2 | Pool no permite registrar aporte por otro (admin record) | RPC backend `contribute_to_pool` no acepta `p_contributor_actor_id`; el contributor se infiere del caller | **❌ BLOQUEADO BACKEND** | Agregar `p_contributor_actor_id` al RPC + permission `pool.contribute_on_behalf` o reusar `money.settle`. Documentar como R.8.D |
+| F3 | Tabs de ContextHome se encimaban | 7 tabs en `Picker.segmented` no caben en iPhone | ✅ shipped Fase 8.1 | Cambio a ScrollView horizontal con tabChip estilo Stocks/Music/Calendar |
+| F4 | DecisionDetail demasiado scroll | 10 sections consecutivas, las accionables enterradas | ✅ parcial shipped Fase 8.3 | Activity preview 5 → 3 items (~120px menos scroll). Resto founder-locked en su orden original |
+
 ---
 
 ---

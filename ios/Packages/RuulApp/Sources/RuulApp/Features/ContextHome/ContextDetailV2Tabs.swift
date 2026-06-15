@@ -205,6 +205,50 @@ struct ContextDetailV2PeopleTab: View {
                 Text("Los roles se asignan desde el detalle de cada miembro.")
             }
         }
+
+        // Issue 1 founder (audit 2026-06-14) — cuando el espacio tiene
+        // subespacios, antes el usuario veía solo los miembros directos sin
+        // saber que existían más en los hijos. Ahora mostramos una sección
+        // con cada subespacio + su count de miembros, y un NavigationLink al
+        // ContextDetailV2 del hijo para ver su gente.
+        if !d.childContextsPreview.isEmpty {
+            Section {
+                ForEach(d.childContextsPreview) { child in
+                    let childContext = AppContext(
+                        id: child.id,
+                        kind: ActorKind(rawValue: child.actorKind) ?? .collective,
+                        subtype: child.actorSubtype ?? "other",
+                        displayName: child.displayName
+                    )
+                    NavigationLink {
+                        ContextDetailViewV2(
+                            contextId: child.id,
+                            context: childContext,
+                            container: container
+                        )
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: childContext.symbolName)
+                                .foregroundStyle(Theme.Tint.primary)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(child.displayName)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                Text("Tocar para ver sus miembros")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            } header: {
+                Text("Subespacios (\(d.childContextsPreview.count))")
+            } footer: {
+                Text("Cada subespacio tiene sus propios miembros e invitaciones. Toca uno para verlos.")
+            }
+        }
     }
 
     /// Friendly label para membership_type del descriptor.

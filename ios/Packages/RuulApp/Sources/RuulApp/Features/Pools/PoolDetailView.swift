@@ -333,6 +333,15 @@ public struct PoolDetailView: View {
 
 /// R.8.E — aporte simple en efectivo al fondo (`contribute_to_pool`,
 /// basis_kind='cash').
+///
+/// Issue 2 founder (audit 2026-06-14, BLOQUEADO BACKEND) — el founder pidió
+/// poder "registrar un aporte de otra persona" (caso: admin/treasurer recibe
+/// efectivo y lo registra a nombre del aportante). El RPC backend
+/// `contribute_to_pool` actualmente NO acepta `p_contributor_actor_id`: el
+/// contributor se infiere del caller. Se requiere update backend antes de
+/// poder cablear un picker "A nombre de" aquí. Documentar en backlog R.8 y
+/// agregar `p_contributor_actor_id` (opcional, con permission check
+/// `pool.contribute_on_behalf` o `money.settle`).
 private struct ContributePoolSheet: View {
     let poolAccountId: UUID
     let currency: String

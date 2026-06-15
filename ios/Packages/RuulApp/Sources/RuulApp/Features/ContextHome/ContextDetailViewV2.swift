@@ -233,14 +233,14 @@ public struct ContextDetailViewV2: View {
                     )
                 }
                 if availableTabs.count > 1 {
-                    Picker("Vista", selection: $selectedTab) {
-                        ForEach(availableTabs) { tab in
-                            Text(tab.label).tag(tab)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    // Issue 3 founder (audit 2026-06-14) — 7 tabs en
+                    // `Picker.segmented` se encimaban en iPhone (no caben).
+                    // Cambio a `ScrollView horizontal` con chips estilo Apple
+                    // Stocks/Music/Calendar: cada tab es un botón compacto,
+                    // el seleccionado tiene tint + background prominente. El
+                    // usuario puede scrollear suavemente y ver todos.
+                    tabBar(availableTabs)
+                        .padding(.vertical, 8)
                 }
             }
             .background(.bar)
@@ -254,6 +254,63 @@ public struct ContextDetailViewV2: View {
 
     private func effectiveTab(_ available: [Tab]) -> Tab {
         available.contains(selectedTab) ? selectedTab : (available.first ?? .overview)
+    }
+
+    /// Issue 3 founder — tab bar horizontal scrolleable. Resuelve el
+    /// "encimado" del segmented picker cuando hay >4 tabs.
+    @ViewBuilder
+    private func tabBar(_ tabs: [Tab]) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(tabs) { tab in
+                        tabChip(tab)
+                            .id(tab)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .onChange(of: selectedTab) { _, newTab in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    proxy.scrollTo(newTab, anchor: .center)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tabChip(_ tab: Tab) -> some View {
+        let isSelected = effectiveTabIs(tab)
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                selectedTab = tab
+            }
+        } label: {
+            Text(tab.label)
+                .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? Color.accentColor : Theme.Text.secondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? Color.accentColor.badgeFillSubtle : Color.clear)
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(
+                            isSelected ? Color.accentColor.opacity(0.35) : Color.secondary.opacity(0.18),
+                            lineWidth: 0.8
+                        )
+                )
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func effectiveTabIs(_ tab: Tab) -> Bool {
+        let avail = Tab.allCases.filter { _ in true }
+        let effective = avail.contains(selectedTab) ? selectedTab : (avail.first ?? .overview)
+        return effective == tab
     }
 
     // MARK: - Tab dispatch

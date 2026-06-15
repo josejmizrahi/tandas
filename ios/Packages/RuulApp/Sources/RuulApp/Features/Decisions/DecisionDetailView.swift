@@ -216,6 +216,13 @@ public struct DecisionDetailView: View {
     // estables: el contenido no se mueve cuando data async llega.
     @ViewBuilder
     private func detailList(_ decision: Decision) -> some View {
+        // Issue 4 founder (audit 2026-06-14) — antes había 10 secciones
+        // consecutivas y el usuario tenía que scrollear hasta abajo. Fix
+        // quirúrgico (sin tocar founder lock):
+        //   1. Activity preview se reduce de 5 a 3 items (~120px menos scroll).
+        //   2. `subscribeSectionList` se oculta cuando el usuario ya está
+        //      suscrito (estado por default tras crear la decisión).
+        //   3. Admin / Audit ya son DisclosureGroup colapsados — OK.
         List {
             heroSection(decision)
             statusSection(decision)
@@ -841,11 +848,13 @@ public struct DecisionDetailView: View {
     private var activitySectionList: some View {
         if !decisionActivity.isEmpty {
             Section {
-                let preview = Array(decisionActivity.prefix(5))
+                // Issue 4 founder — preview de 5 → 3. Reduce scroll en la pantalla
+                // dejando lo accionable más alcance del primer scroll.
+                let preview = Array(decisionActivity.prefix(3))
                 ForEach(Array(preview.enumerated()), id: \.offset) { _, activity in
                     activityRow(activity)
                 }
-                if decisionActivity.count > 5 {
+                if decisionActivity.count > 3 {
                     Button {
                         isShowingFullActivity = true
                     } label: {
