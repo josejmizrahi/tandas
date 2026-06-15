@@ -36,6 +36,19 @@ struct ResourceDetailV2HeroSection: View {
                         if d.state.archived {
                             RuulStatusBadge(.archived)
                         }
+                        // R.10.F.h (2026-06-15) — locked badge UNIVERSAL.
+                        // Antes vivía sólo en DocumentRenderer.heroSubtitle;
+                        // ahora cualquier resource (vehicle/property/financial)
+                        // muestra el state al-vuelo en el Hero.
+                        if d.state.lockedForGovernance {
+                            Label("Bloqueado", systemImage: "lock.fill")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.purple)
+                                .labelStyle(.titleAndIcon)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color.purple.opacity(0.15), in: Capsule())
+                        }
                     }
                     renderer.heroSubtitle(d)
                 }

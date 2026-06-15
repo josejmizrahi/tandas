@@ -42,15 +42,8 @@ struct DocumentRenderer: ResourceSubtypeRenderer {
         )
     }
 
-    /// R.10.F.f Hero subtitle — badge "Decisión abierta" cuando el documento
-    /// está locked por governance (critical state, no debe esconderse en Info).
-    /// El row legacy del Info section se eliminó: vive solo en Hero (E.4 dedup).
-    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
-        guard d.state.lockedForGovernance else { return AnyView(EmptyView()) }
-        return AnyView(
-            Label("Decisión abierta", systemImage: "lock.fill")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.purple)
-        )
-    }
+    // R.10.F.h (2026-06-15) — heroSubtitle removido. El lock badge ahora
+    // es universal en el Hero base (`ResourceDetailV2HeroSection`), aplica a
+    // cualquier resource locked por governance, no sólo documents. Default
+    // EmptyView del protocolo cubre.
 }

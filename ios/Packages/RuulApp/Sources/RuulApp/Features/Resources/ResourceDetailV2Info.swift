@@ -18,7 +18,8 @@ struct ResourceDetailV2InfoSection: View {
         let d = descriptor
         Section {
             LabeledContent("Estado", value: estadoLabel(d))
-            LabeledContent("Subtipo", value: d.subtype.displayName)
+            // R.10.F.h (2026-06-15) — "Subtipo" row eliminado: ya vive en el
+            // chip del Hero (E.4 dedup, evita info doblada).
 
             ResourceSubtypeRegistry.renderer(for: d.class.classKey)
                 .informationFields(d)
