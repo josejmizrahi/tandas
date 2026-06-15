@@ -112,9 +112,133 @@ public struct PoolDetailView: View {
         List {
             heroSection(detail)
             aportesSection(detail)
+            if let preview = store.resolutionPreview, preview.isResolvable {
+                previewSection(detail, preview: preview)
+            }
             accionesSection(detail)
         }
         .listStyle(.insetGrouped)
+    }
+
+    // MARK: - Preview de la resolución (R.8.C)
+
+    /// Surface de `preview_pool_resolution`: composición del pot
+    /// (winner_takes_all) o shares por contribuyente (equity_target).
+    /// Solo aparece si la acción `pool.resolve` está disponible y la
+    /// preview cargó. Cierra el gap "preview_pool_resolution — sin UI".
+    @ViewBuilder
+    private func previewSection(_ detail: PoolAccountDetail, preview: PoolResolutionPreview) -> some View {
+        let currency = preview.payoutCurrency
+            ?? preview.currency
+            ?? detail.poolAccount.currency
+            ?? "MXN"
+        Section {
+            if detail.poolAccount.policyKey == "winner_takes_all" {
+                if let payout = preview.payoutAmount {
+                    LabeledContent {
+                        Text(payout.currencyLabel(currency))
+                            .font(.callout.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(Theme.Tint.success)
+                    } label: {
+                        Label("Pago al ganador", systemImage: "trophy.fill")
+                    }
+                }
+                if let stake = preview.stakeTotal, stake > 0 {
+                    LabeledContent {
+                        Text(stake.currencyLabel(currency))
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(Theme.Text.secondary)
+                    } label: {
+                        Label("Apuestas pendientes", systemImage: "person.line.dotted.person")
+                    }
+                }
+            } else {
+                if let target = preview.targetAmount, target > 0 {
+                    let progress = min(preview.totalBasis / target, 1)
+                    ProgressView(value: progress) {
+                        HStack {
+                            Text("Progreso a meta")
+                                .font(.callout)
+                                .foregroundStyle(Theme.Text.primary)
+                            Spacer()
+                            Text("\(Int(progress * 100))%")
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(Theme.Text.secondary)
+                        }
+                    }
+                    if let remaining = preview.remainingToTarget, remaining > 0 {
+                        LabeledContent {
+                            Text(remaining.currencyLabel(currency))
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(Theme.Text.secondary)
+                        } label: {
+                            Label("Falta", systemImage: "arrow.up.right")
+                        }
+                    }
+                }
+                ForEach(preview.contributors) { contributor in
+                    HStack(spacing: 12) {
+                        ActorInitialsView(name: contributor.displayName ?? "?", size: 28)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(contributor.displayName ?? "Alguien")
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                            Text(contributor.basisAmount.currencyLabel(currency))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(Theme.Text.secondary)
+                        }
+                        Spacer(minLength: 12)
+                        Text("\(Int((contributor.share * 100).rounded()))%")
+                            .font(.callout.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(Theme.Tint.success)
+                    }
+                }
+            }
+            ForEach(preview.warnings, id: \.self) { warning in
+                Label {
+                    Text(warningCopy(warning))
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Theme.Tint.warning)
+                }
+            }
+        } header: {
+            Text("Vista previa de la resolución")
+        } footer: {
+            Text(previewFooter(detail.poolAccount.policyKey))
+        }
+    }
+
+    private func previewFooter(_ policyKey: String) -> String {
+        switch policyKey {
+        case "winner_takes_all":
+            return "El bote completo se pagará a la persona ganadora al resolver."
+        case "equity_target":
+            return "Cada contribuyente recibirá una participación proporcional a su aporte."
+        default:
+            return "Resolución según la política del fondo."
+        }
+    }
+
+    /// Traduce los warnings canónicos (texto crudo del backend en inglés) a
+    /// copy en español para el founder locale.
+    private func warningCopy(_ raw: String) -> String {
+        switch raw {
+        case let s where s.contains("mixed currencies"):
+            return "Mezcla de monedas — la resolución va a fallar hasta normalizar."
+        case let s where s.contains("no basis entries"):
+            return "Aún no hay aportes para resolver."
+        case let s where s.contains("asset/service basis is excluded"):
+            return "Las aportaciones en activo/servicio no se pagan en efectivo (transferencia manual)."
+        case let s where s.contains("total basis is below target_amount"):
+            return "El total aportado todavía no llega a la meta."
+        case let s where s.contains("pool is not resolvable"):
+            return "El fondo no está en un estado resolvible."
+        default:
+            return raw
+        }
     }
 
     @ViewBuilder
