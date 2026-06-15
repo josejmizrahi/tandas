@@ -170,6 +170,9 @@ struct ResourceDetailV2LinkedDocumentsSection: View {
     var body: some View {
         let docs = documents
         if !docs.isEmpty {
+            // R.10.E.10 (founder firmado 2026-06-15) — Apple Music header
+            // pattern: "Ver todos" trailing (conditional on docs.count > 3).
+            // Body sólo muestra DATA — affordances en header.
             Section {
                 ForEach(Array(docs.prefix(3))) { doc in
                     Button {
@@ -199,15 +202,25 @@ struct ResourceDetailV2LinkedDocumentsSection: View {
                         }
                     }
                 }
-                if docs.count > 3 {
-                    Button {
-                        isShowingAllDocuments = true
-                    } label: {
-                        Label("Ver todos (\(docs.count))", systemImage: "list.bullet")
+            } header: {
+                HStack {
+                    Text("Documentos")
+                    Spacer()
+                    if docs.count > 3 {
+                        Button {
+                            isShowingAllDocuments = true
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text("Ver todos")
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.Tint.primary)
+                        }
+                        .font(.subheadline.weight(.regular))
                     }
                 }
-            } header: {
-                Text("Documentos")
+                .textCase(nil)
             }
         }
     }
@@ -231,6 +244,10 @@ struct ResourceDetailV2ActivitySection: View {
     let context: AppContext
     let container: DependencyContainer
 
+    // R.10.E.10 (founder firmado 2026-06-15) — Apple Music header pattern:
+    // "Ver todo" trailing → ActivityFeedView. Body sólo muestra rows de
+    // actividad (max 5).
+
     var body: some View {
         Section {
             ForEach(events.prefix(5)) { ev in
@@ -251,13 +268,23 @@ struct ResourceDetailV2ActivitySection: View {
                     Spacer()
                 }
             }
-            NavigationLink {
-                ActivityFeedView(context: context, container: container)
-            } label: {
-                Label("Ver toda la actividad", systemImage: "list.bullet")
-            }
         } header: {
-            Text("Actividad reciente")
+            HStack {
+                Text("Actividad reciente")
+                Spacer()
+                NavigationLink {
+                    ActivityFeedView(context: context, container: container)
+                } label: {
+                    HStack(spacing: 2) {
+                        Text("Ver todo")
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(Theme.Tint.primary)
+                }
+                .font(.subheadline.weight(.regular))
+            }
+            .textCase(nil)
         }
     }
 }
