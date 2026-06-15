@@ -163,7 +163,7 @@ public struct ResourcesListView: View {
             .listStyle(.insetGrouped)
         } else {
             let filtered = filterContext(store.resources)
-            let grouped = Dictionary(grouping: filtered, by: { ResourceClassGroup.from($0.resourceType) })
+            let grouped = Dictionary(grouping: filtered, by: { ResourceClassGroup.from(classKey: $0.resourceClassKey, resourceType: $0.resourceType) })
                 .mapValues { $0.sorted { $0.displayName < $1.displayName } }
             List {
                 heroSectionContext(store.resources)
@@ -240,7 +240,7 @@ public struct ResourcesListView: View {
 
     @ViewBuilder
     private func heroSectionContext(_ resources: [ContextResource]) -> some View {
-        let byClass = Dictionary(grouping: resources, by: { ResourceClassGroup.from($0.resourceType) })
+        let byClass = Dictionary(grouping: resources, by: { ResourceClassGroup.from(classKey: $0.resourceClassKey, resourceType: $0.resourceType) })
         heroSectionShared(
             count: resources.count,
             labelSingular: "recurso",
@@ -361,6 +361,28 @@ private enum ResourceClassGroup: String, CaseIterable, Hashable {
         case "trip_booking":      return .trip
         default:                  return .other
         }
+    }
+
+    /// R.10.I — Backend canonical taxonomy (R.5A.B.0). Prefiere
+    /// `resource_class_key` cuando el backend lo expone (resources creados
+    /// post Subtype Picker); cae al mapeo legacy `resourceType` cuando es
+    /// nil o no matchea (back-compat con resources antiguos).
+    static func from(classKey: String?, resourceType: String) -> ResourceClassGroup {
+        if let classKey {
+            switch classKey {
+            case "real_estate":  return .realEstate
+            case "vehicle":      return .vehicle
+            case "financial":    return .financial
+            case "document":     return .document
+            case "equipment":    return .equipment
+            case "digital_asset": return .digital
+            case "trip":         return .trip
+            // space, generic, right, pool_account, etc → fallback al
+            // mapeo legacy si matchea, sino .other.
+            default: break
+            }
+        }
+        return from(resourceType)
     }
 
     var displayName: String {

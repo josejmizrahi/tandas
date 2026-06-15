@@ -342,6 +342,12 @@ public enum ResourceActionSection: String, CaseIterable, Sendable {
 public struct ContextResource: Codable, Sendable, Equatable, Identifiable {
     public let resourceId: UUID
     public let resourceType: String
+    /// R.10.I — Backend canonical taxonomy (R.5A.B.0). 17 classes en
+    /// resource_class_catalog. Nullable para back-compat con resources
+    /// legacy creados antes de Subtype Picker. Cuando presente, iOS lo
+    /// prefiere sobre `resourceType` para grouping/display.
+    public let resourceClassKey: String?
+    public let resourceSubtypeKey: String?
     public let displayName: String
     public let status: String
     public let estimatedValue: Double?
@@ -352,6 +358,8 @@ public struct ContextResource: Codable, Sendable, Equatable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case resourceId = "resource_id"
         case resourceType = "resource_type"
+        case resourceClassKey = "resource_class_key"
+        case resourceSubtypeKey = "resource_subtype_key"
         case displayName = "display_name"
         case status
         case estimatedValue = "estimated_value"
@@ -363,6 +371,8 @@ public struct ContextResource: Codable, Sendable, Equatable, Identifiable {
     public init(
         resourceId: UUID,
         resourceType: String,
+        resourceClassKey: String? = nil,
+        resourceSubtypeKey: String? = nil,
         displayName: String,
         status: String = "active",
         estimatedValue: Double? = nil,
@@ -372,6 +382,8 @@ public struct ContextResource: Codable, Sendable, Equatable, Identifiable {
     ) {
         self.resourceId = resourceId
         self.resourceType = resourceType
+        self.resourceClassKey = resourceClassKey
+        self.resourceSubtypeKey = resourceSubtypeKey
         self.displayName = displayName
         self.status = status
         self.estimatedValue = estimatedValue
@@ -384,6 +396,8 @@ public struct ContextResource: Codable, Sendable, Equatable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.resourceId = try c.decode(UUID.self, forKey: .resourceId)
         self.resourceType = try c.decode(String.self, forKey: .resourceType)
+        self.resourceClassKey = try c.decodeIfPresent(String.self, forKey: .resourceClassKey)
+        self.resourceSubtypeKey = try c.decodeIfPresent(String.self, forKey: .resourceSubtypeKey)
         self.displayName = try c.decode(String.self, forKey: .displayName)
         self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "active"
         self.estimatedValue = try c.decodeIfPresent(Double.self, forKey: .estimatedValue)
