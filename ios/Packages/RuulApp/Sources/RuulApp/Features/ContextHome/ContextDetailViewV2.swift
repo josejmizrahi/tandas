@@ -31,7 +31,9 @@ public struct ContextDetailViewV2: View {
 
     @State private var store: ContextDescriptorStore
     @State private var hierarchyStore: ContextHierarchyStore
-    @State private var selectedTab: Tab = .overview
+    // Fase 9.6 — `selectedTab` y `enum Tab` eliminados: la nueva doctrina
+    // es una sola lista scrollable con todos los dominios visibles. Drill-
+    // down con "Ver todos" en cada section.
     @State private var quickActionsRouter = NoopActionRouter()
     @State private var pushedActionDestination: QuickActionPush?
     @State private var isShowingCreateChild = false
@@ -63,35 +65,9 @@ public struct ContextDetailViewV2: View {
         _hierarchyStore = State(initialValue: ContextHierarchyStore(rpc: container.rpc))
     }
 
-    private enum Tab: String, CaseIterable, Identifiable {
-        // R.5Z.fix.CONTEXT.TABS (founder 2026-06-10) — tabs nuevos events +
-        // governance para que un grupo de amigos pueda organizarse y convivir
-        // end-to-end sin esconder eventos/decisiones en "Más".
-        case overview, events, people, resources, money, governance, more
-        var id: String { rawValue }
-        var label: String {
-            switch self {
-            case .overview:   return "Resumen"
-            case .events:     return "Eventos"
-            case .people:     return "Personas"
-            case .resources:  return "Recursos"
-            case .money:      return "Dinero"
-            case .governance: return "Gobierno"
-            case .more:       return "Más"
-            }
-        }
-        var sectionKeys: Set<String> {
-            switch self {
-            case .overview:   return ["overview"]
-            case .events:     return ["calendar"]
-            case .people:     return ["people"]
-            case .resources:  return ["resources"]
-            case .money:      return ["money", "obligations"]
-            case .governance: return ["governance"]
-            case .more:       return ["documents", "activity", "settings"]
-            }
-        }
-    }
+    // Fase 9.6 — enum Tab eliminado. Doctrina: una sola lista scrollable
+    // con todos los dominios. Drill-down via NavigationLink "Ver todos" en
+    // cada section. Cero estado de tab, cero switcher, cero ambigüedad.
 
     public var body: some View {
         Group {
@@ -216,139 +192,95 @@ public struct ContextDetailViewV2: View {
 
     // MARK: - Descriptor content (R.5V.4 — List + Section, contextos colectivos)
 
+    /// Fase 9.6 (founder feedback 2026-06-14, iter 5) — tras 5 intentos de
+    /// hacer que el switcher de tabs se vea bien (segmented → ScrollView
+    /// horizontal → Menu en toolbar → Menu pill prominente), founder pidió
+    /// "una mejor forma que no sea con switcher".
+    ///
+    /// Doctrina: **eliminar tabs**. Mostrar TODO el contenido en una sola
+    /// lista scrollable estilo Apple Music home / Apple Wallet / Settings.
+    /// Cada dominio (Personas / Recursos / Dinero / Gobierno) tiene su
+    /// preview compacto + "Ver todos" para drill-down. Cero estado, cero
+    /// switcher, cero ambigüedad.
     @ViewBuilder
     private func descriptorContent(_ d: ContextDetailDescriptor) -> some View {
-        let availableTabs = Tab.allCases.filter { tab in
-            tab.sectionKeys.contains { sectionKey in
-                d.sections.contains { $0.sectionKey == sectionKey && $0.visible }
-            }
+        let visibleKeys = Set(d.sections.filter { $0.visible }.map(\.sectionKey))
+        List {
+            unifiedSections(d, visibleKeys: visibleKeys)
         }
-        Group {
-            List {
-                tabSections(d, tab: effectiveTab(availableTabs))
-            }
-            .listStyle(.insetGrouped)
-            // Fase 9.4 — comprime spacing entre sections para que el dashboard
-            // no se sienta vacío con 1 row por sección. Compatible con iOS 17+.
-            .listSectionSpacing(.compact)
-        }
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
         .safeAreaInset(edge: .top, spacing: 0) {
-            // Fase 9.5 — tab picker pill prominente bajo el nav (no en toolbar).
-            // Llena el gap arriba del contenido con info útil + breadcrumb.
-            VStack(spacing: 0) {
-                if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
-                    BreadcrumbView(
-                        context: context,
-                        ancestors: hierarchyStore.ancestors,
-                        contextStore: container.contextStore
-                    )
-                }
-                if !context.isPersonal,
-                   let tabs = store.descriptor.map({ availableTabsFor($0) }),
-                   tabs.count > 1 {
-                    tabPickerPill(availableTabs: tabs)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                }
-            }
-            .background(.bar)
-        }
-        .onAppear {
-            if !availableTabs.contains(selectedTab), let first = availableTabs.first {
-                selectedTab = first
+            // Solo breadcrumb (cuando hay ancestros). Sin tab picker.
+            if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
+                BreadcrumbView(
+                    context: context,
+                    ancestors: hierarchyStore.ancestors,
+                    contextStore: container.contextStore
+                )
+                .background(.bar)
             }
         }
     }
 
-    private func effectiveTab(_ available: [Tab]) -> Tab {
-        available.contains(selectedTab) ? selectedTab : (available.first ?? .overview)
-    }
-
-    /// Fase 9.5 (founder feedback iter 4) — Menu picker como "pill" prominente
-    /// bajo el nav. Reemplaza intentos previos en `ToolbarItem(.principal)` que
-    /// iOS truncaba. El pill ocupa todo el ancho disponible, muestra icono +
-    /// label del current tab + chevron. Tap abre menu nativo con todos los tabs.
+    /// Fase 9.6 — todas las sections del descriptor renderizadas en una sola
+    /// lista. Orden por importancia: Hero compacto → Atención → Conflictos →
+    /// Resumen rápido → Personas → Recursos → Eventos → Dinero → Gobierno →
+    /// Subespacios → Actividad → Más (settings + documents).
     @ViewBuilder
-    private func tabPickerPill(availableTabs: [Tab]) -> some View {
-        let effective = availableTabs.contains(selectedTab) ? selectedTab : (availableTabs.first ?? .overview)
-        Menu {
-            Picker("Sección", selection: $selectedTab) {
-                ForEach(availableTabs) { tab in
-                    Label(tab.label, systemImage: tabIcon(tab)).tag(tab)
-                }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: tabIcon(effective))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                Text(effective.label)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.Text.primary)
-                Spacer()
-                Text("Cambiar")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(Theme.Text.secondary)
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Theme.Text.secondary)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .background(
-                Capsule()
-                    .fill(Color.accentColor.badgeFillSubtle)
+    private func unifiedSections(_ d: ContextDetailDescriptor, visibleKeys: Set<String>) -> some View {
+        ContextDetailV2HeroSection(context: context, descriptor: d)
+        ContextDetailV2AttentionSection(
+            items: contextAttentionItems,
+            presentedAttention: $presentedAttention,
+            isShowingAllAttention: $isShowingAllAttention
+        )
+        if d.conflicts.hasOpenConflicts {
+            ContextDetailV2ConflictsSection(
+                summary: d.conflicts,
+                list: conflictsList,
+                contextId: contextId,
+                context: context,
+                container: container,
+                isResolvingContextConflict: isResolvingContextConflict,
+                pendingContextConflict: $pendingContextConflict,
+                isShowingContextConflictDialog: $isShowingContextConflictDialog
             )
-            .contentShape(Capsule())
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Sección actual \(effective.label), tocar para cambiar")
         }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-    }
-
-    /// Recomputa qué tabs son visibles dado el descriptor. Necesario fuera del
-    /// `body` para usarse en el toolbar (que es lazy-built).
-    private func availableTabsFor(_ d: ContextDetailDescriptor) -> [Tab] {
-        Tab.allCases.filter { tab in
-            tab.sectionKeys.contains { sectionKey in
-                d.sections.contains { $0.sectionKey == sectionKey && $0.visible }
-            }
+        let filteredWidgets = overviewDashboardWidgets(d.widgets, descriptor: d)
+        if !filteredWidgets.isEmpty {
+            ContextDetailV2DashboardSection(
+                widgets: filteredWidgets,
+                descriptor: d,
+                context: context,
+                container: container
+            )
         }
-    }
-
-    /// SF Symbol por tab para el Menu.
-    private func tabIcon(_ tab: Tab) -> String {
-        switch tab {
-        case .overview:   return "rectangle.grid.2x2"
-        case .events:     return "calendar"
-        case .people:     return "person.2.fill"
-        case .resources:  return "shippingbox"
-        case .money:      return "dollarsign.circle"
-        case .governance: return "checkmark.seal"
-        case .more:       return "ellipsis.circle"
+        // Resumen rápido (balance + próximo evento) cuando aplica.
+        let hasBalance = !d.moneyPreview.myBalanceByCurrency.isEmpty
+        let hasNextEvent = hasNextEventWidget(d.widgets)
+        if hasBalance {
+            ContextDetailV2QuickSummarySection(money: d.moneyPreview, context: context, container: container)
+        } else if hasNextEvent {
+            ContextDetailV2NextEventSection(context: context, container: container)
         }
-    }
-
-    // MARK: - Tab dispatch
-
-    @ViewBuilder
-    private func tabSections(_ d: ContextDetailDescriptor, tab: Tab) -> some View {
-        switch tab {
-        case .overview:
-            overviewSections(d)
-        case .events:
-            ContextDetailV2EventsTab(
+        // Personas, recursos, gobernanza — cada uno con su preview + "Ver todos".
+        if visibleKeys.contains("people") {
+            ContextDetailV2PeopleTab(descriptor: d, context: context, container: container)
+        }
+        if visibleKeys.contains("resources") {
+            ContextDetailV2ResourcesTab(descriptor: d, context: context, container: container)
+        }
+        if visibleKeys.contains("governance") {
+            ContextDetailV2GovernanceTab(
                 descriptor: d,
                 context: context,
                 container: container,
                 pushedActionDestination: $pushedActionDestination
             )
-        case .people:
-            ContextDetailV2PeopleTab(descriptor: d, context: context, container: container)
-        case .resources:
-            ContextDetailV2ResourcesTab(descriptor: d, context: context, container: container)
-        case .money:
+        }
+        // Money tab inline (balance + obligaciones + settlements + history).
+        if visibleKeys.contains("money") || visibleKeys.contains("obligations") {
             ContextDetailV2MoneyTab(
                 descriptor: d,
                 context: context,
@@ -356,21 +288,22 @@ public struct ContextDetailViewV2: View {
                 isShowingRecordExpense: $isShowingRecordExpense,
                 isShowingCreateObligation: $isShowingCreateObligation
             )
-        case .governance:
-            ContextDetailV2GovernanceTab(
-                descriptor: d,
-                context: context,
-                container: container,
-                pushedActionDestination: $pushedActionDestination
-            )
-        case .more:
-            ContextDetailV2MoreTab(
-                descriptor: d,
-                moreSectionKeys: Tab.more.sectionKeys,
-                context: context,
-                container: container
-            )
         }
+        // Subespacios.
+        if !d.childContextsPreview.isEmpty {
+            ContextDetailV2ChildrenSection(children: d.childContextsPreview, context: context, container: container)
+        }
+        // Actividad reciente.
+        if !d.activityPreview.isEmpty {
+            ContextDetailV2ActivitySection(events: d.activityPreview, context: context, container: container)
+        }
+        // Más: documents + settings + activity link (consolidado).
+        ContextDetailV2MoreTab(
+            descriptor: d,
+            moreSectionKeys: ["documents", "activity", "settings"],
+            context: context,
+            container: container
+        )
     }
 
     // MARK: - Overview tab (R.5V.3A — jerarquía firmada)
