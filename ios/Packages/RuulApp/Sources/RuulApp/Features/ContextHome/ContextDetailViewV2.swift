@@ -48,6 +48,12 @@ public struct ContextDetailViewV2: View {
     @State private var isResolvingContextConflict = false
     /// P0 fix 2026-06-08 — sheet de ContextSettings desde el toolbar ellipsis.
     @State private var isShowingSettings = false
+    /// R.10.E.7 (founder firmado 2026-06-15) — alert "Próximamente" cuando
+    /// el toolbar dispara una action_key sin handler local (antes era silent
+    /// no-op del `default: break` en handleQuickAction). Copy founder-signed
+    /// per R.5X.fix.A.
+    @State private var notImplementedActionLabel: String?
+    @State private var isShowingNotImplementedAlert = false
 
     enum QuickActionPush: Hashable, Identifiable {
         case resources, events, decisions, money, members, rules
@@ -160,6 +166,18 @@ public struct ContextDetailViewV2: View {
         .sheet(isPresented: $isShowingSettings) {
             ContextSettingsView(context: context, container: container)
         }
+        // R.10.E.7 — alert "Próximamente" para action_keys sin handler.
+        .alert(
+            "Próximamente",
+            isPresented: $isShowingNotImplementedAlert,
+            presenting: notImplementedActionLabel
+        ) { _ in
+            Button("OK", role: .cancel) {
+                notImplementedActionLabel = nil
+            }
+        } message: { _ in
+            Text("Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible.")
+        }
         // R.10.E.2 D1 (founder firmado 2026-06-14) — sheets de RecordExpense/
         // CreateObligation eliminadas del cuerpo del ContextDetail.
         // Acceso vía toolbar `+` → descriptor.actions section "money",
@@ -238,6 +256,17 @@ public struct ContextDetailViewV2: View {
                 descriptor: d,
                 context: context,
                 container: container
+            )
+        }
+        // R.10.D + R.10.E.7 (founder firmado 2026-06-15) — Acciones rápidas
+        // del contexto visibles en el body (no sólo en el toolbar `+` Menu).
+        // Discoverability: el usuario ve qué puede hacer sin abrir el Menu.
+        // Tap usa el mismo flujo que el toolbar (handleQuickAction via router).
+        if !d.actions.isEmpty {
+            ContextDetailV2ActionsSection(
+                context: context,
+                actions: d.actions,
+                router: quickActionsRouter
             )
         }
         // R.10.E.5 (founder firmado 2026-06-15) — Eventos siempre visible
@@ -352,15 +381,35 @@ public struct ContextDetailViewV2: View {
     private func handleQuickAction(_ destination: ActionDestination) {
         // F.2X — el mapeo key→destino vive en ActionRouter; aquí sólo se
         // decide la navegación local (push de tab / sheet).
+        //
+        // R.10.E.7 (founder firmado 2026-06-15) — cobertura completa:
+        // todos los casos del enum QuickActionDestination + alert
+        // "Próximamente" para action_keys sin handler local (antes era
+        // silent no-op del `default: break`, founder feedback: "arreglalo").
         switch ActionRouter.quickActionDestination(for: destination.actionKey) {
         case .createResource:     pushedActionDestination = .resources
         case .createEvent:        pushedActionDestination = .events
         case .createDecision:     pushedActionDestination = .decisions
-        case .recordExpense:      pushedActionDestination = .money
         case .inviteMember:       pushedActionDestination = .members
         case .createRule:         pushedActionDestination = .rules
         case .createChildContext: isShowingCreateChild = true
-        default: break
+        // Money: cualquier acción monetaria pushea a MoneyHomeView donde
+        // viven las CTAs canónicas (Registrar gasto / multa / resultado).
+        case .recordExpense,
+             .recordFine,
+             .recordGameResult:
+            pushedActionDestination = .money
+        // Obligation: scope de obligación, defensive fallback a MoneyHomeView.
+        case .markObligationCompleted,
+             .editObligation,
+             .forgiveObligation:
+            pushedActionDestination = .money
+        case nil:
+            // Unknown action_key sin handler — surface honest copy en vez
+            // de silent no-op. Founder: "que se pueda hacer todo tipo de
+            // acciones del contexto" — significa feedback en cada tap.
+            notImplementedActionLabel = destination.actionKey
+            isShowingNotImplementedAlert = true
         }
     }
 
