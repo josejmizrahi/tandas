@@ -19,16 +19,25 @@ public struct CreateResourceFlow: View {
     let context: AppContext
     let container: DependencyContainer
     let store: ResourcesStore
+    /// R.5Z.fix.1 — callback con el resource_id post-create. El parent
+    /// (CreateIntentSheet) dismissea + presenta el detail recién creado.
+    var onCreated: ((UUID) -> Void)? = nil
 
-    public init(context: AppContext, store: ResourcesStore, container: DependencyContainer) {
+    public init(
+        context: AppContext,
+        store: ResourcesStore,
+        container: DependencyContainer,
+        onCreated: ((UUID) -> Void)? = nil
+    ) {
         self.context = context
         self.store = store
         self.container = container
+        self.onCreated = onCreated
     }
 
     public var body: some View {
         NavigationStack {
-            ClassPickerView(context: context, container: container, store: store)
+            ClassPickerView(context: context, container: container, store: store, onCreated: onCreated)
         }
         .ruulSheet()
     }
@@ -40,6 +49,7 @@ private struct ClassPickerView: View {
     let context: AppContext
     let container: DependencyContainer
     let store: ResourcesStore
+    let onCreated: ((UUID) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var classes: [ResourceClass] = []
@@ -110,16 +120,17 @@ private struct ClassPickerView: View {
                     context: context,
                     container: container,
                     store: store,
-                    prefilled: resolved.suggestion
+                    prefilled: resolved.suggestion,
+                    onCreated: onCreated
                 )
             }
         }
         .navigationDestination(for: Route.self) { route in
             switch route {
             case .subtype(let cls):
-                SubtypePickerView(classRef: cls, context: context, container: container, store: store)
+                SubtypePickerView(classRef: cls, context: context, container: container, store: store, onCreated: onCreated)
             case .form(let cls, let subtype):
-                CreateResourceForm(classRef: cls, subtype: subtype, context: context, container: container, store: store)
+                CreateResourceForm(classRef: cls, subtype: subtype, context: context, container: container, store: store, onCreated: onCreated)
             }
         }
     }
@@ -217,6 +228,7 @@ private struct SubtypePickerView: View {
     let context: AppContext
     let container: DependencyContainer
     let store: ResourcesStore
+    let onCreated: ((UUID) -> Void)?
 
     @State private var subtypes: [ResourceSubtype] = []
     @State private var phase: StorePhase = .idle
@@ -271,7 +283,7 @@ private struct SubtypePickerView: View {
         // Único subtype — push directo a form sin pasar por picker.
         RuulLoadingState(title: "Abriendo…")
             .navigationDestination(isPresented: .constant(true)) {
-                CreateResourceForm(classRef: classRef, subtype: subtype, context: context, container: container, store: store)
+                CreateResourceForm(classRef: classRef, subtype: subtype, context: context, container: container, store: store, onCreated: onCreated)
             }
     }
 }
@@ -284,6 +296,7 @@ private struct CreateResourceForm: View {
     let context: AppContext
     let container: DependencyContainer
     let store: ResourcesStore
+    let onCreated: ((UUID) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var displayName: String
@@ -306,13 +319,15 @@ private struct CreateResourceForm: View {
         context: AppContext,
         container: DependencyContainer,
         store: ResourcesStore,
-        prefilled: ResourceSuggestion? = nil
+        prefilled: ResourceSuggestion? = nil,
+        onCreated: ((UUID) -> Void)? = nil
     ) {
         self.classRef = classRef
         self.subtype = subtype
         self.context = context
         self.container = container
         self.store = store
+        self.onCreated = onCreated
         _displayName = State(initialValue: prefilled?.displayName ?? "")
         _descriptionText = State(initialValue: prefilled?.detail ?? "")
         _hasValue = State(initialValue: (prefilled?.estimatedValue ?? 0) > 0)
@@ -437,8 +452,9 @@ private struct CreateResourceForm: View {
         let metadataPayload: JSONValue? = subtypeMetadata.isEmpty
             ? nil
             : .object(subtypeMetadata)
+        var createdId: UUID?
         let success = await runner.run {
-            _ = try await store.createResource(
+            let created = try await store.createResource(
                 CreateResourceInput(
                     contextId: context.id,
                     // resource_type legacy queda como fallback — backend deriva del subtype.
@@ -454,7 +470,15 @@ private struct CreateResourceForm: View {
                 ),
                 context: context
             )
+            createdId = created.id
         }
-        if success { dismiss() }
+        if success {
+            // R.5Z.fix.1 — el parent dismissea + pushea al detail.
+            if let id = createdId, let onCreated {
+                onCreated(id)
+            } else {
+                dismiss()
+            }
+        }
     }
 }

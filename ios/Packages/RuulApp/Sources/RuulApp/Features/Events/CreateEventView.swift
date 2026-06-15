@@ -7,6 +7,9 @@ public struct CreateEventView: View {
     let context: AppContext
     let store: EventsStore
     let container: DependencyContainer
+    /// R.5Z.fix.1 — callback con event_id post-create. El parent (CreateIntent
+    /// Sheet) dismissea + pushea al EventDetailView recién creado.
+    var onCreated: ((UUID) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
@@ -95,10 +98,16 @@ public struct CreateEventView: View {
         }
     }
 
-    public init(context: AppContext, store: EventsStore, container: DependencyContainer) {
+    public init(
+        context: AppContext,
+        store: EventsStore,
+        container: DependencyContainer,
+        onCreated: ((UUID) -> Void)? = nil
+    ) {
         self.context = context
         self.store = store
         self.container = container
+        self.onCreated = onCreated
     }
 
     /// F.EVENT.5 + R.5V.3A.event — un evento debe tener ubicación física,
@@ -408,8 +417,9 @@ public struct CreateEventView: View {
             : nil
         let payloadVirtual: Bool = locationMode == .virtual
         let metadataPayload: JSONValue? = subtypeMetadata.isEmpty ? nil : .object(subtypeMetadata)
+        var createdId: UUID?
         let success = await runner.run {
-            _ = try await store.createEvent(
+            let created = try await store.createEvent(
                 CreateEventInput(
                     contextId: context.id,
                     title: title.trimmingCharacters(in: .whitespaces),
@@ -426,8 +436,15 @@ public struct CreateEventView: View {
                 ),
                 context: context
             )
+            createdId = created.id
         }
-        if success { dismiss() }
+        if success {
+            if let id = createdId, let onCreated {
+                onCreated(id)
+            } else {
+                dismiss()
+            }
+        }
     }
 
     /// El usuario tappea una sugerencia → componemos `title, subtitle` y

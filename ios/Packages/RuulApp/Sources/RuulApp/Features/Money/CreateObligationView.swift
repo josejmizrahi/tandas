@@ -8,6 +8,9 @@ public struct CreateObligationView: View {
     let container: DependencyContainer
     /// Si viene seteado, el form pre-selecciona ese deudor y oculta el picker.
     let preselectedDebtorId: UUID?
+    /// R.5Z.fix.1 — callback con obligation_id post-create. El parent
+    /// (CreateIntentSheet) dismissea + pushea al ObligationDetailView creado.
+    var onCreated: ((UUID) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var runner = ActionRunner()
@@ -26,11 +29,13 @@ public struct CreateObligationView: View {
     public init(
         context: AppContext,
         container: DependencyContainer,
-        preselectedDebtorId: UUID? = nil
+        preselectedDebtorId: UUID? = nil,
+        onCreated: ((UUID) -> Void)? = nil
     ) {
         self.context = context
         self.container = container
         self.preselectedDebtorId = preselectedDebtorId
+        self.onCreated = onCreated
         _debtorId = State(initialValue: preselectedDebtorId)
     }
 
@@ -243,8 +248,9 @@ public struct CreateObligationView: View {
 
     private func submit() async {
         guard let debtorId else { return }
+        var createdId: UUID?
         let success = await runner.run {
-            _ = try await container.rpc.createActionObligation(CreateActionObligationInput(
+            let created = try await container.rpc.createActionObligation(CreateActionObligationInput(
                 contextId: context.id,
                 debtorActorId: debtorId,
                 title: title.trimmingCharacters(in: .whitespaces),
@@ -254,8 +260,15 @@ public struct CreateObligationView: View {
                     : descriptionText.trimmingCharacters(in: .whitespaces),
                 dueAt: hasDueDate ? dueDate : nil
             ))
+            createdId = created.obligationId
         }
-        if success { dismiss() }
+        if success {
+            if let id = createdId, let onCreated {
+                onCreated(id)
+            } else {
+                dismiss()
+            }
+        }
     }
 }
 

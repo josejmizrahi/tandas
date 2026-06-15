@@ -4,6 +4,9 @@ import RuulCore
 /// F.5 — crear un contexto nuevo (cena semanal, familia, viaje, negocio, trust…).
 public struct CreateContextView: View {
     let container: DependencyContainer
+    /// R.5Z.fix.1 — callback con (contextActorId, displayName) post-create.
+    /// El parent (CreateIntentSheet / MeView) dismissea + presenta el detail.
+    var onCreated: ((UUID, String) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var displayName = ""
@@ -56,8 +59,9 @@ public struct CreateContextView: View {
         }
     }
 
-    public init(container: DependencyContainer) {
+    public init(container: DependencyContainer, onCreated: ((UUID, String) -> Void)? = nil) {
         self.container = container
+        self.onCreated = onCreated
     }
 
     private var capStore: ActorCapabilitiesStore { container.actorCapabilitiesStore }
@@ -191,6 +195,8 @@ public struct CreateContextView: View {
     }
 
     private func create() async {
+        var createdId: UUID?
+        var createdDisplayName: String?
         let success = await runner.run {
             let created = try await container.rpc.createContext(CreateContextInput(
                 displayName: displayName.trimmingCharacters(in: .whitespaces),
@@ -201,9 +207,21 @@ public struct CreateContextView: View {
             await container.contextStore.load()
             if let new = container.contextStore.availableContexts.first(where: { $0.id == created.contextActorId }) {
                 container.contextStore.switchTo(new)
+                createdId = new.id
+                createdDisplayName = new.displayName
+            } else {
+                createdId = created.contextActorId
+                createdDisplayName = displayName.trimmingCharacters(in: .whitespaces)
             }
         }
-        if success { dismiss() }
+        if success {
+            if let id = createdId, let name = createdDisplayName, let onCreated {
+                // R.5Z.fix.1 — el parent dismissea + pushea al detail.
+                onCreated(id, name)
+            } else {
+                dismiss()
+            }
+        }
     }
 }
 

@@ -11,6 +11,11 @@ import RuulCore
 /// sólo conecta intención → form.
 public struct CreateIntentSheet: View {
     let container: DependencyContainer
+    /// R.5Z.fix.1 — callback invocado cuando un flow de creación termina con
+    /// éxito. La sheet se dismissea automáticamente; el shell parent presenta
+    /// el `AttentionDestination` traducido como sheet siguiente (push al
+    /// detail recién creado).
+    let onCreated: ((AttentionDestination) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var path: [Route] = []
@@ -27,8 +32,12 @@ public struct CreateIntentSheet: View {
     @State private var intentService = IntentSuggestionService()
     @State private var aiPromptText = ""
 
-    public init(container: DependencyContainer) {
+    public init(
+        container: DependencyContainer,
+        onCreated: ((AttentionDestination) -> Void)? = nil
+    ) {
         self.container = container
+        self.onCreated = onCreated
     }
 
     public var body: some View {
@@ -97,12 +106,23 @@ public struct CreateIntentSheet: View {
                 onClose: {
                     pendingForm = nil
                     dismiss()
+                },
+                onCreated: { destination in
+                    // R.5Z.fix.1 — entity creada: dismiss el form anidado +
+                    // dismiss la sheet de intent + propagar destino al shell.
+                    pendingForm = nil
+                    dismiss()
+                    onCreated?(destination)
                 }
             )
         }
         // F.NAV.8 — CreateContextView también trae NavigationStack interno.
         .sheet(isPresented: $isShowingCreateContext) {
-            CreateContextView(container: container)
+            CreateContextView(container: container, onCreated: { contextActorId, displayName in
+                isShowingCreateContext = false
+                dismiss()
+                onCreated?(.context(contextActorId: contextActorId, contextDisplayName: displayName))
+            })
         }
     }
 
@@ -368,16 +388,20 @@ private struct FormDestination: View {
     let context: AppContext
     let container: DependencyContainer
     let onClose: () -> Void
+    /// R.5Z.fix.1 — invocado con el destino tipado al detail recién creado.
+    /// El CreateIntentSheet propaga al shell para presentar como sheet.
+    let onCreated: (AttentionDestination) -> Void
 
     @State private var eventsStore: EventsStore
     @State private var moneyStore: MoneyStore
     @State private var resourcesStore: ResourcesStore
 
-    init(intent: CreateIntentSheet.Intent, context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void) {
+    init(intent: CreateIntentSheet.Intent, context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void, onCreated: @escaping (AttentionDestination) -> Void) {
         self.intent = intent
         self.context = context
         self.container = container
         self.onClose = onClose
+        self.onCreated = onCreated
         _eventsStore = State(initialValue: EventsStore(
             rpc: container.rpc,
             myActorId: container.currentActorStore.actorId
@@ -393,7 +417,9 @@ private struct FormDestination: View {
         switch intent {
         case .event:
             // Trae su propio NavigationStack interno.
-            CreateEventView(context: context, store: eventsStore, container: container)
+            CreateEventView(context: context, store: eventsStore, container: container, onCreated: { eventId in
+                onCreated(.event(eventId: eventId, contextActorId: context.id, contextDisplayName: context.displayName))
+            })
         case .expense:
             // Trae su propio NavigationStack interno.
             RecordExpenseView(context: context, store: moneyStore, container: container)
@@ -401,7 +427,9 @@ private struct FormDestination: View {
             // CreateDecisionView NO trae NavigationStack — lo envolvemos aquí
             // para que el sheet tenga título + Cancel.
             NavigationStack {
-                CreateDecisionView(context: context, container: container)
+                CreateDecisionView(context: context, container: container, onCreated: { decisionId in
+                    onCreated(.decision(decisionId: decisionId, contextActorId: context.id))
+                })
                     .navigationTitle("Nueva decisión")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -422,7 +450,9 @@ private struct FormDestination: View {
         case .resource:
             // Subtype Picker UX D — wizard 3 pasos (class → subtype → form),
             // founder-firmado 2026-06-07. Reemplaza el legacy CreateResourceView.
-            CreateResourceFlow(context: context, store: resourcesStore, container: container)
+            CreateResourceFlow(context: context, store: resourcesStore, container: container, onCreated: { resourceId in
+                onCreated(.resourceDetail(resourceId: resourceId, contextActorId: context.id))
+            })
         case .reservation:
             NavigationStack {
                 ReservationIntentLanding(context: context, container: container, onClose: onClose)
@@ -434,7 +464,9 @@ private struct FormDestination: View {
             }
         case .obligation:
             // CreateObligationView trae su propio NavigationStack interno.
-            CreateObligationView(context: context, container: container)
+            CreateObligationView(context: context, container: container, onCreated: { obligationId in
+                onCreated(.obligation(obligationId: obligationId, contextActorId: context.id))
+            })
         }
     }
 }

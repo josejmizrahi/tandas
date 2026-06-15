@@ -7,6 +7,9 @@ public struct CreateDecisionView: View {
     let context: AppContext
     let container: DependencyContainer
     let conflictReference: UUID?
+    /// R.5Z.fix.1 — callback con decision_id post-create. El parent
+    /// (CreateIntentSheet) dismissea + pushea al DecisionDetailView creado.
+    var onCreated: ((UUID) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var store: DecisionsStore
@@ -32,11 +35,13 @@ public struct CreateDecisionView: View {
         container: DependencyContainer,
         prefilledTitle: String = "",
         prefilledType: DecisionType = .generic,
-        conflictReference: UUID? = nil
+        conflictReference: UUID? = nil,
+        onCreated: ((UUID) -> Void)? = nil
     ) {
         self.context = context
         self.container = container
         self.conflictReference = conflictReference
+        self.onCreated = onCreated
         _store = State(initialValue: DecisionsStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId))
         _title = State(initialValue: prefilledTitle)
         _decisionType = State(initialValue: prefilledType)
@@ -469,6 +474,7 @@ public struct CreateDecisionView: View {
     }
 
     private func create() async {
+        var createdId: UUID?
         let success = await runner.run {
             // R.4B — flujo de plantilla: el backend hereda voting model y
             // despacha el efecto al ejecutar según `execution_kind`.
@@ -485,7 +491,8 @@ public struct CreateDecisionView: View {
                     templateKey: template.templateKey,
                     decisionTypeRaw: template.decisionType
                 )
-                _ = try await store.createDecision(input, context: context)
+                let created = try await store.createDecision(input, context: context)
+                createdId = created.id
                 return
             }
 
@@ -503,12 +510,20 @@ public struct CreateDecisionView: View {
                 votingModel: votingModel
             )
             if (votingModel == .singleChoice || votingModel == .multipleChoice) && conflictReference == nil {
-                _ = try await store.createDecision(input, options: optionDrafts, context: context)
+                let created = try await store.createDecision(input, options: optionDrafts, context: context)
+                createdId = created.id
             } else {
-                _ = try await store.createDecision(input, context: context)
+                let created = try await store.createDecision(input, context: context)
+                createdId = created.id
             }
         }
-        if success { dismiss() }
+        if success {
+            if let id = createdId, let onCreated {
+                onCreated(id)
+            } else {
+                dismiss()
+            }
+        }
     }
 }
 
