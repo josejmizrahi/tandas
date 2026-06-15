@@ -71,7 +71,8 @@ public final class DocumentsStore {
         fileName: String,
         title: String,
         documentType: DocumentType,
-        mimeType: String
+        mimeType: String,
+        metadata: JSONValue? = nil
     ) async throws -> UUID {
         let scopeId = contextActorId ?? resource.canonicalOwnerActorId ?? resource.id
         let path = Self.makeStoragePath(scope: scopeId, fileName: fileName)
@@ -83,7 +84,8 @@ public final class DocumentsStore {
             storagePath: path,
             mimeType: mimeType,
             fileSizeBytes: Int64(fileData.count),
-            resourceId: resource.id
+            resourceId: resource.id,
+            metadata: metadata
         ))
         await loadResourceDocuments(resourceId: resource.id)
         return result.documentId

@@ -283,12 +283,15 @@ struct ResourceDetailV2LinkedDocumentsSection: View {
 
     static func documentTint(_ type: DocumentType) -> Color {
         switch type {
-        case .contract:  return Theme.Tint.info
-        case .receipt:   return Theme.Tint.success
-        case .id:        return .purple
-        case .statement: return Theme.Tint.primary
-        case .photo:     return Theme.Tint.warning
-        case .other:     return Theme.Text.tertiary
+        case .contract:    return Theme.Tint.info
+        case .receipt:     return Theme.Tint.success
+        case .id:          return .purple
+        case .statement:   return Theme.Tint.primary
+        case .photo:       return Theme.Tint.warning
+        case .other:       return Theme.Text.tertiary
+        // R.12.G — nuevos subtypes alineados con catalog.
+        case .policy:      return Theme.Tint.warning
+        case .certificate: return Theme.Tint.success
         }
     }
 }

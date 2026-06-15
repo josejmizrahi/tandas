@@ -1,7 +1,10 @@
 import Foundation
 
 /// Categoría de un documento. Coincide con el CHECK constraint del backend
-/// (`documents.document_type` ∈ contract / receipt / id / statement / photo / other).
+/// (`documents.document_type` ∈ contract / receipt / id / statement / photo /
+/// other / policy / certificate). R.12.G alineó el CHECK con el catálogo
+/// resource_subtypes class='document' (5 subtypes con field schemas) +
+/// preservó los legacy text values en uso.
 public enum DocumentType: String, Codable, Sendable, Hashable, CaseIterable, Identifiable {
     case contract
     case receipt
@@ -9,6 +12,9 @@ public enum DocumentType: String, Codable, Sendable, Hashable, CaseIterable, Ide
     case statement
     case photo
     case other
+    // R.12.G — catalog-aligned subtypes con field schemas (R.12.A populated).
+    case policy
+    case certificate
 
     public var id: String { rawValue }
 
@@ -20,6 +26,8 @@ public enum DocumentType: String, Codable, Sendable, Hashable, CaseIterable, Ide
         case .statement: return "Estado de cuenta"
         case .photo: return "Foto"
         case .other: return "Otro"
+        case .policy: return "Póliza"
+        case .certificate: return "Certificado"
         }
     }
 
@@ -31,6 +39,8 @@ public enum DocumentType: String, Codable, Sendable, Hashable, CaseIterable, Ide
         case .statement: return "list.bullet.rectangle.portrait.fill"
         case .photo: return "photo.fill"
         case .other: return "doc.fill"
+        case .policy: return "shield.lefthalf.filled"
+        case .certificate: return "rosette"
         }
     }
 }

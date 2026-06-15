@@ -161,12 +161,15 @@ public struct MyDocumentsView: View {
 
     private func typeTint(_ type: DocumentType) -> Color {
         switch type {
-        case .contract:  return Theme.Tint.primary
-        case .receipt:   return Theme.Tint.success
-        case .id:        return Theme.Tint.info
-        case .statement: return Theme.Tint.warning
-        case .photo:     return .pink
-        case .other:     return Theme.Text.secondary
+        case .contract:    return Theme.Tint.primary
+        case .receipt:     return Theme.Tint.success
+        case .id:          return Theme.Tint.info
+        case .statement:   return Theme.Tint.warning
+        case .photo:       return .pink
+        case .other:       return Theme.Text.secondary
+        // R.12.G — nuevos subtypes alineados con catalog.
+        case .policy:      return Theme.Tint.warning
+        case .certificate: return Theme.Tint.success
         }
     }
 

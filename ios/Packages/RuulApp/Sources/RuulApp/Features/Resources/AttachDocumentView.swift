@@ -24,6 +24,11 @@ public struct AttachDocumentView: View {
     @State private var title: String = ""
     @State private var documentType: DocumentType = .other
     @State private var pickerError: String?
+    /// R.12.G — schema + values del document subtype matching documentType.
+    /// Carga del catalog `resource_subtypes` class='document'. Reset al cambiar tipo.
+    @State private var subtypeFields: [FormFieldSpec] = []
+    @State private var subtypeDisplayName: String = ""
+    @State private var subtypeMetadata: [String: JSONValue] = [:]
 
     public init(
         resource: Resource,
@@ -85,6 +90,21 @@ public struct AttachDocumentView: View {
                     }
                 }
 
+                // R.12.G — campos específicos del subtype (driven by
+                // resource_subtypes.metadata.fields class='document').
+                // policy → policy_number/provider/dates/coverage; contract →
+                // party_a/party_b/dates; etc.
+                if !subtypeFields.isEmpty {
+                    Section {
+                        DynamicForm(
+                            schema: FormSchema(fields: subtypeFields),
+                            values: $subtypeMetadata
+                        )
+                    } header: {
+                        Text("Detalles \(subtypeDisplayName.lowercased())")
+                    }
+                }
+
                 Section {
                     Button {
                         Task { await attach() }
@@ -124,8 +144,30 @@ public struct AttachDocumentView: View {
                 handleFilePick(result)
             }
             .actionErrorAlert(runner)
+            .task(id: documentType.rawValue) { await loadSubtypeFields() }
         }
         .ruulSheet()
+    }
+
+    /// R.12.G — carga el subtype del catalog matching documentType.rawValue
+    /// (contract/policy/certificate/receipt/statement en resource_subtypes
+    /// class='document'). photo/id/other no tienen schema dedicado → no
+    /// aparece la section. Reset de values al cambiar tipo.
+    private func loadSubtypeFields() async {
+        subtypeMetadata = [:]
+        do {
+            let all = try await container.rpc.listResourceSubtypes(classKey: "document")
+            if let match = all.first(where: { $0.subtypeKey == documentType.rawValue }) {
+                subtypeFields = match.fields
+                subtypeDisplayName = match.displayName
+            } else {
+                subtypeFields = []
+                subtypeDisplayName = ""
+            }
+        } catch {
+            subtypeFields = []
+            subtypeDisplayName = ""
+        }
     }
 
     private var canSubmit: Bool {
@@ -183,6 +225,9 @@ public struct AttachDocumentView: View {
     private func attach() async {
         await runner.run {
             guard let data = pickedData else { return }
+            let metadataPayload: JSONValue? = subtypeMetadata.isEmpty
+                ? nil
+                : .object(subtypeMetadata)
             _ = try await store.attachToResource(
                 resource: resource,
                 contextActorId: context.id,
@@ -190,7 +235,8 @@ public struct AttachDocumentView: View {
                 fileName: pickedFileName,
                 title: title.trimmingCharacters(in: .whitespaces),
                 documentType: documentType,
-                mimeType: pickedMimeType.isEmpty ? "application/octet-stream" : pickedMimeType
+                mimeType: pickedMimeType.isEmpty ? "application/octet-stream" : pickedMimeType,
+                metadata: metadataPayload
             )
             dismiss()
         }

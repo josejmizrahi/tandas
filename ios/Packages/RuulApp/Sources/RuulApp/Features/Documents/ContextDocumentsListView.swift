@@ -271,12 +271,15 @@ public struct ContextDocumentsListView: View {
 
     private func documentTint(_ type: DocumentType) -> Color {
         switch type {
-        case .contract:  return Theme.Tint.info        // legal/azul
-        case .receipt:   return Theme.Tint.success     // gasto justificado/verde
-        case .id:        return .purple                // identidad
-        case .statement: return Theme.Tint.primary     // estado de cuenta
-        case .photo:     return Theme.Tint.warning     // evidencia visual
-        case .other:     return Theme.Text.tertiary
+        case .contract:    return Theme.Tint.info       // legal/azul
+        case .receipt:     return Theme.Tint.success    // gasto justificado/verde
+        case .id:          return .purple               // identidad
+        case .statement:   return Theme.Tint.primary    // estado de cuenta
+        case .photo:       return Theme.Tint.warning    // evidencia visual
+        case .other:       return Theme.Text.tertiary
+        // R.12.G — nuevos subtypes alineados con catalog.
+        case .policy:      return Theme.Tint.warning    // pólizas (seguros)
+        case .certificate: return Theme.Tint.success    // certificados
         }
     }
 
