@@ -44,6 +44,7 @@ public struct HomeView: View {
                 heroSection
                 attentionSection
                 todaySection
+                exploreSection
                 toolsSection
             }
             .listStyle(.insetGrouped)
@@ -318,7 +319,62 @@ public struct HomeView: View {
         container.contextStore.availableContexts.first { $0.id == id }
     }
 
-    // MARK: - 4. Herramientas (Próximamente)
+    // MARK: - 4. Explora (R.11.G — empty state inteligente)
+
+    /// Cuando "Hoy en tus espacios" NO tiene items actionable, Home se vería
+    /// casi vacío (sólo Saludo + Atención + Próximamente). Surface top 3
+    /// espacios por last_visited para que el founder siempre tenga un
+    /// entry-point visible sin ir a la tab Contextos.
+    @ViewBuilder
+    private var exploreSection: some View {
+        let hasActionable = overviews.contains { $0.isActionableToday() }
+        if !hasActionable {
+            let topRecents = overviews
+                .filter { $0.actorKind != "person" }
+                .sorted { ($0.lastVisitedAt ?? .distantPast) > ($1.lastVisitedAt ?? .distantPast) }
+                .prefix(3)
+            if !topRecents.isEmpty {
+                Section {
+                    ForEach(Array(topRecents)) { overview in
+                        Button {
+                            if let ctx = resolveContext(overview.contextActorId) {
+                                jumpToContext(ctx)
+                            }
+                        } label: {
+                            exploreRow(overview)
+                        }
+                    }
+                } header: {
+                    Text("Mis espacios")
+                } footer: {
+                    Text("Todo al día — explora tus espacios.")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func exploreRow(_ overview: ContextOverview) -> some View {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(overview.displayName)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Theme.Text.primary)
+                    .lineLimit(1)
+                if overview.memberCount > 1 {
+                    Text("\(overview.memberCount) miembros")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+            }
+        } icon: {
+            Image(systemName: overviewSymbol(overview))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(Theme.Tint.primary)
+        }
+    }
+
+    // MARK: - 5. Herramientas (Próximamente)
 
     @ViewBuilder
     private var toolsSection: some View {
