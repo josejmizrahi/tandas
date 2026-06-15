@@ -193,3 +193,33 @@ public struct CreatedContext: Decodable, Sendable, Equatable {
         case context
     }
 }
+
+/// FE.7 — resultado de `archive_context(p_context_actor_id)`.
+/// Backend retorna `{context_actor_id, archived, already_archived?}`. La RPC
+/// solo procede directa si la policy `context_archive_requires_vote` está en
+/// `false`; de lo contrario raise `governance_required` (42501) y el caller
+/// debe pasar por `request_governance_action('context.archive')`.
+public struct ContextArchivedResult: Decodable, Sendable, Equatable {
+    public let contextActorId: UUID
+    public let archived: Bool
+    public let alreadyArchived: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case contextActorId = "context_actor_id"
+        case archived
+        case alreadyArchived = "already_archived"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.contextActorId = try c.decode(UUID.self, forKey: .contextActorId)
+        self.archived = try c.decodeIfPresent(Bool.self, forKey: .archived) ?? false
+        self.alreadyArchived = try c.decodeIfPresent(Bool.self, forKey: .alreadyArchived) ?? false
+    }
+
+    public init(contextActorId: UUID, archived: Bool, alreadyArchived: Bool = false) {
+        self.contextActorId = contextActorId
+        self.archived = archived
+        self.alreadyArchived = alreadyArchived
+    }
+}

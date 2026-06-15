@@ -723,6 +723,35 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return CreatedContext(contextActorId: id, context: actor)
     }
 
+    public func archiveContext(contextActorId: UUID) async throws -> ContextArchivedResult {
+        try throwIfNeeded()
+        guard let actor = actors[contextActorId] else {
+            throw RuulError.unexpected(message: "Contexto no encontrado")
+        }
+        if actor.actorKind == .person {
+            throw RuulError.unexpected(message: "No puedes archivar un actor persona")
+        }
+        let myPerms = Set(permissions[contextActorId] ?? [])
+        guard myPerms.contains("members.manage") else {
+            throw RuulError.backend(.missingPermission(key: "members.manage"))
+        }
+        if actor.status == "archived" {
+            return ContextArchivedResult(contextActorId: contextActorId, archived: true, alreadyArchived: true)
+        }
+        actors[contextActorId] = ActorRecord(
+            id: actor.id,
+            actorKind: actor.actorKind,
+            actorSubtype: actor.actorSubtype,
+            displayName: actor.displayName,
+            slug: actor.slug,
+            status: "archived",
+            visibility: actor.visibility,
+            createdAt: actor.createdAt
+        )
+        emit(contextActorId, "context.archived")
+        return ContextArchivedResult(contextActorId: contextActorId, archived: true)
+    }
+
     // MARK: - Context hierarchy (R.2U)
 
     private func hierarchyNode(_ actorId: UUID, depth: Int? = nil, linkedAt: Date? = nil) -> ContextHierarchyNode? {

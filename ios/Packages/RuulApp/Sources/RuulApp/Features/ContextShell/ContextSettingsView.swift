@@ -161,8 +161,12 @@ public struct ContextSettingsView: View {
     }
 
     /// FE.7 — pide aprobación colectiva para `context.archive` (mismo patrón
-    /// que rule.archive). Si la decisión se aprueba, el backend ejecuta
-    /// archive_context y el espacio sale de context_candidates.
+    /// que rule.archive). Si la policy `context_archive_requires_vote` está
+    /// en `false`, el backend retorna `requires_decision=false` (status
+    /// `not_required`) y el iOS dispara `archive_context()` directo. Si la
+    /// policy es default/true, se abre la decisión y al aprobarse el trigger
+    /// AFTER UPDATE ejecuta `archive_context` vía `_governance_action_dispatch`
+    /// (FE.7.B).
     private func requestArchiveContext() async {
         let input = RequestGovernanceActionInput(
             contextActorId: context.id,
@@ -175,17 +179,24 @@ public struct ContextSettingsView: View {
             clientId: archiveClientId
         )
         var capturedDecisionId: UUID?
+        var requiresDecision = true
         let success = await archiveRunner.run {
             let result = try await container.rpc.requestGovernanceAction(input)
             capturedDecisionId = result.decisionId
-        }
-        if success {
-            if let decisionId = capturedDecisionId {
-                archivePendingDecisionId = decisionId
-            } else {
-                // Policy en false → ejecutado directo: refrescar y salir.
-                await container.contextStore.load()
+            requiresDecision = result.requiresDecision
+            if !result.requiresDecision {
+                // Policy en false → ejecutar archive directamente; el backend
+                // request_governance_action solo registra la entrada como
+                // `not_required` y NO archiva por sí solo.
+                _ = try await container.rpc.archiveContext(contextActorId: context.id)
             }
+        }
+        guard success else { return }
+        if requiresDecision, let decisionId = capturedDecisionId {
+            archivePendingDecisionId = decisionId
+        } else {
+            await container.contextStore.load()
+            dismiss()
         }
     }
 

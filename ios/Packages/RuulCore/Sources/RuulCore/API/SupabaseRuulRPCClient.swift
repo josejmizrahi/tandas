@@ -193,6 +193,16 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
     }
 
+    public func archiveContext(contextActorId: UUID) async throws -> ContextArchivedResult {
+        struct Params: Encodable, Sendable {
+            let pContextActorId: UUID
+            enum CodingKeys: String, CodingKey {
+                case pContextActorId = "p_context_actor_id"
+            }
+        }
+        return try await call("archive_context", params: Params(pContextActorId: contextActorId))
+    }
+
     // MARK: - Context hierarchy (R.2U)
 
     public func contextChildren(contextId: UUID) async throws -> [ContextHierarchyNode] {

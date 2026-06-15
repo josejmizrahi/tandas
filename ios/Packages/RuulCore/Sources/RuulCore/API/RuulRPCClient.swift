@@ -48,6 +48,13 @@ public protocol RuulRPCClient: Sendable {
     func myWorld() async throws -> MyWorld
     /// `create_context(...)`
     func createContext(_ input: CreateContextInput) async throws -> CreatedContext
+    /// `archive_context(p_context_actor_id)` — FE.7. Soft archive vía
+    /// `actors.archived_at`. Permiso: `members.manage`. PULL gate doctrine
+    /// R.7: si policy `context_archive_requires_vote` está unset o `true`,
+    /// raise `governance_required` (42501); el caller debe pasar primero por
+    /// `request_governance_action('context.archive', target=context_actor_id)`.
+    /// Idempotente: si ya estaba archivado retorna `already_archived=true`.
+    func archiveContext(contextActorId: UUID) async throws -> ContextArchivedResult
 
     // MARK: - Context hierarchy (R.2U)
 
