@@ -15,7 +15,7 @@ import RuulCore
 /// Estructura visual:
 /// ```
 /// List(.insetGrouped) {
-///   Section { RuulHeroCard "Mi espacio" }
+///   Section { RuulDetailHero "Mi espacio" }
 ///   Section "Favoritos" { carousel horizontal }
 ///   Section "Todos los espacios" { rows densos con métricas }  // sort by last_visited
 ///   Section "Acciones" { Crear espacio / Unirse con código }
@@ -171,7 +171,7 @@ public struct ContextsListView: View {
 
     // MARK: - Mi espacio Hero (R.11.F — RuulDetailHero canonical)
 
-    /// R.11.F — Reemplaza RuulHeroCard legacy por RuulDetailHero canonical
+    /// R.11.F — Usa RuulDetailHero canonical
     /// (mismo Hero que ResourceDetail/DocumentDetail/ObligationDetail/etc).
     /// Doctrina R.5V §0.2: "Context/Resource/Document/Decision Detail van
     /// a terminar necesitando el mismo encabezado." Mi espacio gana
