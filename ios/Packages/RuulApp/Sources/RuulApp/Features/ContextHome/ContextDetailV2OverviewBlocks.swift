@@ -1,46 +1,21 @@
 import SwiftUI
 import RuulCore
 
-// MARK: - Próximo evento (R.5V.3A — bloque dedicado, fuera del Dashboard)
+// MARK: - Resumen rápido (Fase 9.3 — combinado próximo evento + balance)
+//
+// Founder feedback 2026-06-14: antes había 2 sections separadas con
+// header "Próximo evento" + "Mi balance", cada una con 1 row + mucho aire
+// vertical entre ellas. Consolidado en una sola section "Resumen rápido"
+// para reducir spacing desperdiciado en pantallas con poca actividad.
 
-struct ContextDetailV2NextEventSection: View {
-    let context: AppContext
-    let container: DependencyContainer
-
-    var body: some View {
-        Section {
-            NavigationLink {
-                EventsListView(context: context, container: container)
-            } label: {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Ver próximos eventos")
-                            .font(.callout.weight(.medium))
-                            .foregroundStyle(Theme.Text.primary)
-                        Text("Calendario del espacio")
-                            .font(.caption)
-                            .foregroundStyle(Theme.Text.secondary)
-                    }
-                } icon: {
-                    Image(systemName: "calendar")
-                        .foregroundStyle(Theme.Tint.info)
-                }
-            }
-        } header: {
-            Text("Próximo evento")
-        }
-    }
-}
-
-// MARK: - Balance (R.5V.3A — bloque dedicado en Overview)
-
-struct ContextDetailV2BalanceSection: View {
+struct ContextDetailV2QuickSummarySection: View {
     let money: ContextMoneyPreview
     let context: AppContext
     let container: DependencyContainer
 
     var body: some View {
         Section {
+            // Balance rows (1 por moneda).
             ForEach(money.myBalanceByCurrency.sorted(by: { $0.key < $1.key }), id: \.key) { (currency, net) in
                 NavigationLink {
                     MoneyHomeView(context: context, container: container)
@@ -57,8 +32,34 @@ struct ContextDetailV2BalanceSection: View {
                     }
                 }
             }
+
+            // Próximos eventos (link al calendario).
+            NavigationLink {
+                EventsListView(context: context, container: container)
+            } label: {
+                Label("Ver próximos eventos", systemImage: "calendar")
+            }
         } header: {
-            Text("Mi balance")
+            Text("Resumen rápido")
+        }
+    }
+}
+
+// MARK: - Próximo evento solo (cuando no hay balance — espacios sin dinero)
+
+struct ContextDetailV2NextEventSection: View {
+    let context: AppContext
+    let container: DependencyContainer
+
+    var body: some View {
+        Section {
+            NavigationLink {
+                EventsListView(context: context, container: container)
+            } label: {
+                Label("Ver próximos eventos", systemImage: "calendar")
+            }
+        } header: {
+            Text("Eventos")
         }
     }
 }

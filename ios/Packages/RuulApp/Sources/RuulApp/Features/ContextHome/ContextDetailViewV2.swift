@@ -257,11 +257,11 @@ public struct ContextDetailViewV2: View {
         available.contains(selectedTab) ? selectedTab : (available.first ?? .overview)
     }
 
-    /// Fase 9.2 (founder feedback 2026-06-14) — el title del navigation ES
-    /// el menu picker. Patrón Apple Maps "Mapas Personalizado ▾". Compacto,
-    /// integrado a la barra del nav (no flota). Estructura visual:
-    ///   [Nombre del espacio]
-    ///       [tab actual ▾]
+    /// Fase 9.3 (founder feedback 2026-06-14) — el title del navigation ES
+    /// el menu picker. iOS `inline` comprime a 1 línea, así que el VStack
+    /// con 2 líneas no funcionó. Ahora HStack horizontal:
+    ///   [Bros · Resumen ▾]
+    /// El usuario ve nombre + tab actual + chevron en una sola línea.
     @ViewBuilder
     private func contextTitleMenu(availableTabs: [Tab]) -> some View {
         let effective = availableTabs.contains(selectedTab) ? selectedTab : (availableTabs.first ?? .overview)
@@ -274,20 +274,21 @@ public struct ContextDetailViewV2: View {
                 }
             }
         } label: {
-            VStack(spacing: 0) {
+            HStack(spacing: 6) {
                 Text(spaceName)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.headline)
                     .foregroundStyle(Theme.Text.primary)
-                    .lineLimit(1)
-                HStack(spacing: 3) {
-                    Text(effective.label)
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(Theme.Text.secondary)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(Theme.Text.secondary)
-                }
+                Text("·")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Text.tertiary)
+                Text(effective.label)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Text.secondary)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.Text.secondary)
             }
+            .lineLimit(1)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(spaceName), sección \(effective.label), tocar para cambiar")
         }
@@ -403,11 +404,15 @@ public struct ContextDetailViewV2: View {
                 container: container
             )
         }
-        if hasNextEventWidget(d.widgets) {
+        // Fase 9.3 — consolidación: si hay balance Y próximo evento, una
+        // sola section "Resumen rápido" (menos aire vertical entre headers).
+        // Si solo hay próximo evento (sin balance), section "Eventos" sola.
+        let hasBalance = !d.moneyPreview.myBalanceByCurrency.isEmpty
+        let hasNextEvent = hasNextEventWidget(d.widgets)
+        if hasBalance {
+            ContextDetailV2QuickSummarySection(money: d.moneyPreview, context: context, container: container)
+        } else if hasNextEvent {
             ContextDetailV2NextEventSection(context: context, container: container)
-        }
-        if !d.moneyPreview.myBalanceByCurrency.isEmpty {
-            ContextDetailV2BalanceSection(money: d.moneyPreview, context: context, container: container)
         }
         if !d.childContextsPreview.isEmpty {
             ContextDetailV2ChildrenSection(children: d.childContextsPreview, context: context, container: container)

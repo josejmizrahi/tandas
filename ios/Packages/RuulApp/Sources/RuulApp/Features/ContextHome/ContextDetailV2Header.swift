@@ -9,15 +9,31 @@ struct ContextDetailV2HeroSection: View {
 
     var body: some View {
         let d = descriptor
+        // Fase 9.3 (founder feedback 2026-06-14) — antes el Hero tenía
+        // avatar enorme + nombre + subtitle + chips, ocupando ~140px de
+        // pantalla. El nombre ya está en el toolbar (title del nav), así
+        // que aquí solo dejamos los chips de métricas en una fila
+        // compacta. Hero reducido a ~50px.
         Section {
-            RuulDetailHero(
-                title: context.isPersonal ? "Mi espacio" : (d.contextDisplayName ?? context.displayName),
-                subtitle: heroSubtitle(d),
-                systemImage: context.symbolName,
-                tint: Theme.Tint.primary,
-                chips: heroChips(d.metrics)
-            )
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            HStack(spacing: 8) {
+                ForEach(heroChips(d.metrics), id: \.self) { chip in
+                    Text(chip)
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .foregroundStyle(Theme.Tint.primary)
+                        .background(Theme.Tint.primary.badgeFillSubtle, in: Capsule())
+                        .lineLimit(1)
+                }
+                if context.isPersonal {
+                    Text(heroSubtitle(d) ?? "")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
         }
