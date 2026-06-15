@@ -114,7 +114,8 @@ extension ContextSummary: Decodable {
 
 // MARK: - Secciones
 
-/// Miembro activo del contexto (de `context_summary().members`).
+/// Miembro del contexto (de `context_summary().members`). Incluye `active` Y
+/// `invited` (R.5Z.fix.3 — backend mig 20260616060000 abrió el filter).
 public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiable {
     public let actorId: UUID
     public let displayName: String
@@ -129,6 +130,10 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
     /// para que un admin pueda compartir el link de invitación).
     public let contactPhone: String?
     public let contactEmail: String?
+    /// R.5Z.fix.3 — `'active'` o `'invited'`. Default `'active'` para
+    /// back-compat con descriptores legacy que no mandan el campo (smokes,
+    /// mocks, fixtures pre-2026-06-16).
+    public let membershipStatus: String
 
     enum CodingKeys: String, CodingKey {
         case actorId = "actor_id"
@@ -139,6 +144,7 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
         case isPlaceholder = "is_placeholder"
         case contactPhone = "contact_phone"
         case contactEmail = "contact_email"
+        case membershipStatus = "membership_status"
     }
 
     public init(
@@ -149,7 +155,8 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
         roles: [String] = [],
         isPlaceholder: Bool = false,
         contactPhone: String? = nil,
-        contactEmail: String? = nil
+        contactEmail: String? = nil,
+        membershipStatus: String = "active"
     ) {
         self.actorId = actorId
         self.displayName = displayName
@@ -159,6 +166,7 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
         self.isPlaceholder = isPlaceholder
         self.contactPhone = contactPhone
         self.contactEmail = contactEmail
+        self.membershipStatus = membershipStatus
     }
 
     public init(from decoder: Decoder) throws {
@@ -171,11 +179,14 @@ public struct ContextMember: Codable, Sendable, Equatable, Hashable, Identifiabl
         self.isPlaceholder = try c.decodeIfPresent(Bool.self, forKey: .isPlaceholder) ?? false
         self.contactPhone = try c.decodeIfPresent(String.self, forKey: .contactPhone)
         self.contactEmail = try c.decodeIfPresent(String.self, forKey: .contactEmail)
+        self.membershipStatus = try c.decodeIfPresent(String.self, forKey: .membershipStatus) ?? "active"
     }
 
     public var id: UUID { actorId }
     public var isAdmin: Bool { roles.contains("admin") }
     public var isFounder: Bool { membershipType == "founder" }
+    /// R.5Z.fix.3 — `true` si el miembro fue invitado y aún no aceptó.
+    public var isInvited: Bool { membershipStatus == "invited" }
 }
 
 public struct SummaryResource: Codable, Sendable, Equatable, Identifiable {

@@ -201,17 +201,28 @@ public struct MembersListView: View {
                     .lineLimit(1)
             }
             Spacer()
-            if role == .pending {
+            switch role {
+            case .pending:
                 Image(systemName: "clock")
                     .font(.caption)
                     .foregroundStyle(Theme.Text.tertiary)
-                    .accessibilityLabel("Invitación pendiente de unirse")
+                    .accessibilityLabel("Pendiente de unirse (sin app)")
+            case .invited:
+                // R.5Z.fix.3 — distingue del placeholder con clock con icono de sobre.
+                Image(systemName: "envelope.badge.fill")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Tint.warning)
+                    .accessibilityLabel("Invitación pendiente de aceptar")
+            default:
+                EmptyView()
             }
         }
     }
 
     /// R.5W — Subtítulo unificado. Placeholders muestran su contacto +
     /// "Pendiente de unirse"; registered members muestran fecha de unión.
+    /// R.5Z.fix.3 — invitados (registered no-placeholders status='invited')
+    /// muestran "Esperando que acepte".
     private func memberSubtitle(_ member: ContextMember) -> String {
         if member.isPlaceholder {
             let contact = member.contactPhone?.nilIfEmpty
@@ -220,6 +231,9 @@ public struct MembersListView: View {
                 return "\(contact) · Pendiente de unirse"
             }
             return "Pendiente de unirse"
+        }
+        if member.isInvited {
+            return "Esperando que acepte la invitación"
         }
         if let joined = member.joinedAt {
             return "Desde \(joined.formatted(date: .abbreviated, time: .omitted))"
@@ -248,11 +262,14 @@ public struct MembersListView: View {
 // MARK: - MemberRole (grouping helper)
 
 private enum MemberRole: String, CaseIterable, Hashable {
-    case founder, admin, member, pending, guest, viewer
+    case founder, admin, member, invited, pending, guest, viewer
 
-    static let displayOrder: [MemberRole] = [.founder, .admin, .member, .pending, .guest, .viewer]
+    static let displayOrder: [MemberRole] = [.founder, .admin, .member, .invited, .pending, .guest, .viewer]
 
     static func from(_ member: ContextMember) -> MemberRole {
+        // R.5Z.fix.3 — invited (registered users pre-accept) → role dedicado.
+        // Placeholder pendientes de claim siguen siendo `.pending`.
+        if member.isInvited && !member.isPlaceholder { return .invited }
         if member.isPlaceholder { return .pending }
         if member.isFounder { return .founder }
         if member.isAdmin { return .admin }
@@ -268,7 +285,8 @@ private enum MemberRole: String, CaseIterable, Hashable {
         case .founder:  return "Fundador"
         case .admin:    return "Administradores"
         case .member:   return "Miembros"
-        case .pending:  return "Pendientes"
+        case .invited:  return "Invitados pendientes"
+        case .pending:  return "Sin app"
         case .guest:    return "Invitados"
         case .viewer:   return "Observadores"
         }
@@ -279,6 +297,7 @@ private enum MemberRole: String, CaseIterable, Hashable {
         case .founder:  return "crown.fill"
         case .admin:    return "person.badge.shield.checkmark"
         case .member:   return "person.fill"
+        case .invited:  return "envelope.fill"
         case .pending:  return "clock.fill"
         case .guest:    return "person.crop.circle.dashed"
         case .viewer:   return "eye.fill"
@@ -290,6 +309,7 @@ private enum MemberRole: String, CaseIterable, Hashable {
         case .founder:  return .purple
         case .admin:    return Theme.Tint.info
         case .member:   return Theme.Tint.primary
+        case .invited:  return Theme.Tint.warning
         case .pending:  return Theme.Tint.warning
         case .guest:    return Theme.Text.secondary
         case .viewer:   return Theme.Text.tertiary
