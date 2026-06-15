@@ -176,37 +176,30 @@ public struct ObligationDetailView: View {
     @ViewBuilder
     private func detailList(_ detail: ObligationDetail) -> some View {
         // R.5V.X 2026-06-08 — Apple-native canonical Detail pattern (V.4/V.5).
+        // R.10.H (2026-06-15) — Hero migra a RuulDetailHero canonical
+        // (consistente con EventDetail / DocumentDetail / DecisionDetail).
+        // Status como RuulStatusBadge canonical en vez de Text estilizado.
         List {
-            // Hero
             Section {
-                HStack(spacing: 14) {
-                    Image(systemName: kindSymbol(detail.kind))
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(Theme.Tint.primary)
-                        .frame(width: 56, height: 56)
-                        .background(Theme.Tint.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(detail.title?.isEmpty == false ? detail.title! : kindLabel(detail.kind))
-                            .font(.title3.bold())
-                            .foregroundStyle(Theme.Text.primary)
-                            .lineLimit(2)
-                        Text(kindLabel(detail.kind))
-                            .font(.caption)
-                            .foregroundStyle(Theme.Text.secondary)
-                    }
-                    Spacer(minLength: 0)
-                    Text(statusLabel(detail.status))
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(statusColor(detail.status))
-                }
+                RuulDetailHero(
+                    title: heroTitle(detail),
+                    subtitle: heroSubtitle(detail),
+                    systemImage: kindSymbol(detail.kind),
+                    tint: Theme.Tint.primary,
+                    status: RuulStatusBadge.State.obligation(detail.status)
+                )
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
+            }
 
-                if let description = detail.description, !description.isEmpty {
+            if let description = detail.description, !description.isEmpty {
+                Section {
                     Text(description)
                         .font(.callout)
                         .foregroundStyle(Theme.Text.primary)
+                } header: {
+                    Text("Descripción")
                 }
             }
 
@@ -445,6 +438,21 @@ public struct ObligationDetailView: View {
         }
     }
 
+    /// R.10.H — heroTitle: la title custom si existe, sino el kind label como fallback.
+    private func heroTitle(_ detail: ObligationDetail) -> String {
+        if let title = detail.title, !title.isEmpty {
+            return title
+        }
+        return kindLabel(detail.kind)
+    }
+
+    /// R.10.H — heroSubtitle: solo cuando hay title custom (sino el kind ya es
+    /// el title y no hay nada que repetir).
+    private func heroSubtitle(_ detail: ObligationDetail) -> String? {
+        guard let title = detail.title, !title.isEmpty else { return nil }
+        return kindLabel(detail.kind)
+    }
+
     private func kindSymbol(_ kind: String) -> String {
         switch kind {
         case "money": return "banknote.fill"
@@ -472,24 +480,8 @@ public struct ObligationDetailView: View {
         }
     }
 
-    private func statusLabel(_ status: String) -> String {
-        switch status {
-        case "open": return "Abierta"
-        case "accepted": return "Aceptada"
-        case "in_progress": return "En progreso"
-        case "completed": return "Cumplida"
-        case "expired": return "Vencida"
-        case "settled": return "Liquidada"
-        case "forgiven": return "Perdonada"
-        case "disputed": return "En disputa"
-        case "cancelled": return "Cancelada"
-        default: return status
-        }
-    }
-
-    private func statusColor(_ status: String) -> Color {
-        Theme.Status.obligation(status)
-    }
+    // R.10.H — statusLabel/statusColor eliminados. RuulStatusBadge.State.obligation
+    // ya cubre el mapeo canónico de status → label + tint.
 
 }
 
