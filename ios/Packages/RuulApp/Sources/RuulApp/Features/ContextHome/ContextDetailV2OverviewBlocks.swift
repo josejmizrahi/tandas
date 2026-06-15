@@ -238,14 +238,88 @@ struct ContextDetailV2ActivitySection: View {
         return Theme.Tint.primary
     }
 
-    /// Label friendly para event_type (e.g. `resource.created` → `Recurso · creado`).
+    /// Fase 9.2 (founder feedback 2026-06-14) — antes mostraba "Decisión ·
+    /// vote cast" (raw action). Ahora copia humana matching el `typeLabel`
+    /// canónico de ActivityEvent. Cero raw underscores en pantalla.
     private func activityEventLabel(_ eventType: String) -> String {
-        let parts = eventType.split(separator: ".", maxSplits: 1).map(String.init)
-        guard parts.count == 2 else { return eventType }
-        let domain = activityDomainLabel(parts[0])
-        let action = parts[1]
-            .replacingOccurrences(of: "_", with: " ")
-        return "\(domain) · \(action)"
+        switch eventType {
+        // Decisiones
+        case "decision.created":                                  return "Nueva decisión"
+        case "decision.vote_cast", "vote.cast":                   return "Nuevo voto"
+        case "decision.option_added", "decision.option_created":  return "Opción agregada"
+        case "decision.closed":                                   return "Decisión cerrada"
+        case "decision.approved":                                 return "Decisión aprobada"
+        case "decision.rejected":                                 return "Decisión rechazada"
+        case "decision.executed":                                 return "Decisión ejecutada"
+        // Eventos
+        case "event.created", "calendar_event.created":           return "Nuevo evento"
+        case "event.rsvp", "event.rsvp_updated":                  return "RSVP actualizado"
+        case "event.checked_in":                                  return "Check-in"
+        case "event.participation_cancelled":                     return "Asistencia cancelada"
+        case "event.closed", "calendar_event.closed":             return "Evento cerrado"
+        case "event.participant_plus_updated",
+             "event.participant_plus_one_updated":                return "Acompañantes actualizados"
+        case "event.participants_added":                          return "Participantes agregados"
+        case "event.participants_removed":                        return "Participantes removidos"
+        case "event.guest_added":                                 return "Invitado agregado"
+        case "event.guest_removed":                               return "Invitado removido"
+        // Recursos / derechos
+        case "resource.created":                                  return "Nuevo recurso"
+        case "resource.updated":                                  return "Recurso actualizado"
+        case "resource.archived":                                 return "Recurso archivado"
+        case "resource.transferred":                              return "Recurso transferido"
+        case "right.granted":                                     return "Derecho otorgado"
+        case "right.revoked":                                     return "Derecho revocado"
+        // Reservaciones
+        case "reservation.requested":                             return "Nueva reservación"
+        case "reservation.approved":                              return "Reservación aprobada"
+        case "reservation.confirmed":                             return "Reservación confirmada"
+        case "reservation.cancelled":                             return "Reservación cancelada"
+        case "reservation.conflict_detected":                     return "Conflicto de reservación"
+        case "reservation.conflict_resolved":                     return "Conflicto resuelto"
+        // Dinero
+        case "expense.recorded":                                  return "Nuevo gasto"
+        case "fine.created":                                      return "Multa generada"
+        case "split.generated":                                   return "Reparto generado"
+        case "game_result.recorded":                              return "Resultado de juego"
+        case "settlement.generated":                              return "Liquidación generada"
+        case "settlement.paid":                                   return "Pago de liquidación"
+        case "obligation.created":                                return "Nuevo compromiso"
+        case "obligation.completed", "obligation.fulfilled":      return "Compromiso cumplido"
+        case "obligation.settled", "obligation.paid":             return "Compromiso pagado"
+        case "obligation.cancelled":                              return "Compromiso cancelado"
+        case "obligation.disputed":                               return "Compromiso disputado"
+        case "obligation.forgiven":                               return "Compromiso perdonado"
+        // Membresía / espacio
+        case "membership.joined", "member.joined":                return "Se unió al espacio"
+        case "membership.invited", "member.invited":              return "Miembro invitado"
+        case "membership.removed", "member.removed":              return "Miembro removido"
+        case "membership.left", "member.left":                    return "Salió del espacio"
+        case "membership.state_changed":                          return "Estado del miembro cambió"
+        case "invite.created":                                    return "Invitación creada"
+        case "invite.revoked":                                    return "Invitación cancelada"
+        case "context.created":                                   return "Espacio creado"
+        case "context.updated":                                   return "Espacio actualizado"
+        case "context.archived":                                  return "Espacio archivado"
+        // Documentos / reglas / suscripciones
+        case "document.created", "document.registered":           return "Nuevo documento"
+        case "document.archived":                                 return "Documento archivado"
+        case "rule.created":                                      return "Nueva regla"
+        case "rule.evaluated":                                    return "Regla evaluada"
+        case "rule.archived":                                     return "Regla archivada"
+        case "subscription.created", "subscription.activated":    return "Nueva suscripción"
+        case "trust.added":                                       return "Confianza declarada"
+        case "trust.removed":                                     return "Confianza retirada"
+        default:
+            // Fallback derivado: "domain.something_special" → "Domain · Something special"
+            let parts = eventType.split(separator: ".", maxSplits: 1).map(String.init)
+            guard parts.count == 2 else { return eventType }
+            let domain = activityDomainLabel(parts[0])
+            let action = parts[1]
+                .replacingOccurrences(of: "_", with: " ")
+                .capitalized
+            return "\(domain) · \(action)"
+        }
     }
 
     private func activityDomainLabel(_ domain: String) -> String {

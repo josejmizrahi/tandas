@@ -87,7 +87,7 @@ public struct MainTabShell: View {
                 )
             }
 
-            Tab("Contextos", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
+            Tab("Espacios", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
                 // ContextsListView trae su propio NavigationStack con path bindeado.
                 ContextsListView(container: container, path: $contextsPath)
             }

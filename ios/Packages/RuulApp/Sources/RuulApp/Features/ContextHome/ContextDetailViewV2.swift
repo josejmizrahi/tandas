@@ -122,9 +122,20 @@ public struct ContextDetailViewV2: View {
                 }
             }
         }
-        .navigationTitle(context.isPersonal ? "Mi espacio" : (store.descriptor?.contextDisplayName ?? "Contexto"))
+        .navigationTitle(context.isPersonal ? "Mi espacio" : (store.descriptor?.contextDisplayName ?? "Espacio"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Fase 9.2 — title del nav ES el menu picker de tabs (patrón Apple
+            // Maps: "Mapas Personalizado ▾"). Antes había un chip flotante
+            // "Resumen ▾" en safeAreaInset que se veía encimada sobre el title
+            // real. Ahora el title combina nombre del espacio + tab + chevron.
+            if !context.isPersonal,
+               let availableTabs = store.descriptor.map({ availableTabsFor($0) }),
+               availableTabs.count > 1 {
+                ToolbarItem(placement: .principal) {
+                    contextTitleMenu(availableTabs: availableTabs)
+                }
+            }
             ContextDetailV2Toolbar(
                 context: context,
                 actions: store.descriptor?.actions,
@@ -224,26 +235,16 @@ public struct ContextDetailViewV2: View {
         }
         .listStyle(.insetGrouped)
         .safeAreaInset(edge: .top, spacing: 0) {
-            VStack(spacing: 0) {
-                if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
-                    BreadcrumbView(
-                        context: context,
-                        ancestors: hierarchyStore.ancestors,
-                        contextStore: container.contextStore
-                    )
-                }
-                if availableTabs.count > 1 {
-                    // Issue 3 founder (audit 2026-06-14) — 7 tabs en
-                    // `Picker.segmented` se encimaban en iPhone (no caben).
-                    // Cambio a `ScrollView horizontal` con chips estilo Apple
-                    // Stocks/Music/Calendar: cada tab es un botón compacto,
-                    // el seleccionado tiene tint + background prominente. El
-                    // usuario puede scrollear suavemente y ver todos.
-                    tabBar(availableTabs)
-                        .padding(.vertical, 8)
-                }
+            // Fase 9.2 — el tab picker se movió al toolbar como title (Menu).
+            // safeAreaInset queda solo para Breadcrumb cuando hay ancestros.
+            if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
+                BreadcrumbView(
+                    context: context,
+                    ancestors: hierarchyStore.ancestors,
+                    contextStore: container.contextStore
+                )
+                .background(.bar)
             }
-            .background(.bar)
         }
         .onAppear {
             if !availableTabs.contains(selectedTab), let first = availableTabs.first {
@@ -256,50 +257,54 @@ public struct ContextDetailViewV2: View {
         available.contains(selectedTab) ? selectedTab : (available.first ?? .overview)
     }
 
-    /// Issue founder (audit 2026-06-14, Fase 9 fix) — el primer intento de
-    /// tabBar usaba `ScrollView(.horizontal)` con chips. El founder reportó
-    /// que el scroll horizontal interfería con gestos verticales (pull-to-
-    /// refresh, scroll de la lista). Doctrina: "los tabs deben ser más
-    /// estáticos".
-    ///
-    /// Solución: Menu picker dropdown estático estilo Apple Mail/Files.
-    /// Muestra el tab activo arriba como botón `[Personas ▾]`. Tap abre menu
-    /// nativo con todos los tabs. Cero scroll, cero gestos verticales que
-    /// interfieran, cero encimado.
+    /// Fase 9.2 (founder feedback 2026-06-14) — el title del navigation ES
+    /// el menu picker. Patrón Apple Maps "Mapas Personalizado ▾". Compacto,
+    /// integrado a la barra del nav (no flota). Estructura visual:
+    ///   [Nombre del espacio]
+    ///       [tab actual ▾]
     @ViewBuilder
-    private func tabBar(_ tabs: [Tab]) -> some View {
-        let effective = tabs.contains(selectedTab) ? selectedTab : (tabs.first ?? .overview)
+    private func contextTitleMenu(availableTabs: [Tab]) -> some View {
+        let effective = availableTabs.contains(selectedTab) ? selectedTab : (availableTabs.first ?? .overview)
+        let spaceName = store.descriptor?.contextDisplayName ?? context.displayName
+
         Menu {
             Picker("Sección", selection: $selectedTab) {
-                ForEach(tabs) { tab in
+                ForEach(availableTabs) { tab in
                     Label(tab.label, systemImage: tabIcon(tab)).tag(tab)
                 }
             }
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: tabIcon(effective))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                Text(effective.label)
+            VStack(spacing: 0) {
+                Text(spaceName)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.Text.primary)
-                Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Theme.Text.secondary)
+                    .lineLimit(1)
+                HStack(spacing: 3) {
+                    Text(effective.label)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(Theme.Text.secondary)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Theme.Text.secondary)
+                }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(Color.accentColor.badgeFillSubtle)
-            )
-            .contentShape(Capsule())
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(spaceName), sección \(effective.label), tocar para cambiar")
         }
         .menuStyle(.button)
-        .accessibilityLabel("Cambiar sección, actual \(effective.label)")
     }
 
-    /// SF Symbol por tab para el Menu y el botón visible.
+    /// Recomputa qué tabs son visibles dado el descriptor. Necesario fuera del
+    /// `body` para usarse en el toolbar (que es lazy-built).
+    private func availableTabsFor(_ d: ContextDetailDescriptor) -> [Tab] {
+        Tab.allCases.filter { tab in
+            tab.sectionKeys.contains { sectionKey in
+                d.sections.contains { $0.sectionKey == sectionKey && $0.visible }
+            }
+        }
+    }
+
+    /// SF Symbol por tab para el Menu.
     private func tabIcon(_ tab: Tab) -> String {
         switch tab {
         case .overview:   return "rectangle.grid.2x2"
