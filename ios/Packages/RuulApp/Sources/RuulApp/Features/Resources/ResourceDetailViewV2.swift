@@ -307,6 +307,13 @@ public struct ResourceDetailViewV2: View {
                 capabilities: d.effectiveCapabilities,
                 explainedCapability: $explainedCapability
             )
+            // R.10.F.i (2026-06-15) — wire del 3er método del protocolo. Default
+            // EmptyView en todos los renderers actuales (cero cambio visual).
+            // Cuando un renderer override (e.g. TripItinerario, DocumentVersions),
+            // su Section aparece entre Capacidades y Dashboard sin tocar este
+            // orquestador.
+            ResourceSubtypeRegistry.renderer(for: d.class.classKey)
+                .subtypeSpecificSections(d, context: context, container: container)
             if !d.widgets.isEmpty {
                 ResourceDetailV2DashboardSection(
                     widgets: d.widgets,
