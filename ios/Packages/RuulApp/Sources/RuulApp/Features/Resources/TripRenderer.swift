@@ -30,4 +30,19 @@ struct TripRenderer: ResourceSubtypeRenderer {
             }
         )
     }
+
+    /// R.10.F.f Hero subtitle — rango de fechas inicio → fin cuando ambas
+    /// están definidas (formato corto). Critical-info para viajes.
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
+        guard
+            let startStr = d.resource.metadataString("start_date"),
+            let endStr = d.resource.metadataString("end_date")
+        else { return AnyView(EmptyView()) }
+        return AnyView(
+            Text("\(startStr) → \(endStr)")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.Text.secondary)
+                .monospacedDigit()
+        )
+    }
 }

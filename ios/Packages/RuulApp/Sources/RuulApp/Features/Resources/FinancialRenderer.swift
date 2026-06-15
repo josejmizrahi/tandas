@@ -17,15 +17,10 @@ struct FinancialRenderer: ResourceSubtypeRenderer {
     static let classKey = "financial"
 
     func informationFields(_ d: ResourceDetailDescriptor) -> AnyView {
+        // Saldo intencionalmente NO va aquí — vive prominente en `heroSubtitle`
+        // (E.4 dedup). El Info Section conserva la metadata estable.
         AnyView(
             Group {
-                if let balance = d.metrics.balance, let currency = d.metrics.currency {
-                    LabeledContent("Saldo") {
-                        Text(balance.compactCurrencyLabel(currency))
-                            .font(.callout.weight(.semibold))
-                            .foregroundStyle(Theme.Tint.success)
-                    }
-                }
                 if let institution = d.resource.metadataString("institution") {
                     LabeledContent("Institución", value: institution)
                 }
@@ -54,6 +49,21 @@ struct FinancialRenderer: ResourceSubtypeRenderer {
                     LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
                 }
             }
+        )
+    }
+
+    /// R.10.F.f Hero subtitle — balance prominent estilo Apple Wallet.
+    /// El "Saldo" deja de aparecer en `informationFields` cuando el Hero
+    /// ya lo muestra (E.4 dedup).
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
+        guard let balance = d.metrics.balance, let currency = d.metrics.currency else {
+            return AnyView(EmptyView())
+        }
+        return AnyView(
+            Text(balance.compactCurrencyLabel(currency))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(balance < 0 ? Theme.Tint.critical : Theme.Tint.success)
+                .monospacedDigit()
         )
     }
 

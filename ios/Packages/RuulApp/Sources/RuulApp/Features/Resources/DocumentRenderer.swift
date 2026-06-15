@@ -38,13 +38,19 @@ struct DocumentRenderer: ResourceSubtypeRenderer {
                         value: created.formatted(date: .abbreviated, time: .omitted)
                     )
                 }
-                if d.state.lockedForGovernance {
-                    LabeledContent("Bloqueado") {
-                        Label("Decisión abierta", systemImage: "lock.fill")
-                            .foregroundStyle(.purple)
-                    }
-                }
             }
+        )
+    }
+
+    /// R.10.F.f Hero subtitle — badge "Decisión abierta" cuando el documento
+    /// está locked por governance (critical state, no debe esconderse en Info).
+    /// El row legacy del Info section se eliminó: vive solo en Hero (E.4 dedup).
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
+        guard d.state.lockedForGovernance else { return AnyView(EmptyView()) }
+        return AnyView(
+            Label("Decisión abierta", systemImage: "lock.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.purple)
         )
     }
 }

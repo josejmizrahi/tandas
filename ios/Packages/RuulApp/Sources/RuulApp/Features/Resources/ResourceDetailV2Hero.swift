@@ -5,17 +5,20 @@ import RuulCore
 ///
 /// Doctrina: R.5V native-first · "Section is the card".
 ///
-/// **R.10.F.10.e (2026-06-15)**: Hero crítico-only. Cambios:
-///   - Drop class chip (redundante — subtype.displayName ya implica la clase).
-///   - "Archivado" pasa de Text estilizado a `RuulStatusBadge` canónico.
-/// **R.10.F.10.d**: Capabilities scroll horizontal removido — se renderiza
-/// ahora en `ResourceDetailV2CapabilitiesSection` (Section dedicada después
-/// del Info).
+/// **R.10.F.f (2026-06-15)**: invoca `renderer.heroSubtitle(d)` debajo del
+/// chip subtype + status badge. Cada renderer aporta info crítica (Financial
+/// balance prominent · Trip date range · Document locked badge); default es
+/// EmptyView. Estilo Apple Wallet.
+/// **R.10.F.10.e**: Drop class chip (redundante con subtype) + Archivado pasa
+/// a `RuulStatusBadge` canónico.
+/// **R.10.F.10.d**: Capabilities scroll horizontal removido — vive en
+/// `ResourceDetailV2CapabilitiesSection` dedicada.
 struct ResourceDetailV2HeroSection: View {
     let descriptor: ResourceDetailDescriptor
 
     var body: some View {
         let d = descriptor
+        let renderer = ResourceSubtypeRegistry.renderer(for: d.class.classKey)
         Section {
             HStack(alignment: .center, spacing: 14) {
                 Image(systemName: d.subtype.icon ?? d.class.icon ?? "cube")
@@ -34,6 +37,7 @@ struct ResourceDetailV2HeroSection: View {
                             RuulStatusBadge(.archived)
                         }
                     }
+                    renderer.heroSubtitle(d)
                 }
                 Spacer(minLength: 0)
             }
