@@ -908,6 +908,10 @@ public struct CreateEventInput: Sendable, Equatable {
     public var hostActorId: UUID?
     public var inviteAllMembers: Bool
     public var clientId: String?
+    /// R.12.F — metadata jsonb que persiste los campos específicos del
+    /// event subtype (dinner.dress_code/menu_summary; meeting.agenda; etc).
+    /// nil → no se envía `p_metadata` y backend usa default `{}`.
+    public var metadata: JSONValue?
 
     public init(
         contextId: UUID,
@@ -923,7 +927,8 @@ public struct CreateEventInput: Sendable, Equatable {
         recurrenceUntil: Date? = nil,
         hostActorId: UUID? = nil,
         inviteAllMembers: Bool = true,
-        clientId: String? = nil
+        clientId: String? = nil,
+        metadata: JSONValue? = nil
     ) {
         self.contextId = contextId
         self.title = title
@@ -939,6 +944,7 @@ public struct CreateEventInput: Sendable, Equatable {
         self.hostActorId = hostActorId
         self.inviteAllMembers = inviteAllMembers
         self.clientId = clientId
+        self.metadata = metadata
     }
 }
 
@@ -954,6 +960,9 @@ public struct UpdateEventInput: Sendable, Equatable {
     public var locationText: String?
     public var isVirtual: Bool?
     public var recurrenceRule: String?
+    /// R.12.F — metadata jsonb. Backend hace merge con la metadata existente
+    /// para preservar keys que iOS no conoce. nil → no toca.
+    public var metadata: JSONValue?
 
     public init(
         eventId: UUID,
@@ -963,7 +972,8 @@ public struct UpdateEventInput: Sendable, Equatable {
         endsAt: Date? = nil,
         locationText: String? = nil,
         isVirtual: Bool? = nil,
-        recurrenceRule: String? = nil
+        recurrenceRule: String? = nil,
+        metadata: JSONValue? = nil
     ) {
         self.eventId = eventId
         self.title = title
@@ -973,6 +983,7 @@ public struct UpdateEventInput: Sendable, Equatable {
         self.locationText = locationText
         self.isVirtual = isVirtual
         self.recurrenceRule = recurrenceRule
+        self.metadata = metadata
     }
 }
 

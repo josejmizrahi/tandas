@@ -25,6 +25,12 @@ public struct EditEventView: View {
     @State private var runner = ActionRunner()
     @State private var locationCompleter = LocationCompleter()
     @State private var suppressNextQueryUpdate = false
+    /// R.12.F — schema + values del subtype (cargado on demand desde
+    /// `resource_subtypes` matching el `event.eventType`).
+    @State private var subtypeFields: [FormFieldSpec] = []
+    @State private var subtypeDisplayName: String = ""
+    @State private var subtypeMetadata: [String: JSONValue] = [:]
+    @State private var initialSubtypeMetadata: [String: JSONValue] = [:]
 
     private enum Recurrence: String, CaseIterable, Identifiable {
         case none, daily, weekly, monthly, yearly
@@ -94,6 +100,12 @@ public struct EditEventView: View {
         _locationText = State(initialValue: event.locationText ?? "")
         _locationMode = State(initialValue: LocationMode.from(event: event))
         _recurrence = State(initialValue: Recurrence.from(event.recurrenceRule))
+        // R.12.F — pre-cargar metadata existente del event para que el form
+        // arranque con los valores actuales.
+        if case .object(let obj) = event.metadata {
+            _subtypeMetadata = State(initialValue: obj)
+            _initialSubtypeMetadata = State(initialValue: obj)
+        }
     }
 
     private var locationIsValid: Bool {
@@ -149,6 +161,7 @@ public struct EditEventView: View {
             || trimmedLocation != originalLocation
             || locationMode != originalLocationMode
             || recurrence != originalRecurrence
+            || subtypeMetadata != initialSubtypeMetadata
     }
 
     public var body: some View {
@@ -240,7 +253,22 @@ public struct EditEventView: View {
                         Text(perHostFooter)
                     }
                 }
+
+                // R.12.F — campos específicos del subtype prefilled desde
+                // event.metadata. Save merge en backend (preserva keys que
+                // iOS no conoce).
+                if !subtypeFields.isEmpty {
+                    Section {
+                        DynamicForm(
+                            schema: FormSchema(fields: subtypeFields),
+                            values: $subtypeMetadata
+                        )
+                    } header: {
+                        Text("Detalles \(subtypeDisplayName.lowercased())")
+                    }
+                }
             }
+            .task { await loadSubtypeFields() }
             .navigationTitle("Editar evento")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -283,6 +311,11 @@ public struct EditEventView: View {
         // F.EVENT.10.1 — mandamos los valores actuales del form siempre. El
         // backend ya usa `coalesce(nullif(btrim(...), ''), existing)` para
         // detectar no-ops + devuelve diff_keys vacío cuando nada cambió.
+        // R.12.F — metadata solo si cambió (backend hace merge para preservar
+        // keys que iOS no conoce).
+        let metadataPayload: JSONValue? = (subtypeMetadata != initialSubtypeMetadata)
+            ? .object(subtypeMetadata)
+            : nil
         let input = UpdateEventInput(
             eventId: event.id,
             title: trimmedTitle,
@@ -291,7 +324,8 @@ public struct EditEventView: View {
             endsAt: hasEndsAt ? endsAt : nil,
             locationText: payloadLocation,
             isVirtual: payloadVirtual,
-            recurrenceRule: recurrence.ruleValue
+            recurrenceRule: recurrence.ruleValue,
+            metadata: metadataPayload
         )
         let success = await runner.run {
             _ = try await container.rpc.updateCalendarEvent(input)
@@ -299,6 +333,21 @@ public struct EditEventView: View {
         if success {
             onSaved()
             dismiss()
+        }
+    }
+
+    /// R.12.F — carga el subtype del catalog matching event.eventType desde
+    /// `resource_subtypes` con class_key='event'.
+    private func loadSubtypeFields() async {
+        guard subtypeFields.isEmpty else { return }
+        do {
+            let all = try await container.rpc.listResourceSubtypes(classKey: "event")
+            if let match = all.first(where: { $0.subtypeKey == event.eventType }) {
+                subtypeFields = match.fields
+                subtypeDisplayName = match.displayName
+            }
+        } catch {
+            // Sin schema disponible — section no aparece.
         }
     }
 }

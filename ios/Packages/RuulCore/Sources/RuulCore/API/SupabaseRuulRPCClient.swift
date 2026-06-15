@@ -881,6 +881,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pIsVirtual: Bool
             let pRecurrenceCount: Int?
             let pRecurrenceUntil: Date?
+            let pMetadata: JSONValue?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pTitle = "p_title"
@@ -896,6 +897,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pIsVirtual = "p_is_virtual"
                 case pRecurrenceCount = "p_recurrence_count"
                 case pRecurrenceUntil = "p_recurrence_until"
+                case pMetadata = "p_metadata"
             }
         }
         let created: EventCreated = try await call("create_calendar_event", params: Params(
@@ -912,7 +914,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pClientId: input.clientId,
             pIsVirtual: input.isVirtual,
             pRecurrenceCount: input.recurrenceCount,
-            pRecurrenceUntil: input.recurrenceUntil
+            pRecurrenceUntil: input.recurrenceUntil,
+            pMetadata: input.metadata
         ))
         return created.event
     }
@@ -927,6 +930,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pLocationText: String?
             let pIsVirtual: Bool?
             let pRecurrenceRule: String?
+            let pMetadata: JSONValue?
             enum CodingKeys: String, CodingKey {
                 case pEventId = "p_event_id"
                 case pTitle = "p_title"
@@ -936,6 +940,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pLocationText = "p_location_text"
                 case pIsVirtual = "p_is_virtual"
                 case pRecurrenceRule = "p_recurrence_rule"
+                case pMetadata = "p_metadata"
             }
         }
         struct UpdateResult: Decodable, Sendable {
@@ -949,7 +954,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pEndsAt: input.endsAt,
             pLocationText: input.locationText,
             pIsVirtual: input.isVirtual,
-            pRecurrenceRule: input.recurrenceRule
+            pRecurrenceRule: input.recurrenceRule,
+            pMetadata: input.metadata
         ))
         return result.event
     }

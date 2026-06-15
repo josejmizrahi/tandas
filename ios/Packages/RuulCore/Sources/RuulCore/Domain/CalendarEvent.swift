@@ -94,6 +94,9 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
     /// rotación usa la lógica natural (joined_at). Si tiene valores, los
     /// recorre cíclicamente (sólo aplica para weekly).
     public let hostRotationOrder: [UUID]?
+    /// R.12.F — metadata jsonb type-specific (dinner.menu_summary/dress_code;
+    /// meeting.agenda/meeting_link; etc). Defaults a `.object([:])` si no viene.
+    public let metadata: JSONValue
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -118,6 +121,7 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         case recurrenceUntil = "recurrence_until"
         case occurrenceNumber = "occurrence_number"
         case hostRotationOrder = "host_rotation_order"
+        case metadata
     }
 
     public init(
@@ -142,7 +146,8 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         recurrenceCount: Int? = nil,
         recurrenceUntil: Date? = nil,
         occurrenceNumber: Int = 1,
-        hostRotationOrder: [UUID]? = nil
+        hostRotationOrder: [UUID]? = nil,
+        metadata: JSONValue = .object([:])
     ) {
         self.id = id
         self.contextActorId = contextActorId
@@ -166,6 +171,7 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.recurrenceUntil = recurrenceUntil
         self.occurrenceNumber = occurrenceNumber
         self.hostRotationOrder = hostRotationOrder
+        self.metadata = metadata
     }
 
     public init(from decoder: Decoder) throws {
@@ -196,6 +202,8 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
         self.occurrenceNumber = try c.decodeIfPresent(Int.self, forKey: .occurrenceNumber) ?? 1
         // F.EVENT.10 — rotation order opcional, back-compat con nil.
         self.hostRotationOrder = try c.decodeIfPresent([UUID].self, forKey: .hostRotationOrder)
+        // R.12.F — metadata jsonb opcional; shapes pre-mig default {}.
+        self.metadata = try c.decodeIfPresent(JSONValue.self, forKey: .metadata) ?? .object([:])
     }
 
     public var type: EventType { EventType(rawValue: eventType) ?? .other }

@@ -35,6 +35,10 @@ public struct CreateEventView: View {
     /// F.EVENT.7 — Apple Maps autocomplete vía MKLocalSearchCompleter.
     @State private var locationCompleter = LocationCompleter()
     @State private var suppressNextQueryUpdate = false
+    /// R.12.F — schema + values del subtype (cargado on demand cuando cambia eventType).
+    @State private var subtypeFields: [FormFieldSpec] = []
+    @State private var subtypeDisplayName: String = ""
+    @State private var subtypeMetadata: [String: JSONValue] = [:]
 
     /// F.EVENT.9 — tres modos de acotar la serie.
     private enum SeriesBound: String, CaseIterable, Identifiable {
@@ -322,6 +326,20 @@ public struct CreateEventView: View {
                     }
                 }
 
+                // R.12.F — campos específicos del subtype (dinner.dress_code/
+                // menu_summary, meeting.agenda, etc). Se cargan del catalog
+                // `resource_subtypes` matching eventType.rawValue.
+                if !subtypeFields.isEmpty {
+                    Section {
+                        DynamicForm(
+                            schema: FormSchema(fields: subtypeFields),
+                            values: $subtypeMetadata
+                        )
+                    } header: {
+                        Text("Detalles \(subtypeDisplayName.lowercased())")
+                    }
+                }
+
                 Section {
                     Button {
                         Task { await create() }
@@ -350,8 +368,30 @@ public struct CreateEventView: View {
                 }
             }
             .actionErrorAlert(runner)
+            .task(id: eventType.rawValue) { await loadSubtypeFields() }
         }
         .ruulSheet()
+    }
+
+    /// R.12.F — carga el subtype del catalog matching `eventType.rawValue`
+    /// (dinner/meeting/community_event/recurring_event en `resource_subtypes`
+    /// con class_key='event'). Si el subtype tiene fields, aparece la section
+    /// "Detalles <tipo>". Reset de values al cambiar tipo.
+    private func loadSubtypeFields() async {
+        subtypeMetadata = [:]
+        do {
+            let all = try await container.rpc.listResourceSubtypes(classKey: "event")
+            if let match = all.first(where: { $0.subtypeKey == eventType.rawValue }) {
+                subtypeFields = match.fields
+                subtypeDisplayName = match.displayName
+            } else {
+                subtypeFields = []
+                subtypeDisplayName = ""
+            }
+        } catch {
+            subtypeFields = []
+            subtypeDisplayName = ""
+        }
     }
 
     private func create() async {
@@ -367,6 +407,7 @@ public struct CreateEventView: View {
             ? trimmedLocation
             : nil
         let payloadVirtual: Bool = locationMode == .virtual
+        let metadataPayload: JSONValue? = subtypeMetadata.isEmpty ? nil : .object(subtypeMetadata)
         let success = await runner.run {
             _ = try await store.createEvent(
                 CreateEventInput(
@@ -380,7 +421,8 @@ public struct CreateEventView: View {
                     recurrenceCount: count,
                     recurrenceUntil: until,
                     inviteAllMembers: inviteAllMembers,
-                    clientId: UUID().uuidString
+                    clientId: UUID().uuidString,
+                    metadata: metadataPayload
                 ),
                 context: context
             )
