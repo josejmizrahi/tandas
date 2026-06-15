@@ -122,7 +122,10 @@ public struct ContextDetailViewV2: View {
                 }
             }
         }
-        .navigationTitle(context.isPersonal ? "Mi espacio" : (store.descriptor?.contextDisplayName ?? "Espacio"))
+        // Fase 9.4 — title del nav vive en ToolbarItem(.principal) cuando hay
+        // tabs (Menu picker). Cuando no (personal o sin descriptor), usamos el
+        // navigationTitle estándar.
+        .navigationTitle(context.isPersonal ? "Mi espacio" : (store.descriptor == nil ? (context.displayName) : ""))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // Fase 9.2 — title del nav ES el menu picker de tabs (patrón Apple
@@ -230,13 +233,19 @@ public struct ContextDetailViewV2: View {
                 d.sections.contains { $0.sectionKey == sectionKey && $0.visible }
             }
         }
-        List {
-            tabSections(d, tab: effectiveTab(availableTabs))
+        Group {
+            List {
+                tabSections(d, tab: effectiveTab(availableTabs))
+            }
+            .listStyle(.insetGrouped)
+            // Fase 9.4 — comprime spacing entre sections para que el dashboard
+            // no se sienta vacío con 1 row por sección. Compatible con iOS 17+.
+            .listSectionSpacing(.compact)
         }
-        .listStyle(.insetGrouped)
         .safeAreaInset(edge: .top, spacing: 0) {
-            // Fase 9.2 — el tab picker se movió al toolbar como title (Menu).
-            // safeAreaInset queda solo para Breadcrumb cuando hay ancestros.
+            // Fase 9.4 — solo aplicamos safeAreaInset cuando hay breadcrumb
+            // real (ancestros). Antes el `if` quedaba con view vacía pero el
+            // modifier ya reservaba espacio, generando aire arriba.
             if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
                 BreadcrumbView(
                     context: context,
@@ -257,11 +266,10 @@ public struct ContextDetailViewV2: View {
         available.contains(selectedTab) ? selectedTab : (available.first ?? .overview)
     }
 
-    /// Fase 9.3 (founder feedback 2026-06-14) — el title del navigation ES
-    /// el menu picker. iOS `inline` comprime a 1 línea, así que el VStack
-    /// con 2 líneas no funcionó. Ahora HStack horizontal:
-    ///   [Bros · Resumen ▾]
-    /// El usuario ve nombre + tab actual + chevron en una sola línea.
+    /// Fase 9.4 (founder feedback 2026-06-14) — iOS `inline` mode truncaba el
+    /// HStack horizontal y solo mostraba "Bros ▾". Cambio a `fixedSize` para
+    /// permitir que el HStack se expanda con todo su contenido. Si excede el
+    /// ancho disponible, iOS lo escalará gracefully.
     @ViewBuilder
     private func contextTitleMenu(availableTabs: [Tab]) -> some View {
         let effective = availableTabs.contains(selectedTab) ? selectedTab : (availableTabs.first ?? .overview)
@@ -274,21 +282,20 @@ public struct ContextDetailViewV2: View {
                 }
             }
         } label: {
-            HStack(spacing: 6) {
+            VStack(alignment: .center, spacing: 1) {
                 Text(spaceName)
                     .font(.headline)
                     .foregroundStyle(Theme.Text.primary)
-                Text("·")
-                    .font(.headline)
-                    .foregroundStyle(Theme.Text.tertiary)
-                Text(effective.label)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.Text.secondary)
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Theme.Text.secondary)
+                    .lineLimit(1)
+                HStack(spacing: 3) {
+                    Text(effective.label)
+                        .font(.caption2.weight(.medium))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                }
+                .foregroundStyle(Color.accentColor)
             }
-            .lineLimit(1)
+            .fixedSize()
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(spaceName), sección \(effective.label), tocar para cambiar")
         }
