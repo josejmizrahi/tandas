@@ -46,14 +46,20 @@ struct ContextDetailV2MoreTab: View {
             }
         }
 
+        // R.10.E.9 (founder firmado 2026-06-15) — drills duplicados eliminados.
+        // Post-E.5/E.6/E.8 las siguientes section drills ya tienen home en otras
+        // surfaces:
+        //   - governance → Decisiones Section header trailing "Ver todas" (E.5)
+        //   - activity   → Actividad Section header trailing "Ver todo" (E.5)
+        //   - settings   → Toolbar gearshape button (E.8)
+        //   - estructura → Subespacios Section header trailing "Ver todos" (E.6)
+        // Sólo quedan drills únicos no cubiertos en el body: calendar y documents.
+        // Si filteredSections queda vacío, ocultar Section (D6 doctrine).
         let moreSections = d.sections.filter {
             $0.visible && moreSectionKeys.contains($0.sectionKey)
         }
-        Section {
-            if moreSections.isEmpty {
-                Label("Sin más secciones", systemImage: "ellipsis.circle")
-                    .foregroundStyle(Theme.Text.secondary)
-            } else {
+        if !moreSections.isEmpty {
+            Section {
                 ForEach(moreSections) { section in
                     NavigationLink {
                         moreSectionDestination(section.sectionKey)
@@ -62,41 +68,15 @@ struct ContextDetailV2MoreTab: View {
                     }
                 }
             }
-        } header: {
-            Text("Secciones")
         }
-
-        // 7.C.5 (audit 2026-06-14) — `ContextTreeView` antes era código muerto
-        // (solo se autoreferenciaba en Preview). Lo cableamos aquí como link
-        // explícito para que el usuario vea la jerarquía completa del espacio
-        // cuando tiene subespacios. El descriptor ya trae childContextsPreview.
-        if !d.childContextsPreview.isEmpty {
-            Section {
-                NavigationLink {
-                    ContextTreeView(rootContext: context, container: container)
-                } label: {
-                    Label("Ver estructura del espacio", systemImage: "list.bullet.indent")
-                }
-            } footer: {
-                Text("Muestra todos los subespacios anidados bajo este espacio.")
-            }
-        }
-
-        // R.10.E.2 D4 (founder firmado 2026-06-14) — Section "Mis permisos"
-        // eliminada. Los strings raw (context.invite, context.manage, etc.)
-        // son leakage técnico: los permisos ya gatean la UI implícitamente.
-        // Para debug viven en ContextSettingsView.
     }
 
     @ViewBuilder
     private func moreSectionDestination(_ sectionKey: String) -> some View {
         switch sectionKey {
         case "calendar":   ContextCalendarView(context: context, container: container)
-        case "governance": DecisionsListView(context: context, container: container)
         case "documents":  ContextDocumentsListView(context: context, container: container)
-        case "activity":   ActivityFeedView(context: context, container: container)
-        case "settings":   ContextSettingsView(context: context, container: container)
-        default:           ActivityFeedView(context: context, container: container)
+        default:           ContextDocumentsListView(context: context, container: container)
         }
     }
 

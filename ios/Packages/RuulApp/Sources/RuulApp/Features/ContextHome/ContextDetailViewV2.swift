@@ -309,10 +309,12 @@ public struct ContextDetailViewV2: View {
         if !d.activityPreview.isEmpty {
             ContextDetailV2ActivitySection(events: d.activityPreview, context: context, container: container)
         }
-        // Más: documents + settings + activity link (consolidado).
+        // R.10.E.9 — Más: sólo drills únicos no cubiertos en el body.
+        // Calendar (vista grid) + Documents son los que no tienen home propio
+        // en otras Sections post-E.5/E.6/E.8.
         ContextDetailV2MoreTab(
             descriptor: d,
-            moreSectionKeys: ["documents", "activity", "settings"],
+            moreSectionKeys: ["calendar", "documents"],
             context: context,
             container: container
         )
