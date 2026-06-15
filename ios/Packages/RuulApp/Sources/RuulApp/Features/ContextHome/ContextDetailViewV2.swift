@@ -256,61 +256,60 @@ public struct ContextDetailViewV2: View {
         available.contains(selectedTab) ? selectedTab : (available.first ?? .overview)
     }
 
-    /// Issue 3 founder — tab bar horizontal scrolleable. Resuelve el
-    /// "encimado" del segmented picker cuando hay >4 tabs.
+    /// Issue founder (audit 2026-06-14, Fase 9 fix) — el primer intento de
+    /// tabBar usaba `ScrollView(.horizontal)` con chips. El founder reportó
+    /// que el scroll horizontal interfería con gestos verticales (pull-to-
+    /// refresh, scroll de la lista). Doctrina: "los tabs deben ser más
+    /// estáticos".
+    ///
+    /// Solución: Menu picker dropdown estático estilo Apple Mail/Files.
+    /// Muestra el tab activo arriba como botón `[Personas ▾]`. Tap abre menu
+    /// nativo con todos los tabs. Cero scroll, cero gestos verticales que
+    /// interfieran, cero encimado.
     @ViewBuilder
     private func tabBar(_ tabs: [Tab]) -> some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(tabs) { tab in
-                        tabChip(tab)
-                            .id(tab)
-                    }
+        let effective = tabs.contains(selectedTab) ? selectedTab : (tabs.first ?? .overview)
+        Menu {
+            Picker("Sección", selection: $selectedTab) {
+                ForEach(tabs) { tab in
+                    Label(tab.label, systemImage: tabIcon(tab)).tag(tab)
                 }
-                .padding(.horizontal, 16)
-            }
-            .onChange(of: selectedTab) { _, newTab in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    proxy.scrollTo(newTab, anchor: .center)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func tabChip(_ tab: Tab) -> some View {
-        let isSelected = effectiveTabIs(tab)
-        Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                selectedTab = tab
             }
         } label: {
-            Text(tab.label)
-                .font(.subheadline.weight(isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? Color.accentColor : Theme.Text.secondary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? Color.accentColor.badgeFillSubtle : Color.clear)
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            isSelected ? Color.accentColor.opacity(0.35) : Color.secondary.opacity(0.18),
-                            lineWidth: 0.8
-                        )
-                )
-                .contentShape(Capsule())
+            HStack(spacing: 6) {
+                Image(systemName: tabIcon(effective))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                Text(effective.label)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.Text.primary)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(Color.accentColor.badgeFillSubtle)
+            )
+            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .menuStyle(.button)
+        .accessibilityLabel("Cambiar sección, actual \(effective.label)")
     }
 
-    private func effectiveTabIs(_ tab: Tab) -> Bool {
-        let avail = Tab.allCases.filter { _ in true }
-        let effective = avail.contains(selectedTab) ? selectedTab : (avail.first ?? .overview)
-        return effective == tab
+    /// SF Symbol por tab para el Menu y el botón visible.
+    private func tabIcon(_ tab: Tab) -> String {
+        switch tab {
+        case .overview:   return "rectangle.grid.2x2"
+        case .events:     return "calendar"
+        case .people:     return "person.2.fill"
+        case .resources:  return "shippingbox"
+        case .money:      return "dollarsign.circle"
+        case .governance: return "checkmark.seal"
+        case .more:       return "ellipsis.circle"
+        }
     }
 
     // MARK: - Tab dispatch
