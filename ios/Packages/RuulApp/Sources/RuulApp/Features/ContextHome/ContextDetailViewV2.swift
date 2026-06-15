@@ -249,11 +249,10 @@ public struct ContextDetailViewV2: View {
                 isShowingContextConflictDialog: $isShowingContextConflictDialog
             )
         }
-        // R.11.A (founder firmado 2026-06-16) — "Hoy": Próximo evento +
-        // Balance lado a lado. Reemplaza el filtrado mudo de next_event +
-        // cash_balance del Dashboard (Fase 9.6 los ocultaba sin reemplazo).
-        // Section se auto-oculta si no hay ni evento próximo ni balance.
-        ContextDetailV2TodaySection(descriptor: d, context: context, container: container)
+        // R.11.A revertido (founder 2026-06-16) — TodaySection (cards Próximo
+        // evento + Balance lado a lado) removed. Las métricas viven ahora en
+        // Home "Hoy en tus espacios" cross-context; duplicarlas dentro del
+        // Context Detail era redundante.
         let filteredWidgets = overviewDashboardWidgets(d.widgets, descriptor: d)
         if !filteredWidgets.isEmpty {
             ContextDetailV2DashboardSection(
