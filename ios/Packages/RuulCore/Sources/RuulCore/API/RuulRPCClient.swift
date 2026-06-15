@@ -678,6 +678,10 @@ public struct CreateResourceInput: Sendable, Equatable {
     /// F.RESOURCE.4 — ubicación opcional.
     public var locationText: String?
     public var clientId: String?
+    /// R.12.D — metadata jsonb que persiste los campos específicos del
+    /// subtype (FormFieldSpec values: license_plate, vin, address, etc.).
+    /// nil → no se envía `p_metadata` y backend usa default `{}`.
+    public var metadata: JSONValue?
 
     /// Init con type_key arbitrario (preferido para usar el catálogo dinámico).
     public init(
@@ -689,7 +693,8 @@ public struct CreateResourceInput: Sendable, Equatable {
         currency: String? = nil,
         locationText: String? = nil,
         clientId: String? = nil,
-        subtypeKey: String? = nil
+        subtypeKey: String? = nil,
+        metadata: JSONValue? = nil
     ) {
         self.contextId = contextId
         self.resourceType = resourceTypeKey
@@ -700,6 +705,7 @@ public struct CreateResourceInput: Sendable, Equatable {
         self.locationText = locationText
         self.currency = currency
         self.clientId = clientId
+        self.metadata = metadata
     }
 
     /// Init con `ResourceType` enum — conveniencia para call sites legacy.

@@ -679,6 +679,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pClientId: String?
             let pLocationText: String?
             let pSubtypeKey: String?
+            let pMetadata: JSONValue?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pResourceType = "p_resource_type"
@@ -689,6 +690,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pClientId = "p_client_id"
                 case pLocationText = "p_location_text"
                 case pSubtypeKey = "p_subtype_key"
+                case pMetadata = "p_metadata"
             }
         }
         let created: ResourceCreated = try await call("create_resource", params: Params(
@@ -700,7 +702,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pCurrency: input.currency,
             pClientId: input.clientId,
             pLocationText: input.locationText,
-            pSubtypeKey: input.subtypeKey
+            pSubtypeKey: input.subtypeKey,
+            pMetadata: input.metadata
         ))
         return created.resource
     }

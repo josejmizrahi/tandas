@@ -294,6 +294,10 @@ private struct CreateResourceForm: View {
     @State private var locationText: String
     @State private var runner = ActionRunner()
     @State private var guardCandidates: [ResourceCreationCandidate] = []
+    /// R.12.D — values del DynamicForm para `subtype.fields` (license_plate,
+    /// VIN, address, etc.). Se persisten en `resources.metadata` via
+    /// `create_resource(p_metadata)`.
+    @State private var subtypeMetadata: [String: JSONValue] = [:]
 
     /// R.6.AI.13 — Init que acepta prefilled de AI (default empty fields).
     init(
@@ -363,6 +367,19 @@ private struct CreateResourceForm: View {
                 dismiss()
             }
 
+            // R.12.D — campos específicos del subtype (driven by metadata.fields
+            // del backend). vehicle.car → make/model/year/license_plate/vin/...
+            if !subtype.fields.isEmpty {
+                Section {
+                    DynamicForm(
+                        schema: FormSchema(fields: subtype.fields),
+                        values: $subtypeMetadata
+                    )
+                } header: {
+                    Text("Detalles \(subtype.displayName.lowercased())")
+                }
+            }
+
             Section("Ubicación") {
                 TextField("Dirección o lugar (opcional)", text: $locationText)
                     .textInputAutocapitalization(.words)
@@ -417,6 +434,9 @@ private struct CreateResourceForm: View {
 
     private func create() async {
         let trimmedLocation = locationText.trimmingCharacters(in: .whitespaces)
+        let metadataPayload: JSONValue? = subtypeMetadata.isEmpty
+            ? nil
+            : .object(subtypeMetadata)
         let success = await runner.run {
             _ = try await store.createResource(
                 CreateResourceInput(
@@ -429,7 +449,8 @@ private struct CreateResourceForm: View {
                     currency: hasValue ? currency : nil,
                     locationText: trimmedLocation.isEmpty ? nil : trimmedLocation,
                     clientId: UUID().uuidString,
-                    subtypeKey: subtype.subtypeKey
+                    subtypeKey: subtype.subtypeKey,
+                    metadata: metadataPayload
                 ),
                 context: context
             )
