@@ -55,7 +55,6 @@ public struct DocumentDetailView: View {
             metadataSection
             linkedSection
             actionsSection
-            comingSoonSection
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Documento")
@@ -261,33 +260,11 @@ public struct DocumentDetailView: View {
         }
     }
 
-    // MARK: - Coming soon section (deferred FQ-2/FQ-4)
-    //
-    // Apple pattern: Section header + .disabled() global. Cada row es un Label
-    // (no Button — no es ejecutable). El "Próximamente" va como
-    // trailing detail via Label custom o LabeledContent.
-
-    @ViewBuilder
-    private var comingSoonSection: some View {
-        Section {
-            comingSoonRow("Firmar documento", systemImage: "signature")
-            comingSoonRow("Pedir aprobación", systemImage: "checkmark.seal")
-            comingSoonRow("Subir nueva versión", systemImage: "arrow.up.doc")
-        } header: {
-            Text("Próximamente")
-        } footer: {
-            Text("Funciones que ya están modeladas en Ruul, pero todavía no están disponibles.")
-        }
-    }
-
-    @ViewBuilder
-    private func comingSoonRow(_ label: String, systemImage: String) -> some View {
-        HStack {
-            Label(label, systemImage: systemImage)
-            Spacer()
-        }
-        .foregroundStyle(Theme.Text.tertiary)
-    }
+    // R.13.A (founder lock 2026-06-16) — eliminada `comingSoonSection`
+    // (Firmar / Pedir aprobación / Subir nueva versión). Doctrina "nada que no
+    // tenga que estar". FQ-2 firma electrónica deferred a Decisions templates
+    // `document_approval`/`document_signing`; FQ-4 versions = nuevo doc +
+    // supersedes (ya shipped). Cuando se implementen, vuelven al body.
 
     // MARK: - Tint por tipo
 

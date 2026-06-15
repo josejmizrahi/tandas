@@ -146,14 +146,16 @@ public struct CreateDecisionView: View {
         return store.templates.first { $0.templateKey == key }
     }
 
-    /// Plantillas ofrecidas en el picker: ejecutables primero, luego las
-    /// `coming_soon`; ambas alfabéticas. `reservation_award` se excluye (entra
-    /// por el flujo de conflicto de reservación, F.9).
+    /// Plantillas ofrecidas en el picker: solo las ejecutables, alfabéticas.
+    /// `reservation_award` se excluye (entra por flujo de conflicto, F.9).
+    /// R.13.A (founder lock 2026-06-16) — antes ofrecíamos también las
+    /// `coming_soon` con badge "Próximamente"; doctrina "nada que no tenga
+    /// que estar" elimina ese branch. Cuando una plantilla nueva esté
+    /// ejecutable backend, aparece automáticamente.
     private var offeredTemplates: [DecisionTemplate] {
-        let usable = store.templates.filter { !$0.isReservationAward }
-        let executable = usable.filter(\.isExecutable).sorted { $0.displayName < $1.displayName }
-        let comingSoon = usable.filter(\.isComingSoon).sorted { $0.displayName < $1.displayName }
-        return executable + comingSoon
+        store.templates
+            .filter { !$0.isReservationAward && $0.isExecutable }
+            .sorted { $0.displayName < $1.displayName }
     }
 
     @ViewBuilder
@@ -163,16 +165,8 @@ public struct CreateDecisionView: View {
                 Picker("Plantilla", selection: $selectedTemplateKey) {
                     Text("Sin plantilla (libre)").tag(String?.none)
                     ForEach(offeredTemplates) { template in
-                        HStack {
-                            Text(template.displayName)
-                            if template.isComingSoon {
-                                Spacer()
-                                Text("Próximamente")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .tag(Optional(template.templateKey))
+                        Text(template.displayName)
+                            .tag(Optional(template.templateKey))
                     }
                 }
                 .pickerStyle(.navigationLink)
@@ -185,22 +179,16 @@ public struct CreateDecisionView: View {
         }
     }
 
-    /// Cuerpo dependiente de la plantilla: descripción, parámetros (form de
-    /// payload) o aviso `coming_soon`, y el modo de votación heredado.
+    /// Cuerpo dependiente de la plantilla: descripción, form de payload (si
+    /// aplica), y el modo de votación heredado. Las plantillas `coming_soon`
+    /// se filtran del picker (offeredTemplates), nunca llegan aquí.
     @ViewBuilder
     private func templateBody(_ template: DecisionTemplate) -> some View {
         if let detail = template.description {
             Section { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
         }
 
-        if template.isComingSoon {
-            Section {
-                Label("Próximamente", systemImage: "hourglass")
-                    .foregroundStyle(.secondary)
-            } footer: {
-                Text("Esta plantilla aún no ejecuta su efecto en el backend. Pronto la habilitamos.")
-            }
-        } else if template.hasPayloadForm {
+        if template.hasPayloadForm {
             templateFormSection(template)
         }
 

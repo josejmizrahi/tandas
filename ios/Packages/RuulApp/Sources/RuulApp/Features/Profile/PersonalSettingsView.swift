@@ -429,10 +429,10 @@ public struct PersonalSettingsView: View {
 
     // MARK: - Integraciones
     //
-    // Slice 7.A.6 (audit 2026-06-14) — antes mostrábamos 4 rows con badge
-    // "Próximamente" repetido (Google/Apple Calendar, Wise, WhatsApp). Era
-    // mockup completo sin valor — usuario veía 4 botones inertes. Compactado a
-    // 1 row con copy honesto, hasta que alguna integración exista realmente.
+    // R.13.A (founder lock 2026-06-16) — eliminado el placeholder branch
+    // ("Próximamente" con 4 servicios futuros). Si ningún servicio externo
+    // está conectado, la section no se renderea. Cuando una integración real
+    // exista, se reactiva el branch `hasAny`.
 
     @ViewBuilder
     private func integrationsSection(_ integrations: IntegrationsState) -> some View {
@@ -441,9 +441,8 @@ public struct PersonalSettingsView: View {
             || integrations.wise.connected
             || integrations.whatsapp.connected
 
-        Section {
-            if hasAny {
-                // Cuando exista al menos una conectada, listar solo las activas.
+        if hasAny {
+            Section {
                 if integrations.googleCalendar.connected {
                     integrationRow("Google Calendar", icon: "calendar", connected: true)
                 }
@@ -456,18 +455,12 @@ public struct PersonalSettingsView: View {
                 if integrations.whatsapp.connected {
                     integrationRow("WhatsApp", icon: "message", connected: true)
                 }
-            } else {
-                Label("Integraciones", systemImage: "link")
-                    .foregroundStyle(Theme.Text.tertiary)
+            } header: {
+                Text("Integraciones")
+            } footer: {
+                Text("Conexiones activas con servicios externos.")
             }
-        } header: {
-            Text(hasAny ? "Integraciones" : "Próximamente")
-        } footer: {
-            Text(hasAny
-                 ? "Conexiones activas con servicios externos."
-                 : "Pronto podrás conectar Google Calendar, Apple Calendar, Wise y WhatsApp para sincronizar eventos y pagos.")
         }
-        .disabled(!hasAny)
     }
 
     @ViewBuilder
@@ -478,8 +471,7 @@ public struct PersonalSettingsView: View {
                 .frame(width: 24)
             Text(name)
             Spacer()
-            StatusBadge(connected ? "Conectado" : "Próximamente",
-                        color: connected ? .green : .gray)
+            StatusBadge("Conectado", color: .green)
         }
     }
 }

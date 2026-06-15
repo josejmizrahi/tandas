@@ -55,7 +55,7 @@ struct AddParticipantsSheet: View {
                 RuulEmptyState(
                     title: "Sin miembros para agregar",
                     systemImage: "person.2",
-                    message: "Todos los miembros activos del contexto ya son participantes del evento.\n\nPara invitar a alguien externo (familiar, pareja, amigo no-miembro) necesitamos el módulo de Invitados Externos — próximamente."
+                    message: "Todos los miembros activos del contexto ya son participantes del evento.\n\nPara invitar a alguien externo, usa «Invitar externo» en el toolbar."
                 )
             } else {
                 List {
@@ -171,14 +171,9 @@ struct AddEventGuestSheet: View {
                     .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty || runner.isRunning)
                 }
 
-                Section {
-                    Label("Próximamente", systemImage: "sparkles")
-                        .foregroundStyle(Theme.Text.secondary)
-                } header: {
-                    Text("Próximamente")
-                } footer: {
-                    Text("Pronto vas a poder seleccionar invitados desde tus otros espacios o tu libreta de contactos de Apple.")
-                }
+                // R.13.A (founder lock 2026-06-16) — Section "Próximamente"
+                // eliminada (selección desde otros espacios + contactos Apple).
+                // Cuando esos paths existan, vuelven al body.
             }
             .navigationTitle("Invitar externo")
             .navigationBarTitleDisplayMode(.inline)

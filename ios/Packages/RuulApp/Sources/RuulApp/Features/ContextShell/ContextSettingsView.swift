@@ -106,7 +106,8 @@ public struct ContextSettingsView: View {
         List {
             generalSection(settings.general)
             membersSection(settings)
-            rolesSection(settings)
+            // R.13.A — rolesSection eliminada. Editor granular de roles no
+            // implementado; cuando se implemente vuelve al body.
             rulesSection(settings)
             decisionsSection(settings.decisionsConfig)
             moneySection(settings.moneyConfig)
@@ -453,26 +454,6 @@ public struct ContextSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-        }
-    }
-
-    // MARK: - Roles
-
-    @ViewBuilder
-    private func rolesSection(_ settings: ContextSettings) -> some View {
-        // R.5W.P1 — Apple-native LabeledContent + Section footer (antes InfoRow
-        // custom + Text caption suelto, inconsistente con el resto del Detail).
-        Section {
-            LabeledContent {
-                Text(store.can("manage_roles") ? "Editable próximamente" : "Solo lectura")
-                    .foregroundStyle(Theme.Text.secondary)
-            } label: {
-                Label("Roles del espacio", systemImage: "shield.lefthalf.filled")
-            }
-        } header: {
-            Text("Roles")
-        } footer: {
-            Text("Creación y asignación granular de roles llega en una próxima versión.")
         }
     }
 

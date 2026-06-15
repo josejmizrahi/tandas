@@ -594,18 +594,6 @@ public struct MeView: View {
         }
     }
 
-    @ViewBuilder
-    private func comingSoonRow(label: String, systemImage: String) -> some View {
-        HStack {
-            Label(label, systemImage: systemImage)
-                .foregroundStyle(Theme.Text.secondary)
-            Spacer()
-            Text("Próximamente")
-                .font(.caption)
-                .foregroundStyle(Theme.Text.tertiary)
-        }
-    }
-
     // MARK: - 6. Configuración
 
     @ViewBuilder
