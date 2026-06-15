@@ -72,8 +72,10 @@ struct EventDetailDecisionsSection: View {
     var body: some View {
         let items = visibleDecisions
         if !items.isEmpty {
+            // R.10.G.1 (2026-06-15) — Apple Music header pattern: prefix(3) +
+            // "Ver todas" trailing → DecisionsListView del contexto.
             Section {
-                ForEach(items) { decision in
+                ForEach(Array(items.prefix(3))) { decision in
                     NavigationLink {
                         DecisionDetailView(decisionId: decision.id, context: context, container: container)
                     } label: {
@@ -95,7 +97,24 @@ struct EventDetailDecisionsSection: View {
                     }
                 }
             } header: {
-                Text("Votaciones (\(items.count))")
+                HStack {
+                    Text("Votaciones (\(items.count))")
+                    Spacer()
+                    if items.count > 3 {
+                        NavigationLink {
+                            DecisionsListView(context: context, container: container)
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text("Ver todas")
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.Tint.primary)
+                        }
+                        .font(.subheadline.weight(.regular))
+                    }
+                }
+                .textCase(nil)
             } footer: {
                 Text("Votaciones abiertas de \(context.displayName) y las vinculadas a este evento.")
             }

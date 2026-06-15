@@ -28,8 +28,11 @@ struct EventDetailMoneySection: View {
 
     var body: some View {
         if recordExpenseAction != nil || !obligations.isEmpty {
+            // R.10.G.4 — header trailing "Ver todos" → LedgerBrowserView del
+            // contexto (no event-filtered — el ledger global incluye todos los
+            // gastos del espacio).
             Section {
-                ForEach(obligations) { obligation in
+                ForEach(Array(obligations.prefix(3))) { obligation in
                     NavigationLink {
                         ObligationDetailView(obligationId: obligation.id, context: context, container: container)
                     } label: {
@@ -62,9 +65,26 @@ struct EventDetailMoneySection: View {
                     }
                 }
             } header: {
-                Text(obligations.isEmpty
-                     ? "Dinero del evento"
-                     : "Dinero del evento (\(obligations.count))")
+                HStack {
+                    Text(obligations.isEmpty
+                         ? "Dinero del evento"
+                         : "Dinero del evento (\(obligations.count))")
+                    Spacer()
+                    if obligations.count > 3 {
+                        NavigationLink {
+                            LedgerBrowserView(context: context, container: container)
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text("Ver todos")
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.Tint.primary)
+                        }
+                        .font(.subheadline.weight(.regular))
+                    }
+                }
+                .textCase(nil)
             } footer: {
                 footerText
             }

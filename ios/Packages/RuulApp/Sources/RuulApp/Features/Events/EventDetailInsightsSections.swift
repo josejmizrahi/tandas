@@ -23,8 +23,9 @@ struct EventDetailRulesSection: View {
 
     var body: some View {
         if !rules.isEmpty {
+            // R.10.G.2 — header trailing "Ver todas" → RulesListView del contexto.
             Section {
-                ForEach(rules) { rule in
+                ForEach(Array(rules.prefix(3))) { rule in
                     NavigationLink {
                         RuleDetailView(rule: rule)
                     } label: {
@@ -46,7 +47,24 @@ struct EventDetailRulesSection: View {
                     }
                 }
             } header: {
-                Text("Reglas que aplican (\(rules.count))")
+                HStack {
+                    Text("Reglas que aplican (\(rules.count))")
+                    Spacer()
+                    if rules.count > 3 {
+                        NavigationLink {
+                            RulesListView(context: context, container: container)
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text("Ver todas")
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.Tint.primary)
+                        }
+                        .font(.subheadline.weight(.regular))
+                    }
+                }
+                .textCase(nil)
             } footer: {
                 Text("Se evalúan automáticamente con los check-ins y cancelaciones de este evento.")
             }
@@ -79,8 +97,9 @@ struct EventDetailPoolsSection: View {
 
     var body: some View {
         if !pools.isEmpty {
+            // R.10.G.3 — header trailing "Ver todos" → PoolsListView del contexto.
             Section {
-                ForEach(pools) { pool in
+                ForEach(Array(pools.prefix(3))) { pool in
                     NavigationLink {
                         PoolDetailView(poolAccountId: pool.poolAccountId, context: context, container: container)
                     } label: {
@@ -102,7 +121,24 @@ struct EventDetailPoolsSection: View {
                     }
                 }
             } header: {
-                Text("Fondos del espacio (\(pools.count))")
+                HStack {
+                    Text("Fondos del espacio (\(pools.count))")
+                    Spacer()
+                    if pools.count > 3 {
+                        NavigationLink {
+                            PoolsListView(context: context, container: container)
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text("Ver todos")
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.Tint.primary)
+                        }
+                        .font(.subheadline.weight(.regular))
+                    }
+                }
+                .textCase(nil)
             } footer: {
                 Text("Los fondos pertenecen a \(context.displayName), no a este evento.")
             }
