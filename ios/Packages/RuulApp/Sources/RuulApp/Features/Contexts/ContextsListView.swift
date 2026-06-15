@@ -1,26 +1,27 @@
 import SwiftUI
 import RuulCore
 
-/// R.5V.3A (2026-06-08) — pantalla de Contextos Apple-native refinada.
+/// R.11.E.3 — Contextos lista densa (founder firmado 2026-06-16).
 ///
-/// Founder UX refinement: jerarquía visual clara con Mi espacio como Hero
-/// principal, búsqueda integrada para escalabilidad, terminología visible
-/// ("espacios" en lugar de "contextos"), y Recientes condicional que no
-/// duplica información de "Todos los espacios".
+/// Diferenciación fuerte vs Home: aquí navegas el catálogo de espacios
+/// con métricas vivas inline; Home queda operacional (Atención + "Hoy en
+/// tus espacios"). Cambios vs R.5V.3A:
+/// - Quitar "Recientes" carousel — la lista default-sort por last_visited
+///   absorbe la función.
+/// - "Todos los espacios" rows ahora densos: pendientes badge + balance
+///   preview + próximo evento (priorizado igual que Home).
+/// - Powered by `home_overview()` RPC (R.11.E.0).
 ///
 /// Estructura visual:
 /// ```
 /// List(.insetGrouped) {
-///   Section { RuulHeroCard "Mi espacio" }            // listRowInsets.zero — hero
+///   Section { RuulHeroCard "Mi espacio" }
 ///   Section "Favoritos" { carousel horizontal }
-///   Section "Recientes" { carousel horizontal }      // solo si < all_contexts
-///   Section "Todos los espacios" { Label rows }
-///   Section "Acciones" { Crear espacio / Unirse }
+///   Section "Todos los espacios" { rows densos con métricas }  // sort by last_visited
+///   Section "Acciones" { Crear espacio / Unirse con código }
 /// }
 /// .searchable(text: $searchText, prompt: "Buscar espacios")
 /// ```
-///
-/// El backend sigue siendo "contexto" — solo el copy visible cambia.
 public struct ContextsListView: View {
     let container: DependencyContainer
 
@@ -30,6 +31,9 @@ public struct ContextsListView: View {
     @State private var isShowingInvitations = false
     @State private var prefilledInviteCode: String?
     @State private var searchText = ""
+    /// R.11.E.3 — Map context_actor_id → ContextOverview para enriquecer
+    /// cada row con métricas vivas (pending/balance/next_event).
+    @State private var overviewMap: [UUID: ContextOverview] = [:]
     /// R.5V.Zoom — Namespace para `matchedTransitionSource` + `.navigationTransition(.zoom)`.
     @Namespace private var zoomNamespace
 
@@ -71,11 +75,13 @@ public struct ContextsListView: View {
                 await contextStore.load()
                 await preferencesStore.load()
                 await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+                await loadOverviews()
             }
             .refreshable {
                 await contextStore.load()
                 await preferencesStore.load()
                 await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
+                await loadOverviews()
             }
         }
         .sheet(isPresented: $isShowingCreateContext) {
@@ -89,6 +95,15 @@ public struct ContextsListView: View {
         }
     }
 
+    private func loadOverviews() async {
+        do {
+            let list = try await container.rpc.homeOverview()
+            overviewMap = Dictionary(uniqueKeysWithValues: list.map { ($0.contextActorId, $0) })
+        } catch {
+            overviewMap = [:]
+        }
+    }
+
     // MARK: - Dashboard (Apple-native List + Section + searchable)
 
     @ViewBuilder
@@ -99,7 +114,6 @@ public struct ContextsListView: View {
             } else {
                 miEspacioHeroSection
                 favoritesSection
-                recentsSection
                 allContextsSection
                 actionsSection
             }
@@ -220,52 +234,28 @@ public struct ContextsListView: View {
         }
     }
 
-    // MARK: - Recientes (solo si recents > 0 y recents < all_contexts)
-
-    @ViewBuilder
-    private var recentsSection: some View {
-        let favoriteIds = Set(preferencesStore.favorites.map(\.contextActorId))
-        let allRootsCount = contextStore.availableContexts.filter { $0.isRoot && !$0.isPersonal }.count
-        let recents = resolveContexts(ids: preferencesStore.recents.map(\.contextActorId))
-            .filter { $0.isRoot && !$0.isPersonal && !favoriteIds.contains($0.id) }
-            .prefix(8)
-        if !recents.isEmpty && recents.count < allRootsCount {
-            Section {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    GlassEffectContainer(spacing: 12) {
-                        HStack(spacing: 12) {
-                            ForEach(Array(recents)) { ctx in
-                                contextCard(ctx, isFavorite: false)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .scrollTargetLayout()
-                    }
-                }
-                .scrollTargetBehavior(.viewAligned)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            } header: {
-                Label("Recientes", systemImage: "clock")
-            }
-        }
-    }
-
-    // MARK: - Todos los espacios (Label rows nativos con favorite swipe action)
+    // MARK: - Todos los espacios (R.11.E.3 — rows densos con métricas vivas)
 
     @ViewBuilder
     private var allContextsSection: some View {
         let favoriteIds = Set(preferencesStore.favorites.map(\.contextActorId))
         let allRoots = contextStore.availableContexts.filter { $0.isRoot && !$0.isPersonal }
-        if !allRoots.isEmpty {
+        // R.11.E.3 — Sort by last_visited (descending) from overviewMap;
+        // fallback al final si no hay overview todavía. Absorbe la función
+        // de "Recientes" carousel removido.
+        let sorted = allRoots.sorted { (a, b) in
+            let aVisited = overviewMap[a.id]?.lastVisitedAt ?? .distantPast
+            let bVisited = overviewMap[b.id]?.lastVisitedAt ?? .distantPast
+            if aVisited != bVisited { return aVisited > bVisited }
+            return a.displayName < b.displayName
+        }
+        if !sorted.isEmpty {
             Section {
-                ForEach(allRoots) { ctx in
+                ForEach(sorted) { ctx in
                     Button {
                         openContext(ctx)
                     } label: {
-                        contextRowLabel(ctx, isFavorite: favoriteIds.contains(ctx.id))
+                        contextRowLabel(ctx, isFavorite: favoriteIds.contains(ctx.id), overview: overviewMap[ctx.id])
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         let fav = favoriteIds.contains(ctx.id)
@@ -283,7 +273,7 @@ public struct ContextsListView: View {
                     }
                 }
             } header: {
-                Text("Todos los espacios (\(allRoots.count))")
+                Text("Todos los espacios (\(sorted.count))")
             }
         }
     }
@@ -312,7 +302,7 @@ public struct ContextsListView: View {
                     Button {
                         openContext(ctx)
                     } label: {
-                        contextRowLabel(ctx, isFavorite: favoriteIds.contains(ctx.id))
+                        contextRowLabel(ctx, isFavorite: favoriteIds.contains(ctx.id), overview: overviewMap[ctx.id])
                     }
                 }
             } header: {
@@ -322,25 +312,31 @@ public struct ContextsListView: View {
     }
 
     @ViewBuilder
-    private func contextRowLabel(_ ctx: AppContext, isFavorite: Bool) -> some View {
+    private func contextRowLabel(_ ctx: AppContext, isFavorite: Bool, overview: ContextOverview?) -> some View {
         Label {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Text(ctx.isPersonal ? "Mi espacio" : ctx.displayName)
                         .font(.callout.weight(.medium))
                         .foregroundStyle(Theme.Text.primary)
-                    // R.5V.Symbols.C4 — Image siempre montado: vista mantiene
-                    // identidad y SwiftUI hace morph nativo en lugar de fade
-                    // al cambiar isFavorite. Mismo patrón en card abajo.
+                        .lineLimit(1)
                     Image(systemName: isFavorite ? "star.fill" : "star")
                         .font(.caption2)
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(isFavorite ? Theme.Tint.warning : .clear)
                         .contentTransition(.symbolEffect(.replace))
+                    if let pendingCount = overview?.pendingCount, pendingCount > 0 {
+                        Text("\(pendingCount)")
+                            .font(.caption2.weight(.bold).monospacedDigit())
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Theme.Tint.warning.opacity(0.15), in: Capsule())
+                            .foregroundStyle(Theme.Tint.warning)
+                    }
                 }
-                Text(rowCaption(ctx))
+                Text(rowCaption(ctx, overview: overview))
                     .font(.caption)
-                    .foregroundStyle(Theme.Text.secondary)
+                    .foregroundStyle(rowCaptionTint(overview))
                     .lineLimit(1)
             }
         } icon: {
@@ -351,14 +347,59 @@ public struct ContextsListView: View {
         }
     }
 
-    private func rowCaption(_ ctx: AppContext) -> String {
+    /// R.11.E.3 — Caption rico priorizado por actionability:
+    /// pendientes > balance ≠ 0 > próximo evento > miembros (legacy fallback).
+    private func rowCaption(_ ctx: AppContext, overview: ContextOverview?) -> String {
+        if let overview {
+            if overview.pendingCount > 0 {
+                return overview.pendingCount == 1 ? "1 pendiente" : "\(overview.pendingCount) pendientes"
+            }
+            if let balance = overview.myBalance, let currency = overview.balanceCurrency, balance < 0 {
+                return "Debes " + balance.compactCurrencyLabel(currency)
+            }
+            if let when = overview.nextEventAt {
+                if let title = overview.nextEventTitle {
+                    return "\(rowEventWhen(when)) · \(title)"
+                }
+                return rowEventWhen(when)
+            }
+            if let balance = overview.myBalance, let currency = overview.balanceCurrency, balance > 0 {
+                return "Te deben " + balance.compactCurrencyLabel(currency)
+            }
+        }
+        // Fallback legacy: subtype + member count.
         let kind = subtypeLabel(ctx) ?? ""
-        if ctx.memberCount > 0 {
+        let memberCount = overview?.memberCount ?? ctx.memberCount
+        if memberCount > 0 {
             return kind.isEmpty
-                ? "\(ctx.memberCount) miembros"
-                : "\(kind) · \(ctx.memberCount) miembros"
+                ? "\(memberCount) miembros"
+                : "\(kind) · \(memberCount) miembros"
         }
         return kind.isEmpty ? "Sin miembros" : kind
+    }
+
+    private func rowCaptionTint(_ overview: ContextOverview?) -> Color {
+        guard let overview else { return Theme.Text.secondary }
+        if overview.pendingCount > 0 { return Theme.Tint.warning }
+        if let balance = overview.myBalance, balance < 0 { return Theme.Tint.critical }
+        if overview.nextEventAt != nil { return Theme.Tint.primary }
+        if let balance = overview.myBalance, balance > 0 { return Theme.Tint.success }
+        return Theme.Text.secondary
+    }
+
+    private func rowEventWhen(_ date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) {
+            return "Hoy " + date.formatted(.dateTime.hour().minute())
+        }
+        if cal.isDateInTomorrow(date) {
+            return "Mañana " + date.formatted(.dateTime.hour().minute())
+        }
+        let days = cal.dateComponents([.day], from: Date(), to: date).day ?? 0
+        if days < 7, days > 0 {
+            return date.formatted(.dateTime.weekday(.wide)).capitalized
+        }
+        return date.formatted(.dateTime.day().month(.abbreviated))
     }
 
     // MARK: - Acciones (Section con Label rows nativos)

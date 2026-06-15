@@ -187,3 +187,111 @@ public struct ContextPreference: Codable, Sendable, Equatable, Hashable, Identif
 
     public var id: UUID { contextActorId }
 }
+
+// MARK: - ContextOverview (R.11.E)
+
+/// R.11.E — Fila de `home_overview()` RPC. Métricas vivas por contexto
+/// para alimentar Home ("Hoy en tus espacios") y Contextos lista densa
+/// con un solo round-trip al backend.
+///
+/// Shape canónico:
+/// ```
+/// {
+///   context_actor_id, display_name, actor_kind, actor_subtype,
+///   is_favorite, last_visited_at,
+///   member_count, pending_count,
+///   next_event_at, next_event_title,
+///   my_balance, balance_currency
+/// }
+/// ```
+///
+/// `pending_count` agrega obligations(debtor=caller, open) + decisions
+/// (open, sin voto del caller). `my_balance` es net en la moneda con
+/// mayor `abs(net)` por contexto.
+public struct ContextOverview: Codable, Sendable, Equatable, Hashable, Identifiable {
+    public let contextActorId: UUID
+    public let displayName: String
+    public let actorKind: String
+    public let actorSubtype: String?
+    public let isFavorite: Bool
+    public let lastVisitedAt: Date?
+    public let memberCount: Int
+    public let pendingCount: Int
+    public let nextEventAt: Date?
+    public let nextEventTitle: String?
+    public let myBalance: Double?
+    public let balanceCurrency: String?
+
+    enum CodingKeys: String, CodingKey {
+        case contextActorId = "context_actor_id"
+        case displayName = "display_name"
+        case actorKind = "actor_kind"
+        case actorSubtype = "actor_subtype"
+        case isFavorite = "is_favorite"
+        case lastVisitedAt = "last_visited_at"
+        case memberCount = "member_count"
+        case pendingCount = "pending_count"
+        case nextEventAt = "next_event_at"
+        case nextEventTitle = "next_event_title"
+        case myBalance = "my_balance"
+        case balanceCurrency = "balance_currency"
+    }
+
+    public init(
+        contextActorId: UUID,
+        displayName: String,
+        actorKind: String,
+        actorSubtype: String? = nil,
+        isFavorite: Bool = false,
+        lastVisitedAt: Date? = nil,
+        memberCount: Int = 0,
+        pendingCount: Int = 0,
+        nextEventAt: Date? = nil,
+        nextEventTitle: String? = nil,
+        myBalance: Double? = nil,
+        balanceCurrency: String? = nil
+    ) {
+        self.contextActorId = contextActorId
+        self.displayName = displayName
+        self.actorKind = actorKind
+        self.actorSubtype = actorSubtype
+        self.isFavorite = isFavorite
+        self.lastVisitedAt = lastVisitedAt
+        self.memberCount = memberCount
+        self.pendingCount = pendingCount
+        self.nextEventAt = nextEventAt
+        self.nextEventTitle = nextEventTitle
+        self.myBalance = myBalance
+        self.balanceCurrency = balanceCurrency
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.contextActorId = try c.decode(UUID.self, forKey: .contextActorId)
+        self.displayName = try c.decode(String.self, forKey: .displayName)
+        self.actorKind = try c.decode(String.self, forKey: .actorKind)
+        self.actorSubtype = try c.decodeIfPresent(String.self, forKey: .actorSubtype)
+        self.isFavorite = try c.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        self.lastVisitedAt = try c.decodeIfPresent(Date.self, forKey: .lastVisitedAt)
+        self.memberCount = try c.decodeIfPresent(Int.self, forKey: .memberCount) ?? 0
+        self.pendingCount = try c.decodeIfPresent(Int.self, forKey: .pendingCount) ?? 0
+        self.nextEventAt = try c.decodeIfPresent(Date.self, forKey: .nextEventAt)
+        self.nextEventTitle = try c.decodeIfPresent(String.self, forKey: .nextEventTitle)
+        self.myBalance = try c.decodeIfPresent(Double.self, forKey: .myBalance)
+        self.balanceCurrency = try c.decodeIfPresent(String.self, forKey: .balanceCurrency)
+    }
+
+    public var id: UUID { contextActorId }
+
+    /// `true` si tiene actividad relevante hoy/próximos días que merece
+    /// surface en Home "Hoy en tus espacios": evento próximo, balance no
+    /// cero, o pendientes.
+    public func isActionableToday(now: Date = Date(), eventWindow: TimeInterval = 7 * 24 * 3600) -> Bool {
+        if pendingCount > 0 { return true }
+        if let amount = myBalance, amount != 0 { return true }
+        if let date = nextEventAt, date >= now, date <= now.addingTimeInterval(eventWindow) {
+            return true
+        }
+        return false
+    }
+}

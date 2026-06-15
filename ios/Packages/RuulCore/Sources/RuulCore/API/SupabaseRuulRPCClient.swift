@@ -2517,6 +2517,10 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("list_recent_contexts", params: Params(pLimit: limit))
     }
 
+    public func homeOverview() async throws -> [ContextOverview] {
+        try await call("home_overview")
+    }
+
     // MARK: - Governance (R.5 + R.7)
 
     public func memberAvailableActions(

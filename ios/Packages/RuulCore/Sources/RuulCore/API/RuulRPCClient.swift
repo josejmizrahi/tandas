@@ -580,6 +580,11 @@ public protocol RuulRPCClient: Sendable {
     func listContextFavorites() async throws -> [ContextPreference]
     /// `list_recent_contexts(limit)` — contextos visitados recientemente.
     func listRecentContexts(limit: Int) async throws -> [ContextPreference]
+    /// `home_overview()` — R.11.E. Métricas vivas por contexto del caller en
+    /// un solo round-trip: member_count, pending_count (obligations open +
+    /// decisions sin votar), next_event_at/title, my_balance + currency.
+    /// Alimenta Home "Hoy en tus espacios" + Contextos lista densa.
+    func homeOverview() async throws -> [ContextOverview]
 
     // MARK: - Governance (R.5 + R.7)
 

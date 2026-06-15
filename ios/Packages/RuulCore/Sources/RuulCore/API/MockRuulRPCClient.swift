@@ -5309,6 +5309,67 @@ public actor MockRuulRPCClient: RuulRPCClient {
             .map { $0 }
     }
 
+    public func homeOverview() async throws -> [ContextOverview] {
+        try throwIfNeeded()
+        // R.11.E — Mock: deriva métricas in-memory para previews.
+        // El caller es `me.id`. Incluimos su person actor + contexts donde
+        // tiene membership (mock no tracks status, asume todas activas).
+        let callerId = me.id
+        var contextIds = Set<UUID>()
+        contextIds.insert(callerId) // personal
+        for (ctxId, members) in memberships
+        where members.contains(where: { $0.actorId == callerId }) {
+            contextIds.insert(ctxId)
+        }
+        let overviews: [ContextOverview] = contextIds.compactMap { ctxId -> ContextOverview? in
+            guard let actor = actors[ctxId] else { return nil }
+            let pref = contextPreferences[ctxId]
+            let memberCount = memberships[ctxId]?.count ?? 0
+            let pendingOblig = obligations.values.filter {
+                $0.contextActorId == ctxId && $0.debtorActorId == callerId && $0.isOpen
+            }.count
+            let pendingDec = decisions.values.filter { dec in
+                dec.contextActorId == ctxId && dec.status == "open" &&
+                !(votes[dec.id]?.contains(where: { $0.voterActorId == callerId }) ?? false)
+            }.count
+            let nextEvent = events.values
+                .filter {
+                    $0.contextActorId == ctxId &&
+                    ($0.startsAt ?? .distantPast) > Date() &&
+                    $0.status != "cancelled" && $0.status != "closed"
+                }
+                .sorted { ($0.startsAt ?? .distantFuture) < ($1.startsAt ?? .distantFuture) }
+                .first
+            // Balance: mayor abs(net) por currency.
+            let myObligations = obligations.values.filter {
+                $0.contextActorId == ctxId && $0.isOpen &&
+                ($0.debtorActorId == callerId || $0.creditorActorId == callerId)
+            }
+            var netByCurrency: [String: Double] = [:]
+            for o in myObligations {
+                let amount = o.amount ?? 0
+                let signed = (o.creditorActorId == callerId) ? amount : -amount
+                netByCurrency[o.currency ?? "MXN", default: 0] += signed
+            }
+            let pick = netByCurrency.max { abs($0.value) < abs($1.value) }
+            return ContextOverview(
+                contextActorId: ctxId,
+                displayName: actor.displayName,
+                actorKind: actor.actorKind.rawValue,
+                actorSubtype: actor.actorSubtype,
+                isFavorite: pref?.isFavorite ?? false,
+                lastVisitedAt: pref?.lastVisitedAt,
+                memberCount: actor.actorKind == .person ? 1 : memberCount,
+                pendingCount: pendingOblig + pendingDec,
+                nextEventAt: nextEvent?.startsAt,
+                nextEventTitle: nextEvent?.title,
+                myBalance: pick?.value,
+                balanceCurrency: pick?.key
+            )
+        }
+        return overviews.sorted { ($0.lastVisitedAt ?? .distantPast) > ($1.lastVisitedAt ?? .distantPast) }
+    }
+
     // MARK: - Governance (R.5 + R.7)
 
     /// R.7.D — Mock: devuelve hasta 3 acciones canonical con `mode=request_decision`.
