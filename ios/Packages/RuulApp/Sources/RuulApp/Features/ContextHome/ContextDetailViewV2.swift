@@ -249,22 +249,28 @@ public struct ContextDetailViewV2: View {
         if visibleKeys.contains("people") {
             ContextDetailV2PeopleTab(descriptor: d, context: context, container: container)
         }
-        if visibleKeys.contains("resources") {
-            ContextDetailV2ResourcesTab(descriptor: d, context: context, container: container)
-        }
-        // R.10.E.5 — Gobierno separado en 2 Sections por data type (decisiones
-        // explícitas vs reglas automáticas). Apple HIG: una Section = un tipo.
-        if visibleKeys.contains("governance") {
-            ContextDetailV2DecisionsSection(descriptor: d, context: context, container: container)
-            ContextDetailV2RulesSection(context: context, container: container)
-        }
-        // Money tab inline (balance + obligaciones + settlements + history).
+        // R.10.E.6 (founder firmado 2026-06-15) — Recursos siempre visible
+        // para contextos colectivos (founder: "EN CONTEXT DETAIL ESA FALTA
+        // ESA SECCION"). Antes estaba gateado por
+        // `visibleKeys.contains("resources")` lo que la ocultaba en algunos
+        // contextos. Posición: entre Miembros y Dinero — flujo natural
+        // "quién está · qué compartimos · cuánto debemos · cómo decidimos".
+        ContextDetailV2ResourcesSection(descriptor: d, context: context, container: container)
+        // Money inline (balance + obligaciones + settlements). Después de
+        // Recursos: lo que tenemos → lo que debemos.
         if visibleKeys.contains("money") || visibleKeys.contains("obligations") {
             ContextDetailV2MoneyTab(
                 descriptor: d,
                 context: context,
                 container: container
             )
+        }
+        // R.10.E.5 — Gobierno separado en 2 Sections por data type (decisiones
+        // explícitas vs reglas automáticas). Apple HIG: una Section = un tipo.
+        // Posición: después de Dinero — cómo decidimos cosas, incluyendo $.
+        if visibleKeys.contains("governance") {
+            ContextDetailV2DecisionsSection(descriptor: d, context: context, container: container)
+            ContextDetailV2RulesSection(context: context, container: container)
         }
         // Subespacios.
         if !d.childContextsPreview.isEmpty {

@@ -216,79 +216,87 @@ struct ContextDetailV2PeopleTab: View {
     }
 }
 
-// MARK: - Resources tab
+// MARK: - Recursos (R.10.E.6 — Apple Music header pattern, founder firmado 2026-06-15)
+//
+// Antes la Section sólo aparecía cuando descriptor.sections incluía
+// "resources" como visible — para algunos contextos colectivos no
+// aparecía en absoluto (founder: "EN CONTEXT DETAIL ESA FALTA ESA
+// SECCION"). Ahora se renderiza siempre para contextos colectivos.
+//
+// Cambios E.6:
+//   - UN solo Section "Recursos" (antes: 1 Section por classKey con
+//     header `Label(claseDisplay, classIcon)`).
+//   - Preview compacto de los primeros 5 recursos con icon por clase +
+//     nombre + subtype.
+//   - Header trailing "Ver todos >" → ResourcesListView (Apple Music
+//     pattern, mismo que Eventos/Decisiones/Actividad).
+//   - Empty state CTA "Crear el primer recurso" preservado (D7).
+//   - Siempre renderizado (sin gate de visibleKeys).
 
-struct ContextDetailV2ResourcesTab: View {
+struct ContextDetailV2ResourcesSection: View {
     let descriptor: ContextDetailDescriptor
     let context: AppContext
     let container: DependencyContainer
 
     var body: some View {
         let d = descriptor
-        resourcesContent(d)
-        // Fase 9.7 — "Recursos en subespacios" eliminada (redundante).
-    }
-
-    @ViewBuilder
-    private func resourcesContent(_ d: ContextDetailDescriptor) -> some View {
-        if d.resourcesPreview.isEmpty {
-            // R.10.E.2 D7 (founder firmado 2026-06-14) — empty state activo:
-            // CTA NavigationLink → ResourcesListView (donde vive el toolbar
-            // "+" para crear el primer recurso). Antes era un row pasivo con
-            // copy instructional "desde el botón ＋ del toolbar".
-            Section {
+        Section {
+            if d.resourcesPreview.isEmpty {
                 NavigationLink {
                     ResourcesListView(context: context, container: container)
                 } label: {
                     Label("Crear el primer recurso", systemImage: "shippingbox.fill")
                         .foregroundStyle(Theme.Tint.primary)
                 }
-            } header: {
-                Text("Recursos")
-            }
-        } else {
-            // R.5A.B.0 class catalog (founder-seeded 17 classes). Header label
-            // user-friendly + icon de SF Symbols por class.
-            let byClass = Dictionary(grouping: d.resourcesPreview) { $0.classKey ?? "generic" }
-            ForEach(byClass.keys.sorted(), id: \.self) { classKey in
-                if let items = byClass[classKey] {
-                    Section {
-                        ForEach(items) { r in
-                            NavigationLink {
-                                ResourceDetailViewV2(resourceId: r.resourceId, context: context, container: container)
-                            } label: {
-                                Label {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(r.displayName)
-                                            .font(.callout.weight(.medium))
-                                            .foregroundStyle(Theme.Text.primary)
-                                            .lineLimit(1)
-                                        if let sub = r.subtypeKey {
-                                            Text(sub.replacingOccurrences(of: "_", with: " ").capitalized)
-                                                .font(.caption)
-                                                .foregroundStyle(Theme.Text.secondary)
-                                                .lineLimit(1)
-                                        }
-                                    }
-                                } icon: {
-                                    Image(systemName: resourceClassIcon(r.classKey ?? "generic"))
-                                        .foregroundStyle(Theme.Tint.primary)
+            } else {
+                ForEach(d.resourcesPreview.prefix(5)) { r in
+                    NavigationLink {
+                        ResourceDetailViewV2(resourceId: r.resourceId, context: context, container: container)
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(r.displayName)
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                    .lineLimit(1)
+                                if let sub = r.subtypeKey {
+                                    Text(sub.replacingOccurrences(of: "_", with: " ").capitalized)
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.secondary)
+                                        .lineLimit(1)
                                 }
                             }
+                        } icon: {
+                            Image(systemName: Self.resourceClassIcon(r.classKey ?? "generic"))
+                                .foregroundStyle(Theme.Tint.primary)
                         }
-                    } header: {
-                        Label(
-                            resourceClassLabel(classKey),
-                            systemImage: resourceClassIcon(classKey)
-                        )
                     }
                 }
             }
+        } header: {
+            HStack {
+                Text("Recursos")
+                Spacer()
+                if !d.resourcesPreview.isEmpty {
+                    NavigationLink {
+                        ResourcesListView(context: context, container: container)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Ver todos")
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .foregroundStyle(Theme.Tint.primary)
+                    }
+                    .font(.subheadline.weight(.regular))
+                }
+            }
+            .textCase(nil)
         }
     }
 
     /// SF Symbol por R.5A.B.0 class_key (17 classes founder-seeded).
-    private func resourceClassIcon(_ classKey: String) -> String {
+    static func resourceClassIcon(_ classKey: String) -> String {
         switch classKey {
         case "real_estate":    return "house.fill"
         case "vehicle":        return "car.fill"
@@ -308,30 +316,6 @@ struct ContextDetailV2ResourcesTab: View {
         case "rule":           return "ruler.fill"
         case "generic":        return "shippingbox.fill"
         default:               return "shippingbox.fill"
-        }
-    }
-
-    /// Label friendly por class_key.
-    private func resourceClassLabel(_ classKey: String) -> String {
-        switch classKey {
-        case "real_estate":    return "Inmuebles"
-        case "vehicle":        return "Vehículos"
-        case "equipment":      return "Equipo"
-        case "financial":      return "Financiero"
-        case "document":       return "Documentos"
-        case "event":          return "Eventos"
-        case "service":        return "Servicios"
-        case "agreement":      return "Acuerdos"
-        case "digital_asset":  return "Activos digitales"
-        case "right":          return "Derechos"
-        case "membership":     return "Membresías"
-        case "space":          return "Espacios"
-        case "money":          return "Dinero"
-        case "obligation":     return "Compromisos"
-        case "decision":       return "Decisiones"
-        case "rule":           return "Reglas"
-        case "generic":        return "Generales"
-        default:               return classKey.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
 }

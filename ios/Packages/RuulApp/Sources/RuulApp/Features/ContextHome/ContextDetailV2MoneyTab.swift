@@ -114,14 +114,27 @@ struct ContextDetailV2MoneyTab: View {
                 }
             }
 
-            // Drill-down al detalle completo de Dinero.
-            NavigationLink {
-                MoneyHomeView(context: context, container: container)
-            } label: {
-                Label("Ver historial completo", systemImage: "list.bullet.rectangle")
-            }
+            // R.10.E.6 (founder firmado 2026-06-15) — "Ver historial completo"
+            // movido del body al header trailing como "Ver historial" (Apple
+            // Music pattern, mismo que Eventos / Decisiones / Actividad /
+            // Recursos). Section body sólo muestra data.
         } header: {
-            Text("Dinero")
+            HStack {
+                Text("Dinero")
+                Spacer()
+                NavigationLink {
+                    MoneyHomeView(context: context, container: container)
+                } label: {
+                    HStack(spacing: 2) {
+                        Text("Ver historial")
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(Theme.Tint.primary)
+                }
+                .font(.subheadline.weight(.regular))
+            }
+            .textCase(nil)
         } footer: {
             if !balances.isEmpty {
                 Text("Saldo positivo = te deben. Saldo negativo = debes.")

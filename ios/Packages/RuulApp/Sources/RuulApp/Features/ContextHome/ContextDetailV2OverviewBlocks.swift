@@ -84,6 +84,9 @@ struct ContextDetailV2ChildrenSection: View {
     let context: AppContext
     let container: DependencyContainer
 
+    // R.10.E.6 — Apple Music header pattern: header trailing "Ver todos"
+    // → ContextTreeView (jerarquía completa de subespacios).
+
     var body: some View {
         Section {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -104,7 +107,22 @@ struct ContextDetailV2ChildrenSection: View {
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         } header: {
-            Text("Espacios dentro de \(context.displayName)")
+            HStack {
+                Text("Subespacios")
+                Spacer()
+                NavigationLink {
+                    ContextTreeView(rootContext: context, container: container)
+                } label: {
+                    HStack(spacing: 2) {
+                        Text("Ver todos")
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(Theme.Tint.primary)
+                }
+                .font(.subheadline.weight(.regular))
+            }
+            .textCase(nil)
         }
     }
 
