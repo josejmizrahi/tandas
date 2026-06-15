@@ -17,6 +17,8 @@ struct VehicleRenderer: ResourceSubtypeRenderer {
     static let classKey = "vehicle"
 
     func informationFields(_ d: ResourceDetailDescriptor) -> AnyView {
+        // Placa intencionalmente NO va aquí — vive prominente en `heroSubtitle`
+        // (E.4 dedup). VIN sí queda (less scanned, no critical identity).
         AnyView(
             Group {
                 if let make = d.resource.metadataString("make"),
@@ -27,12 +29,6 @@ struct VehicleRenderer: ResourceSubtypeRenderer {
                 }
                 if let year = d.resource.metadataString("year") {
                     LabeledContent("Año", value: year)
-                }
-                if let plate = d.resource.metadataString("license_plate") {
-                    LabeledContent("Placa") {
-                        Text(plate)
-                            .font(.callout.monospaced())
-                    }
                 }
                 if let vin = d.resource.metadataString("vin") {
                     LabeledContent("VIN") {
@@ -49,6 +45,19 @@ struct VehicleRenderer: ResourceSubtypeRenderer {
                     LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
                 }
             }
+        )
+    }
+
+    /// R.10.F.f Hero subtitle — placa monospaced. Identity field para vehículos
+    /// (es lo primero que checas).
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
+        guard let plate = d.resource.metadataString("license_plate") else {
+            return AnyView(EmptyView())
+        }
+        return AnyView(
+            Text(plate)
+                .font(.callout.monospaced().weight(.semibold))
+                .foregroundStyle(Theme.Text.secondary)
         )
     }
 }
