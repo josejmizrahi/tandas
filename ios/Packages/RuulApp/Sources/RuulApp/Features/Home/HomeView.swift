@@ -18,11 +18,14 @@ import RuulCore
 /// ```
 /// List(.insetGrouped) {
 ///   Section { hero greeting }
-///   Section("Atención")            // attention_inbox cross-context (sin cambio)
-///   Section("Hoy en tus espacios") // NUEVO — contextos con next_event ≤ 7d O pendientes O balance ≠ 0
-///   Section("Próximamente")        // tools placeholders
+///   Section("Atención")            // attention_inbox cross-context
+///   Section("Hoy en tus espacios") // contextos con next_event ≤ 7d O pendientes O balance ≠ 0
+///   Section("Tus espacios")        // exploreSection
 /// }
 /// ```
+/// R.13.A (founder lock 2026-06-16) — eliminada `toolsSection` "Próximamente"
+/// con Búsqueda IA / Preguntar Ruul / QR. Doctrina "nada que no tenga que
+/// estar" — esos features se agregan cuando estén disponibles, no antes.
 public struct HomeView: View {
     let container: DependencyContainer
     let jumpToContext: (AppContext) -> Void
@@ -45,7 +48,6 @@ public struct HomeView: View {
                 attentionSection
                 todaySection
                 exploreSection
-                toolsSection
             }
             .listStyle(.insetGrouped)
             .listSectionSpacing(.compact)
@@ -322,9 +324,9 @@ public struct HomeView: View {
     // MARK: - 4. Explora (R.11.G — empty state inteligente)
 
     /// Cuando "Hoy en tus espacios" NO tiene items actionable, Home se vería
-    /// casi vacío (sólo Saludo + Atención + Próximamente). Surface top 3
-    /// espacios por last_visited para que el founder siempre tenga un
-    /// entry-point visible sin ir a la tab Contextos.
+    /// casi vacío (sólo Saludo + Atención). Surface top 3 espacios por
+    /// last_visited para que el founder siempre tenga un entry-point visible
+    /// sin ir a la tab Contextos.
     @ViewBuilder
     private var exploreSection: some View {
         let hasActionable = overviews.contains { $0.isActionableToday() }
@@ -374,24 +376,6 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - 5. Herramientas (Próximamente)
-
-    @ViewBuilder
-    private var toolsSection: some View {
-        Section {
-            Label("Búsqueda inteligente", systemImage: "magnifyingglass")
-                .foregroundStyle(Theme.Text.tertiary)
-            Label("Preguntar a Ruul", systemImage: "sparkles")
-                .foregroundStyle(Theme.Text.tertiary)
-            Label("Escanear QR", systemImage: "qrcode.viewfinder")
-                .foregroundStyle(Theme.Text.tertiary)
-        } header: {
-            Text("Próximamente")
-        } footer: {
-            Text("Pronto podrás buscar entre todos tus espacios, preguntar cualquier cosa a Ruul y escanear códigos para unirte rápido.")
-        }
-        .disabled(true)
-    }
 }
 
 // MARK: - Sheet "Todos los pendientes"

@@ -1,9 +1,19 @@
 # Post-R.12 Roadmap — Plan vivo (single source 2026-06-16)
 
 **Fecha:** 2026-06-16
-**Status:** 🟢 Motor cerrado · UX completion en curso
+**Status:** 🟢 Motor cerrado · UX completion + Honesty Sweep en curso
 **Reemplaza:** `Plans/Completed/PreR6_Roadmap.md` (cerrado en R.5V.5 ✅ del 2026-06-07; no reflejaba R.9.*/audits/FE 1-9/R.10/R.11/R.12 shipped después)
-**Founder lock pendiente:** ratificar prioridad de slices ⏳ abajo o redefinir orden.
+
+## Founder lock firmado 2026-06-16
+
+> **(1) Primero quiero que los flujos estén completos y conectados.**
+> **(2) Y que no haya nada que no tenga que estar.**
+> **Tanto en el frontend como en el backend.**
+
+Dos criterios congelados. Las "3 capas estructurales" (Compliance/Billing/Assurance) salen del scope inmediato. **Antes de cualquier feature nueva** se cierra:
+
+1. **Completitud de flujos** — cero ⚠️ founder smoke en device. Toda creación auto-pushea al detail. Toda action visible tiene destino real. Toda atención del inbox abre el flow correcto.
+2. **Honesty Sweep frontend+backend** — cero placeholder "Próximamente" sin backend ready · cero action_key sin handler · cero widget/section/capability/RPC del catalog sin consumer real · cero sistema duplicado (3 atenciones → 1).
 
 ---
 
@@ -37,18 +47,47 @@
 
 ---
 
-## 1. Backlog activo (verificado, founder smoke R.5Z + post-R.12)
+## 1. Backlog activo (verificado, founder smoke R.5Z + post-R.12 + lock 2026-06-16)
 
-Ordenado por **valor founder × tamaño**. Founder firma la priorización al final de esta sección.
+Ordenado por **fit con los 2 criterios founder**: (1) completitud de flujos + (2) cero exceso. Las "3 capas estructurales" (Compliance/Billing/Assurance) reportadas en revisión Vision.md quedan **fuera de scope** hasta firma adicional.
 
-### Tier P0 — quick wins UX (small, ~1-3h cada uno, iOS-only)
+### Tier R.13 — Honesty Sweep (frontend+backend, cumple AMBOS criterios founder)
 
-| ID | Slice | Evidencia código | Effort | Memo |
-|---|---|---|---|---|
-| **P0.1** | `R.5Z.fix.CC.2` AttentionDispatcher catalog completo | `AttentionDispatcher.swift:278` cae a `UnsupportedAttentionView` para `rule_attention_items.*`, `obligation.overdue`, `document.expiring`, `reservation.starting_soon`, `right.expiring` (todos emitidos por R.6.A/R.6.C backend) | M (2-3h) | Tab Home founder lock se siente roto |
-| **P0.2** | `R.5Z.fix.1` post-create auto-push | Sheets Create Context/Resource/Event/Decision/Obligation no pushean al detail recién creado · Founder Flow #1/#2.c | M (1-2h cada uno, ~6h sweep) | Founder smoke item recurrente |
-| **P0.3** | `R.5Z.fix.3` invitados pre-accept en MembersListView | `MembersListView` filtra `status='active'`; invitados invisibles para inviter · `PendingInvitationsView` ya existe del lado invitee | S (1h) | Founder smoke Flow #3 |
-| **P0.4** | `R.5Z.fix.10.a` `intent.document` en CreateIntentSheet | Wire `AttachDocumentView` con resource opcional (pattern análogo `intent.obligation` R.5X.fix.B shipped) | S (1h) | Founder smoke Flow #10.a |
+Slice cohesivo de 1-2 sesiones que cierra "nada que no tenga que estar". Frontend filtra defensivo lo que no puede manejar; backend elimina del catalog lo que no tiene path real; ambos quedan en paridad.
+
+**iOS — eliminar exceso visible al user:**
+
+| ID | Item | Acción | Effort |
+|---|---|---|---|
+| R.13.A | 8 placeholders "Próximamente" inventariados | Por cada uno: si backend ready → wirear flow (PoolResolveView, archive_context, set_event_participant_plus_one). Si NO ready → ESCONDER del UI (no row, no button). NUNCA mostrar "Próximamente" como copy estructural. | M (4-6h) |
+| R.13.B | 12+ action_keys sin handler | Gating defensivo en TODOS los detail views: filtrar `availableActions` con `ActionRouter.knownActionKeys` whitelist. iOS NO muestra button que no puede ejecutar. | S (2-3h) |
+| R.13.C | `R.5Z.fix.CC.2` AttentionDispatcher catalog completo | Extender dispatcher para `rule_attention_items.*`, `obligation.overdue`, `document.expiring`, `reservation.starting_soon`, `right.expiring` (R.6.A/R.6.C ya emiten desde backend) → push a ContextDetailV2/RuleDetail/ObligationDetail/DocumentDetail/ResourceDetail según `cta_target_type`. Eliminar `UnsupportedAttentionView`. | M (2-3h) |
+
+**Backend — eliminar exceso del catalog:**
+
+| ID | Item | Acción | Effort |
+|---|---|---|---|
+| R.13.D | Catalog rows sin path real (`execution_rpc=null` sin handler iOS) | Mig: borrar del `action_catalog` y `governance_action_catalog` toda row sin destino. O marcar `is_active=false` con razón en comment. | S (1 mig) |
+| R.13.E | 6 capabilities NO_EFFECT (`approval_required`/`depreciable`/`monetary`/`rentable`/`sellable`/`usable`) | Si UI no las renderea ni RPC las consulta: drop del catalog. Si alguna sí se usa → marcar y documentar. | S (1 mig) |
+| R.13.F | 10 widgets INERT + 44 section rows INERT (R.5X audit) | Auditar contra `WidgetCatalog.swift`/section render path. Eliminar del catalog rows sin renderer. | M (1-2 migs + iOS verify) |
+| R.13.G | `audit_8_rpc_deprecation_register` cleanup | Revisar wrappers marcados deprecated; eliminar los ya consolidados. | S (1 mig) |
+| R.13.H | 3 sistemas atención paralelos → 1 | Congelar oficialmente `notifications` R.4D (comment en tabla "deferred hasta push real"). Confirmar `attention_inbox()` UNION cubre `rule_attention_items` (R.6.A) + invitaciones + votos + governance pending. iOS solo lee `attention_inbox()`. | M (1 mig + iOS audit) |
+| R.13.I | `activity_event_catalog` gap closure verificación | Smoke `_smoke_r13_activity_coverage` que asserte: TODO RPC del catalog emite un event_type listado en `activity_event_catalog`. | S (1 mig smoke) |
+
+**DoD R.13 (founder firma):**
+- iPhone JJ install: cero "Próximamente" visible · cero action que no abre destino · cero atención que cae a Unsupported.
+- Backend smoke: cero catalog row sin path · cero RPC deprecated en uso · `attention_inbox()` única fuente.
+- Founder firma: *"no veo nada que no debería estar"*.
+
+### Tier R.5Z.fix (UX completion post-Honesty Sweep)
+
+Después de R.13, los 8 ⚠️ del founder smoke quedan trabajables sin ruido:
+
+| ID | Slice | Evidencia | Effort |
+|---|---|---|---|
+| **P0.1** | `R.5Z.fix.1` post-create auto-push | Sheets Create Context/Resource/Event/Decision/Obligation no pushean al detail recién creado · Founder Flow #1/#2.c | M (~6h sweep) |
+| **P0.2** | `R.5Z.fix.3` invitados pre-accept en MembersListView | `MembersListView` filtra `status='active'`; invitados invisibles para inviter | S (1h) |
+| **P0.3** | `R.5Z.fix.10.a` `intent.document` en CreateIntentSheet | Wire `AttachDocumentView` (pattern análogo `intent.obligation` shipped) | S (1h) |
 
 ### Tier P1 — typed flows + slice mayores (medium, iOS-only o iOS+backend small)
 
@@ -110,19 +149,17 @@ Decision / Obligation / Money / Activity
 
 ---
 
-## 3. Decisión founder pendiente
+## 3. Orden de ejecución firmado (founder lock 2026-06-16)
 
-Una de tres rutas:
+```
+1. R.13 Honesty Sweep (frontend + backend)   ← arrancar AQUÍ
+2. R.5Z.fix P0 quick wins (post-create push + invited + intent.document)
+3. P1 typed flows (D.PICKER → R.RES.POLICY → D.CATALOG)
+4. P2 cleanup pre-R.6 (god-views split + naming + currency unify)
+5. Capas estructurales (Compliance/Billing/Assurance) — solo con firma adicional
+```
 
-| Ruta | Qué cierra | Tiempo estimado |
-|---|---|---|
-| **A — Tier P0 sweep** | 4 quick wins UX (CC.2 + post-create push + invited members + intent.document) | 1 sesión 4-8h · alto valor founder/clic |
-| **B — Tier P1 typed flows** | D.PICKER + R.RES.POLICY + D.CATALOG (3 slices mayores) | 3-5 sesiones · cierra todos los ⚠️ del founder smoke |
-| **C — Sweep P0 + 1 P1** | P0 completo + D.PICKER (P1.1 es el más small de P1 y desbloquea governance UX) | 2 sesiones |
-
-**Recomendación clara:** Ruta **C**. P0 da reward inmediato (founder ve fixes en device), después D.PICKER cierra Flow #9 que es el más arquitectural. R.RES.POLICY y D.CATALOG son scope mayor — mejor abordarlos con su propio plan dedicado, no metido en este roadmap.
-
-Siguiente acción concreta: founder firma ruta A/B/C, abrimos el slice top.
+**Recomendación inmediata:** arrancar `R.13.C AttentionDispatcher catalog` (P0 visibilidad founder lock) en paralelo con `R.13.B gating defensivo action_keys` (mata 12+ comingSoon alerts en obligation/document/context detail). Después barrer R.13.A→I en orden. iOS + backend juntos por slice; cada slice termina con install verde iPhone JJ + smoke backend verde.
 
 ---
 
@@ -162,4 +199,13 @@ Siguiente acción concreta: founder firma ruta A/B/C, abrimos el slice top.
 
 ## 6. Próxima acción
 
-Founder firma ruta A/B/C de §3. Default si no responde en 24h: **Ruta C** (P0 sweep + D.PICKER), arrancar con `R.5Z.fix.CC.2 AttentionDispatcher catalog`.
+Founder firma slice top de R.13. Propuesta arranque:
+
+**R.13.C + R.13.B en paralelo** (1 sesión, ambos iOS-only, ambos cierran "nada que no tenga que estar"):
+
+- **R.13.C — AttentionDispatcher catalog completo:** extender `AttentionDispatcher.destination(for:)` para los 5 kinds que hoy caen a `UnsupportedAttentionView` (rule_attention_items/obligation.overdue/document.expiring/reservation.starting_soon/right.expiring). Mata el "atención rota" del Home founder lock.
+- **R.13.B — Gating defensivo action_keys:** filtrar `availableActions` en ObligationDetail/ContextDetailV2/ResourceDetailV2/DocumentDetail con whitelist `ActionRouter.knownActionKeys`. Mata todos los alerts "Próximamente" estructurales en una sola pasada.
+
+Backend acompañante: **R.13.D** (mig que quita rows `execution_rpc=null` del action_catalog sin handler iOS — alineación frontend↔backend).
+
+Total estimado: 1 sesión de 4-6h. Commit por slice. Install iPhone JJ + smoke backend verde antes de pasar a R.13.A/E/F/G/H/I.

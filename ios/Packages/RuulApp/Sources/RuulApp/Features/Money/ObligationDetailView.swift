@@ -21,9 +21,6 @@ public struct ObligationDetailView: View {
     @State private var isLoadingWhy = false
     /// F.MONEY.4 — sheet de edición de la obligación.
     @State private var isShowingEdit = false
-    /// R.5W.P1 — alert "Próximamente" para acciones backend-advertised pero sin
-    /// RPC iOS todavía (pay/dispute/cancel). Antes eran Label inerte.
-    @State private var comingSoonAction: ComingSoonAction?
     /// R.7.x — confirmación destructive del forgive directo (no-governance path).
     @State private var isConfirmingForgive = false
     /// R.7.x — sheet "Esta acción requiere aprobación" para forgive con governance.
@@ -33,16 +30,6 @@ public struct ObligationDetailView: View {
     @State private var isShowingGovernanceSheet = false
     @State private var governanceClientId: String = UUID().uuidString
     @State private var pendingDecisionId: UUID?
-
-    /// R.5Z.fix.CC.1 — action keys que `handleObligationAction` sabe enrutar hoy.
-    /// El resto (pay/dispute/cancel) sigue en el descriptor backend pero se filtra
-    /// del Menu del toolbar hasta que iOS los wire. Mantener esta lista sincronizada
-    /// con `handleObligationAction`'s switch.
-    private static let wiredActionKeys: Set<String> = [
-        "mark_completed",
-        "edit_obligation",
-        "forgive"
-    ]
 
     public init(obligationId: UUID, context: AppContext, container: DependencyContainer) {
         self.obligationId = obligationId
@@ -62,12 +49,14 @@ public struct ObligationDetailView: View {
                 // El body solo describe; el toolbar acciona.
                 .toolbar {
                     if let detail {
-                        // R.5Z.fix.CC.1 (founder 2026-06-09) — gating defensivo:
-                        // sólo render actions que iOS sabe handlear hoy. Antes el
-                        // descriptor surface `pay`/`dispute`/`cancel` que caían
-                        // al `comingSoonAction` alert "Próximamente" → UX rota.
+                        // R.13.B (founder lock 2026-06-16) — gating defensivo via
+                        // whitelist global `ActionRouter.knownActionKeys`. iOS NO
+                        // muestra button para action_key sin handler local.
+                        // Doctrina "nada que no tenga que estar" reemplaza
+                        // R.5X.fix.A "Próximamente" copy — esconder en vez de
+                        // mostrar honestidad falsa.
                         let actions = detail.availableActions.inSection("obligations")
-                            .filter { $0.enabled && Self.wiredActionKeys.contains($0.actionKey) }
+                            .filter { $0.enabled && ActionRouter.isWired($0.actionKey) }
                         if !actions.isEmpty {
                             ToolbarItem(placement: .topBarTrailing) {
                                 actionsToolbarMenu(actions: actions)
@@ -99,21 +88,6 @@ public struct ObligationDetailView: View {
                             onSaved: { Task { await load() } }
                         )
                     }
-                }
-                // Slice 7.A.4 (audit 2026-06-14) — copy específico por actionKey
-                // en lugar del genérico "Esta funcionalidad ya está modelada en
-                // Ruul". El usuario entiende qué viene en cada caso.
-                .alert(
-                    comingSoonAction?.label ?? "",
-                    isPresented: Binding(
-                        get: { comingSoonAction != nil },
-                        set: { if !$0 { comingSoonAction = nil } }
-                    ),
-                    presenting: comingSoonAction
-                ) { _ in
-                    Button("OK", role: .cancel) {}
-                } message: { action in
-                    Text(comingSoonMessage(for: action.key))
                 }
                 // R.7.x — confirm direct forgive (no-governance path).
                 .confirmationDialog(
@@ -355,8 +329,10 @@ public struct ObligationDetailView: View {
                 isConfirmingForgive = true
             }
         default:
-            // pay/dispute/cancel — backend-advertised pero sin RPC iOS.
-            comingSoonAction = ComingSoonAction(key: action.actionKey, label: action.label)
+            // R.13.B — inalcanzable post-gating. El filtro `ActionRouter.isWired`
+            // del toolbar excluye action_keys sin handler. Si llega aquí algo
+            // significa que la whitelist y este switch están desincronizados.
+            assertionFailure("Unwired obligation action reached handler: \(action.actionKey)")
         }
     }
 
@@ -463,21 +439,6 @@ public struct ObligationDetailView: View {
         }
     }
 
-    /// Slice 7.A.4 — copy específico por actionKey para el alert "Próximamente".
-    /// El usuario entiende qué viene en cada caso, en lugar de un genérico.
-    private func comingSoonMessage(for actionKey: String) -> String {
-        switch actionKey {
-        case "pay":
-            return "Pronto podrás registrar el pago directamente desde aquí. Por ahora, marca el pago en Liquidaciones cuando aparezca."
-        case "dispute":
-            return "Pronto podrás reportar un problema con este compromiso. Por ahora, habla con la otra persona o con un admin del espacio."
-        case "cancel":
-            return "Pronto podrás cancelar este compromiso. Por ahora, pídele a un admin del espacio que lo haga por ti."
-        default:
-            return "Esta funcionalidad ya está modelada en Ruul, pero todavía no está disponible."
-        }
-    }
-
     /// R.10.H — heroTitle: la title custom si existe, sino el kind label como fallback.
     private func heroTitle(_ detail: ObligationDetail) -> String {
         if let title = detail.title, !title.isEmpty {
@@ -523,14 +484,6 @@ public struct ObligationDetailView: View {
     // R.10.H — statusLabel/statusColor eliminados. RuulStatusBadge.State.obligation
     // ya cubre el mapeo canónico de status → label + tint.
 
-}
-
-// MARK: - R.5W.P1 Próximamente alert
-
-private struct ComingSoonAction: Identifiable {
-    let key: String
-    let label: String
-    var id: String { key }
 }
 
 /// R.7.x — wrapper Identifiable para presentar `DecisionDetailView` via `.sheet(item:)`.

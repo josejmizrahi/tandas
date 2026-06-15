@@ -175,4 +175,84 @@ public enum ActionRouter {
         default:                     return nil
         }
     }
+
+    /// R.13.B (founder lock 2026-06-16: "nada que no tenga que estar") —
+    /// whitelist global de `action_key`s que algún handler iOS sabe ejecutar.
+    /// Las DetailViews que renderean `availableActions[]` del descriptor
+    /// FILTRAN por esta whitelist; lo que no esté aquí no se muestra como
+    /// botón. Antes algunos detail views mostraban el button y disparaban un
+    /// alert "Próximamente" cuando el handler no existía: doctrina derogada
+    /// 2026-06-16 — esconder en vez de mostrar honestidad falsa.
+    ///
+    /// Mantener sincronizada con los handlers de cada feature
+    /// (ObligationDetailView.handleObligationAction, ContextDetailV2 quickAction,
+    /// ResourceDetailV2Actions, DecisionDetailView toolbar, etc.).
+    public static let knownActionKeys: Set<String> = [
+        // Context-level
+        "create_resource",
+        "create_event",
+        "create_decision",
+        "invite_member",
+        "create_rule",
+        "create_child_context",
+        "archive_context",
+
+        // Money
+        "record_expense",
+        "record_fine",
+        "record_game_result",
+
+        // Event lifecycle
+        "rsvp_event",
+        "check_in_participant",
+        "cancel_participation",
+        "close_event",
+        "attach_document",
+        "add_event_participants",
+        "remove_event_participants",
+        "host_confirm_participant",
+        "set_event_participant_plus_one",
+        "set_event_participant_plus_count",
+        "update_calendar_event",
+        "add_event_guest",
+        "remove_event_guest",
+
+        // Resource lifecycle
+        "reserve_resource",
+        "edit_resource",
+        "archive_resource",
+        "transfer_resource",
+        "grant_right",
+        "revoke_right",
+
+        // Decision
+        "vote",
+        "change_vote",
+        "close_decision",
+        "cancel_decision",
+        "execute_decision",
+
+        // Reservation
+        "approve",
+        "confirm",
+        "cancel",
+        "resolve_conflict",
+
+        // Obligation (handler en ObligationDetailView.handleObligationAction)
+        "mark_completed",
+        "edit_obligation",
+        "forgive",
+
+        // Rule
+        "archive_rule",
+
+        // Document (Documents V2)
+        "archive_document"
+    ]
+
+    /// Helper conveniente: `true` si el actionKey tiene handler iOS en alguna
+    /// vista. Las vistas filtran `availableActions` con esto.
+    public static func isWired(_ actionKey: String) -> Bool {
+        knownActionKeys.contains(actionKey)
+    }
 }
