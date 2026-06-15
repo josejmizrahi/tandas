@@ -246,6 +246,10 @@ public struct ObligationDetailView: View {
                 }
             }
 
+            if shouldShowSettlePath(detail) {
+                settlePathSection
+            }
+
             // R.5V.X 2026-06-08 — acciones movidas al "+" Menu del toolbar
             // (founder option B, Apple Wallet pattern). El body solo describe.
 
@@ -260,6 +264,42 @@ public struct ObligationDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    /// FE.2 (doctrina founder 2026-06-11) — el pago de obligaciones money fluye
+    /// por el settlement canónico (`generate_settlement_batch` +
+    /// `mark_settlement_paid`); un `pay_obligation` directo duplicaría esa vía.
+    /// Mostramos la ruta canónica desde el detalle cuando el caller es el deudor
+    /// de una obligación money activa, para que no quede confundido buscando un
+    /// botón "Pagar" inexistente.
+    private func shouldShowSettlePath(_ detail: ObligationDetail) -> Bool {
+        guard detail.kind == "money" else { return false }
+        guard ["open", "accepted", "in_progress"].contains(detail.status) else { return false }
+        guard let me = container.currentActorStore.actorId else { return false }
+        return me == detail.debtorActorId
+    }
+
+    @ViewBuilder
+    private var settlePathSection: some View {
+        Section {
+            Label {
+                Text("Esta deuda se salda en el neteo del espacio. Liquidaciones suma todo lo que debes a cada miembro y lo cierra junto.")
+                    .font(.callout)
+                    .foregroundStyle(Theme.Text.primary)
+            } icon: {
+                Image(systemName: "scalemass")
+                    .foregroundStyle(Theme.Tint.info)
+            }
+            Button {
+                dismiss()
+            } label: {
+                Label("Ir a Dinero", systemImage: "arrow.right.circle.fill")
+            }
+        } header: {
+            Text("¿Cómo se salda?")
+        } footer: {
+            Text("Pronto vas a poder iniciar el neteo desde aquí mismo.")
+        }
     }
 
     private func loadWhy() async {
