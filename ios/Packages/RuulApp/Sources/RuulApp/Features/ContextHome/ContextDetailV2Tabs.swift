@@ -148,47 +148,34 @@ struct ContextDetailV2PeopleTab: View {
     let context: AppContext
     let container: DependencyContainer
 
+    /// R.10.E.1 — máximo de avatars visibles antes del "+N" overflow.
+    private let maxVisibleAvatars = 6
+
     var body: some View {
         let d = descriptor
         Section {
             if d.membersPreview.isEmpty {
-                Label("Sin miembros para mostrar", systemImage: "person.2")
-                    .foregroundStyle(Theme.Text.secondary)
-            } else {
-                ForEach(d.membersPreview) { m in
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(Theme.Tint.primary.opacity(0.15))
-                            .frame(width: 36, height: 36)
-                            .overlay(
-                                Text(m.displayName.first.map { String($0) } ?? "?")
-                                    .font(.subheadline.bold())
-                                    .foregroundStyle(Theme.Tint.primary)
-                            )
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(m.displayName)
-                                .font(.callout.weight(.medium))
-                                .foregroundStyle(Theme.Text.primary)
-                            Text(membershipTypeLabel(m.membershipType))
-                                .font(.caption)
-                                .foregroundStyle(Theme.Text.secondary)
-                        }
-                        Spacer()
-                    }
-                }
                 NavigationLink {
                     MembersListView(context: context, container: container)
                 } label: {
-                    Label(
-                        d.metrics.memberCount > d.membersPreview.count
-                            ? "Ver todos los miembros (\(d.metrics.memberCount))"
-                            : "Ver detalle de miembros",
-                        systemImage: "person.3.fill"
-                    )
+                    Label("Invitar a la primera persona", systemImage: "person.crop.circle.badge.plus")
+                        .foregroundStyle(Theme.Tint.primary)
+                }
+            } else {
+                // R.10.E.1 — Apple Messages/FaceTime group header: avatars
+                // solapados + overflow "+N" + tap a la lista completa.
+                NavigationLink {
+                    MembersListView(context: context, container: container)
+                } label: {
+                    avatarsRow(d.membersPreview, totalCount: d.metrics.memberCount)
                 }
             }
         } header: {
-            Text("Miembros (\(d.metrics.memberCount))")
+            Text("Miembros")
+        } footer: {
+            if !d.membersPreview.isEmpty {
+                Text(memberCountLabel(d.metrics.memberCount))
+            }
         }
 
         if !d.roles.isEmpty {
@@ -235,6 +222,57 @@ struct ContextDetailV2PeopleTab: View {
         if k.contains("guest") || k.contains("viewer") { return "eye.fill" }
         if k.contains("treasurer") || k.contains("financ") { return "creditcard.fill" }
         return "person.badge.shield.checkmark.fill"
+    }
+
+    // MARK: - R.10.E.1 helpers (avatars row)
+
+    @ViewBuilder
+    private func avatarsRow(_ members: [ContextMemberPreview], totalCount: Int) -> some View {
+        let visible = Array(members.prefix(maxVisibleAvatars))
+        let overflow = max(0, totalCount - visible.count)
+        HStack(spacing: -12) {
+            ForEach(visible) { m in
+                avatarCircle(initial: m.displayName.first.map { String($0) } ?? "?")
+            }
+            if overflow > 0 {
+                overflowCircle(overflow)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func avatarCircle(initial: String) -> some View {
+        Circle()
+            .fill(Theme.Tint.primary.opacity(0.15))
+            .frame(width: 36, height: 36)
+            .overlay {
+                Text(initial)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Theme.Tint.primary)
+            }
+            .overlay {
+                Circle().stroke(Color(.systemBackground), lineWidth: 2)
+            }
+    }
+
+    @ViewBuilder
+    private func overflowCircle(_ count: Int) -> some View {
+        Circle()
+            .fill(Theme.Text.secondary.opacity(0.15))
+            .frame(width: 36, height: 36)
+            .overlay {
+                Text("+\(count)")
+                    .font(.caption.bold().monospacedDigit())
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+            .overlay {
+                Circle().stroke(Color(.systemBackground), lineWidth: 2)
+            }
+    }
+
+    private func memberCountLabel(_ n: Int) -> String {
+        n == 1 ? "1 miembro" : "\(n) miembros"
     }
 }
 
