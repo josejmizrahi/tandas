@@ -16,27 +16,20 @@ struct ContextDetailV2PersonalSpace: View {
 
     var body: some View {
         List {
-            // Hero
+            // R.11.J — Hero canonical (RuulDetailHero) consistente con
+            // ContextsListView Mi espacio (R.11.F) y el resto de Detail Views.
             Section {
-                HStack(spacing: 14) {
-                    Image(systemName: context.symbolName)
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(Theme.Tint.primary)
-                        .frame(width: 56, height: 56)
-                        .background(Theme.Tint.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Mi espacio")
-                            .font(.title3.bold())
-                            .foregroundStyle(Theme.Text.primary)
-                        Text("Tu actividad, recursos y compromisos")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.Text.secondary)
-                    }
-                    Spacer(minLength: 0)
-                }
+                RuulDetailHero(
+                    title: "Mi espacio",
+                    subtitle: "Tu actividad, recursos y compromisos",
+                    systemImage: context.symbolName,
+                    tint: Theme.Tint.primary,
+                    status: nil,
+                    chips: []
+                )
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
 
             // Attention items para el actor personal (filtrados por contextActorId == personal actor).
