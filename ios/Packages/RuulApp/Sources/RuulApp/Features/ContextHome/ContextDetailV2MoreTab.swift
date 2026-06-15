@@ -10,81 +10,40 @@ struct ContextDetailV2MoreTab: View {
     let context: AppContext
     let container: DependencyContainer
 
-    // P0.2 — revocar códigos de invitación. El descriptor se recarga con el
-    // ciclo normal del padre; aquí ocultamos el row revocado al instante.
-    @State private var revokedInviteIds: Set<UUID> = []
-    @State private var inviteToRevoke: ContextInvitePreview?
-    @State private var revokeRunner = ActionRunner()
-
-    private var canRevokeInvites: Bool {
-        descriptor.permissions.contains("context.invite")
-    }
+    // R.10.E.2 D3 (founder firmado 2026-06-14) — la lista expandida de
+    // invitaciones (full row + envelope frame + monospaced code + usage +
+    // expiry + swipe-to-revoke + confirmationDialog) ocupaba demasiado
+    // espacio. Ahora se colapsa a UN row con conteo, drill-down a
+    // `InviteMembersView` donde vive el flujo de generación + revoke
+    // (UN solo lugar para gestionar códigos del espacio).
 
     var body: some View {
         let d = descriptor
-        let activeInvites = d.pendingInvitationsPreview.filter { !revokedInviteIds.contains($0.inviteId) }
-        if !activeInvites.isEmpty {
+        let activeCount = d.pendingInvitationsPreview.count
+        if activeCount > 0 {
             Section {
-                ForEach(activeInvites) { inv in
-                    HStack(spacing: 12) {
+                NavigationLink {
+                    InviteMembersView(
+                        context: context,
+                        store: MembersStore(rpc: container.rpc),
+                        container: container
+                    )
+                } label: {
+                    Label {
+                        HStack {
+                            Text("Invitaciones activas")
+                                .foregroundStyle(Theme.Text.primary)
+                            Spacer()
+                            Text("\(activeCount)")
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(Theme.Text.secondary)
+                        }
+                    } icon: {
                         Image(systemName: "envelope.fill")
                             .foregroundStyle(Theme.Tint.info)
-                            .frame(width: 22)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(inv.code)
-                                .font(.system(.callout, design: .monospaced).weight(.semibold))
-                                .foregroundStyle(Theme.Text.primary)
-                            Text(inviteUsageLabel(inv))
-                                .font(.caption2)
-                                .foregroundStyle(Theme.Text.tertiary)
-                        }
-                        Spacer()
-                        if let exp = inv.expiresAt {
-                            Text(exp.formatted(date: .abbreviated, time: .omitted))
-                                .font(.caption2)
-                                .foregroundStyle(Theme.Text.tertiary)
-                        }
                     }
-                    .swipeActions(edge: .trailing) {
-                        if canRevokeInvites {
-                            Button(role: .destructive) {
-                                inviteToRevoke = inv
-                            } label: {
-                                Label("Revocar", systemImage: "xmark.circle")
-                            }
-                        }
-                    }
-                }
-            } header: {
-                Text("Invitaciones activas (\(activeInvites.count))")
-            } footer: {
-                if canRevokeInvites {
-                    Text("Desliza un código para revocarlo. Un código revocado deja de funcionar al instante.")
                 }
             }
-            .confirmationDialog(
-                "¿Revocar el código \(inviteToRevoke?.code ?? "")?",
-                isPresented: Binding(
-                    get: { inviteToRevoke != nil },
-                    set: { if !$0 { inviteToRevoke = nil } }
-                ),
-                titleVisibility: .visible
-            ) {
-                Button("Revocar código", role: .destructive) {
-                    guard let invite = inviteToRevoke else { return }
-                    inviteToRevoke = nil
-                    Task {
-                        let ok = await revokeRunner.run {
-                            try await container.rpc.revokeInvite(inviteId: invite.inviteId)
-                        }
-                        if ok { revokedInviteIds.insert(invite.inviteId) }
-                    }
-                }
-                Button("Cancelar", role: .cancel) { inviteToRevoke = nil }
-            } message: {
-                Text("Nadie podrá unirse con este código. Los miembros que ya entraron no se ven afectados.")
-            }
-            .actionErrorAlert(revokeRunner)
         }
 
         let moreSections = d.sections.filter {
@@ -123,30 +82,10 @@ struct ContextDetailV2MoreTab: View {
             }
         }
 
-        if !d.permissions.isEmpty {
-            Section {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(d.permissions, id: \.self) { p in
-                            chipBadge(p, tint: .purple)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-            } header: {
-                Text("Mis permisos (\(d.permissions.count))")
-            }
-        }
-    }
-
-    private func inviteUsageLabel(_ inv: ContextInvitePreview) -> String {
-        if let max = inv.maxUses {
-            return "\(inv.usedCount) / \(max) usos"
-        }
-        return "\(inv.usedCount) usos · ilimitado"
+        // R.10.E.2 D4 (founder firmado 2026-06-14) — Section "Mis permisos"
+        // eliminada. Los strings raw (context.invite, context.manage, etc.)
+        // son leakage técnico: los permisos ya gatean la UI implícitamente.
+        // Para debug viven en ContextSettingsView.
     }
 
     @ViewBuilder
@@ -161,15 +100,4 @@ struct ContextDetailV2MoreTab: View {
         }
     }
 
-    // MARK: - Chips (helper compartido)
-
-    @ViewBuilder
-    private func chipBadge(_ text: String, tint: Color) -> some View {
-        Text(text)
-            .font(.caption)
-            .foregroundStyle(tint)
-            .padding(.horizontal, Theme.Spacing.sm)
-            .padding(.vertical, 2)
-            .background(tint.opacity(0.15), in: Capsule())
-    }
 }

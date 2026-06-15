@@ -78,28 +78,19 @@ struct ContextDetailV2GovernanceTab: View {
     let descriptor: ContextDetailDescriptor
     let context: AppContext
     let container: DependencyContainer
-    @Binding var pushedActionDestination: ContextDetailViewV2.QuickActionPush?
+
+    // R.10.E.2 D5+D6 (founder firmado 2026-06-14):
+    //   D5 — Section "Gobierno del espacio" eliminada. Sus 2 drill-downs
+    //        ("Ver todas las decisiones", "Ver reglas del grupo") ya viven
+    //        en el toolbar `+` Menu via descriptor.actions (sections
+    //        governance/rules) y en el More tab. Duplicado innecesario.
+    //   D6 — Empty state "Sin decisiones abiertas" eliminado. Cuando no hay
+    //        decisiones, ocultar la Section completa — espacio limpio
+    //        comunica "no pasa nada que requiera tu voto" mejor que un row
+    //        gris.
 
     var body: some View {
         let d = descriptor
-        Section {
-            Button {
-                pushedActionDestination = .decisions
-            } label: {
-                Label("Ver todas las decisiones", systemImage: "checkmark.bubble.fill")
-            }
-            Button {
-                pushedActionDestination = .rules
-            } label: {
-                Label("Ver reglas del grupo", systemImage: "ruler.fill")
-            }
-        } header: {
-            Text("Gobierno del espacio")
-        } footer: {
-            Text("Decidan juntos: votos para temas grupales, reglas para convivir bien.")
-        }
-
-        // Decisiones abiertas del descriptor preview.
         if !d.decisionsPreview.isEmpty {
             Section {
                 ForEach(d.decisionsPreview) { dec in
@@ -122,13 +113,6 @@ struct ContextDetailV2GovernanceTab: View {
                         }
                     }
                 }
-            } header: {
-                Text("Decisiones abiertas")
-            }
-        } else {
-            Section {
-                Label("Sin decisiones abiertas", systemImage: "checkmark.circle")
-                    .foregroundStyle(Theme.Text.secondary)
             } header: {
                 Text("Decisiones abiertas")
             }
@@ -174,55 +158,21 @@ struct ContextDetailV2PeopleTab: View {
             Text("Miembros")
         } footer: {
             if !d.membersPreview.isEmpty {
-                Text(memberCountLabel(d.metrics.memberCount))
+                Text(memberCountLabel(total: d.metrics.memberCount, roles: d.roles))
             }
         }
 
-        if !d.roles.isEmpty {
-            Section {
-                ForEach(d.roles) { role in
-                    LabeledContent {
-                        Text("\(role.memberCount)")
-                            .font(.callout.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(Theme.Text.primary)
-                    } label: {
-                        Label(role.displayName, systemImage: roleIcon(role.roleKey))
-                    }
-                }
-            } header: {
-                Text("Roles")
-            } footer: {
-                Text("Los roles se asignan desde el detalle de cada miembro.")
-            }
-        }
-
-        // Fase 9.7 — la sección "Subespacios" interna se eliminó porque
-        // `unifiedSections` ya renderiza `ContextDetailV2ChildrenSection` al
-        // final de la lista. Mantenerla aquí duplicaba la lista de hijos.
+        // R.10.E.2 D2 (founder firmado 2026-06-14) — Section "Roles" eliminada
+        // del ContextDetail. Los roles se asignan desde MemberDetailView; el
+        // recuento por rol ahora vive en el footer compacto de "Miembros".
+        //
+        // Fase 9.7 — la sección "Subespacios" interna también está eliminada
+        // (la renderiza `unifiedSections` al final de la lista).
     }
 
-    /// Friendly label para membership_type del descriptor.
-    private func membershipTypeLabel(_ type: String) -> String {
-        switch type {
-        case "member":   return "Miembro"
-        case "admin":    return "Administrador"
-        case "founder":  return "Fundador"
-        case "guest":    return "Invitado"
-        case "viewer":   return "Observador"
-        default:         return type.replacingOccurrences(of: "_", with: " ").capitalized
-        }
-    }
-
-    /// SF Symbol per role_key. Heurística por keyword.
-    private func roleIcon(_ roleKey: String) -> String {
-        let k = roleKey.lowercased()
-        if k.contains("founder") || k.contains("owner") { return "crown.fill" }
-        if k.contains("admin") { return "person.badge.key.fill" }
-        if k.contains("manager") || k.contains("custodian") { return "key.fill" }
-        if k.contains("guest") || k.contains("viewer") { return "eye.fill" }
-        if k.contains("treasurer") || k.contains("financ") { return "creditcard.fill" }
-        return "person.badge.shield.checkmark.fill"
-    }
+    // R.10.E.2 D2 — `membershipTypeLabel` y `roleIcon` eliminados: el
+    // primero servía a rows de miembros que ya no existen (E.1 avatars row);
+    // el segundo a la Section "Roles" que también desapareció en D2.
 
     // MARK: - R.10.E.1 helpers (avatars row)
 
@@ -271,8 +221,28 @@ struct ContextDetailV2PeopleTab: View {
             }
     }
 
-    private func memberCountLabel(_ n: Int) -> String {
-        n == 1 ? "1 miembro" : "\(n) miembros"
+    /// R.10.E.2 D2 — footer compacto: "N miembros · 2 admins · 1 fundador".
+    /// Compone el total + breakdown por roles con `member_count > 0`,
+    /// excluyendo los plurales triviales (member/miembro genérico).
+    private func memberCountLabel(total: Int, roles: [ContextRole]) -> String {
+        let base = total == 1 ? "1 miembro" : "\(total) miembros"
+        let breakdown = roles
+            .filter { $0.memberCount > 0 }
+            .filter { $0.roleKey.lowercased() != "member" }
+            .sorted { $0.memberCount > $1.memberCount }
+            .map { "\($0.memberCount) \(roleSummaryLabel($0))" }
+        return ([base] + breakdown).joined(separator: " · ")
+    }
+
+    /// Mini-label en plural-implicit para el footer (lower-case, sin sufijo).
+    private func roleSummaryLabel(_ role: ContextRole) -> String {
+        let k = role.roleKey.lowercased()
+        if k.contains("founder") || k.contains("owner") { return role.memberCount == 1 ? "fundador" : "fundadores" }
+        if k.contains("admin") { return role.memberCount == 1 ? "admin" : "admins" }
+        if k.contains("treasurer") || k.contains("financ") { return role.memberCount == 1 ? "tesorero" : "tesoreros" }
+        if k.contains("guest") || k.contains("viewer") { return role.memberCount == 1 ? "invitado" : "invitados" }
+        if k.contains("manager") || k.contains("custodian") { return role.memberCount == 1 ? "responsable" : "responsables" }
+        return role.displayName.lowercased()
     }
 }
 
@@ -292,13 +262,19 @@ struct ContextDetailV2ResourcesTab: View {
     @ViewBuilder
     private func resourcesContent(_ d: ContextDetailDescriptor) -> some View {
         if d.resourcesPreview.isEmpty {
+            // R.10.E.2 D7 (founder firmado 2026-06-14) — empty state activo:
+            // CTA NavigationLink → ResourcesListView (donde vive el toolbar
+            // "+" para crear el primer recurso). Antes era un row pasivo con
+            // copy instructional "desde el botón ＋ del toolbar".
             Section {
-                Label("Sin recursos en este contexto", systemImage: "shippingbox")
-                    .foregroundStyle(Theme.Text.secondary)
+                NavigationLink {
+                    ResourcesListView(context: context, container: container)
+                } label: {
+                    Label("Crear el primer recurso", systemImage: "shippingbox.fill")
+                        .foregroundStyle(Theme.Tint.primary)
+                }
             } header: {
                 Text("Recursos")
-            } footer: {
-                Text("Crea un recurso desde el botón ＋ del toolbar del espacio.")
             }
         } else {
             // R.5A.B.0 class catalog (founder-seeded 17 classes). Header label

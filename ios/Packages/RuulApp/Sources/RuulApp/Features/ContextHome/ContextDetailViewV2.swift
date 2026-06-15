@@ -48,9 +48,6 @@ public struct ContextDetailViewV2: View {
     @State private var isResolvingContextConflict = false
     /// P0 fix 2026-06-08 — sheet de ContextSettings desde el toolbar ellipsis.
     @State private var isShowingSettings = false
-    /// R.5Z.fix.6 (founder feedback 2026-06-09) — Money tab CTAs primarias.
-    @State private var isShowingRecordExpense = false
-    @State private var isShowingCreateObligation = false
 
     enum QuickActionPush: Hashable, Identifiable {
         case resources, events, decisions, money, members, rules
@@ -163,23 +160,10 @@ public struct ContextDetailViewV2: View {
         .sheet(isPresented: $isShowingSettings) {
             ContextSettingsView(context: context, container: container)
         }
-        // R.5Z.fix.6 — Money tab CTAs primarias (founder 2026-06-09).
-        .sheet(isPresented: $isShowingRecordExpense, onDismiss: {
-            Task { await store.load(contextId: contextId) }
-        }) {
-            NavigationStack {
-                RecordExpenseView(
-                    context: context,
-                    store: MoneyStore(rpc: container.rpc, myActorId: container.currentActorStore.actorId),
-                    container: container
-                )
-            }
-        }
-        .sheet(isPresented: $isShowingCreateObligation, onDismiss: {
-            Task { await store.load(contextId: contextId) }
-        }) {
-            CreateObligationView(context: context, container: container)
-        }
+        // R.10.E.2 D1 (founder firmado 2026-06-14) — sheets de RecordExpense/
+        // CreateObligation eliminadas del cuerpo del ContextDetail.
+        // Acceso vía toolbar `+` → descriptor.actions section "money",
+        // navega a MoneyHomeView donde se abren los flujos.
         .modifier(ContextConflictsModifier(
             pendingConflict: $pendingContextConflict,
             isShowingDialog: $isShowingContextConflictDialog,
@@ -275,8 +259,7 @@ public struct ContextDetailViewV2: View {
             ContextDetailV2GovernanceTab(
                 descriptor: d,
                 context: context,
-                container: container,
-                pushedActionDestination: $pushedActionDestination
+                container: container
             )
         }
         // Money tab inline (balance + obligaciones + settlements + history).
@@ -284,9 +267,7 @@ public struct ContextDetailViewV2: View {
             ContextDetailV2MoneyTab(
                 descriptor: d,
                 context: context,
-                container: container,
-                isShowingRecordExpense: $isShowingRecordExpense,
-                isShowingCreateObligation: $isShowingCreateObligation
+                container: container
             )
         }
         // Subespacios.

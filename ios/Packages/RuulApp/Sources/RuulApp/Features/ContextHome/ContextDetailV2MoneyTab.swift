@@ -7,28 +7,24 @@ struct ContextDetailV2MoneyTab: View {
     let descriptor: ContextDetailDescriptor
     let context: AppContext
     let container: DependencyContainer
-    @Binding var isShowingRecordExpense: Bool
-    @Binding var isShowingCreateObligation: Bool
 
     var body: some View {
         let d = descriptor
-        // R.5Z.fix.6 (founder firmado 2026-06-09) — antes solo se veía
-        // "Liquidaciones abiertas: 0" en contexto vacío. Ahora:
-        //  - Empty state honesto con 2 CTAs primarias.
-        //  - Cuando hay actividad: balance + acciones + obligaciones + (settlements si > 0).
-        //  - Settlements section solo si `openSettlements > 0` (no más row inert).
+        // R.10.E.2 D1 (founder firmado 2026-06-14) — eliminada la Section
+        // "Acciones rápidas" del body (estaba renderizada DOS VECES y
+        // duplicaba lo que el toolbar `+` ya expone via descriptor.actions
+        // del section `money`). Doctrina ResourceDetail option B: el detalle
+        // muestra info, el toolbar expone acciones.
         let isEmpty = d.moneyPreview.myBalanceByCurrency.isEmpty
             && d.moneyPreview.openSettlements == 0
             && d.obligationsPreview.isEmpty
 
         if isEmpty {
             moneyEmptyHero
-            moneyQuickActionsSection
         } else {
             if !d.moneyPreview.myBalanceByCurrency.isEmpty {
                 moneyBalanceSection(d.moneyPreview.myBalanceByCurrency)
             }
-            moneyQuickActionsSection
             if !d.obligationsPreview.isEmpty {
                 moneyObligationsSection(d.obligationsPreview)
             }
@@ -81,24 +77,6 @@ struct ContextDetailV2MoneyTab: View {
             Text("Mi saldo")
         } footer: {
             Text("Saldo positivo = te deben. Saldo negativo = debes.")
-        }
-    }
-
-    @ViewBuilder
-    private var moneyQuickActionsSection: some View {
-        Section {
-            Button {
-                isShowingRecordExpense = true
-            } label: {
-                Label("Registrar gasto", systemImage: "plus.circle.fill")
-            }
-            Button {
-                isShowingCreateObligation = true
-            } label: {
-                Label("Asignar compromiso", systemImage: "checklist")
-            }
-        } header: {
-            Text("Acciones rápidas")
         }
     }
 
