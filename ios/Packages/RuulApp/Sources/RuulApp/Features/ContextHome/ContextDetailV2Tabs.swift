@@ -1,121 +1,66 @@
 import SwiftUI
 import RuulCore
 
-// MARK: - Events tab (R.5Z.fix.CONTEXT.TABS)
-
-struct ContextDetailV2EventsTab: View {
-    let descriptor: ContextDetailDescriptor
-    let context: AppContext
-    let container: DependencyContainer
-    @Binding var pushedActionDestination: ContextDetailViewV2.QuickActionPush?
-
-    var body: some View {
-        let d = descriptor
-        // Quick actions arriba: crear evento + ver calendario.
-        Section {
-            Button {
-                pushedActionDestination = .events
-            } label: {
-                Label("Ver todos los eventos", systemImage: "list.bullet.rectangle")
-            }
-            NavigationLink {
-                ContextCalendarView(context: context, container: container)
-            } label: {
-                Label("Calendario", systemImage: "calendar")
-            }
-        } header: {
-            Text("Eventos del espacio")
-        } footer: {
-            Text("Los gastos del evento se reparten entre los confirmados con sus partes.")
-        }
-
-        // Eventos próximos del descriptor preview.
-        if !d.eventsPreview.isEmpty {
-            Section {
-                ForEach(d.eventsPreview) { ev in
-                    NavigationLink {
-                        EventDetailView(eventId: ev.eventId, context: context, container: container)
-                    } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(ev.title)
-                                    .font(.callout.weight(.medium))
-                                    .foregroundStyle(Theme.Text.primary)
-                                    .lineLimit(1)
-                                if let starts = ev.startsAt {
-                                    Text(starts.formatted(date: .abbreviated, time: .shortened))
-                                        .font(.caption)
-                                        .foregroundStyle(Theme.Text.secondary)
-                                }
-                            }
-                        } icon: {
-                            Image(systemName: "calendar.badge.clock")
-                                .foregroundStyle(Theme.Tint.primary)
-                        }
-                    }
-                }
-            } header: {
-                Text("Próximos")
-            }
-        } else {
-            Section {
-                Label("Sin eventos próximos", systemImage: "calendar")
-                    .foregroundStyle(Theme.Text.secondary)
-            }
-        }
-
-        // Fase 9.7 — "Eventos en subespacios" eliminada (redundante con
-        // ChildrenSection global en `unifiedSections`).
-    }
-}
-
-// MARK: - Governance tab (R.5Z.fix.CONTEXT.TABS)
+// MARK: - Governance tab (R.10.E.4 — consolidado "Gobierno")
 //
-// Tab que un grupo de amigos necesita para organizarse: decisiones
-// abiertas para votar + reglas vigentes + atajo para crear propuesta.
+// R.10.E.4 (founder firmado 2026-06-14): UNA Section "Gobierno" que agrupa
+// los dos surfaces de gobernanza del modelo Ruul (decisiones explícitas +
+// reglas automáticas). Antes: sólo "Decisiones abiertas" cuando había, sin
+// drill a reglas. Ahora: preview de decisiones abiertas + drill a la lista
+// completa + drill a reglas, todo en una sola card.
+//
+// Doctrina: Apple HIG — una Section agrupa contenido relacionado del mismo
+// dominio. Gobierno = decisiones + reglas (CLAUDE.md domain doctrine).
+//
+// Nota histórica: `ContextDetailV2EventsTab` (dead code post-tabs removal
+// en Fase 9.6) eliminado en este slice — los eventos ahora viven en
+// `ContextDetailV2EventsSection` consolidada en OverviewBlocks.swift.
 
 struct ContextDetailV2GovernanceTab: View {
     let descriptor: ContextDetailDescriptor
     let context: AppContext
     let container: DependencyContainer
 
-    // R.10.E.2 D5+D6 (founder firmado 2026-06-14):
-    //   D5 — Section "Gobierno del espacio" eliminada. Sus 2 drill-downs
-    //        ("Ver todas las decisiones", "Ver reglas del grupo") ya viven
-    //        en el toolbar `+` Menu via descriptor.actions (sections
-    //        governance/rules) y en el More tab. Duplicado innecesario.
-    //   D6 — Empty state "Sin decisiones abiertas" eliminado. Cuando no hay
-    //        decisiones, ocultar la Section completa — espacio limpio
-    //        comunica "no pasa nada que requiera tu voto" mejor que un row
-    //        gris.
-
     var body: some View {
         let d = descriptor
-        if !d.decisionsPreview.isEmpty {
-            Section {
-                ForEach(d.decisionsPreview) { dec in
-                    NavigationLink {
-                        DecisionDetailView(decisionId: dec.decisionId, context: context, container: container)
-                    } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(dec.title)
-                                    .font(.callout.weight(.medium))
-                                    .foregroundStyle(Theme.Text.primary)
-                                    .lineLimit(1)
-                                Text("Decisión abierta · tu voto cuenta")
-                                    .font(.caption)
-                                    .foregroundStyle(Theme.Tint.warning)
-                            }
-                        } icon: {
-                            Image(systemName: "checkmark.bubble.fill")
+        Section {
+            // Decisiones abiertas preview (rich rows, max 3).
+            ForEach(d.decisionsPreview.prefix(3)) { dec in
+                NavigationLink {
+                    DecisionDetailView(decisionId: dec.decisionId, context: context, container: container)
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(dec.title)
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                                .lineLimit(1)
+                            Text("Decisión abierta · tu voto cuenta")
+                                .font(.caption)
                                 .foregroundStyle(Theme.Tint.warning)
                         }
+                    } icon: {
+                        Image(systemName: "checkmark.bubble.fill")
+                            .foregroundStyle(Theme.Tint.warning)
                     }
                 }
-            } header: {
-                Text("Decisiones abiertas")
             }
+
+            // Drill a todas las decisiones (siempre disponible).
+            NavigationLink {
+                DecisionsListView(context: context, container: container)
+            } label: {
+                Label("Ver todas las decisiones", systemImage: "checkmark.bubble.fill")
+            }
+
+            // Drill a reglas del espacio (siempre disponible).
+            NavigationLink {
+                RulesListView(context: context, container: container)
+            } label: {
+                Label("Reglas del espacio", systemImage: "ruler.fill")
+            }
+        } header: {
+            Text("Gobierno")
         }
     }
 }

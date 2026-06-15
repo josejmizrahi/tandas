@@ -1,62 +1,60 @@
 import SwiftUI
 import RuulCore
 
-// MARK: - Resumen rápido (Fase 9.3 — combinado próximo evento + balance)
+// MARK: - Eventos consolidado (R.10.E.4, founder firmado 2026-06-14)
 //
-// Founder feedback 2026-06-14: antes había 2 sections separadas con
-// header "Próximo evento" + "Mi balance", cada una con 1 row + mucho aire
-// vertical entre ellas. Consolidado en una sola section "Resumen rápido"
-// para reducir spacing desperdiciado en pantallas con poca actividad.
+// Antes había 2 surfaces en cascada:
+//   - `QuickSummarySection` mostraba balance + "Ver próximos eventos" cuando
+//     hasBalance. Duplicaba el balance que MoneyTab (E.3) ya renderiza.
+//   - `NextEventSection` mostraba sólo "Ver próximos eventos" como fallback
+//     cuando no había balance pero sí hasNextEventWidget.
+// Ahora UNA sola Section "Eventos" con preview de upcoming + drill al
+// calendario + drill a la lista completa. El balance vive sólo en MoneyTab.
 
-struct ContextDetailV2QuickSummarySection: View {
-    let money: ContextMoneyPreview
+struct ContextDetailV2EventsSection: View {
+    let descriptor: ContextDetailDescriptor
     let context: AppContext
     let container: DependencyContainer
 
     var body: some View {
+        let d = descriptor
         Section {
-            // Balance rows (1 por moneda).
-            ForEach(money.myBalanceByCurrency.sorted(by: { $0.key < $1.key }), id: \.key) { (currency, net) in
+            // Próximos eventos preview (rich rows con title + fecha).
+            ForEach(d.eventsPreview.prefix(3)) { ev in
                 NavigationLink {
-                    MoneyHomeView(context: context, container: container)
+                    EventDetailView(eventId: ev.eventId, context: context, container: container)
                 } label: {
-                    LabeledContent {
-                        Text(net.compactCurrencyLabel(currency))
-                            .font(.callout.bold().monospacedDigit())
-                            .foregroundStyle(net >= 0 ? Theme.Tint.success : Theme.Tint.critical)
-                    } label: {
-                        Label(
-                            net >= 0 ? "Te deben" : "Debes",
-                            systemImage: net >= 0 ? "arrow.up.right.circle.fill" : "arrow.down.right.circle.fill"
-                        )
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ev.title)
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Theme.Text.primary)
+                                .lineLimit(1)
+                            if let starts = ev.startsAt {
+                                Text(starts.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.tertiary)
+                            }
+                        }
+                    } icon: {
+                        Image(systemName: "calendar.badge.clock")
+                            .foregroundStyle(Theme.Tint.primary)
                     }
                 }
             }
 
-            // Próximos eventos (link al calendario).
+            // Drill al calendario (siempre disponible).
             NavigationLink {
-                EventsListView(context: context, container: container)
+                ContextCalendarView(context: context, container: container)
             } label: {
-                Label("Ver próximos eventos", systemImage: "calendar")
+                Label("Calendario", systemImage: "calendar")
             }
-        } header: {
-            Text("Resumen rápido")
-        }
-    }
-}
 
-// MARK: - Próximo evento solo (cuando no hay balance — espacios sin dinero)
-
-struct ContextDetailV2NextEventSection: View {
-    let context: AppContext
-    let container: DependencyContainer
-
-    var body: some View {
-        Section {
+            // Drill a la lista completa (siempre disponible).
             NavigationLink {
                 EventsListView(context: context, container: container)
             } label: {
-                Label("Ver próximos eventos", systemImage: "calendar")
+                Label("Ver todos los eventos", systemImage: "list.bullet.rectangle")
             }
         } header: {
             Text("Eventos")

@@ -240,13 +240,13 @@ public struct ContextDetailViewV2: View {
                 container: container
             )
         }
-        // Resumen rápido (balance + próximo evento) cuando aplica.
-        let hasBalance = !d.moneyPreview.myBalanceByCurrency.isEmpty
-        let hasNextEvent = hasNextEventWidget(d.widgets)
-        if hasBalance {
-            ContextDetailV2QuickSummarySection(money: d.moneyPreview, context: context, container: container)
-        } else if hasNextEvent {
-            ContextDetailV2NextEventSection(context: context, container: container)
+        // R.10.E.4 (founder firmado 2026-06-14) — Eventos consolidados:
+        // se eliminó el bloque QuickSummary/NextEvent que duplicaba balance
+        // con MoneyTab (E.3) y mezclaba dominios. Ahora Eventos vive en su
+        // propia Section, mostrada cuando hay eventos preview O cuando el
+        // descriptor anuncia el widget next_event.
+        if !d.eventsPreview.isEmpty || hasNextEventWidget(d.widgets) {
+            ContextDetailV2EventsSection(descriptor: d, context: context, container: container)
         }
         // Personas, recursos, gobernanza — cada uno con su preview + "Ver todos".
         if visibleKeys.contains("people") {
