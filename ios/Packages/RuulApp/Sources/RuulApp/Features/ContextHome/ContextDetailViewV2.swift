@@ -320,52 +320,9 @@ public struct ContextDetailViewV2: View {
     //
     // resumenSection se elimina: las métricas viven en chips del Hero.
 
-    @ViewBuilder
-    private func overviewSections(_ d: ContextDetailDescriptor) -> some View {
-        ContextDetailV2HeroSection(context: context, descriptor: d)
-        ContextDetailV2AttentionSection(
-            items: contextAttentionItems,
-            presentedAttention: $presentedAttention,
-            isShowingAllAttention: $isShowingAllAttention
-        )
-        if d.conflicts.hasOpenConflicts {
-            ContextDetailV2ConflictsSection(
-                summary: d.conflicts,
-                list: conflictsList,
-                contextId: contextId,
-                context: context,
-                container: container,
-                isResolvingContextConflict: isResolvingContextConflict,
-                pendingContextConflict: $pendingContextConflict,
-                isShowingContextConflictDialog: $isShowingContextConflictDialog
-            )
-        }
-        let filteredWidgets = overviewDashboardWidgets(d.widgets, descriptor: d)
-        if !filteredWidgets.isEmpty {
-            ContextDetailV2DashboardSection(
-                widgets: filteredWidgets,
-                descriptor: d,
-                context: context,
-                container: container
-            )
-        }
-        // Fase 9.3 — consolidación: si hay balance Y próximo evento, una
-        // sola section "Resumen rápido" (menos aire vertical entre headers).
-        // Si solo hay próximo evento (sin balance), section "Eventos" sola.
-        let hasBalance = !d.moneyPreview.myBalanceByCurrency.isEmpty
-        let hasNextEvent = hasNextEventWidget(d.widgets)
-        if hasBalance {
-            ContextDetailV2QuickSummarySection(money: d.moneyPreview, context: context, container: container)
-        } else if hasNextEvent {
-            ContextDetailV2NextEventSection(context: context, container: container)
-        }
-        if !d.childContextsPreview.isEmpty {
-            ContextDetailV2ChildrenSection(children: d.childContextsPreview, context: context, container: container)
-        }
-        if !d.activityPreview.isEmpty {
-            ContextDetailV2ActivitySection(events: d.activityPreview, context: context, container: container)
-        }
-    }
+    // Fase 9.7 — overviewSections(_:) eliminada: era código muerto desde
+    // 9.6. `unifiedSections(_:visibleKeys:)` la reemplazó con renderizado
+    // secuencial de todos los dominios.
 
     // MARK: - Widget filtering (R.5V.3A + .fix)
     //

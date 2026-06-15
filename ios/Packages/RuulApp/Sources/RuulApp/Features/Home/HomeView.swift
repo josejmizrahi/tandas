@@ -45,6 +45,8 @@ public struct HomeView: View {
                 toolsSection
             }
             .listStyle(.insetGrouped)
+            // Fase 9.7 — spacing compact consistente con ContextDetailV2.
+            .listSectionSpacing(.compact)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .task {

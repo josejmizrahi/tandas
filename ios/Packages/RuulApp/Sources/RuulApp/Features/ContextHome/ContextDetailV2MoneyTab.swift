@@ -38,40 +38,8 @@ struct ContextDetailV2MoneyTab: View {
             moneyHistoryLinkSection
         }
 
-        // Fase 9 (audit 2026-06-14) — extensión del fix Issue 1 founder.
-        // Antes el tab Dinero del padre solo mostraba dinero directo, sin
-        // pista de que los subespacios tienen su propio dinero. Ahora linkea
-        // a cada subespacio para que el usuario sepa dónde más buscar.
-        if !d.childContextsPreview.isEmpty {
-            childrenMoneySection(d.childContextsPreview)
-        }
-    }
-
-    @ViewBuilder
-    private func childrenMoneySection(_ children: [ContextChildPreview]) -> some View {
-        Section {
-            ForEach(children) { child in
-                let childContext = AppContext(
-                    id: child.id,
-                    kind: ActorKind(rawValue: child.actorKind) ?? .collective,
-                    subtype: child.actorSubtype ?? "other",
-                    displayName: child.displayName
-                )
-                NavigationLink {
-                    ContextDetailViewV2(
-                        contextId: child.id,
-                        context: childContext,
-                        container: container
-                    )
-                } label: {
-                    Label(child.displayName, systemImage: childContext.symbolName)
-                }
-            }
-        } header: {
-            Text("Dinero en subespacios (\(children.count))")
-        } footer: {
-            Text("Cada subespacio tiene su propio dinero, obligaciones y liquidaciones.")
-        }
+        // Fase 9.7 — "Dinero en subespacios" eliminada (redundante con
+        // ChildrenSection global en `unifiedSections`).
     }
 
     @ViewBuilder

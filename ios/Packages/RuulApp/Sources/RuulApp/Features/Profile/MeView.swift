@@ -74,6 +74,8 @@ public struct MeView: View {
                 signOutSection
             }
             .listStyle(.insetGrouped)
+            // Fase 9.7 — spacing compact consistente con ContextDetailV2.
+            .listSectionSpacing(.compact)
             .navigationTitle("Mi mundo")
             .navigationBarTitleDisplayMode(.inline)
             .task {
