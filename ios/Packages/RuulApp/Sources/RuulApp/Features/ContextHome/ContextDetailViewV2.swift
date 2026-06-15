@@ -122,23 +122,13 @@ public struct ContextDetailViewV2: View {
                 }
             }
         }
-        // Fase 9.4 — title del nav vive en ToolbarItem(.principal) cuando hay
-        // tabs (Menu picker). Cuando no (personal o sin descriptor), usamos el
-        // navigationTitle estándar.
-        .navigationTitle(context.isPersonal ? "Mi espacio" : (store.descriptor == nil ? (context.displayName) : ""))
+        // Fase 9.5 (founder feedback iter 4) — el ToolbarItem(.principal) con
+        // VStack 2 líneas seguía siendo truncado por iOS. Vuelvo a
+        // `navigationTitle` plano + Menu picker prominente en safeAreaInset.
+        // Llena el gap entre nav y contenido con info útil (current tab).
+        .navigationTitle(context.isPersonal ? "Mi espacio" : (store.descriptor?.contextDisplayName ?? context.displayName))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // Fase 9.2 — title del nav ES el menu picker de tabs (patrón Apple
-            // Maps: "Mapas Personalizado ▾"). Antes había un chip flotante
-            // "Resumen ▾" en safeAreaInset que se veía encimada sobre el title
-            // real. Ahora el title combina nombre del espacio + tab + chevron.
-            if !context.isPersonal,
-               let availableTabs = store.descriptor.map({ availableTabsFor($0) }),
-               availableTabs.count > 1 {
-                ToolbarItem(placement: .principal) {
-                    contextTitleMenu(availableTabs: availableTabs)
-                }
-            }
             ContextDetailV2Toolbar(
                 context: context,
                 actions: store.descriptor?.actions,
@@ -243,17 +233,25 @@ public struct ContextDetailViewV2: View {
             .listSectionSpacing(.compact)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            // Fase 9.4 — solo aplicamos safeAreaInset cuando hay breadcrumb
-            // real (ancestros). Antes el `if` quedaba con view vacía pero el
-            // modifier ya reservaba espacio, generando aire arriba.
-            if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
-                BreadcrumbView(
-                    context: context,
-                    ancestors: hierarchyStore.ancestors,
-                    contextStore: container.contextStore
-                )
-                .background(.bar)
+            // Fase 9.5 — tab picker pill prominente bajo el nav (no en toolbar).
+            // Llena el gap arriba del contenido con info útil + breadcrumb.
+            VStack(spacing: 0) {
+                if !context.isPersonal && !hierarchyStore.ancestors.isEmpty {
+                    BreadcrumbView(
+                        context: context,
+                        ancestors: hierarchyStore.ancestors,
+                        contextStore: container.contextStore
+                    )
+                }
+                if !context.isPersonal,
+                   let tabs = store.descriptor.map({ availableTabsFor($0) }),
+                   tabs.count > 1 {
+                    tabPickerPill(availableTabs: tabs)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                }
             }
+            .background(.bar)
         }
         .onAppear {
             if !availableTabs.contains(selectedTab), let first = availableTabs.first {
@@ -266,15 +264,13 @@ public struct ContextDetailViewV2: View {
         available.contains(selectedTab) ? selectedTab : (available.first ?? .overview)
     }
 
-    /// Fase 9.4 (founder feedback 2026-06-14) — iOS `inline` mode truncaba el
-    /// HStack horizontal y solo mostraba "Bros ▾". Cambio a `fixedSize` para
-    /// permitir que el HStack se expanda con todo su contenido. Si excede el
-    /// ancho disponible, iOS lo escalará gracefully.
+    /// Fase 9.5 (founder feedback iter 4) — Menu picker como "pill" prominente
+    /// bajo el nav. Reemplaza intentos previos en `ToolbarItem(.principal)` que
+    /// iOS truncaba. El pill ocupa todo el ancho disponible, muestra icono +
+    /// label del current tab + chevron. Tap abre menu nativo con todos los tabs.
     @ViewBuilder
-    private func contextTitleMenu(availableTabs: [Tab]) -> some View {
+    private func tabPickerPill(availableTabs: [Tab]) -> some View {
         let effective = availableTabs.contains(selectedTab) ? selectedTab : (availableTabs.first ?? .overview)
-        let spaceName = store.descriptor?.contextDisplayName ?? context.displayName
-
         Menu {
             Picker("Sección", selection: $selectedTab) {
                 ForEach(availableTabs) { tab in
@@ -282,24 +278,33 @@ public struct ContextDetailViewV2: View {
                 }
             }
         } label: {
-            VStack(alignment: .center, spacing: 1) {
-                Text(spaceName)
-                    .font(.headline)
+            HStack(spacing: 8) {
+                Image(systemName: tabIcon(effective))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                Text(effective.label)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.Text.primary)
-                    .lineLimit(1)
-                HStack(spacing: 3) {
-                    Text(effective.label)
-                        .font(.caption2.weight(.medium))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .bold))
-                }
-                .foregroundStyle(Color.accentColor)
+                Spacer()
+                Text("Cambiar")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.Text.secondary)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.Text.secondary)
             }
-            .fixedSize()
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(
+                Capsule()
+                    .fill(Color.accentColor.badgeFillSubtle)
+            )
+            .contentShape(Capsule())
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(spaceName), sección \(effective.label), tocar para cambiar")
+            .accessibilityLabel("Sección actual \(effective.label), tocar para cambiar")
         }
         .menuStyle(.button)
+        .buttonStyle(.plain)
     }
 
     /// Recomputa qué tabs son visibles dado el descriptor. Necesario fuera del
