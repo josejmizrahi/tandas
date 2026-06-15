@@ -30,22 +30,17 @@ struct ContextDetailV2Toolbar: ToolbarContent {
                 // "ellipsis" (más opciones) en cápsulas Liquid Glass distintas.
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
+            // R.10.E.8 (founder firmado 2026-06-15) — el Menu ellipsis tenía 2
+            // items: "Reglas" (ahora redundante con Section "Reglas del espacio"
+            // del body post-E.5) y "Configuración". Apple HIG: Menu con 1 item
+            // es anti-pattern → reemplazado por botón directo de Configuración.
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        pushedActionDestination = .rules
-                    } label: {
-                        Label("Reglas", systemImage: "ruler.fill")
-                    }
-                    Button {
-                        isShowingSettings = true
-                    } label: {
-                        Label("Configuración", systemImage: "gearshape.fill")
-                    }
+                Button {
+                    isShowingSettings = true
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "gearshape")
                 }
-                .accessibilityLabel("Más opciones del contexto")
+                .accessibilityLabel("Configuración del espacio")
             }
         }
     }
