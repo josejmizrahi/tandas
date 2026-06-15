@@ -1,14 +1,18 @@
 import SwiftUI
 import RuulCore
 
-/// R.10.A — Hero section del Resource Detail (code move, zero behavior change).
+/// R.10.A — Hero section del Resource Detail.
 ///
 /// Doctrina: R.5V native-first · "Section is the card".
-/// Layout idéntico al monolito previo (`heroSection` 324–376 + `chipBadge` 1468–1478).
+///
+/// **R.10.F.10.e (2026-06-15)**: Hero crítico-only. Cambios:
+///   - Drop class chip (redundante — subtype.displayName ya implica la clase).
+///   - "Archivado" pasa de Text estilizado a `RuulStatusBadge` canónico.
+/// **R.10.F.10.d**: Capabilities scroll horizontal removido — se renderiza
+/// ahora en `ResourceDetailV2CapabilitiesSection` (Section dedicada después
+/// del Info).
 struct ResourceDetailV2HeroSection: View {
     let descriptor: ResourceDetailDescriptor
-    @Binding var explainedCapability: String?
-    let capabilityDisplayName: (String) -> String
 
     var body: some View {
         let d = descriptor
@@ -26,12 +30,9 @@ struct ResourceDetailV2HeroSection: View {
                         .lineLimit(2)
                     HStack(spacing: 6) {
                         ResourceDetailV2ChipBadge(text: d.subtype.displayName, tint: Theme.Tint.primary)
-                        ResourceDetailV2ChipBadge(text: d.class.displayName, tint: Theme.Text.secondary)
-                    }
-                    if d.state.archived {
-                        Text("Archivado")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(Theme.Tint.warning)
+                        if d.state.archived {
+                            RuulStatusBadge(.archived)
+                        }
                     }
                 }
                 Spacer(minLength: 0)
@@ -39,26 +40,6 @@ struct ResourceDetailV2HeroSection: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
-
-            if !d.effectiveCapabilities.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(d.effectiveCapabilities, id: \.self) { cap in
-                            Button {
-                                explainedCapability = cap
-                            } label: {
-                                ResourceDetailV2ChipBadge(text: capabilityDisplayName(cap), tint: Theme.Tint.info)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 4)
-                }
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 0))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            }
         }
     }
 }

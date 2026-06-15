@@ -107,28 +107,26 @@ public struct ResourceDetailViewV2: View {
                 // "ellipsis" (más opciones) en cápsulas Liquid Glass distintas.
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    // R.5Z.fix.2.a (founder 2026-06-09) — Menu plano sin Sections
-                    // de 1 item. Apple HIG: usar Sections con headers solo cuando
-                    // hay ≥2 items o agrupación significativa. Divider entre
-                    // operacional y advanced.
-                    Button {
-                        isShowingEditResource = true
-                    } label: {
-                        Label("Editar recurso", systemImage: "pencil")
-                    }
-                    if !context.isPersonal, store.descriptor?.state.archived == false {
+            // R.10.F.10.a (2026-06-15) D5 cleanup — "Editar recurso" se eliminó
+            // del ellipsis porque ya está en el "+" Menu vía descriptor.actions
+            // section `general`. Era duplicado intent-first violation: el
+            // ellipsis decía siempre "Editar" aunque el backend deshabilitara la
+            // acción. Transferir propiedad sigue aquí porque usa flow custom
+            // (TransferRecipientPicker → governance sheet) que el form-driven
+            // pendingAction sheet no replica.
+            if !context.isPersonal, store.descriptor?.state.archived == false {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
                         Button {
                             Task { await openTransferPicker() }
                         } label: {
                             Label("Transferir propiedad", systemImage: "arrow.left.arrow.right")
                         }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+                    .accessibilityLabel("Más opciones del recurso")
                 }
-                .accessibilityLabel("Más opciones del recurso")
             }
         }
         .task {
@@ -295,11 +293,7 @@ public struct ResourceDetailViewV2: View {
     @ViewBuilder
     private func descriptorList(_ d: ResourceDetailDescriptor) -> some View {
         List {
-            ResourceDetailV2HeroSection(
-                descriptor: d,
-                explainedCapability: $explainedCapability,
-                capabilityDisplayName: ResourceDetailV2CapabilityCatalog.displayName
-            )
+            ResourceDetailV2HeroSection(descriptor: d)
             if d.conflicts.openCount > 0 {
                 ResourceDetailV2ConflictsSection(
                     list: d.conflicts,
@@ -309,6 +303,10 @@ public struct ResourceDetailViewV2: View {
                 )
             }
             ResourceDetailV2InfoSection(descriptor: d)
+            ResourceDetailV2CapabilitiesSection(
+                capabilities: d.effectiveCapabilities,
+                explainedCapability: $explainedCapability
+            )
             if !d.widgets.isEmpty {
                 ResourceDetailV2DashboardSection(
                     widgets: d.widgets,

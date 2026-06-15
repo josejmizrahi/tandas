@@ -49,8 +49,11 @@ struct ResourceDetailV2LinkedEventsSection: View {
     var body: some View {
         let items = ResourceDetailV2LinkedParsers.parseEvents(raw)
         if !items.isEmpty {
+            // R.10.F.10.b (founder firmado 2026-06-15) — Apple Music header
+            // pattern: "Ver todos" trailing → EventsListView context-level
+            // (no resource-filtered, consistente con Activity y Documents).
             Section {
-                ForEach(items) { ev in
+                ForEach(Array(items.prefix(3))) { ev in
                     NavigationLink {
                         EventDetailView(eventId: ev.id, context: context, container: container)
                     } label: {
@@ -69,7 +72,24 @@ struct ResourceDetailV2LinkedEventsSection: View {
                     }
                 }
             } header: {
-                Text("Eventos relacionados")
+                HStack {
+                    Text("Eventos relacionados")
+                    Spacer()
+                    if items.count > 3 {
+                        NavigationLink {
+                            EventsListView(context: context, container: container)
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text("Ver todos")
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.Tint.primary)
+                        }
+                        .font(.subheadline.weight(.regular))
+                    }
+                }
+                .textCase(nil)
             }
         }
     }
@@ -85,8 +105,9 @@ struct ResourceDetailV2LinkedObligationsSection: View {
     var body: some View {
         let items = ResourceDetailV2LinkedParsers.parseObligations(raw)
         if !items.isEmpty {
+            // R.10.F.10.b — header trailing "Ver todas" → LedgerBrowserView.
             Section {
-                ForEach(items) { o in
+                ForEach(Array(items.prefix(3))) { o in
                     NavigationLink {
                         ObligationDetailView(obligationId: o.id, context: context, container: container)
                     } label: {
@@ -113,7 +134,24 @@ struct ResourceDetailV2LinkedObligationsSection: View {
                     }
                 }
             } header: {
-                Text("Obligaciones relacionadas")
+                HStack {
+                    Text("Obligaciones relacionadas")
+                    Spacer()
+                    if items.count > 3 {
+                        NavigationLink {
+                            LedgerBrowserView(context: context, container: container)
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text("Ver todas")
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.Tint.primary)
+                        }
+                        .font(.subheadline.weight(.regular))
+                    }
+                }
+                .textCase(nil)
             }
         }
     }
@@ -129,8 +167,9 @@ struct ResourceDetailV2LinkedDecisionsSection: View {
     var body: some View {
         let items = ResourceDetailV2LinkedParsers.parseDecisions(raw)
         if !items.isEmpty {
+            // R.10.F.10.b — header trailing "Ver todas" → DecisionsListView.
             Section {
-                ForEach(items) { dx in
+                ForEach(Array(items.prefix(3))) { dx in
                     NavigationLink {
                         DecisionDetailView(decisionId: dx.id, context: context, container: container)
                     } label: {
@@ -154,7 +193,24 @@ struct ResourceDetailV2LinkedDecisionsSection: View {
                     }
                 }
             } header: {
-                Text("Decisiones relacionadas")
+                HStack {
+                    Text("Decisiones relacionadas")
+                    Spacer()
+                    if items.count > 3 {
+                        NavigationLink {
+                            DecisionsListView(context: context, container: container)
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text("Ver todas")
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(Theme.Tint.primary)
+                        }
+                        .font(.subheadline.weight(.regular))
+                    }
+                }
+                .textCase(nil)
             }
         }
     }

@@ -1,15 +1,15 @@
 import SwiftUI
 import RuulCore
 
-/// R.10.A — Información section + per-class fields + capability catalog
-/// (code move, zero behavior change).
+/// R.10.A — Información section + Estado/Subtipo header rows + capability catalog.
 ///
 /// Doctrina: R.5V native-first · "Section is the card".
 ///
-/// **R.10.B target**: el `switch d.class.classKey` aquí se reemplaza por un
-/// protocolo `ResourceSubtypeRenderer` en el siguiente slice. R.10.A NO mete
-/// polimorfismo todavía — sólo relocaliza el código tal cual (427–675 +
-/// 1290–1350 del monolito previo).
+/// **R.10.F.1–F.7 (2026-06-15)**: filas específicas por `class_key` migraron al
+/// protocolo polimórfico `ResourceSubtypeRenderer`. Este section ahora delega
+/// 100% al registry — solo conserva las dos filas universales (Estado/Subtipo)
+/// y el footer de Descripción. Agregar un nuevo subtype = registrar renderer
+/// en `ResourceSubtypeRegistry`, cero cambios aquí.
 
 struct ResourceDetailV2InfoSection: View {
     let descriptor: ResourceDetailDescriptor
@@ -20,24 +20,8 @@ struct ResourceDetailV2InfoSection: View {
             LabeledContent("Estado", value: estadoLabel(d))
             LabeledContent("Subtipo", value: d.subtype.displayName)
 
-            switch d.class.classKey {
-            case "financial":
-                financialFields(d)
-            case "real_estate":
-                realEstateFields(d)
-            case "vehicle":
-                vehicleFields(d)
-            case "equipment":
-                equipmentFields(d)
-            case "document":
-                documentFields(d)
-            case "trip":
-                tripFields(d)
-            case "digital_asset":
-                digitalAssetFields(d)
-            default:
-                genericFields(d)
-            }
+            ResourceSubtypeRegistry.renderer(for: d.class.classKey)
+                .informationFields(d)
 
             if let description = d.resource.description, !description.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
@@ -66,186 +50,6 @@ struct ResourceDetailV2InfoSection: View {
         }
     }
 
-    @ViewBuilder
-    private func financialFields(_ d: ResourceDetailDescriptor) -> some View {
-        if let balance = d.metrics.balance, let currency = d.metrics.currency {
-            LabeledContent("Saldo") {
-                Text(balance.compactCurrencyLabel(currency))
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(Theme.Tint.success)
-            }
-        }
-        if let institution = d.resource.metadataString("institution") {
-            LabeledContent("Institución", value: institution)
-        }
-        if let accountNumber = d.resource.metadataString("account_number") {
-            LabeledContent("Cuenta") {
-                Text(maskedAccountNumber(accountNumber))
-                    .font(.callout.monospaced())
-            }
-        }
-        if let walletAddress = d.resource.metadataString("wallet_address") {
-            LabeledContent("Dirección") {
-                Text(maskedAccountNumber(walletAddress))
-                    .font(.callout.monospaced())
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-        }
-        if let lastMovement = d.metrics.lastMovementAt {
-            LabeledContent("Último movimiento",
-                value: lastMovement.formatted(date: .abbreviated, time: .shortened))
-        }
-        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency,
-           d.metrics.balance == nil {
-            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
-        }
-    }
-
-    @ViewBuilder
-    private func realEstateFields(_ d: ResourceDetailDescriptor) -> some View {
-        if let location = d.resource.locationText, !location.isEmpty {
-            LabeledContent("Ubicación", value: location)
-        }
-        if let area = d.resource.metadataString("area_sqm") {
-            LabeledContent("Superficie", value: "\(area) m²")
-        }
-        if let bedrooms = d.resource.metadataString("bedrooms") {
-            LabeledContent("Habitaciones", value: bedrooms)
-        }
-        if let bathrooms = d.resource.metadataString("bathrooms") {
-            LabeledContent("Baños", value: bathrooms)
-        }
-        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
-        }
-    }
-
-    @ViewBuilder
-    private func vehicleFields(_ d: ResourceDetailDescriptor) -> some View {
-        if let make = d.resource.metadataString("make"),
-           let model = d.resource.metadataString("model") {
-            LabeledContent("Modelo", value: "\(make) \(model)")
-        } else if let model = d.resource.metadataString("model") {
-            LabeledContent("Modelo", value: model)
-        }
-        if let year = d.resource.metadataString("year") {
-            LabeledContent("Año", value: year)
-        }
-        if let plate = d.resource.metadataString("license_plate") {
-            LabeledContent("Placa") {
-                Text(plate)
-                    .font(.callout.monospaced())
-            }
-        }
-        if let vin = d.resource.metadataString("vin") {
-            LabeledContent("VIN") {
-                Text(vin)
-                    .font(.caption.monospaced())
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-        }
-        if let location = d.resource.locationText, !location.isEmpty {
-            LabeledContent("Ubicación", value: location)
-        }
-        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
-        }
-    }
-
-    @ViewBuilder
-    private func equipmentFields(_ d: ResourceDetailDescriptor) -> some View {
-        if let make = d.resource.metadataString("make"),
-           let model = d.resource.metadataString("model") {
-            LabeledContent("Modelo", value: "\(make) \(model)")
-        }
-        if let serial = d.resource.metadataString("serial_number") {
-            LabeledContent("Serie") {
-                Text(serial)
-                    .font(.callout.monospaced())
-            }
-        }
-        if let location = d.resource.locationText, !location.isEmpty {
-            LabeledContent("Ubicación", value: location)
-        }
-        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
-        }
-    }
-
-    @ViewBuilder
-    private func documentFields(_ d: ResourceDetailDescriptor) -> some View {
-        if let partyA = d.resource.metadataString("party_a") {
-            LabeledContent("Parte A", value: partyA)
-        }
-        if let partyB = d.resource.metadataString("party_b") {
-            LabeledContent("Parte B", value: partyB)
-        }
-        if let effective = d.resource.metadataString("effective_date") {
-            LabeledContent("Vigencia", value: effective)
-        }
-        if let expiration = d.resource.metadataString("expiration_date") {
-            LabeledContent("Vence", value: expiration)
-        }
-        if let created = d.resource.createdAt {
-            LabeledContent("Creado", value: created.formatted(date: .abbreviated, time: .omitted))
-        }
-        if d.state.lockedForGovernance {
-            LabeledContent("Bloqueado") {
-                Label("Decisión abierta", systemImage: "lock.fill")
-                    .foregroundStyle(.purple)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func tripFields(_ d: ResourceDetailDescriptor) -> some View {
-        if let location = d.resource.locationText, !location.isEmpty {
-            LabeledContent("Destino", value: location)
-        }
-        if let startDate = d.resource.metadataString("start_date") {
-            LabeledContent("Inicio", value: startDate)
-        }
-        if let endDate = d.resource.metadataString("end_date") {
-            LabeledContent("Fin", value: endDate)
-        }
-    }
-
-    @ViewBuilder
-    private func digitalAssetFields(_ d: ResourceDetailDescriptor) -> some View {
-        if let platform = d.resource.metadataString("platform") {
-            LabeledContent("Plataforma", value: platform)
-        }
-        if let url = d.resource.metadataString("url") {
-            LabeledContent("URL") {
-                Text(url)
-                    .font(.callout)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-        }
-        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
-        }
-    }
-
-    @ViewBuilder
-    private func genericFields(_ d: ResourceDetailDescriptor) -> some View {
-        LabeledContent("Categoría", value: d.class.displayName)
-        if let value = d.metrics.estimatedValue, let currency = d.metrics.currency {
-            LabeledContent("Valor estimado", value: value.compactCurrencyLabel(currency))
-        }
-    }
-
-    /// Enmascara account numbers / wallet addresses para evitar exponer todos
-    /// los dígitos en pantalla. Muestra primeros 2 + últimos 4.
-    private func maskedAccountNumber(_ raw: String) -> String {
-        guard raw.count > 8 else { return raw }
-        let prefix = raw.prefix(2)
-        let suffix = raw.suffix(4)
-        return "\(prefix)••••\(suffix)"
-    }
 }
 
 // MARK: - Capability catalog (snapshot estático, movido del monolito 1290–1350)
