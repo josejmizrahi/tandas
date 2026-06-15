@@ -28,11 +28,17 @@ public struct ResourceClass: Decodable, Sendable, Equatable, Hashable, Identifia
 /// R.5A.B.0 — Un subtype de recurso. 42 subtypes seedeados + actualizable.
 /// Founder firma 2026-06-07: las pantallas que crean recursos DEBEN elegir
 /// subtype explícito (no resource_type legacy).
+///
+/// R.12.A — `fields` decodifica `metadata.fields[]` (FormFieldSpec array)
+/// que define los campos específicos del subtype (placa/VIN para vehicle,
+/// dirección/recámaras para real_estate, etc.). El iOS form engine los
+/// renderea dinámicamente en Create/Edit.
 public struct ResourceSubtype: Decodable, Sendable, Equatable, Hashable, Identifiable {
     public let subtypeKey: String
     public let classKey: String
     public let displayName: String
     public let description: String?
+    public let fields: [FormFieldSpec]
 
     public var id: String { subtypeKey }
 
@@ -41,12 +47,34 @@ public struct ResourceSubtype: Decodable, Sendable, Equatable, Hashable, Identif
         case classKey = "class_key"
         case displayName = "display_name"
         case description
+        case metadata
     }
 
-    public init(subtypeKey: String, classKey: String, displayName: String, description: String? = nil) {
+    private struct MetadataWire: Decodable {
+        let fields: [FormFieldSpec]?
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.subtypeKey = try c.decode(String.self, forKey: .subtypeKey)
+        self.classKey = try c.decode(String.self, forKey: .classKey)
+        self.displayName = try c.decode(String.self, forKey: .displayName)
+        self.description = try c.decodeIfPresent(String.self, forKey: .description)
+        let metadata = try c.decodeIfPresent(MetadataWire.self, forKey: .metadata)
+        self.fields = metadata?.fields ?? []
+    }
+
+    public init(
+        subtypeKey: String,
+        classKey: String,
+        displayName: String,
+        description: String? = nil,
+        fields: [FormFieldSpec] = []
+    ) {
         self.subtypeKey = subtypeKey
         self.classKey = classKey
         self.displayName = displayName
         self.description = description
+        self.fields = fields
     }
 }

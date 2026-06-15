@@ -39,7 +39,7 @@ public enum FormFieldType: String, Codable, Sendable, Equatable {
     }
 }
 
-public struct FormFieldSpec: Codable, Sendable, Equatable, Identifiable {
+public struct FormFieldSpec: Codable, Sendable, Equatable, Hashable, Identifiable {
     public let key: String
     public let label: String
     public let type: FormFieldType
