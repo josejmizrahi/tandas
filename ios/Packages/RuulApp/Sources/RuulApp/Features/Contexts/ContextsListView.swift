@@ -169,8 +169,13 @@ public struct ContextsListView: View {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    // MARK: - Mi espacio Hero (RuulHeroCard inside listRowInsets.zero)
+    // MARK: - Mi espacio Hero (R.11.F — RuulDetailHero canonical)
 
+    /// R.11.F — Reemplaza RuulHeroCard legacy por RuulDetailHero canonical
+    /// (mismo Hero que ResourceDetail/DocumentDetail/ObligationDetail/etc).
+    /// Doctrina R.5V §0.2: "Context/Resource/Document/Decision Detail van
+    /// a terminar necesitando el mismo encabezado." Mi espacio gana
+    /// coherencia visual sistémica.
     @ViewBuilder
     private var miEspacioHeroSection: some View {
         if let personal = contextStore.availableContexts.first(where: { $0.isPersonal }) {
@@ -178,22 +183,14 @@ public struct ContextsListView: View {
                 Button {
                     openContext(personal)
                 } label: {
-                    RuulHeroCard(
+                    RuulDetailHero(
                         title: "Mi espacio",
                         subtitle: "Tu actividad, recursos y compromisos",
                         systemImage: personal.symbolName,
-                        tint: Theme.Tint.primary
-                    ) {
-                        HStack(spacing: 4) {
-                            Spacer()
-                            Text("Entrar")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.Tint.primary)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(Theme.Tint.primary)
-                        }
-                    }
+                        tint: Theme.Tint.primary,
+                        status: nil,
+                        chips: []
+                    )
                 }
                 .buttonStyle(.plain)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
