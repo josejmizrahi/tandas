@@ -356,6 +356,14 @@ public struct RequestReservationView: View {
 
     private func loadPolicy() async {
         do {
+            // R.RES.POLICY.D — primero override del resource.metadata.
+            // Backend hace el mismo lookup composit (override > subtype default).
+            if case .object(let metaDict) = resource.metadata,
+               let overrideValue = metaDict["reservation_policy_override"],
+               let decoded = decodeReservationPolicy(from: overrideValue) {
+                policy = decoded
+                return
+            }
             // R.RES.POLICY.A — si el caller no pasa subtypeKey, resolverlo del
             // PostgREST `resources.resource_subtype_key`. Evita modificar
             // Resource Domain o list_context_resources RPC.
@@ -375,6 +383,40 @@ public struct RequestReservationView: View {
             // Silent: legacy behavior si no se puede cargar el catalog.
             policy = nil
         }
+    }
+
+    /// R.RES.POLICY.D — decode `reservation_policy_override` desde JSONValue.
+    /// El shape es el mismo que el seed del catalog (granularity + min/max +
+    /// advance + requires_approval).
+    private func decodeReservationPolicy(from value: JSONValue) -> ReservationPolicy? {
+        guard case .object(let dict) = value else { return nil }
+        guard case .string(let granRaw) = dict["granularity"] ?? .null,
+              let granularity = ReservationPolicy.Granularity(rawValue: granRaw) else {
+            return nil
+        }
+        let minUnits: Int = {
+            if case .number(let n) = dict["min_duration_units"] ?? .null { return Int(n) }
+            return 1
+        }()
+        let maxUnits: Int? = {
+            if case .number(let n) = dict["max_duration_units"] ?? .null { return Int(n) }
+            return nil
+        }()
+        let advanceDays: Int? = {
+            if case .number(let n) = dict["advance_window_days"] ?? .null { return Int(n) }
+            return nil
+        }()
+        let requiresApproval: Bool = {
+            if case .bool(let b) = dict["requires_approval"] ?? .null { return b }
+            return false
+        }()
+        return ReservationPolicy(
+            granularity: granularity,
+            minDurationUnits: minUnits,
+            maxDurationUnits: maxUnits,
+            advanceWindowDays: advanceDays,
+            requiresApproval: requiresApproval
+        )
     }
 
     @ViewBuilder
