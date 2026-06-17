@@ -66,6 +66,10 @@ public struct RequestReservationView: View {
     public var body: some View {
         NavigationStack {
             Form {
+                // R.RES.POLICY.C — hero del recurso al top (Airbnb-style).
+                // El usuario ve QUÉ está reservando antes de elegir fechas.
+                resourceHeroSection
+
                 aiHero
 
                 whySection
@@ -89,6 +93,9 @@ public struct RequestReservationView: View {
                     )
                     .onChange(of: endsAt) { _, _ in datesTouchedByUser = true }
                 }
+
+                // R.RES.POLICY.C — resumen de la reservación (N noches/horas).
+                summarySection
 
                 eventLinkSection
 
@@ -162,6 +169,91 @@ public struct RequestReservationView: View {
             }
         }
         .ruulSheet()
+    }
+
+    // MARK: - R.RES.POLICY.C — Hero del recurso + resumen Airbnb-style
+
+    @ViewBuilder
+    private var resourceHeroSection: some View {
+        Section {
+            HStack(spacing: 12) {
+                Image(systemName: resourceSymbol)
+                    .font(.title2)
+                    .foregroundStyle(Theme.Tint.primary)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.Tint.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(resource.displayName)
+                        .font(.headline)
+                    if let location = resource.locationText, !location.isEmpty {
+                        Text(location)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else if let policy {
+                        Text(policy.granularity.label)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 4)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
+
+    @ViewBuilder
+    private var summarySection: some View {
+        if let policy, policy.granularity != .none, endsAt > startsAt {
+            Section {
+                LabeledContent("Duración") {
+                    Text(durationLabel(selectedDurationUnits, granularity: policy.granularity))
+                        .font(.callout.weight(.medium))
+                }
+                if let cost = estimatedCostLabel {
+                    LabeledContent("Estimado", value: cost)
+                        .foregroundStyle(Theme.Tint.success)
+                }
+            } header: {
+                Text("Resumen")
+            }
+        }
+    }
+
+    /// Calcula costo estimado si el recurso tiene `estimatedValue + currency`
+    /// y la policy es day (asume tarifa/día = estimated_value/365) o hour
+    /// (tarifa/hora = estimated_value/(365×24)). Aproximación honesta; el
+    /// owner puede setear hourly_rate explícito en metadata vía R.12 fields.
+    private var estimatedCostLabel: String? {
+        guard let value = resource.estimatedValue, value > 0,
+              let currency = resource.currency,
+              let policy, policy.granularity != .none else {
+            return nil
+        }
+        let unitsRate: Double
+        switch policy.granularity {
+        case .day:       unitsRate = value / 365.0
+        case .hour:      unitsRate = value / (365.0 * 24.0)
+        case .eventSlot: unitsRate = value
+        case .none:      return nil
+        }
+        let total = unitsRate * Double(selectedDurationUnits)
+        let formatted = total.formatted(.currency(code: currency).precision(.fractionLength(0)))
+        return "\(formatted) \(currency)"
+    }
+
+    private var resourceSymbol: String {
+        switch resource.resourceType {
+        case "house", "primary_residence", "vacation_home", "real_estate": return "house.fill"
+        case "vehicle", "car", "truck", "motorcycle":                       return "car.fill"
+        case "boat":                                                       return "ferry.fill"
+        case "aircraft":                                                   return "airplane"
+        case "space", "office", "warehouse":                               return "building.2.fill"
+        case "land":                                                       return "leaf.fill"
+        default:                                                           return "shippingbox.fill"
+        }
     }
 
     // MARK: - R.RES.POLICY.A — Policy section + UI adapt
