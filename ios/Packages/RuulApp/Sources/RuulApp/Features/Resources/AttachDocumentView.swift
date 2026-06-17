@@ -36,6 +36,11 @@ public struct AttachDocumentView: View {
     /// D.CATALOG.A — document_type keys priorizados del subtype del resource
     /// destino. Se resuelven on appear; mientras tanto, picker muestra todos.
     @State private var recommendedTypeKeys: [String] = []
+    /// D.CATALOG.B — AI hero state: prompt + service + lastConsidered (vacío
+    /// porque no usamos pre-aggregation del contexto en este slice).
+    @State private var aiSuggestionService = DocumentSuggestionService()
+    @State private var aiPromptText: String = ""
+    @State private var lastConsidered: [RuulAIContext.Considered] = []
 
     public init(
         resource: Resource?,
@@ -86,6 +91,14 @@ public struct AttachDocumentView: View {
                             .font(.footnote)
                             .foregroundStyle(.red)
                     }
+                }
+
+                // D.CATALOG.B — AI hero: clasifica el documento desde
+                // filename + descripción libre. Solo aparece cuando hay
+                // archivo seleccionado (sin archivo no hay nada que clasificar).
+                if pickedData != nil {
+                    aiHero
+                    aiSuggestionPreviewSection
                 }
 
                 Section("Detalles") {
@@ -178,6 +191,94 @@ public struct AttachDocumentView: View {
             .task { await loadRecommendedTypes() }
         }
         .ruulSheet()
+    }
+
+    // MARK: - D.CATALOG.B — AI hero (FoundationModels guided generation)
+
+    private var aiHero: some View {
+        RuulAIHeroView(
+            headline: "Pídele a Ruul",
+            subtitle: "Te ayudamos a clasificar el documento",
+            placeholder: "Ej: escritura de la casa, póliza del coche…",
+            ctaLabel: "Detectar tipo",
+            examples: [
+                "Escritura de Casa Valle",
+                "Póliza del seguro del auto",
+                "Factura del restaurante",
+                "Estado de cuenta de marzo"
+            ],
+            footerWhenIdle: "Describe el documento con tus palabras. Te sugerimos tipo y título.",
+            footerWhenLoaded: "Revisa la sugerencia y aplica si está bien.",
+            prompt: $aiPromptText,
+            considered: $lastConsidered,
+            phase: aiPhase,
+            onSuggest: { await aiSuggest() },
+            onReset: {
+                aiSuggestionService.reset()
+                aiPromptText = ""
+            }
+        )
+    }
+
+    private var aiPhase: RuulAIHeroView.HeroPhase {
+        switch aiSuggestionService.phase {
+        case .idle, .loaded:           return .idle
+        case .loading:                 return .loading
+        case .failed(let m):           return .failed(message: m)
+        case .unavailable(let r):      return .unavailable(reason: r)
+        }
+    }
+
+    /// Section que aparece solo cuando hay sugerencia loaded. Muestra tipo +
+    /// título sugeridos + rationale + button "Aplicar".
+    @ViewBuilder
+    private var aiSuggestionPreviewSection: some View {
+        if case .loaded(let suggestion) = aiSuggestionService.phase {
+            Section {
+                LabeledContent("Tipo") {
+                    if let type = DocumentType(rawValue: suggestion.documentType) {
+                        Label(type.label, systemImage: type.symbolName)
+                    } else {
+                        Text(suggestion.documentType)
+                    }
+                }
+                LabeledContent("Título", value: suggestion.title)
+                Text(suggestion.rationale)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button {
+                    applyAISuggestion(suggestion)
+                } label: {
+                    Label("Aplicar sugerencia", systemImage: "checkmark.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+            } header: {
+                Text("Sugerencia")
+            }
+        }
+    }
+
+    /// Dispara la suggestion. Inyecta filename + recommendedTypes del subtype
+    /// como hints para que el modelo priorice valores válidos.
+    private func aiSuggest() async {
+        await aiSuggestionService.suggest(
+            prompt: aiPromptText,
+            fileName: pickedFileName.isEmpty ? nil : pickedFileName,
+            recommendedTypes: recommendedTypeKeys
+        )
+    }
+
+    /// Aplica la sugerencia al form: maps `suggestion.documentType` string a
+    /// `DocumentType` enum + setea title si el user no lo había tocado.
+    private func applyAISuggestion(_ suggestion: DocumentSuggestion) {
+        if let type = DocumentType(rawValue: suggestion.documentType) {
+            documentType = type
+        }
+        if title.trimmingCharacters(in: .whitespaces).isEmpty {
+            title = suggestion.title
+        }
+        aiSuggestionService.reset()
+        aiPromptText = ""
     }
 
     // MARK: - D.CATALOG.A — Recommended types per resource_subtype
