@@ -169,6 +169,10 @@ public protocol RuulRPCClient: Sendable {
     func listResourceClasses() async throws -> [ResourceClass]
     /// R.5A.B.0 — Subtypes filtrados por class (o todos si classKey=nil). 42 seeded.
     func listResourceSubtypes(classKey: String?) async throws -> [ResourceSubtype]
+    /// R.RES.POLICY.A — fetch sólo el subtype_key del recurso (PostgREST
+    /// select 1 column). Usado por RequestReservationView para resolver la
+    /// reservation_policy sin necesidad de cargar el descriptor completo.
+    func resourceSubtypeKey(resourceId: UUID) async throws -> String?
     /// `resource_available_actions(resource, actor)` — refresca solo las
     /// available_actions sin pedir el `resource_detail` completo (útil tras
     /// `grant_right` / `revoke_right` para actualizar botones).

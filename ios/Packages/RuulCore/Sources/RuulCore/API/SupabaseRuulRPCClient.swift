@@ -654,6 +654,27 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         return try await call("list_resource_subtypes", params: Params(pClassKey: classKey))
     }
 
+    public func resourceSubtypeKey(resourceId: UUID) async throws -> String? {
+        struct Row: Decodable {
+            let resourceSubtypeKey: String?
+            enum CodingKeys: String, CodingKey {
+                case resourceSubtypeKey = "resource_subtype_key"
+            }
+        }
+        do {
+            let row: Row = try await client
+                .from("resources")
+                .select("resource_subtype_key")
+                .eq("id", value: resourceId)
+                .single()
+                .execute()
+                .value
+            return row.resourceSubtypeKey
+        } catch {
+            throw RPCErrorMapper.map(error)
+        }
+    }
+
     public func resourceAvailableActions(resourceId: UUID, actorId: UUID) async throws -> [AvailableAction] {
         struct Params: Encodable, Sendable {
             let pResourceId: UUID

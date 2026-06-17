@@ -263,10 +263,22 @@ public struct RequestReservationView: View {
     }
 
     private func loadPolicy() async {
-        guard let subtypeKey = resourceSubtypeKey else { return }
         do {
+            // R.RES.POLICY.A — si el caller no pasa subtypeKey, resolverlo del
+            // PostgREST `resources.resource_subtype_key`. Evita modificar
+            // Resource Domain o list_context_resources RPC.
+            let key: String?
+            if let provided = resourceSubtypeKey {
+                key = provided
+            } else {
+                key = try await container.rpc.resourceSubtypeKey(resourceId: resource.id)
+            }
+            guard let key else {
+                policy = nil
+                return
+            }
             let subtypes = try await container.rpc.listResourceSubtypes(classKey: nil)
-            policy = subtypes.first(where: { $0.subtypeKey == subtypeKey })?.reservationPolicy
+            policy = subtypes.first(where: { $0.subtypeKey == key })?.reservationPolicy
         } catch {
             // Silent: legacy behavior si no se puede cargar el catalog.
             policy = nil

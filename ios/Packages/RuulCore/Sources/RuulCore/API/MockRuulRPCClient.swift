@@ -1301,6 +1301,14 @@ public actor MockRuulRPCClient: RuulRPCClient {
         ]
     }
 
+    public func resourceSubtypeKey(resourceId: UUID) async throws -> String? {
+        try throwIfNeeded()
+        // Mock world demo: house resources son real_estate; otros heredan el
+        // generic del class. Para que el R.RES.POLICY UI vea día en Casa Valle.
+        if resourceId == DemoIds.casaValle { return "primary_residence" }
+        return "generic_other"
+    }
+
     public func listResourceSubtypes(classKey: String?) async throws -> [ResourceSubtype] {
         try throwIfNeeded()
         // Espejo del seed live post-fix T1+T2 (42 subtypes con motorcycle/boat/aircraft
