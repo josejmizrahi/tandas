@@ -30,6 +30,22 @@ public struct CreateDecisionView: View {
     @State private var aiPromptText = ""
     @State private var lastConsidered: [RuulAIContext.Considered] = []
 
+    // R.5Z.fix.9 D.PICKER — decisiones target-scoped vía request_governance_action.
+    // Founder smoke 2026-06-09 Flow #9: "las decisiones están desconectadas
+    // del modelo. Debería poder decidir sobre contextos, recursos, miembros,
+    // reglas, eventos, etc."
+    /// Sobre qué decidir. `.free` mantiene comportamiento legacy (create_decision).
+    /// Los demás disparan `request_governance_action(action_key, target_type, target_id)`.
+    @State private var target: DecisionTarget = .free
+    @State private var selectedEntityId: UUID?
+    @State private var selectedEntityName: String = ""
+    @State private var selectedActionKey: String?
+    @State private var selectedActionLabel: String = ""
+    /// Cargado on first appear desde `governance_action_catalog`. Compartido
+    /// con MemberDetailView etc. — solo lectura.
+    @State private var catalogEntries: [GovernanceCatalogEntry] = []
+    @State private var governanceClientId: String = UUID().uuidString
+
     public init(
         context: AppContext,
         container: DependencyContainer,
@@ -53,28 +69,43 @@ public struct CreateDecisionView: View {
 
     public var body: some View {
         Form {
-            // R.6.AI.8 — Hero AI sólo cuando no viene de un conflicto pre-poblado
-            // ni de una plantilla (la plantilla ya estructura la decisión).
-            if conflictReference == nil && selectedTemplate == nil {
-                aiHero
-            }
-
-            // R.4B — picker de plantillas (no aplica a disputas de reservación).
+            // R.5Z.fix.9 D.PICKER — picker "¿Sobre qué decidir?" arriba.
+            // Disputas de reservación llegan pre-pobladas como .free.
             if conflictReference == nil {
-                templateSection
+                targetSection
             }
 
-            Section("Propuesta") {
-                TextField("¿Qué hay que decidir?", text: $title, axis: .vertical)
-                    .lineLimit(1...3)
-                TextField("Contexto o detalles (opcional)", text: $description, axis: .vertical)
-                    .lineLimit(2...5)
-            }
+            if target == .free {
+                // R.6.AI.8 — Hero AI sólo cuando no viene de un conflicto
+                // pre-poblado ni de una plantilla (la plantilla ya estructura
+                // la decisión).
+                if conflictReference == nil && selectedTemplate == nil {
+                    aiHero
+                }
 
-            if let template = selectedTemplate {
-                templateBody(template)
+                // R.4B — picker de plantillas (no aplica a disputas).
+                if conflictReference == nil {
+                    templateSection
+                }
+
+                Section("Propuesta") {
+                    TextField("¿Qué hay que decidir?", text: $title, axis: .vertical)
+                        .lineLimit(1...3)
+                    TextField("Contexto o detalles (opcional)", text: $description, axis: .vertical)
+                        .lineLimit(2...5)
+                }
+
+                if let template = selectedTemplate {
+                    templateBody(template)
+                } else {
+                    freeFormBody
+                }
             } else {
-                freeFormBody
+                // R.5Z.fix.9 — target-scoped: entity picker + action picker.
+                entitySection
+                if selectedEntityId != nil {
+                    actionSection
+                }
             }
 
             Section {
@@ -102,10 +133,106 @@ public struct CreateDecisionView: View {
         .task {
             if conflictReference == nil {
                 await store.loadCreateCatalog(context: context)
+                await loadGovernanceCatalog()
             }
         }
         .actionErrorAlert(runner)
         .ruulSheet()
+    }
+
+    // MARK: - R.5Z.fix.9 D.PICKER — target picker
+
+    @ViewBuilder
+    private var targetSection: some View {
+        Section {
+            Picker("Sobre qué decidir", selection: $target) {
+                ForEach(DecisionTarget.allCases) { t in
+                    Label(t.label, systemImage: t.symbolName).tag(t)
+                }
+            }
+            .pickerStyle(.navigationLink)
+            .onChange(of: target) { _, _ in
+                // Reset entity + action al cambiar target.
+                selectedEntityId = nil
+                selectedEntityName = ""
+                selectedActionKey = nil
+                selectedActionLabel = ""
+                governanceClientId = UUID().uuidString
+            }
+        } header: {
+            Text("¿Sobre qué decidir?")
+        } footer: {
+            Text(target.helpText)
+        }
+    }
+
+    @ViewBuilder
+    private var entitySection: some View {
+        Section {
+            NavigationLink {
+                EntityPickerView(
+                    target: target,
+                    context: context,
+                    container: container,
+                    onPick: { id, name in
+                        selectedEntityId = id
+                        selectedEntityName = name
+                        selectedActionKey = nil
+                        selectedActionLabel = ""
+                    }
+                )
+            } label: {
+                LabeledContent(target.entityLabel) {
+                    Text(selectedEntityName.isEmpty ? "Elegir…" : selectedEntityName)
+                        .foregroundStyle(selectedEntityName.isEmpty ? Theme.Text.tertiary : Theme.Text.primary)
+                }
+            }
+        } header: {
+            Text(target.entityLabel)
+        }
+    }
+
+    @ViewBuilder
+    private var actionSection: some View {
+        Section {
+            NavigationLink {
+                ActionPickerView(
+                    target: target,
+                    catalog: filteredCatalog,
+                    onPick: { actionKey, label in
+                        selectedActionKey = actionKey
+                        selectedActionLabel = label
+                    }
+                )
+            } label: {
+                LabeledContent("Acción") {
+                    Text(selectedActionLabel.isEmpty ? "Elegir…" : selectedActionLabel)
+                        .foregroundStyle(selectedActionLabel.isEmpty ? Theme.Text.tertiary : Theme.Text.primary)
+                }
+            }
+        } header: {
+            Text("Acción a proponer")
+        } footer: {
+            if !selectedActionLabel.isEmpty {
+                Text("El backend abrirá una decisión para votar esta acción sobre \(selectedEntityName).")
+            }
+        }
+    }
+
+    private var filteredCatalog: [GovernanceCatalogEntry] {
+        catalogEntries.filter { entry in
+            target.matches(actionKey: entry.actionKey)
+        }
+    }
+
+    private func loadGovernanceCatalog() async {
+        if !catalogEntries.isEmpty { return }
+        do {
+            catalogEntries = try await container.rpc.listGovernanceActionCatalog()
+        } catch {
+            // Fail silently — el picker se queda vacío y user vuelve a .free.
+            catalogEntries = []
+        }
     }
 
     // MARK: - Free-form (R.2Q) — sin plantilla
@@ -381,6 +508,10 @@ public struct CreateDecisionView: View {
     }
 
     private var canSubmit: Bool {
+        // R.5Z.fix.9 — target-scoped requiere entity + action (NO title manual).
+        if target != .free {
+            return selectedEntityId != nil && selectedActionKey != nil
+        }
         let titleOK = !title.trimmingCharacters(in: .whitespaces).isEmpty
         guard titleOK else { return false }
         // R.4B — con plantilla: las `coming_soon` no se pueden proponer; las
@@ -396,6 +527,13 @@ public struct CreateDecisionView: View {
     }
 
     private var submitFooter: String {
+        // R.5Z.fix.9 — target-scoped flow vía request_governance_action.
+        if target != .free {
+            if selectedActionKey == nil {
+                return "Elige la acción que quieres proponer."
+            }
+            return "Se abre una decisión para votar la acción sobre \(selectedEntityName). El backend exige la mayoría definida por la política del espacio."
+        }
         if let template = selectedTemplate {
             if template.isComingSoon {
                 return "Esta plantilla aún no está disponible para proponerse."
@@ -476,6 +614,25 @@ public struct CreateDecisionView: View {
     private func create() async {
         var createdId: UUID?
         let success = await runner.run {
+            // R.5Z.fix.9 D.PICKER — target-scoped: request_governance_action
+            // crea la decisión + el governance_action atados via decision_id.
+            // El backend exige la mayoría definida por la policy del contexto.
+            if target != .free, let actionKey = selectedActionKey, let entityId = selectedEntityId {
+                let input = RequestGovernanceActionInput(
+                    contextActorId: context.id,
+                    actionKey: actionKey,
+                    targetType: target.governanceTargetType,
+                    targetId: entityId,
+                    payload: .object([:]),
+                    title: "\(selectedActionLabel): \(selectedEntityName)",
+                    closesAt: nil,
+                    clientId: governanceClientId
+                )
+                let result = try await container.rpc.requestGovernanceAction(input)
+                // Si abrió una decisión, push al detail; si no, dismiss.
+                createdId = result.decisionId
+                return
+            }
             // R.4B — flujo de plantilla: el backend hereda voting model y
             // despacha el efecto al ejecutar según `execution_kind`.
             if let template = selectedTemplate {
@@ -538,5 +695,303 @@ public struct CreateDecisionView: View {
             ),
             container: .demo()
         )
+    }
+}
+
+// MARK: - R.5Z.fix.9 D.PICKER — DecisionTarget enum
+
+/// Sobre qué decidir. `.free` mantiene comportamiento legacy (`create_decision`
+/// directo). Los demás disparan `request_governance_action(actionKey,
+/// targetType, targetId)` y el backend abre la decisión atada via
+/// `governance_actions.decision_id`.
+enum DecisionTarget: String, CaseIterable, Identifiable, Hashable {
+    case free, member, resource, rule
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .free:     return "Pregunta libre"
+        case .member:   return "Un miembro"
+        case .resource: return "Un recurso"
+        case .rule:     return "Una regla"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .free:     return "questionmark.bubble"
+        case .member:   return "person.crop.circle"
+        case .resource: return "shippingbox.fill"
+        case .rule:     return "scroll"
+        }
+    }
+
+    var helpText: String {
+        switch self {
+        case .free:
+            return "Cualquier propuesta sin objetivo específico (compra, cambio, evento futuro)."
+        case .member:
+            return "Promover, pausar o remover a alguien del espacio."
+        case .resource:
+            return "Transferir, archivar o cambiar derechos sobre un recurso."
+        case .rule:
+            return "Archivar una regla automática del espacio."
+        }
+    }
+
+    var entityLabel: String {
+        switch self {
+        case .free:     return ""
+        case .member:   return "Miembro"
+        case .resource: return "Recurso"
+        case .rule:     return "Regla"
+        }
+    }
+
+    /// Mapea a `governance_actions.target_type` que `request_governance_action`
+    /// espera. R.7.x.iOS shipped usa estos exactos strings.
+    var governanceTargetType: String {
+        switch self {
+        case .free:     return ""
+        case .member:   return "member"
+        case .resource: return "resource"
+        case .rule:     return "rule"
+        }
+    }
+
+    /// Verifica si un `action_key` del catalog aplica a este target.
+    func matches(actionKey: String) -> Bool {
+        switch self {
+        case .free:     return false
+        case .member:   return actionKey.hasPrefix("member.")
+        case .resource: return actionKey.hasPrefix("resource.")
+        case .rule:     return actionKey.hasPrefix("rule.")
+        }
+    }
+}
+
+// MARK: - R.5Z.fix.9 — Entity picker
+
+/// Lista las entidades del contexto correspondientes al target_type elegido.
+/// Tap → callback con `(entityId, displayName)` y pop al CreateDecisionView.
+private struct EntityPickerView: View {
+    let target: DecisionTarget
+    let context: AppContext
+    let container: DependencyContainer
+    let onPick: (UUID, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var phase: StorePhase = .idle
+    @State private var members: [ContextMember] = []
+    @State private var resources: [ContextResource] = []
+    @State private var rules: [Rule] = []
+    @State private var query: String = ""
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .idle, .loading:
+                RuulLoadingState()
+            case .failed(let message):
+                RuulErrorState(message: message) { Task { await load() } }
+            case .loaded:
+                loadedContent
+            }
+        }
+        .navigationTitle("Elige \(target.entityLabel.lowercased())")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+    }
+
+    @ViewBuilder
+    private var loadedContent: some View {
+        switch target {
+        case .free:
+            EmptyView()
+        case .member:
+            memberList
+        case .resource:
+            resourceList
+        case .rule:
+            ruleList
+        }
+    }
+
+    @ViewBuilder
+    private var memberList: some View {
+        if members.isEmpty {
+            RuulEmptyState(title: "Sin miembros", systemImage: "person.2", message: "No hay miembros activos en este espacio.")
+        } else {
+            List {
+                ForEach(filteredMembers) { m in
+                    Button {
+                        onPick(m.actorId, m.displayName)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 12) {
+                            ActorInitialsView(name: m.displayName)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(m.displayName).font(.callout.weight(.medium))
+                                Text(m.isInvited ? "Invitación pendiente" : (m.isAdmin ? "Administrador" : "Miembro"))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .listStyle(.insetGrouped)
+            .searchable(text: $query, prompt: "Buscar miembro")
+        }
+    }
+
+    @ViewBuilder
+    private var resourceList: some View {
+        if resources.isEmpty {
+            RuulEmptyState(title: "Sin recursos", systemImage: "shippingbox", message: "Este espacio no tiene recursos aún.")
+        } else {
+            List {
+                ForEach(filteredResources) { r in
+                    Button {
+                        onPick(r.resourceId, r.displayName)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: r.type.symbolName)
+                                .foregroundStyle(.tint)
+                                .frame(width: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(r.displayName).font(.callout.weight(.medium))
+                                Text(r.type.label).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .listStyle(.insetGrouped)
+            .searchable(text: $query, prompt: "Buscar recurso")
+        }
+    }
+
+    @ViewBuilder
+    private var ruleList: some View {
+        if rules.isEmpty {
+            RuulEmptyState(title: "Sin reglas", systemImage: "scroll", message: "Este espacio no tiene reglas activas.")
+        } else {
+            List {
+                ForEach(filteredRules) { rule in
+                    Button {
+                        onPick(rule.id, rule.title)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "scroll")
+                                .foregroundStyle(Theme.Tint.warning)
+                                .frame(width: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(rule.title).font(.callout.weight(.medium))
+                                if let trigger = rule.triggerEventType {
+                                    Text(trigger).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .listStyle(.insetGrouped)
+            .searchable(text: $query, prompt: "Buscar regla")
+        }
+    }
+
+    private var filteredMembers: [ContextMember] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return members }
+        return members.filter { $0.displayName.lowercased().contains(q) }
+    }
+
+    private var filteredResources: [ContextResource] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return resources }
+        return resources.filter { $0.displayName.lowercased().contains(q) }
+    }
+
+    private var filteredRules: [Rule] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return rules }
+        return rules.filter { $0.title.lowercased().contains(q) }
+    }
+
+    private func load() async {
+        if members.isEmpty && resources.isEmpty && rules.isEmpty { phase = .loading }
+        do {
+            switch target {
+            case .member:
+                let summary = try await container.rpc.contextSummary(contextId: context.id)
+                members = summary.members.filter { !$0.isInvited }
+            case .resource:
+                resources = try await container.rpc.listContextResources(contextId: context.id)
+            case .rule:
+                rules = try await container.rpc.listRules(contextId: context.id)
+            case .free:
+                break
+            }
+            phase = .loaded
+        } catch {
+            phase = .failed(message: UserFacingError.from(error).message)
+        }
+    }
+}
+
+// MARK: - R.5Z.fix.9 — Action picker
+
+/// Lista las acciones del `governance_action_catalog` filtradas por target_type.
+/// Tap → callback con `(actionKey, displayName)` y pop al CreateDecisionView.
+private struct ActionPickerView: View {
+    let target: DecisionTarget
+    let catalog: [GovernanceCatalogEntry]
+    let onPick: (String, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Group {
+            if catalog.isEmpty {
+                RuulEmptyState(
+                    title: "Sin acciones",
+                    systemImage: "questionmark.circle",
+                    message: "No hay acciones del catalog que apliquen a \(target.entityLabel.lowercased())."
+                )
+            } else {
+                List {
+                    ForEach(catalog) { entry in
+                        Button {
+                            onPick(entry.actionKey, entry.displayName)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: entry.dangerous ? "exclamationmark.triangle.fill" : "checkmark.circle")
+                                    .foregroundStyle(entry.dangerous ? Theme.Tint.critical : Theme.Tint.primary)
+                                    .frame(width: 28)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.displayName).font(.callout.weight(.medium))
+                                    Text(entry.actionKey).font(.caption.monospaced()).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .listStyle(.insetGrouped)
+            }
+        }
+        .navigationTitle("Acción")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
