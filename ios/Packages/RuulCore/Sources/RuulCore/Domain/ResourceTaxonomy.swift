@@ -44,6 +44,10 @@ public struct ResourceSubtype: Decodable, Sendable, Equatable, Hashable, Identif
     /// reservable o no se ha seedeado todavía. RequestReservationView
     /// adapta UI: día (casa) vs hora (vehículo) vs slot/none.
     public let reservationPolicy: ReservationPolicy?
+    /// D.CATALOG.A — document_type keys priorizados al attach un documento
+    /// a un resource de este subtype. AttachDocumentView muestra estos
+    /// primero en la Section "Recomendados". Vacío para subtypes sin seed.
+    public let recommendedDocumentTypes: [String]
 
     public var id: String { subtypeKey }
 
@@ -58,10 +62,12 @@ public struct ResourceSubtype: Decodable, Sendable, Equatable, Hashable, Identif
     private struct MetadataWire: Decodable {
         let fields: [FormFieldSpec]?
         let reservationPolicy: ReservationPolicy?
+        let recommendedDocumentTypes: [String]?
 
         enum CodingKeys: String, CodingKey {
             case fields
             case reservationPolicy = "reservation_policy"
+            case recommendedDocumentTypes = "recommended_document_types"
         }
     }
 
@@ -74,6 +80,7 @@ public struct ResourceSubtype: Decodable, Sendable, Equatable, Hashable, Identif
         let metadata = try c.decodeIfPresent(MetadataWire.self, forKey: .metadata)
         self.fields = metadata?.fields ?? []
         self.reservationPolicy = metadata?.reservationPolicy
+        self.recommendedDocumentTypes = metadata?.recommendedDocumentTypes ?? []
     }
 
     public init(
@@ -82,7 +89,8 @@ public struct ResourceSubtype: Decodable, Sendable, Equatable, Hashable, Identif
         displayName: String,
         description: String? = nil,
         fields: [FormFieldSpec] = [],
-        reservationPolicy: ReservationPolicy? = nil
+        reservationPolicy: ReservationPolicy? = nil,
+        recommendedDocumentTypes: [String] = []
     ) {
         self.subtypeKey = subtypeKey
         self.classKey = classKey
@@ -90,6 +98,7 @@ public struct ResourceSubtype: Decodable, Sendable, Equatable, Hashable, Identif
         self.description = description
         self.fields = fields
         self.reservationPolicy = reservationPolicy
+        self.recommendedDocumentTypes = recommendedDocumentTypes
     }
 }
 

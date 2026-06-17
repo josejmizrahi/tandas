@@ -33,6 +33,9 @@ public struct AttachDocumentView: View {
     @State private var subtypeFields: [FormFieldSpec] = []
     @State private var subtypeDisplayName: String = ""
     @State private var subtypeMetadata: [String: JSONValue] = [:]
+    /// D.CATALOG.A — document_type keys priorizados del subtype del resource
+    /// destino. Se resuelven on appear; mientras tanto, picker muestra todos.
+    @State private var recommendedTypeKeys: [String] = []
 
     public init(
         resource: Resource?,
@@ -88,10 +91,32 @@ public struct AttachDocumentView: View {
                 Section("Detalles") {
                     TextField("Título", text: $title)
                     Picker("Tipo", selection: $documentType) {
-                        ForEach(DocumentType.allCases) { type in
-                            Label(type.label, systemImage: type.symbolName).tag(type)
+                        // D.CATALOG.A — recommended types primero (si hay),
+                        // después el resto. iOS prioriza coherencia con el
+                        // resource_subtype (casa → escritura/contrato; auto
+                        // → tarjeta circulación/póliza; etc).
+                        if !recommendedTypes.isEmpty {
+                            Section {
+                                ForEach(recommendedTypes) { type in
+                                    Label(type.label, systemImage: type.symbolName).tag(type)
+                                }
+                            } header: {
+                                Text("Recomendados")
+                            }
+                            Section {
+                                ForEach(otherTypes) { type in
+                                    Label(type.label, systemImage: type.symbolName).tag(type)
+                                }
+                            } header: {
+                                Text("Otros")
+                            }
+                        } else {
+                            ForEach(DocumentType.allCases) { type in
+                                Label(type.label, systemImage: type.symbolName).tag(type)
+                            }
                         }
                     }
+                    .pickerStyle(.navigationLink)
                 }
 
                 // R.12.G — campos específicos del subtype (driven by
@@ -150,8 +175,44 @@ public struct AttachDocumentView: View {
             }
             .actionErrorAlert(runner)
             .task(id: documentType.rawValue) { await loadSubtypeFields() }
+            .task { await loadRecommendedTypes() }
         }
         .ruulSheet()
+    }
+
+    // MARK: - D.CATALOG.A — Recommended types per resource_subtype
+
+    /// Tipos priorizados del subtype del resource destino. Vacíos cuando
+    /// adjuntamos al contexto (sin resource), cuando el subtype no tiene
+    /// seeded, o cuando el lookup falla.
+    private var recommendedTypes: [DocumentType] {
+        guard !recommendedTypeKeys.isEmpty else { return [] }
+        return recommendedTypeKeys.compactMap(DocumentType.init(rawValue:))
+    }
+
+    private var otherTypes: [DocumentType] {
+        let recommended = Set(recommendedTypes)
+        return DocumentType.allCases.filter { !recommended.contains($0) }
+    }
+
+    /// Resuelve `recommended_document_types` del resource subtype del catalog.
+    /// 2 RPCs: resourceSubtypeKey → listResourceSubtypes → extract array.
+    private func loadRecommendedTypes() async {
+        guard let resource else { return }
+        do {
+            let key = try await container.rpc.resourceSubtypeKey(resourceId: resource.id)
+            guard let key else { return }
+            let all = try await container.rpc.listResourceSubtypes(classKey: nil)
+            if let match = all.first(where: { $0.subtypeKey == key }) {
+                recommendedTypeKeys = match.recommendedDocumentTypes
+                // Default selection al primer recomendado si user no tocó.
+                if let first = recommendedTypes.first, documentType == .other {
+                    documentType = first
+                }
+            }
+        } catch {
+            recommendedTypeKeys = []
+        }
     }
 
     /// R.12.G — carga el subtype del catalog matching documentType.rawValue
