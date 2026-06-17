@@ -18,6 +18,9 @@ public struct RequestReservationView: View {
     let reservationContextId: UUID
     /// R.2T — evento pre-seleccionado cuando se abre desde EventDetailView.
     let preselectedEventId: UUID?
+    /// R.RES.POLICY.A — subtype del recurso para resolver `reservation_policy`
+    /// del catalog. Opcional para back-compat (call-sites legacy sin descriptor).
+    let resourceSubtypeKey: String?
 
     @Environment(\.dismiss) private var dismiss
     @State private var startsAt = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
@@ -38,12 +41,16 @@ public struct RequestReservationView: View {
     /// R.2T — controla si el usuario ya tocó las fechas manualmente, para
     /// no sobreescribirlas cuando cambia el evento elegido.
     @State private var datesTouchedByUser = false
+    /// R.RES.POLICY.A — policy resolved del subtype del catalog. Si nil,
+    /// behavior legacy (DatePicker date+hour, sin guidance).
+    @State private var policy: ReservationPolicy?
 
     public init(
         resource: Resource,
         context: AppContext,
         reservationContextId: UUID? = nil,
         preselectedEventId: UUID? = nil,
+        resourceSubtypeKey: String? = nil,
         store: ReservationsStore,
         container: DependencyContainer
     ) {
@@ -51,6 +58,7 @@ public struct RequestReservationView: View {
         self.context = context
         self.reservationContextId = reservationContextId ?? context.id
         self.preselectedEventId = preselectedEventId
+        self.resourceSubtypeKey = resourceSubtypeKey
         self.store = store
         self.container = container
     }
@@ -62,11 +70,24 @@ public struct RequestReservationView: View {
 
                 whySection
 
+                // R.RES.POLICY.A — info de policy del subtype (día/hora/evento).
+                policySection
+
                 Section("Fechas") {
-                    DatePicker("Desde", selection: $startsAt, displayedComponents: [.date, .hourAndMinute])
-                        .onChange(of: startsAt) { _, _ in datesTouchedByUser = true }
-                    DatePicker("Hasta", selection: $endsAt, in: startsAt..., displayedComponents: [.date, .hourAndMinute])
-                        .onChange(of: endsAt) { _, _ in datesTouchedByUser = true }
+                    DatePicker(
+                        "Desde",
+                        selection: $startsAt,
+                        in: dateRange,
+                        displayedComponents: datePickerComponents
+                    )
+                    .onChange(of: startsAt) { _, _ in datesTouchedByUser = true }
+                    DatePicker(
+                        "Hasta",
+                        selection: $endsAt,
+                        in: startsAt...,
+                        displayedComponents: datePickerComponents
+                    )
+                    .onChange(of: endsAt) { _, _ in datesTouchedByUser = true }
                 }
 
                 eventLinkSection
@@ -92,9 +113,9 @@ public struct RequestReservationView: View {
                             Text("Solicitar reservación").frame(maxWidth: .infinity)
                         }
                     }
-                    .disabled(endsAt <= startsAt || runner.isRunning)
+                    .disabled(!canSubmit || runner.isRunning)
                 } footer: {
-                    Text("Si las fechas se traslapan con otra solicitud, se abre un conflicto que un admin debe resolver.")
+                    Text(submitFooter)
                 }
 
                 if let conflictNotice {
@@ -137,9 +158,119 @@ public struct RequestReservationView: View {
                 await loadWhy()
                 await loadContextEvents()
                 applyPreselectedEventIfNeeded()
+                await loadPolicy()
             }
         }
         .ruulSheet()
+    }
+
+    // MARK: - R.RES.POLICY.A — Policy section + UI adapt
+
+    @ViewBuilder
+    private var policySection: some View {
+        if let policy {
+            Section {
+                LabeledContent("Unidad", value: policy.granularity.label)
+                LabeledContent("Duración mínima", value: durationLabel(policy.minDurationUnits, granularity: policy.granularity))
+                if let maxUnits = policy.maxDurationUnits {
+                    LabeledContent("Duración máxima", value: durationLabel(maxUnits, granularity: policy.granularity))
+                }
+                if let days = policy.advanceWindowDays {
+                    LabeledContent("Con", value: "hasta \(days) día\(days == 1 ? "" : "s") de adelanto")
+                }
+                LabeledContent("Aprobación", value: policy.requiresApproval ? "Requerida" : "No requerida")
+            } header: {
+                Text("Política de reservación")
+            } footer: {
+                Text(policy.requiresApproval
+                     ? "Un admin del espacio debe aprobar la reserva antes de confirmarse."
+                     : "La reserva queda confirmada al solicitarla si no hay conflictos.")
+            }
+        }
+    }
+
+    private func durationLabel(_ units: Int, granularity: ReservationPolicy.Granularity) -> String {
+        switch granularity {
+        case .day:       return "\(units) día\(units == 1 ? "" : "s")"
+        case .hour:      return "\(units) hora\(units == 1 ? "" : "s")"
+        case .eventSlot: return "Un evento"
+        case .none:      return "—"
+        }
+    }
+
+    /// DatePicker components según granularity: `.date` (día) vs
+    /// `.date + .hourAndMinute` (hora/evento). `.none` no debería renderearse.
+    private var datePickerComponents: DatePickerComponents {
+        guard let policy else { return [.date, .hourAndMinute] }
+        switch policy.granularity {
+        case .day:                       return [.date]
+        case .hour, .eventSlot, .none:   return [.date, .hourAndMinute]
+        }
+    }
+
+    /// Rango válido del DatePicker: respeta `advanceWindowDays` cuando aplica.
+    private var dateRange: PartialRangeFrom<Date> {
+        Date()... // El min siempre es ahora; el max se controla por advance_window en validación.
+    }
+
+    /// Duración seleccionada en unidades del policy (días o horas según
+    /// granularity). Usada para validar min/max.
+    private var selectedDurationUnits: Int {
+        let interval = endsAt.timeIntervalSince(startsAt)
+        guard interval > 0 else { return 0 }
+        guard let policy, policy.unitSeconds > 0 else { return 1 }
+        return max(1, Int((interval / policy.unitSeconds).rounded(.up)))
+    }
+
+    /// `true` si la duración satisface min/max del policy.
+    private var durationIsValid: Bool {
+        guard let policy else { return endsAt > startsAt }
+        if policy.granularity == .none { return false }
+        let units = selectedDurationUnits
+        if units < policy.minDurationUnits { return false }
+        if let max = policy.maxDurationUnits, units > max { return false }
+        return true
+    }
+
+    /// `true` si startsAt cae dentro de `advanceWindowDays`.
+    private var advanceWindowIsValid: Bool {
+        guard let policy, let days = policy.advanceWindowDays else { return true }
+        let cutoff = Calendar.current.date(byAdding: .day, value: days, to: Date()) ?? Date()
+        return startsAt <= cutoff
+    }
+
+    private var canSubmit: Bool {
+        guard endsAt > startsAt else { return false }
+        return durationIsValid && advanceWindowIsValid
+    }
+
+    private var submitFooter: String {
+        if let policy, policy.granularity == .none {
+            return "Este recurso no admite reservaciones."
+        }
+        if !durationIsValid, let policy {
+            if selectedDurationUnits < policy.minDurationUnits {
+                return "La duración mínima es \(durationLabel(policy.minDurationUnits, granularity: policy.granularity))."
+            }
+            if let max = policy.maxDurationUnits, selectedDurationUnits > max {
+                return "La duración máxima es \(durationLabel(max, granularity: policy.granularity))."
+            }
+        }
+        if !advanceWindowIsValid, let days = policy?.advanceWindowDays {
+            return "Solo puedes reservar con hasta \(days) día\(days == 1 ? "" : "s") de adelanto."
+        }
+        return "Si las fechas se traslapan con otra solicitud, se abre un conflicto que un admin debe resolver."
+    }
+
+    private func loadPolicy() async {
+        guard let subtypeKey = resourceSubtypeKey else { return }
+        do {
+            let subtypes = try await container.rpc.listResourceSubtypes(classKey: nil)
+            policy = subtypes.first(where: { $0.subtypeKey == subtypeKey })?.reservationPolicy
+        } catch {
+            // Silent: legacy behavior si no se puede cargar el catalog.
+            policy = nil
+        }
     }
 
     @ViewBuilder
