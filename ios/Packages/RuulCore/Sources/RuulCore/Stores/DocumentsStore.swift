@@ -91,6 +91,35 @@ public final class DocumentsStore {
         return result.documentId
     }
 
+    /// R.5Z.fix.10.b — adjunta un documento al contexto sin atarlo a un
+    /// resource específico (caso: estatutos del grupo, contratos macro,
+    /// comprobantes administrativos). `documents.resource_id` ya es nullable
+    /// en backend; `register_document` acepta `p_resource_id = null`.
+    public func attachToContext(
+        contextActorId: UUID,
+        fileData: Data,
+        fileName: String,
+        title: String,
+        documentType: DocumentType,
+        mimeType: String,
+        metadata: JSONValue? = nil
+    ) async throws -> UUID {
+        let path = Self.makeStoragePath(scope: contextActorId, fileName: fileName)
+        try await rpc.uploadDocumentFile(path: path, data: fileData, contentType: mimeType)
+        let result = try await rpc.registerDocument(RegisterDocumentInput(
+            title: title,
+            contextActorId: contextActorId,
+            documentType: documentType,
+            storagePath: path,
+            mimeType: mimeType,
+            fileSizeBytes: Int64(fileData.count),
+            resourceId: nil,
+            metadata: metadata
+        ))
+        await loadContextDocuments(contextId: contextActorId, includeArchived: false)
+        return result.documentId
+    }
+
     public func signedURL(for document: Document, expiresIn: Int = 3600) async throws -> URL? {
         guard let path = document.storagePath else { return nil }
         return try await rpc.documentSignedURL(path: path, expiresIn: expiresIn)

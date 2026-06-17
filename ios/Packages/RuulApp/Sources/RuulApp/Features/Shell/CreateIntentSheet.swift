@@ -490,6 +490,8 @@ private struct DocumentIntentLanding: View {
     @State private var phase: StorePhase = .idle
     @State private var documentsStore: DocumentsStore
     @State private var pickedResource: Resource?
+    /// R.5Z.fix.10.b — flag para abrir AttachDocumentView con resource=nil.
+    @State private var isShowingContextAttach = false
 
     init(context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void) {
         self.context = context
@@ -508,14 +510,31 @@ private struct DocumentIntentLanding: View {
                     Task { await load() }
                 }
             case .loaded:
-                if resources.isEmpty {
-                    ContentUnavailableView(
-                        "Sin recursos",
-                        systemImage: "shippingbox",
-                        description: Text("\(context.displayName) no tiene recursos aún. Crea uno primero.")
-                    )
-                } else {
-                    List {
+                List {
+                    // R.5Z.fix.10.b — opción "Sin recurso" siempre arriba.
+                    // Caso uso: estatutos, contratos macro, comprobantes admin.
+                    Section {
+                        Button {
+                            isShowingContextAttach = true
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "folder.fill")
+                                    .foregroundStyle(.tint)
+                                    .frame(width: 28)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Sin recurso").font(.callout.weight(.medium))
+                                    Text("Documento del espacio").font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if !resources.isEmpty {
                         Section {
                             ForEach(resources) { r in
                                 Button {
@@ -546,7 +565,7 @@ private struct DocumentIntentLanding: View {
                                 .buttonStyle(.plain)
                             }
                         } header: {
-                            Text("Adjuntar a recurso en \(context.displayName)")
+                            Text("Adjuntar a recurso")
                         }
                     }
                 }
@@ -558,6 +577,14 @@ private struct DocumentIntentLanding: View {
         .sheet(item: $pickedResource) { resource in
             AttachDocumentView(
                 resource: resource,
+                context: context,
+                container: container,
+                store: documentsStore
+            )
+        }
+        .sheet(isPresented: $isShowingContextAttach) {
+            AttachDocumentView(
+                resource: nil,
                 context: context,
                 container: container,
                 store: documentsStore

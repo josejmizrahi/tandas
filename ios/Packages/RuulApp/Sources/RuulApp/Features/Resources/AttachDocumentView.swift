@@ -2,12 +2,16 @@ import SwiftUI
 import UniformTypeIdentifiers
 import RuulCore
 
-/// Sheet para adjuntar un documento a un recurso. Flujo:
+/// Sheet para adjuntar un documento. Flujo:
 /// 1. Pickea un archivo (PDF/imagen) con `.fileImporter`.
 /// 2. Captura título + tipo de documento.
 /// 3. Sube binario al bucket `documents` de Storage + `register_document`.
+///
+/// R.5Z.fix.10.b — `resource` opcional. Cuando es nil, el documento se
+/// adjunta al contexto (sin atar a un resource específico). Caso uso:
+/// estatutos, contratos macro, comprobantes admin.
 public struct AttachDocumentView: View {
-    let resource: Resource
+    let resource: Resource?
     let context: AppContext
     let container: DependencyContainer
     let store: DocumentsStore
@@ -31,7 +35,7 @@ public struct AttachDocumentView: View {
     @State private var subtypeMetadata: [String: JSONValue] = [:]
 
     public init(
-        resource: Resource,
+        resource: Resource?,
         context: AppContext,
         container: DependencyContainer,
         store: DocumentsStore
@@ -112,7 +116,8 @@ public struct AttachDocumentView: View {
                         if runner.isRunning {
                             ProgressView().frame(maxWidth: .infinity)
                         } else {
-                            Label("Adjuntar al recurso", systemImage: "tray.and.arrow.down")
+                            Label(resource == nil ? "Adjuntar al espacio" : "Adjuntar al recurso",
+                                  systemImage: "tray.and.arrow.down")
                                 .frame(maxWidth: .infinity)
                         }
                     }
@@ -228,16 +233,31 @@ public struct AttachDocumentView: View {
             let metadataPayload: JSONValue? = subtypeMetadata.isEmpty
                 ? nil
                 : .object(subtypeMetadata)
-            _ = try await store.attachToResource(
-                resource: resource,
-                contextActorId: context.id,
-                fileData: data,
-                fileName: pickedFileName,
-                title: title.trimmingCharacters(in: .whitespaces),
-                documentType: documentType,
-                mimeType: pickedMimeType.isEmpty ? "application/octet-stream" : pickedMimeType,
-                metadata: metadataPayload
-            )
+            let mime = pickedMimeType.isEmpty ? "application/octet-stream" : pickedMimeType
+            let trimmed = title.trimmingCharacters(in: .whitespaces)
+            if let resource {
+                _ = try await store.attachToResource(
+                    resource: resource,
+                    contextActorId: context.id,
+                    fileData: data,
+                    fileName: pickedFileName,
+                    title: trimmed,
+                    documentType: documentType,
+                    mimeType: mime,
+                    metadata: metadataPayload
+                )
+            } else {
+                // R.5Z.fix.10.b — sin resource → adjunta al contexto.
+                _ = try await store.attachToContext(
+                    contextActorId: context.id,
+                    fileData: data,
+                    fileName: pickedFileName,
+                    title: trimmed,
+                    documentType: documentType,
+                    mimeType: mime,
+                    metadata: metadataPayload
+                )
+            }
             dismiss()
         }
     }
