@@ -14,6 +14,11 @@ public struct ResourceSettingsView: View {
     @State private var isShowingEditGeneral = false
     @State private var isShowingTransfer = false
     @State private var runner = ActionRunner()
+    /// R.RES.POLICY.D.UI — state para el editor del override de reservation_policy.
+    @State private var isShowingEditPolicy = false
+    @State private var resourceForPolicy: Resource?
+    @State private var subtypeDefaultPolicy: ReservationPolicy?
+    @State private var currentOverridePolicy: ReservationPolicy?
 
     public init(resourceId: UUID, container: DependencyContainer) {
         self.resourceId = resourceId
@@ -65,7 +70,47 @@ public struct ResourceSettingsView: View {
         }) {
             TransferOwnershipSheet(resourceId: resourceId, container: container)
         }
+        // R.RES.POLICY.D.UI — sheet del editor de policy override.
+        .sheet(isPresented: $isShowingEditPolicy, onDismiss: {
+            Task { await loadPolicyContext() }
+        }) {
+            if let resource = resourceForPolicy, let subtypeDefault = subtypeDefaultPolicy {
+                EditReservationPolicyOverrideSheet(
+                    resource: resource,
+                    subtypeDefault: subtypeDefault,
+                    currentOverride: currentOverridePolicy,
+                    container: container,
+                    onSaved: {
+                        Task { await store.load(resourceId: resourceId) }
+                    }
+                )
+            }
+        }
         .actionErrorAlert(runner)
+        .task { await loadPolicyContext() }
+    }
+
+    /// R.RES.POLICY.D.UI — fetch del Resource completo + subtype default +
+    /// override actual. Llamado on appear y después de save.
+    private func loadPolicyContext() async {
+        do {
+            let detail = try await container.rpc.resourceDetail(resourceId: resourceId)
+            resourceForPolicy = detail.resource
+            // Override del resource.metadata, si existe.
+            if case .object(let dict) = detail.resource.metadata,
+               let overrideValue = dict["reservation_policy_override"] {
+                currentOverridePolicy = ReservationPolicy.from(jsonValue: overrideValue)
+            } else {
+                currentOverridePolicy = nil
+            }
+            // Subtype default del catalog.
+            if let subtypeKey = try await container.rpc.resourceSubtypeKey(resourceId: resourceId) {
+                let subtypes = try await container.rpc.listResourceSubtypes(classKey: nil)
+                subtypeDefaultPolicy = subtypes.first(where: { $0.subtypeKey == subtypeKey })?.reservationPolicy
+            }
+        } catch {
+            // Silent: si falla, el button "Personalizar" simplemente no aparece.
+        }
     }
 
     @ViewBuilder
@@ -255,6 +300,48 @@ public struct ResourceSettingsView: View {
             InfoRow(symbolName: "xmark.circle", title: "Cancelación", value: policy.cancellationPolicy.capitalized)
             InfoRow(symbolName: "list.number", title: "Prioridad", value: priorityLabel(policy.priorityPolicy))
             InfoRow(symbolName: "person.2", title: "Capacidad simultánea", value: "\(policy.capacity)")
+        }
+
+        // R.RES.POLICY.D.UI — política de reservación + button editor.
+        // Solo aparece cuando el catalog tiene policy seedeada para el subtype.
+        if let subtypeDefault = subtypeDefaultPolicy, subtypeDefault.isReservable {
+            policyOverrideSection(subtypeDefault: subtypeDefault)
+        }
+    }
+
+    @ViewBuilder
+    private func policyOverrideSection(subtypeDefault: ReservationPolicy) -> some View {
+        let effective = currentOverridePolicy ?? subtypeDefault
+        Section {
+            LabeledContent("Unidad", value: effective.granularity.label)
+            LabeledContent("Mínimo", value: durationLabel(effective.minDurationUnits, granularity: effective.granularity))
+            if let max = effective.maxDurationUnits {
+                LabeledContent("Máximo", value: durationLabel(max, granularity: effective.granularity))
+            }
+            if let days = effective.advanceWindowDays {
+                LabeledContent("Adelanto", value: "Hasta \(days) día\(days == 1 ? "" : "s")")
+            }
+            LabeledContent("Aprobación", value: effective.requiresApproval ? "Requerida" : "No requerida")
+            Button {
+                isShowingEditPolicy = true
+            } label: {
+                Label("Personalizar política", systemImage: "slider.horizontal.3")
+            }
+        } header: {
+            Text("Política de reservación")
+        } footer: {
+            Text(currentOverridePolicy == nil
+                 ? "Usando el default del subtipo. Personaliza si necesitas reglas distintas para este recurso."
+                 : "Override activo. Las reservas se validan contra estos valores en lugar del default del subtipo.")
+        }
+    }
+
+    private func durationLabel(_ units: Int, granularity: ReservationPolicy.Granularity) -> String {
+        switch granularity {
+        case .day:       return "\(units) día\(units == 1 ? "" : "s")"
+        case .hour:      return "\(units) hora\(units == 1 ? "" : "s")"
+        case .eventSlot: return "Un evento"
+        case .none:      return "—"
         }
     }
 

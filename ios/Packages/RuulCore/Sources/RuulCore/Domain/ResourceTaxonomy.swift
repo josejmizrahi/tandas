@@ -164,4 +164,59 @@ public struct ReservationPolicy: Codable, Sendable, Equatable, Hashable {
     public var isReservable: Bool {
         granularity != .none
     }
+
+    /// R.RES.POLICY.D — decode desde un `JSONValue` (raíz `resources.metadata`
+    /// .reservation_policy_override). Tolera campos faltantes con defaults
+    /// seguros. Devuelve nil si no hay granularity válida.
+    public static func from(jsonValue value: JSONValue) -> ReservationPolicy? {
+        guard case .object(let dict) = value else { return nil }
+        guard case .string(let granRaw) = dict["granularity"] ?? .null,
+              let granularity = Granularity(rawValue: granRaw) else {
+            return nil
+        }
+        let minUnits: Int = {
+            if case .number(let n) = dict["min_duration_units"] ?? .null { return Int(n) }
+            return 1
+        }()
+        let maxUnits: Int? = {
+            if case .number(let n) = dict["max_duration_units"] ?? .null { return Int(n) }
+            return nil
+        }()
+        let advanceDays: Int? = {
+            if case .number(let n) = dict["advance_window_days"] ?? .null { return Int(n) }
+            return nil
+        }()
+        let requiresApproval: Bool = {
+            if case .bool(let b) = dict["requires_approval"] ?? .null { return b }
+            return false
+        }()
+        return ReservationPolicy(
+            granularity: granularity,
+            minDurationUnits: minUnits,
+            maxDurationUnits: maxUnits,
+            advanceWindowDays: advanceDays,
+            requiresApproval: requiresApproval
+        )
+    }
+
+    /// R.RES.POLICY.D — serializa el policy a `JSONValue.object` con el shape
+    /// del backend (snake_case). Usado al guardar el override via updateResource.
+    public func toJSONValue() -> JSONValue {
+        var dict: [String: JSONValue] = [
+            "granularity": .string(granularity.rawValue),
+            "min_duration_units": .number(Double(minDurationUnits)),
+            "requires_approval": .bool(requiresApproval)
+        ]
+        if let max = maxDurationUnits {
+            dict["max_duration_units"] = .number(Double(max))
+        } else {
+            dict["max_duration_units"] = .null
+        }
+        if let days = advanceWindowDays {
+            dict["advance_window_days"] = .number(Double(days))
+        } else {
+            dict["advance_window_days"] = .null
+        }
+        return .object(dict)
+    }
 }
