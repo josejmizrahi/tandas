@@ -122,7 +122,7 @@ struct EventDetailPoolsSection: View {
                 }
             } header: {
                 HStack {
-                    Text("Fondos del espacio (\(pools.count))")
+                    Text("Fondos comunes del espacio")
                     Spacer()
                     if pools.count > 3 {
                         NavigationLink {
@@ -140,7 +140,7 @@ struct EventDetailPoolsSection: View {
                 }
                 .textCase(nil)
             } footer: {
-                Text("Los fondos pertenecen a \(context.displayName), no a este evento.")
+                Text("Atajo a los fondos de \(context.displayName). Los fondos viven en el espacio (Dinero → Fondos comunes), no en este evento.")
             }
         }
         Color.clear

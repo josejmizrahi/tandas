@@ -80,7 +80,7 @@ private struct ClassPickerView: View {
                 List {
                     aiHero
                     Section("Categorías") {
-                        ForEach(classes) { cls in
+                        ForEach(visibleClasses) { cls in
                             NavigationLink(value: Route.subtype(cls)) {
                                 Label {
                                     VStack(alignment: .leading, spacing: 2) {
@@ -143,6 +143,25 @@ private struct ClassPickerView: View {
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
         }
+    }
+
+    /// R.13 honesty (founder feedback 2026-06-19 "porque hay dos pools. recurso
+    /// pool y pool en eventos?") — el backend catalog incluye `pool`, `right`,
+    /// `event`, `obligation`, `decision`, `rule`, `membership`, `money` como
+    /// classes de recurso, pero todas son entidades primitivas con flujo
+    /// dedicado propio (Crear fondo común / Programar algo / Asignar compromiso
+    /// / Crear propuesta / Crear regla / Invitar / etc.). Mostrarlas en el
+    /// picker de "Nuevo recurso" creaba dualidad confusa: "¿el pool es un
+    /// recurso o es lo que aporto desde Dinero?"
+    ///
+    /// Filtramos en frontend para mantener honesto el picker. Si en el futuro
+    /// una de estas classes gana sentido como recurso real, se quita el filtro.
+    private var visibleClasses: [ResourceClass] {
+        let phantomClassKeys: Set<String> = [
+            "pool", "right", "event", "obligation",
+            "decision", "rule", "membership", "money"
+        ]
+        return classes.filter { !phantomClassKeys.contains($0.classKey) }
     }
 
     /// Rutas internas del flow (Hashable para navigationDestination).
