@@ -26,25 +26,52 @@ public struct CreatePoolSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("Fondo") {
-                    TextField("Nombre (Bote de la cena, JV Nave…)", text: $name)
-                    Picker("Tipo", selection: $policyKey) {
-                        Text("Bote").tag("winner_takes_all")
-                        Text("Con meta").tag("equity_target")
-                        Text("Proporcional").tag("proportional")
-                    }
-                    .pickerStyle(.segmented)
+                Section("Nombre") {
+                    TextField("Bote de la cena, JV Nave…", text: $name)
                 }
 
-                Section("Meta") {
-                    HStack {
-                        Text("$")
-                        TextField(policyKey == "equity_target" ? "Monto meta" : "Opcional", text: $targetAmountText)
-                            .keyboardType(.decimalPad)
+                Section {
+                    policyRow(
+                        key: "winner_takes_all",
+                        label: "Bote",
+                        description: "Todo lo aportado se paga a una persona ganadora al resolver."
+                    )
+                    policyRow(
+                        key: "equity_target",
+                        label: "Fondo con meta",
+                        description: "Cada quien aporta hasta llegar a una meta. Al resolver quedan fijadas las participaciones."
+                    )
+                    policyRow(
+                        key: "proportional",
+                        label: "Proporcional",
+                        description: "Al resolver, cada participante queda con su parte proporcional a lo aportado."
+                    )
+                } header: {
+                    Text("¿Cómo se reparte?")
+                }
+
+                // Meta solo aplica al fondo "Con meta" (equity_target). Para
+                // bote y proporcional el monto target no tiene efecto backend.
+                if policyKey == "equity_target" {
+                    Section {
+                        HStack {
+                            Text("$")
+                            TextField("Monto meta", text: $targetAmountText)
+                                .keyboardType(.decimalPad)
+                            TextField("MXN", text: $currency)
+                                .textInputAutocapitalization(.characters)
+                                .frame(width: 64)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    } header: {
+                        Text("Meta")
+                    } footer: {
+                        Text("Hasta cuánto se aporta. El fondo deja de aceptar aportes al llegar a la meta.")
+                    }
+                } else {
+                    Section("Moneda") {
                         TextField("MXN", text: $currency)
                             .textInputAutocapitalization(.characters)
-                            .frame(width: 64)
-                            .multilineTextAlignment(.trailing)
                     }
                 }
 
@@ -59,14 +86,6 @@ public struct CreatePoolSheet: View {
                         }
                     }
                     .disabled(!isValid || runner.isRunning)
-                } footer: {
-                    if policyKey == "proportional" {
-                        Text("Al resolver, cada participante queda con su parte proporcional a lo aportado.")
-                    } else if policyKey == "winner_takes_all" {
-                        Text("Bote: todo lo aportado se paga a una persona ganadora al resolver.")
-                    } else {
-                        Text("Fondo con meta: cada quien aporta y al resolver quedan fijadas las participaciones.")
-                    }
                 }
             }
             .navigationTitle("Crear fondo")
@@ -79,6 +98,33 @@ public struct CreatePoolSheet: View {
             .actionErrorAlert(runner)
         }
         .ruulSheet()
+    }
+
+    /// Fila rica con descripción inline. Reemplaza el Picker(.segmented) que
+    /// solo mostraba labels técnicos sin contexto al momento de elegir.
+    @ViewBuilder
+    private func policyRow(key: String, label: String, description: String) -> some View {
+        Button {
+            policyKey = key
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: policyKey == key ? "largecircle.fill.circle" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(policyKey == key ? Color.accentColor : .secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label)
+                        .font(.callout.weight(policyKey == key ? .semibold : .regular))
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var isValid: Bool {
