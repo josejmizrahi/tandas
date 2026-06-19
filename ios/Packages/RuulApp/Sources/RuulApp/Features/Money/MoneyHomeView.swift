@@ -413,20 +413,16 @@ public struct MoneyHomeView: View {
     @ViewBuilder
     private var accionesSection: some View {
         let backendActions = store.availableActions.filter { moneyActionKeys.contains($0.actionKey) }
-        Section {
-            ForEach(backendActions) { action in
-                // P0.5 — componente canónico con reason en disabled.
-                ActionMenuButton(action: action) {
-                    handle(actionKey: action.actionKey)
+        if !backendActions.isEmpty {
+            Section {
+                ForEach(backendActions) { action in
+                    ActionMenuButton(action: action) {
+                        handle(actionKey: action.actionKey)
+                    }
                 }
+            } header: {
+                Text("Qué puedes hacer")
             }
-            NavigationLink {
-                ActivityFeedView(context: context, container: container)
-            } label: {
-                Label("Ver historial completo", systemImage: "clock.arrow.circlepath")
-            }
-        } header: {
-            Text("Qué puedes hacer")
         }
     }
 
@@ -520,7 +516,7 @@ public struct MoneyHomeView: View {
     private var moneyActivity: [SummaryActivity] {
         store.recentActivity
             .filter { moneyDomains.contains(String($0.eventType.split(separator: ".").first ?? "")) }
-            .prefix(10)
+            .prefix(4)
             .map { $0 }
     }
 
@@ -653,13 +649,10 @@ public struct MoneyHomeView: View {
             } label: {
                 Label("Obligaciones abiertas", systemImage: "doc.text.below.ecg.fill")
             }
-            NavigationLink {
-                SettlementView(context: context, container: container)
-            } label: {
-                Label("Liquidación completa", systemImage: "creditcard.fill")
-            }
         } header: {
             Text("Detalles")
+        } footer: {
+            Text("La liquidación se inicia desde el botón del Hero cuando hay deudas.")
         }
     }
 

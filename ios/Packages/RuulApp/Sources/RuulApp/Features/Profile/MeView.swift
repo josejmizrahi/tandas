@@ -67,7 +67,6 @@ public struct MeView: View {
                 heroSection
                 aiSummarySection
                 attentionSection
-                dashboardSection
                 actionsSection
                 myWorldSection
                 configurationSection
@@ -352,34 +351,7 @@ public struct MeView: View {
         }
     }
 
-    // MARK: - 3. Dashboard (widgets cross-context)
-
-    @ViewBuilder
-    private var dashboardSection: some View {
-        Section {
-            NavigationLink {
-                MyCalendarView(container: container)
-            } label: {
-                Label("Mi calendario", systemImage: "calendar")
-            }
-            NavigationLink {
-                MyActivityFeedView(container: container)
-            } label: {
-                Label("Mi actividad", systemImage: "antenna.radiowaves.left.and.right")
-            }
-            NavigationLink {
-                MyBalanceView(container: container)
-            } label: {
-                Label("Mi balance neto", systemImage: "scalemass.fill")
-            }
-        } header: {
-            Text("Dashboard")
-        } footer: {
-            Text("Todo lo que tienes en tus espacios, agregado en un solo lugar.")
-        }
-    }
-
-    // MARK: - 4. Acciones personales (crear cualquier primitiva desde Yo)
+    // MARK: - 3. Acciones personales (crear cualquier primitiva desde Yo)
     //
     // Slice 7.A.6 (audit 2026-06-14) — split visual en 2 sections para que el
     // usuario entienda cuáles crean cosas en su espacio personal y cuáles
@@ -531,7 +503,10 @@ public struct MeView: View {
         }
     }
 
-    // MARK: - 5. Mi mundo (agregadores cross-context)
+    // MARK: - 4. Mi mundo (agregadores cross-context)
+    //
+    // 4 primary rows visibles + acordeón "Más" con 7 destinos secundarios.
+    // Reduce el wall de 11 NavigationLinks a 5 rows arrancando colapsado.
 
     @ViewBuilder
     private var myWorldSection: some View {
@@ -550,68 +525,78 @@ public struct MeView: View {
             }
             .buttonStyle(.plain)
             NavigationLink {
-                MyResourcesView(container: container)
+                MyCalendarView(container: container)
             } label: {
-                Label("Mis recursos", systemImage: "shippingbox.fill")
+                Label("Mi calendario", systemImage: "calendar")
             }
             NavigationLink {
-                MyObligationsView(container: container)
+                MyActivityFeedView(container: container)
             } label: {
-                Label("Mis compromisos", systemImage: "checklist")
+                Label("Mi actividad", systemImage: "antenna.radiowaves.left.and.right")
             }
             NavigationLink {
-                MyReservationsView(container: container)
+                MyBalanceView(container: container)
             } label: {
-                Label("Mis reservaciones", systemImage: "calendar.badge.clock")
+                Label("Mi balance neto", systemImage: "scalemass.fill")
             }
-            NavigationLink {
-                MyDecisionsView(container: container)
+            DisclosureGroup {
+                NavigationLink {
+                    MyResourcesView(container: container)
+                } label: {
+                    Label("Mis recursos", systemImage: "shippingbox.fill")
+                }
+                NavigationLink {
+                    MyObligationsView(container: container)
+                } label: {
+                    Label("Mis compromisos", systemImage: "checklist")
+                }
+                NavigationLink {
+                    MyReservationsView(container: container)
+                } label: {
+                    Label("Mis reservaciones", systemImage: "calendar.badge.clock")
+                }
+                NavigationLink {
+                    MyDecisionsView(container: container)
+                } label: {
+                    Label("Mis decisiones", systemImage: "checkmark.bubble.fill")
+                }
+                NavigationLink {
+                    MyRulesView(container: container)
+                } label: {
+                    Label("Mis reglas", systemImage: "sparkles")
+                }
+                NavigationLink {
+                    MyDocumentsView(container: container)
+                } label: {
+                    Label("Mis documentos", systemImage: "doc.text.fill")
+                }
+                NavigationLink {
+                    MySubscriptionsView(container: container)
+                } label: {
+                    Label("Mis suscripciones", systemImage: "bookmark.fill")
+                }
+                NavigationLink {
+                    MyTrustNetworkView(container: container)
+                } label: {
+                    Label("Mi red de confianza", systemImage: "person.line.dotted.person")
+                }
             } label: {
-                Label("Mis decisiones", systemImage: "checkmark.bubble.fill")
-            }
-            NavigationLink {
-                MyRulesView(container: container)
-            } label: {
-                Label("Mis reglas", systemImage: "sparkles")
-            }
-            NavigationLink {
-                MyDocumentsView(container: container)
-            } label: {
-                Label("Mis documentos", systemImage: "doc.text.fill")
-            }
-            NavigationLink {
-                MySubscriptionsView(container: container)
-            } label: {
-                Label("Mis suscripciones", systemImage: "bookmark.fill")
-            }
-            NavigationLink {
-                MyTrustNetworkView(container: container)
-            } label: {
-                Label("Mi red de confianza", systemImage: "person.line.dotted.person")
+                Label("Más", systemImage: "ellipsis.circle")
+                    .font(.callout.weight(.medium))
             }
         } header: {
             Text("Mi mundo")
         }
     }
 
-    // MARK: - 6. Configuración
+    // MARK: - 5. Configuración
+    //
+    // "Editar perfil" sale de aquí — el lápiz del Hero ya cumple esa función
+    // (un solo entry-point para editar perfil, Apple-style).
 
     @ViewBuilder
     private var configurationSection: some View {
         Section {
-            Button {
-                isShowingEditProfile = true
-            } label: {
-                HStack {
-                    Label("Editar perfil", systemImage: "pencil")
-                        .foregroundStyle(Theme.Text.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.Text.tertiary)
-                }
-            }
-            .buttonStyle(.plain)
             Button {
                 isShowingSettings = true
             } label: {
