@@ -239,32 +239,47 @@ public struct CreateDecisionView: View {
 
     @ViewBuilder
     private var freeFormBody: some View {
-        Section("Tipo") {
-            Picker("Tipo", selection: $decisionType) {
-                ForEach(DecisionType.allCases) { type in
-                    Text(type.label).tag(type)
-                }
-            }
-            .pickerStyle(.navigationLink)
-        }
-
-        // R.2Q — voting model picker
-        // En conflictos de reservación el modo es fijo (single_choice con
-        // 4 opciones auto-seedeadas). En el resto, el usuario elige.
+        // Avanzado: Tipo + Modo de votación. El 95% de los usuarios deja los
+        // defaults (yes_no_abstain / generic); colapsarlos en un DisclosureGroup
+        // mantiene el camino corto rápido y los hace accesibles para quien los
+        // necesita. En conflictos pre-poblados el modo es fijo — saltamos el
+        // wrapper entero y mostramos sólo el Tipo (legacy behavior).
         if conflictReference == nil {
             Section {
-                Picker("Modo de votación", selection: $votingModel) {
-                    ForEach(supportedVotingModels, id: \.self) { model in
-                        Text(model.label).tag(model)
+                DisclosureGroup {
+                    Picker("Tipo", selection: $decisionType) {
+                        ForEach(DecisionType.allCases) { type in
+                            Text(type.label).tag(type)
+                        }
                     }
+                    .pickerStyle(.navigationLink)
+                    Picker("Modo de votación", selection: $votingModel) {
+                        ForEach(supportedVotingModels, id: \.self) { model in
+                            Text(model.label).tag(model)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                } label: {
+                    Label("Avanzado", systemImage: "slider.horizontal.3")
+                        .font(.callout.weight(.medium))
                 }
-                .pickerStyle(.navigationLink)
             } footer: {
                 Text(votingModelHint)
             }
+        } else {
+            Section("Tipo") {
+                Picker("Tipo", selection: $decisionType) {
+                    ForEach(DecisionType.allCases) { type in
+                        Text(type.label).tag(type)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+            }
         }
 
-        // R.2Q — opciones manuales para single_choice y multiple_choice no-disputa
+        // R.2Q — opciones manuales para single_choice y multiple_choice no-disputa.
+        // Aparece automáticamente cuando el usuario cambia el modo dentro del
+        // DisclosureGroup Avanzado.
         if (votingModel == .singleChoice || votingModel == .multipleChoice) && conflictReference == nil {
             optionsSection
         }
