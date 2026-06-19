@@ -6,6 +6,11 @@ import RuulCore
 public struct CreatePoolSheet: View {
     let context: AppContext
     let store: PoolsStore
+    /// Callback opcional con el `poolAccountId` recién creado. El parent
+    /// (CreateIntentSheet) lo usa para auto-pushear a PoolDetailView vía
+    /// `AttentionDestination.poolDetail`. MoneyHomeView ignora este callback
+    /// (basta con dismiss + refresh de la lista).
+    var onCreated: ((UUID) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
@@ -14,9 +19,10 @@ public struct CreatePoolSheet: View {
     @State private var currency = "MXN"
     @State private var runner = ActionRunner()
 
-    public init(context: AppContext, store: PoolsStore) {
+    public init(context: AppContext, store: PoolsStore, onCreated: ((UUID) -> Void)? = nil) {
         self.context = context
         self.store = store
+        self.onCreated = onCreated
     }
 
     private var targetAmount: Double? {
@@ -137,8 +143,9 @@ public struct CreatePoolSheet: View {
     }
 
     private func create() async {
+        var createdPoolId: UUID?
         let success = await runner.run {
-            _ = try await store.createPool(
+            let result = try await store.createPool(
                 CreatePoolInput(
                     contextId: context.id,
                     displayName: name.trimmingCharacters(in: .whitespaces),
@@ -149,8 +156,12 @@ public struct CreatePoolSheet: View {
                 ),
                 context: context
             )
+            createdPoolId = result.poolAccountId
         }
-        if success { dismiss() }
+        if success {
+            if let id = createdPoolId { onCreated?(id) }
+            dismiss()
+        }
     }
 }
 

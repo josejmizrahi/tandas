@@ -461,7 +461,10 @@ private struct FormDestination: View {
             })
         case .pool:
             // CreatePoolSheet trae su propio NavigationStack + Form interno.
-            CreatePoolSheet(context: context, store: poolsStore)
+            // Post-create pushea PoolDetailView vía AttentionDestination.poolDetail.
+            CreatePoolSheet(context: context, store: poolsStore, onCreated: { poolId in
+                onCreated(.poolDetail(poolAccountId: poolId, contextActorId: context.id))
+            })
         }
     }
 }

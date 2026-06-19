@@ -35,6 +35,9 @@ public enum AttentionDestination: Identifiable, Hashable {
     /// R.5Z.fix.EVENT.HOST_CONFIRM — event scope. Push a EventDetailView.
     /// Usado por `event_confirmation_by_host` y futuros items event-scoped.
     case event(eventId: UUID, contextActorId: UUID, contextDisplayName: String)
+    /// Pool/fondo scope. Push a PoolDetailView post-create desde el flow
+    /// "+ Crear → Crear fondo común".
+    case poolDetail(poolAccountId: UUID, contextActorId: UUID)
     /// Kind no soportado por iOS aún. Render UX honesto, no crash.
     case unsupported(kind: String)
 
@@ -49,6 +52,7 @@ public enum AttentionDestination: Identifiable, Hashable {
         case .context(let ctx, _):                      return "context-\(ctx)"
         case .money(let ctx, _):                        return "money-\(ctx)"
         case .event(let id, _, _):                      return "event-\(id)"
+        case .poolDetail(let id, _):                    return "pool-\(id)"
         case .unsupported(let kind):                    return "unsupported-\(kind)"
         }
     }
@@ -273,6 +277,11 @@ public struct AttentionDestinationSheet: View {
             // R.5Z.fix.EVENT.HOST_CONFIRM — push EventDetailView.
             wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 EventDetailView(eventId: eventId, context: ctx, container: container)
+            }
+        case .poolDetail(let poolAccountId, let contextActorId):
+            // Push a PoolDetailView post-create desde "+ Crear → Crear fondo".
+            wrapped(contextActorId: contextActorId) { ctx in
+                PoolDetailView(poolAccountId: poolAccountId, context: ctx, container: container)
             }
         case .unsupported(let kind):
             UnsupportedAttentionView(kind: kind)
