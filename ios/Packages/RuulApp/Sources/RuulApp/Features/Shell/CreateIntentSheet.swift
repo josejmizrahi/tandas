@@ -49,8 +49,10 @@ public struct CreateIntentSheet: View {
                               detail: "Crear un evento del espacio.")
                     intentRow(.reservation, icon: "calendar.badge.clock",  tint: .orange, label: "Hacer reservación",
                               detail: "Reservar un recurso para unas fechas.")
-                    intentRow(.expense,   icon: "dollarsign.circle.fill",  tint: .green,  label: "Registrar movimiento",
-                              detail: "Anotar un gasto o ingreso.")
+                    intentRow(.expense,   icon: "dollarsign.circle.fill",  tint: .green,  label: "Registrar gasto compartido",
+                              detail: "Pagaste algo del grupo y otros te deben su parte.")
+                    intentRow(.pool,      icon: "banknote.fill",           tint: .green,  label: "Crear fondo común",
+                              detail: "Todos aportan a un bote y se reparte al cumplir algo.")
                     intentRow(.decision,  icon: "checkmark.bubble.fill",   tint: .purple, label: "Crear propuesta",
                               detail: "Abrir una decisión para votar.")
                     intentRow(.obligation, icon: "checklist",              tint: .indigo, label: "Asignar compromiso",
@@ -325,19 +327,20 @@ public struct CreateIntentSheet: View {
     private func intentLabel(for intent: Intent) -> String {
         switch intent {
         case .event:       return "Programar algo"
-        case .expense:     return "Registrar movimiento"
+        case .expense:     return "Registrar gasto compartido"
         case .decision:    return "Crear propuesta"
         case .obligation:  return "Asignar compromiso"
         case .document:    return "Subir documento"
         case .resource:    return "Agregar recurso"
         case .reservation: return "Hacer reservación"
+        case .pool:        return "Crear fondo común"
         }
     }
 
     // MARK: - Tipos
 
     enum Intent: Hashable {
-        case event, expense, decision, document, resource, reservation, obligation
+        case event, expense, decision, document, resource, reservation, obligation, pool
 
         /// R.6.AI.2 — mapeo desde el `intentKey` string del modelo on-device.
         /// Lowercase + trim para tolerar variantes (e.g., "Event", "events").
@@ -350,6 +353,7 @@ public struct CreateIntentSheet: View {
             case "resource", "resources":                 self = .resource
             case "reservation", "reservations":           self = .reservation
             case "obligation", "obligations", "debt":     self = .obligation
+            case "pool", "pools", "fondo", "fondos":      self = .pool
             default:                                       return nil
             }
         }
@@ -381,6 +385,7 @@ private struct FormDestination: View {
     @State private var eventsStore: EventsStore
     @State private var moneyStore: MoneyStore
     @State private var resourcesStore: ResourcesStore
+    @State private var poolsStore: PoolsStore
 
     init(intent: CreateIntentSheet.Intent, context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void, onCreated: @escaping (AttentionDestination) -> Void) {
         self.intent = intent
@@ -397,6 +402,7 @@ private struct FormDestination: View {
             myActorId: container.currentActorStore.actorId
         ))
         _resourcesStore = State(initialValue: ResourcesStore(rpc: container.rpc))
+        _poolsStore = State(initialValue: PoolsStore(rpc: container.rpc))
     }
 
     var body: some View {
@@ -453,6 +459,9 @@ private struct FormDestination: View {
             CreateObligationView(context: context, container: container, onCreated: { obligationId in
                 onCreated(.obligation(obligationId: obligationId, contextActorId: context.id))
             })
+        case .pool:
+            // CreatePoolSheet trae su propio NavigationStack + Form interno.
+            CreatePoolSheet(context: context, store: poolsStore)
         }
     }
 }

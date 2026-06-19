@@ -338,9 +338,9 @@ public struct MoneyHomeView: View {
                 }
             }
         } header: {
-            Text("Tesorería (\(tesoreriaPending.count))")
+            Text("Gastos compartidos (\(tesoreriaPending.count))")
         } footer: {
-            Text("Saldos del espacio: gastos compartidos, multas y deudas de juego.")
+            Text("Cuando alguien paga algo del grupo y otros le deben su parte. Cada deuda se salda persona-a-persona.")
         }
     }
 
@@ -467,9 +467,9 @@ public struct MoneyHomeView: View {
                 }
             }
         } header: {
-            Text(poolsStore.pools.isEmpty ? "Fondos" : "Fondos (\(poolsStore.pools.count))")
+            Text(poolsStore.pools.isEmpty ? "Fondos comunes" : "Fondos comunes (\(poolsStore.pools.count))")
         } footer: {
-            Text("Botes, fondos con meta y otros pools con atribución diferida.")
+            Text("Todos aportan a un bote común y se reparte cuando se cumple algo: botes de apuestas, fondos con meta, regalos colectivos.")
         }
     }
 
