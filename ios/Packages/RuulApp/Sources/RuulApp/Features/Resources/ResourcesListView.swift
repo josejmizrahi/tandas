@@ -155,7 +155,7 @@ public struct ResourcesListView: View {
                     RuulEmptyState(
                         title: "Sin recursos",
                         systemImage: "shippingbox",
-                        message: "Registra una casa, un fondo común, un coche o cualquier cosa que este contexto gobierne."
+                        message: "Registra una casa, un fondo común, un coche o cualquier cosa que este espacio gobierne."
                     )
                     .listRowBackground(Color.clear)
                 }

@@ -173,7 +173,7 @@ public struct MemberDetailView: View {
                             Button(role: .destructive) {
                                 handleMemberAction("member.remove")
                             } label: {
-                                Label("Remover del contexto", systemImage: "person.badge.minus")
+                                Label("Remover del espacio", systemImage: "person.badge.minus")
                             }
                         }
                     } label: {

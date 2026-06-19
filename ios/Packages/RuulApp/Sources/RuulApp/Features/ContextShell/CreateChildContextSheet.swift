@@ -129,15 +129,15 @@ public struct CreateChildContextSheet: View {
                         if runner.isRunning {
                             ProgressView().frame(maxWidth: .infinity)
                         } else {
-                            Text("Crear subcontexto").frame(maxWidth: .infinity)
+                            Text("Crear subespacio").frame(maxWidth: .infinity)
                         }
                     }
                     .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty || runner.isRunning)
                 } footer: {
-                    Text("Quedarás como fundador del nuevo contexto. Podrás invitar miembros después.")
+                    Text("Quedarás como fundador del nuevo espacio. Podrás invitar miembros después.")
                 }
             }
-            .navigationTitle("Nuevo subcontexto")
+            .navigationTitle("Nuevo subespacio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

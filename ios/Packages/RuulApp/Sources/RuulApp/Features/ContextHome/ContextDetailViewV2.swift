@@ -225,10 +225,13 @@ public struct ContextDetailViewV2: View {
         }
     }
 
-    /// Fase 9.6 — todas las sections del descriptor renderizadas en una sola
-    /// lista. Orden por importancia: Hero compacto → Atención → Conflictos →
-    /// Resumen rápido → Personas → Recursos → Eventos → Dinero → Gobierno →
-    /// Subespacios → Actividad → Más (settings + documents).
+    /// Una sola lista scrollable. 8-9 secciones visibles + un acordeón "Más"
+    /// al final para los dominios secundarios (Gobierno, Subespacios,
+    /// Calendario, Documentos, Invitaciones). La doctrina "todo plano" sigue
+    /// — no hay tabs — pero el wall scroll se ha adelgazado.
+    ///
+    /// Las acciones rápidas no se duplican en el body: viven únicamente en el
+    /// toolbar `+` Menu del header (single source).
     @ViewBuilder
     private func unifiedSections(_ d: ContextDetailDescriptor, visibleKeys: Set<String>) -> some View {
         ContextDetailV2HeroSection(context: context, descriptor: d)
@@ -249,10 +252,6 @@ public struct ContextDetailViewV2: View {
                 isShowingContextConflictDialog: $isShowingContextConflictDialog
             )
         }
-        // R.11.A revertido (founder 2026-06-16) — TodaySection (cards Próximo
-        // evento + Balance lado a lado) removed. Las métricas viven ahora en
-        // Home "Hoy en tus espacios" cross-context; duplicarlas dentro del
-        // Context Detail era redundante.
         let filteredWidgets = overviewDashboardWidgets(d.widgets, descriptor: d)
         if !filteredWidgets.isEmpty {
             ContextDetailV2DashboardSection(
@@ -262,35 +261,12 @@ public struct ContextDetailViewV2: View {
                 container: container
             )
         }
-        // R.10.D + R.10.E.7 (founder firmado 2026-06-15) — Acciones rápidas
-        // del contexto visibles en el body (no sólo en el toolbar `+` Menu).
-        // Discoverability: el usuario ve qué puede hacer sin abrir el Menu.
-        // Tap usa el mismo flujo que el toolbar (handleQuickAction via router).
-        if !d.actions.isEmpty {
-            ContextDetailV2ActionsSection(
-                context: context,
-                actions: d.actions,
-                router: quickActionsRouter
-            )
-        }
-        // R.10.E.5 (founder firmado 2026-06-15) — Eventos siempre visible
-        // para contextos colectivos: cuando hay preview muestra rows + header
-        // "Ver todos"; cuando está vacío muestra empty CTA "Crear el primer
-        // evento" (Camino B firmado).
+        // Core operacional: Eventos · Personas · Recursos · Dinero · Actividad.
         ContextDetailV2EventsSection(descriptor: d, context: context, container: container)
-        // Personas, recursos, gobernanza — cada uno con su preview + "Ver todos".
         if visibleKeys.contains("people") {
             ContextDetailV2PeopleTab(descriptor: d, context: context, container: container)
         }
-        // R.10.E.6 (founder firmado 2026-06-15) — Recursos siempre visible
-        // para contextos colectivos (founder: "EN CONTEXT DETAIL ESA FALTA
-        // ESA SECCION"). Antes estaba gateado por
-        // `visibleKeys.contains("resources")` lo que la ocultaba en algunos
-        // contextos. Posición: entre Miembros y Dinero — flujo natural
-        // "quién está · qué compartimos · cuánto debemos · cómo decidimos".
         ContextDetailV2ResourcesSection(descriptor: d, context: context, container: container)
-        // Money inline (balance + obligaciones + settlements). Después de
-        // Recursos: lo que tenemos → lo que debemos.
         if visibleKeys.contains("money") || visibleKeys.contains("obligations") {
             ContextDetailV2MoneyTab(
                 descriptor: d,
@@ -298,30 +274,79 @@ public struct ContextDetailViewV2: View {
                 container: container
             )
         }
-        // R.10.E.5 — Gobierno separado en 2 Sections por data type (decisiones
-        // explícitas vs reglas automáticas). Apple HIG: una Section = un tipo.
-        // Posición: después de Dinero — cómo decidimos cosas, incluyendo $.
-        if visibleKeys.contains("governance") {
-            ContextDetailV2DecisionsSection(descriptor: d, context: context, container: container)
-            ContextDetailV2RulesSection(context: context, container: container)
-        }
-        // Subespacios.
-        if !d.childContextsPreview.isEmpty {
-            ContextDetailV2ChildrenSection(children: d.childContextsPreview, context: context, container: container)
-        }
-        // Actividad reciente.
         if !d.activityPreview.isEmpty {
             ContextDetailV2ActivitySection(events: d.activityPreview, context: context, container: container)
         }
-        // R.10.E.9 — Más: sólo drills únicos no cubiertos en el body.
-        // Calendar (vista grid) + Documents son los que no tienen home propio
-        // en otras Sections post-E.5/E.6/E.8.
-        ContextDetailV2MoreTab(
-            descriptor: d,
-            moreSectionKeys: ["calendar", "documents"],
-            context: context,
-            container: container
-        )
+        moreSection(d, visibleKeys: visibleKeys)
+    }
+
+    /// "Más" — DisclosureGroup colapsado al final con drill-downs a dominios
+    /// secundarios. El usuario que los necesita los encuentra; el típico ya
+    /// no se topa con ellos en el scroll principal.
+    @ViewBuilder
+    private func moreSection(_ d: ContextDetailDescriptor, visibleKeys: Set<String>) -> some View {
+        let showGovernance = visibleKeys.contains("governance")
+        let showChildren = !d.childContextsPreview.isEmpty
+        let showInvites = d.pendingInvitationsPreview.count > 0
+        if showGovernance || showChildren || showInvites {
+            Section {
+                DisclosureGroup {
+                    if showGovernance {
+                        NavigationLink {
+                            DecisionsListView(context: context, container: container)
+                        } label: {
+                            Label("Decisiones", systemImage: "checkmark.bubble")
+                        }
+                        NavigationLink {
+                            RulesListView(context: context, container: container)
+                        } label: {
+                            Label("Reglas", systemImage: "scroll")
+                        }
+                    }
+                    if showChildren {
+                        NavigationLink {
+                            ContextTreeView(rootContext: context, container: container)
+                        } label: {
+                            Label("Subespacios (\(d.childContextsPreview.count))", systemImage: "rectangle.split.3x1")
+                        }
+                    }
+                    NavigationLink {
+                        ContextCalendarView(context: context, container: container)
+                    } label: {
+                        Label("Calendario", systemImage: "calendar")
+                    }
+                    NavigationLink {
+                        ContextDocumentsListView(context: context, container: container)
+                    } label: {
+                        Label("Documentos", systemImage: "doc")
+                    }
+                    if showInvites {
+                        NavigationLink {
+                            InviteMembersView(
+                                context: context,
+                                store: MembersStore(rpc: container.rpc),
+                                container: container
+                            )
+                        } label: {
+                            Label {
+                                HStack {
+                                    Text("Invitaciones activas")
+                                    Spacer()
+                                    Text("\(d.pendingInvitationsPreview.count)")
+                                        .font(.callout.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: "envelope")
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Más", systemImage: "ellipsis.circle")
+                        .font(.callout.weight(.medium))
+                }
+            }
+        }
     }
 
     // MARK: - Overview tab (R.5V.3A — jerarquía firmada)

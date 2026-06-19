@@ -79,7 +79,7 @@ struct ContextDetailV2Toolbar: ToolbarContent {
             Image(systemName: "plus.circle.fill")
                 .font(.title3)
         }
-        .accessibilityLabel("Acciones del contexto")
+        .accessibilityLabel("Acciones del espacio")
     }
 
     /// Orden estable de sections del context_detail_descriptor.actions.

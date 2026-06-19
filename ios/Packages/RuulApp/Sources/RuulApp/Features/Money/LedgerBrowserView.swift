@@ -57,7 +57,7 @@ public struct LedgerBrowserView: View {
             RuulEmptyState(
                 title: "Sin movimientos",
                 systemImage: "list.bullet.rectangle",
-                message: "Aquí aparecen los gastos, pagos, liquidaciones y resultados de juego del contexto."
+                message: "Aquí aparecen los gastos, pagos, liquidaciones y resultados de juego del espacio."
             )
         } else {
             List {

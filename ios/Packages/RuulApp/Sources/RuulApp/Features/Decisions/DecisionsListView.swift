@@ -75,7 +75,7 @@ public struct DecisionsListView: View {
             RuulEmptyState(
                 title: "Sin decisiones",
                 systemImage: "checkmark.seal",
-                message: "Propón algo y que el contexto vote: cambiar una regla, aprobar un gasto, resolver un conflicto."
+                message: "Propón algo y que el espacio vote: cambiar una regla, aprobar un gasto, resolver un conflicto."
             )
         } else {
             let filtered = filter(store.decisions)

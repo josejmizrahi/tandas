@@ -55,7 +55,7 @@ struct AddParticipantsSheet: View {
                 RuulEmptyState(
                     title: "Sin miembros para agregar",
                     systemImage: "person.2",
-                    message: "Todos los miembros activos del contexto ya son participantes del evento.\n\nPara invitar a alguien externo, usa «Invitar externo» en el toolbar."
+                    message: "Todos los miembros activos del espacio ya son participantes del evento.\n\nPara invitar a alguien externo, usa «Invitar externo» en el toolbar."
                 )
             } else {
                 List {
@@ -98,7 +98,7 @@ struct AddParticipantsSheet: View {
 
     private func load() async {
         guard let ctxId = contextId else {
-            phase = .failed(message: "Contexto del evento desconocido")
+            phase = .failed(message: "Espacio del evento desconocido")
             return
         }
         if members.isEmpty { phase = .loading }

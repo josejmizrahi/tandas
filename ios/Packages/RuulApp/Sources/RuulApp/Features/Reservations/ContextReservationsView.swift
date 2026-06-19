@@ -50,7 +50,7 @@ public struct ContextReservationsView: View {
             RuulEmptyState(
                 title: "Sin reservaciones",
                 systemImage: "calendar.badge.clock",
-                message: "Cuando alguien reserve un recurso del contexto, aparecerá aquí."
+                message: "Cuando alguien reserve un recurso del espacio, aparecerá aquí."
                 )
         } else {
             List {

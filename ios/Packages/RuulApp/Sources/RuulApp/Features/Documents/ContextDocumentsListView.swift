@@ -96,7 +96,7 @@ public struct ContextDocumentsListView: View {
                 title: "Sin documentos",
                 systemImage: "doc",
                 message: includeArchived
-                    ? "No hay documentos en este contexto."
+                    ? "No hay documentos en este espacio."
                     : "No hay documentos activos. Toca el menú para adjuntar uno o ver archivados."
             )
         } else {
@@ -321,7 +321,7 @@ private struct ResourcePickerForAttach: View {
                         RuulEmptyState(
                             title: "Sin recursos",
                             systemImage: "shippingbox",
-                            message: "Este contexto no tiene recursos aún. Crea uno primero."
+                            message: "Este espacio no tiene recursos aún. Crea uno primero."
                         )
                     } else {
                         List {

@@ -229,7 +229,7 @@ struct ClaimPlaceholdersSheet: View {
         case "trust":        return "Fideicomiso"
         case "friend_group": return "Grupo"
         case "company":      return "Empresa"
-        default:             return "Contexto"
+        default:             return "Espacio"
         }
     }
 }

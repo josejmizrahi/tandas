@@ -36,7 +36,7 @@ struct ReserveResourceForEventSheet: View {
                     ContentUnavailableView(
                         "Sin recursos",
                         systemImage: "shippingbox",
-                        description: Text("Este contexto no tiene recursos para reservar.")
+                        description: Text("Este espacio no tiene recursos para reservar.")
                     )
                 } else {
                     pickerList

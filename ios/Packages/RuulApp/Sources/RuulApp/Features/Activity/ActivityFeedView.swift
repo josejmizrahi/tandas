@@ -50,7 +50,7 @@ public struct ActivityFeedView: View {
                             Task { await store.setIncludeDescendants(newValue, context: context) }
                         }
                     )) {
-                        Label("Incluir subcontextos", systemImage: "list.bullet.indent")
+                        Label("Incluir subespacios", systemImage: "list.bullet.indent")
                     }
                     .toggleStyle(.button)
                 }

@@ -1,31 +1,21 @@
 import SwiftUI
 import RuulCore
 
-/// R.11.E.2 — Home rediseño (founder firmado 2026-06-16). Diferenciación
-/// fuerte de roles con Contextos:
-///
-///   **HOME = "Hoy en Ruul"** (operacional puro — qué hago).
-///   **CONTEXTOS = "Tus espacios"** (catálogo rico — dónde estoy).
-///
-/// Cambios vs R.5V.3:
-/// - Quitar **"Continuar"** carousel → vivirá en Contextos como sort default.
-/// - Quitar **"Actividad reciente"** → ya tiene tab dedicada 🔔 (MyActivityFeedView).
-/// - Agregar **"Hoy en tus espacios"** → row por contexto con actividad
-///   actionable hoy (pendientes, próximo evento ≤ 7d, balance ≠ 0). Powered
-///   by `home_overview()` RPC (R.11.E.0).
+/// Home — operacional puro: qué hago hoy.
 ///
 /// Estructura:
 /// ```
 /// List(.insetGrouped) {
 ///   Section { hero greeting }
-///   Section("Atención")            // attention_inbox cross-context
-///   Section("Hoy en tus espacios") // contextos con next_event ≤ 7d O pendientes O balance ≠ 0
-///   Section("Tus espacios")        // exploreSection
+///   Section("Atención")     // attention_inbox cross-context (items específicos)
+///   Section("Tus espacios") // TODOS los espacios collective ordenados por prioridad
 /// }
 /// ```
-/// R.13.A (founder lock 2026-06-16) — eliminada `toolsSection` "Próximamente"
-/// con Búsqueda IA / Preguntar Ruul / QR. Doctrina "nada que no tenga que
-/// estar" — esos features se agregan cuando estén disponibles, no antes.
+///
+/// Atención y Espacios responden a preguntas distintas: Atención = "qué tengo
+/// que hacer", Espacios = "dónde estoy". El sort de Espacios sube primero los
+/// que tienen pendientes/deuda/evento próximo, así no duplica a Atención pero
+/// el contexto siempre aparece visible.
 public struct HomeView: View {
     let container: DependencyContainer
     let jumpToContext: (AppContext) -> Void
@@ -46,8 +36,7 @@ public struct HomeView: View {
             List {
                 heroSection
                 attentionSection
-                todaySection
-                exploreSection
+                spacesSection
             }
             .listStyle(.insetGrouped)
             .listSectionSpacing(.compact)
@@ -197,44 +186,56 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - 3. Hoy en tus espacios (R.11.E.2 — actionable contexts cross-context)
+    // MARK: - 3. Tus espacios
 
+    /// Una sola sección con TODOS los espacios collective, ordenados por
+    /// prioridad: pendientes desc → deuda → próximo evento → último visitado.
+    /// Siempre visible (siempre que haya al menos un collective); los
+    /// actionables suben de forma natural sin necesidad de un fallback.
     @ViewBuilder
-    private var todaySection: some View {
-        let actionable = overviews
-            .filter { $0.isActionableToday() }
-            .sorted { byTodayPriority($0, $1) }
-        if !actionable.isEmpty {
+    private var spacesSection: some View {
+        let collectives = overviews.filter { $0.actorKind != "person" }
+        let sorted = collectives.sorted(by: bySpacesPriority)
+        let visible = Array(sorted.prefix(6))
+        let hidden = max(0, sorted.count - visible.count)
+        if !visible.isEmpty {
             Section {
-                ForEach(actionable.prefix(5)) { overview in
+                ForEach(visible) { overview in
                     Button {
                         if let ctx = resolveContext(overview.contextActorId) {
                             jumpToContext(ctx)
                         }
                     } label: {
-                        todayRow(overview)
+                        spaceRow(overview)
                     }
                 }
             } header: {
-                Text("Hoy en tus espacios")
+                Text("Tus espacios")
+            } footer: {
+                if hidden > 0 {
+                    Text("Y \(hidden) más en la pestaña Espacios.")
+                }
             }
         }
     }
 
-    /// Sort: pendientes primero (más actionable), luego balance negativo,
-    /// luego próximos eventos por fecha.
-    private func byTodayPriority(_ a: ContextOverview, _ b: ContextOverview) -> Bool {
+    /// Sort estable: pendientes desc → deuda (balance < 0) → próximo evento
+    /// (más cercano primero) → último visitado.
+    private func bySpacesPriority(_ a: ContextOverview, _ b: ContextOverview) -> Bool {
         if a.pendingCount != b.pendingCount { return a.pendingCount > b.pendingCount }
         let aDebt = (a.myBalance ?? 0) < 0
         let bDebt = (b.myBalance ?? 0) < 0
         if aDebt != bDebt { return aDebt }
         let aEvent = a.nextEventAt ?? .distantFuture
         let bEvent = b.nextEventAt ?? .distantFuture
-        return aEvent < bEvent
+        if aEvent != bEvent { return aEvent < bEvent }
+        let aVisit = a.lastVisitedAt ?? .distantPast
+        let bVisit = b.lastVisitedAt ?? .distantPast
+        return aVisit > bVisit
     }
 
     @ViewBuilder
-    private func todayRow(_ overview: ContextOverview) -> some View {
+    private func spaceRow(_ overview: ContextOverview) -> some View {
         Label {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
@@ -251,20 +252,23 @@ public struct HomeView: View {
                             .foregroundStyle(Theme.Tint.warning)
                     }
                 }
-                Text(todayCaption(overview))
-                    .font(.caption)
-                    .foregroundStyle(todayCaptionTint(overview))
-                    .lineLimit(1)
+                if let caption = spaceCaption(overview) {
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(spaceCaptionTint(overview))
+                        .lineLimit(1)
+                }
             }
         } icon: {
             Image(systemName: overviewSymbol(overview))
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(todayCaptionTint(overview))
+                .foregroundStyle(spaceCaptionTint(overview))
         }
     }
 
-    /// Surface por prioridad: pendientes > balance < 0 > próximo evento > balance > 0.
-    private func todayCaption(_ overview: ContextOverview) -> String {
+    /// Caption por prioridad: pendientes > deuda > evento próximo > saldo a favor
+    /// > membresía. Nil si no hay nada que decir (fallback silencioso).
+    private func spaceCaption(_ overview: ContextOverview) -> String? {
         if overview.pendingCount > 0 {
             return overview.pendingCount == 1 ? "1 pendiente" : "\(overview.pendingCount) pendientes"
         }
@@ -277,10 +281,13 @@ public struct HomeView: View {
         if let balance = overview.myBalance, let currency = overview.balanceCurrency, balance > 0 {
             return "Te deben " + balance.compactCurrencyLabel(currency)
         }
-        return ""
+        if overview.memberCount > 1 {
+            return "\(overview.memberCount) miembros"
+        }
+        return nil
     }
 
-    private func todayCaptionTint(_ overview: ContextOverview) -> Color {
+    private func spaceCaptionTint(_ overview: ContextOverview) -> Color {
         if overview.pendingCount > 0 { return Theme.Tint.warning }
         if let balance = overview.myBalance, balance < 0 { return Theme.Tint.critical }
         if overview.nextEventAt != nil { return Theme.Tint.primary }
@@ -319,61 +326,6 @@ public struct HomeView: View {
 
     private func resolveContext(_ id: UUID) -> AppContext? {
         container.contextStore.availableContexts.first { $0.id == id }
-    }
-
-    // MARK: - 4. Explora (R.11.G — empty state inteligente)
-
-    /// Cuando "Hoy en tus espacios" NO tiene items actionable, Home se vería
-    /// casi vacío (sólo Saludo + Atención). Surface top 3 espacios por
-    /// last_visited para que el founder siempre tenga un entry-point visible
-    /// sin ir a la tab Contextos.
-    @ViewBuilder
-    private var exploreSection: some View {
-        let hasActionable = overviews.contains { $0.isActionableToday() }
-        if !hasActionable {
-            let topRecents = overviews
-                .filter { $0.actorKind != "person" }
-                .sorted { ($0.lastVisitedAt ?? .distantPast) > ($1.lastVisitedAt ?? .distantPast) }
-                .prefix(3)
-            if !topRecents.isEmpty {
-                Section {
-                    ForEach(Array(topRecents)) { overview in
-                        Button {
-                            if let ctx = resolveContext(overview.contextActorId) {
-                                jumpToContext(ctx)
-                            }
-                        } label: {
-                            exploreRow(overview)
-                        }
-                    }
-                } header: {
-                    Text("Mis espacios")
-                } footer: {
-                    Text("Todo al día — explora tus espacios.")
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func exploreRow(_ overview: ContextOverview) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(overview.displayName)
-                    .font(.callout.weight(.medium))
-                    .foregroundStyle(Theme.Text.primary)
-                    .lineLimit(1)
-                if overview.memberCount > 1 {
-                    Text("\(overview.memberCount) miembros")
-                        .font(.caption)
-                        .foregroundStyle(Theme.Text.secondary)
-                }
-            }
-        } icon: {
-            Image(systemName: overviewSymbol(overview))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(Theme.Tint.primary)
-        }
     }
 
 }

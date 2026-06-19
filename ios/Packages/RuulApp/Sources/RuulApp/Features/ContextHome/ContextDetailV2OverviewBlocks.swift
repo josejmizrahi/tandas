@@ -194,7 +194,7 @@ struct ContextDetailV2ChildrenSection: View {
         case "trust":        return "Fideicomiso"
         case "friend_group": return "Grupo"
         case "company":      return "Empresa"
-        default:             return "Contexto"
+        default:             return "Espacio"
         }
     }
 }
@@ -382,7 +382,7 @@ struct ContextDetailV2ActivitySection: View {
         case "right":        return "Derecho"
         case "invite":       return "Invitación"
         case "membership":   return "Membresía"
-        case "context":      return "Contexto"
+        case "context":      return "Espacio"
         case "rule":         return "Regla"
         case "split":        return "Split"
         case "subscription": return "Suscripción"

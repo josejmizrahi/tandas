@@ -143,13 +143,7 @@ public struct MainTabShell: View {
             }
         }
         .sheet(isPresented: $isShowingCreateSheet) {
-            // R.5Z.fix.1 — post-create auto-push: cualquier flow de creación
-            // dentro de la sheet (Context/Resource/Event/Decision/Obligation)
-            // dismissea la sheet AND traduce el id devuelto a un
-            // AttentionDestination. El shell lo presenta como sheet siguiente.
-            CreateIntentSheet(container: container) { destination in
-                presentedAttention = destination
-            }
+            CreateIntentSheet(container: container)
         }
         .sheet(isPresented: $isShowingJoinByCode, onDismiss: { prefilledInviteCode = nil }) {
             JoinByCodeView(container: container, prefilledCode: prefilledInviteCode)

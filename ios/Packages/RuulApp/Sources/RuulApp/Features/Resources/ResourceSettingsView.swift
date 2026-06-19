@@ -558,7 +558,7 @@ private struct TransferOwnershipSheet: View {
                             Text(c.displayName).tag(Optional(c.actorId))
                         }
                         ForEach(contexts) { ctx in
-                            Text("\(ctx.displayName) (contexto)").tag(Optional(ctx.id))
+                            Text("\(ctx.displayName) (espacio)").tag(Optional(ctx.id))
                         }
                     }
                 } header: {

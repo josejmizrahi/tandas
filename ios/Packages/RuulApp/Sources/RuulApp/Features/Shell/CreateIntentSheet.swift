@@ -1,14 +1,12 @@
 import SwiftUI
 import RuulCore
 
-/// F.NAV.5 — Sheet intent-first "¿Qué quieres hacer?". El tab Crear no tiene
-/// pantalla propia: tap → sheet → pick intent → pick contexto (si aplica) →
-/// abrir el flow correspondiente.
+/// F.NAV.5 — Sheet intent-first "¿Qué quieres hacer?".
 ///
-/// Doctrina: el botón Crear NO expone primitivas. El usuario eligió una
-/// intención (Programar algo / Registrar movimiento / Crear propuesta /
-/// Subir documento / Crear contexto). El backend ya tiene los flows; iOS
-/// sólo conecta intención → form.
+/// Doctrina: el botón Crear NO expone primitivas. El usuario elige el espacio
+/// arriba (picker inline) + qué quiere hacer (intent row). Tap directo al form
+/// sin pantalla intermedia. El AI assistant vive en un DisclosureGroup al pie
+/// para no competir con la lista principal.
 public struct CreateIntentSheet: View {
     let container: DependencyContainer
     /// R.5Z.fix.1 — callback invocado cuando un flow de creación termina con
@@ -18,7 +16,6 @@ public struct CreateIntentSheet: View {
     let onCreated: ((AttentionDestination) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
-    @State private var path: [Route] = []
     /// F.NAV.7+: el form (CreateEventView / RecordExpenseView / etc.) trae
     /// SU PROPIO NavigationStack interno. Anidarlo dentro del NavigationStack
     /// de la sheet crashea SwiftUI iOS 16+. Por eso presentamos el form como
@@ -27,6 +24,8 @@ public struct CreateIntentSheet: View {
     /// F.NAV.8 — mismo problema con CreateContextView (NavigationStack
     /// interno). Sheet anidada también.
     @State private var isShowingCreateContext = false
+    /// Override del contexto picker. Nil = usa `contextStore.currentContext`.
+    @State private var pickedContextId: UUID?
     /// R.6.AI.2 — Detector de intent on-device. Graceful degradation si
     /// Apple Intelligence no está disponible.
     @State private var intentService = IntentSuggestionService()
@@ -41,13 +40,13 @@ public struct CreateIntentSheet: View {
     }
 
     public var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             List {
-                aiIntentSection
+                contextPickerSection
 
                 Section {
                     intentRow(.event,     icon: "calendar.badge.plus",     tint: .orange, label: "Programar algo",
-                              detail: "Crear un evento del contexto.")
+                              detail: "Crear un evento del espacio.")
                     intentRow(.reservation, icon: "calendar.badge.clock",  tint: .orange, label: "Hacer reservación",
                               detail: "Reservar un recurso para unas fechas.")
                     intentRow(.expense,   icon: "dollarsign.circle.fill",  tint: .green,  label: "Registrar movimiento",
@@ -77,6 +76,8 @@ public struct CreateIntentSheet: View {
                 } header: {
                     Text("Espacio nuevo")
                 }
+
+                aiIntentSection
             }
             .navigationTitle("Crear")
             .navigationBarTitleDisplayMode(.inline)
@@ -84,9 +85,6 @@ public struct CreateIntentSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cerrar") { dismiss() }
                 }
-            }
-            .navigationDestination(for: Route.self) { route in
-                routeDestination(route)
             }
             .task {
                 await container.contextStore.load()
@@ -126,16 +124,81 @@ public struct CreateIntentSheet: View {
         }
     }
 
+    // MARK: - Context picker
+
+    /// Contexto resuelto: override del picker > current del store. Nil si el
+    /// store no ha cargado (raro post-RuulAppShell gates pero defensivo).
+    private var pickedContext: AppContext? {
+        if let id = pickedContextId,
+           let match = container.contextStore.availableContexts.first(where: { $0.id == id }) {
+            return match
+        }
+        return container.contextStore.currentContext
+    }
+
+    private var contextChoices: [AppContext] {
+        let collectives = container.contextStore.availableContexts.filter { !$0.isPersonal }
+        let personal = container.contextStore.availableContexts.filter { $0.isPersonal }
+        return collectives + personal
+    }
+
+    @ViewBuilder
+    private var contextPickerSection: some View {
+        if let picked = pickedContext, contextChoices.count > 0 {
+            Section {
+                Menu {
+                    Picker("Espacio", selection: Binding(
+                        get: { picked.id },
+                        set: { newId in
+                            pickedContextId = newId
+                            if let ctx = contextChoices.first(where: { $0.id == newId }) {
+                                container.contextStore.switchTo(ctx)
+                            }
+                        }
+                    )) {
+                        ForEach(contextChoices) { ctx in
+                            Text(ctx.isPersonal ? "Mi espacio" : ctx.displayName).tag(ctx.id)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: picked.symbolName)
+                            .font(.title3)
+                            .foregroundStyle(.tint)
+                            .frame(width: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("En")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(picked.isPersonal ? "Mi espacio" : picked.displayName)
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(.primary)
+                        }
+                        Spacer()
+                        if contextChoices.count > 1 {
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                .disabled(contextChoices.count <= 1)
+            }
+        }
+    }
+
     // MARK: - Row helpers
 
     @ViewBuilder
     private func intentRow(_ intent: Intent, icon: String, tint: Color, label: String, detail: String) -> some View {
         Button {
-            path.append(.pickContext(intent: intent))
+            guard let ctx = pickedContext else { return }
+            pendingForm = PendingForm(intent: intent, context: ctx)
         } label: {
             intentLabel(icon: icon, tint: tint, label: label, detail: detail)
         }
         .buttonStyle(.plain)
+        .disabled(pickedContext == nil)
     }
 
     @ViewBuilder
@@ -157,70 +220,67 @@ public struct CreateIntentSheet: View {
         }
     }
 
-    // MARK: - Navigation
+    // MARK: - R.6.AI.2 Smart Create Intent
 
+    /// AI assistant colapsado al final. Sólo aparece cuando el servicio está
+    /// disponible para no ofrecer un control inerte.
     @ViewBuilder
-    private func routeDestination(_ route: Route) -> some View {
-        switch route {
-        case .pickContext(let intent):
-            ContextPickerView(container: container, intent: intent) { ctx in
-                // F.NAV.7+: en lugar de push (que causaba NavigationStack
-                // anidado), guardamos el form en pendingForm para abrir como
-                // sheet anidada sobre la sheet actual.
-                pendingForm = PendingForm(intent: intent, context: ctx)
+    private var aiIntentSection: some View {
+        if intentService.isAvailable {
+            Section {
+                DisclosureGroup {
+                    aiIntentBody
+                } label: {
+                    Label("Pregúntale a Ruul", systemImage: "sparkles")
+                        .symbolRenderingMode(.hierarchical)
+                        .font(.callout)
+                }
+            } footer: {
+                Text("Describe lo que quieres hacer y Ruul propone una intención.")
             }
         }
     }
 
-    // MARK: - R.6.AI.2 Smart Create Intent
-
     @ViewBuilder
-    private var aiIntentSection: some View {
-        Section {
-            TextField(
-                "Describe lo que quieres hacer…",
-                text: $aiPromptText,
-                axis: .vertical
-            )
-            .lineLimit(2...3)
-            .disabled(!intentService.isAvailable || isDetecting)
+    private var aiIntentBody: some View {
+        TextField(
+            "Describe lo que quieres hacer…",
+            text: $aiPromptText,
+            axis: .vertical
+        )
+        .lineLimit(2...3)
+        .disabled(isDetecting)
 
-            switch intentService.phase {
-            case .idle:
-                Button {
-                    Task { await intentService.suggest(prompt: aiPromptText) }
-                } label: {
-                    Label("Detectar intención", systemImage: "sparkles")
-                        .symbolRenderingMode(.hierarchical)
-                        .frame(maxWidth: .infinity)
-                }
-                .disabled(
-                    aiPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || !intentService.isAvailable
-                )
-            case .loading:
-                HStack {
-                    ProgressView()
-                    Text("Detectando…")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-            case .loaded(let suggestion):
-                detectedIntentPreview(suggestion)
-            case .unavailable(let reason):
-                Label(reason, systemImage: "sparkles.slash")
+        switch intentService.phase {
+        case .idle:
+            Button {
+                Task { await intentService.suggest(prompt: aiPromptText) }
+            } label: {
+                Label("Detectar intención", systemImage: "sparkles")
                     .symbolRenderingMode(.hierarchical)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            case .failed(let message):
-                Label(message, systemImage: "exclamationmark.triangle.fill")
-                    .symbolRenderingMode(.hierarchical)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity)
             }
-        } header: {
-            Label("Asistente de creación", systemImage: "sparkles")
+            .disabled(aiPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        case .loading:
+            HStack {
+                ProgressView()
+                Text("Detectando…")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        case .loaded(let suggestion):
+            detectedIntentPreview(suggestion)
+        case .unavailable(let reason):
+            Label(reason, systemImage: "sparkles.slash")
+                .symbolRenderingMode(.hierarchical)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .failed(let message):
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .symbolRenderingMode(.hierarchical)
+                .font(.caption)
+                .foregroundStyle(.red)
         }
     }
 
@@ -240,14 +300,16 @@ public struct CreateIntentSheet: View {
                     .foregroundStyle(.secondary)
             }
             Button {
+                guard let ctx = pickedContext else { return }
                 intentService.reset()
                 aiPromptText = ""
-                path.append(.pickContext(intent: intent))
+                pendingForm = PendingForm(intent: intent, context: ctx)
             } label: {
                 Label("Continuar con \(intentLabel(for: intent).lowercased())", systemImage: "arrow.right.circle.fill")
                     .symbolRenderingMode(.hierarchical)
                     .frame(maxWidth: .infinity)
             }
+            .disabled(pickedContext == nil)
         } else {
             Label("No reconocí el intento. Intenta describirlo con otras palabras.", systemImage: "questionmark.circle")
                 .font(.caption)
@@ -293,87 +355,11 @@ public struct CreateIntentSheet: View {
         }
     }
 
-    enum Route: Hashable {
-        case pickContext(intent: Intent)
-    }
-
     /// Sheet anidada pendiente. `Identifiable` para `.sheet(item:)`.
     struct PendingForm: Identifiable {
         let id = UUID()
         let intent: Intent
         let context: AppContext
-    }
-}
-
-// MARK: - Context picker
-
-private struct ContextPickerView: View {
-    let container: DependencyContainer
-    let intent: CreateIntentSheet.Intent
-    let onPick: (AppContext) -> Void
-
-    /// F.NAV.7 fix: pre-resolver arrays con identidades estables — los ForEach
-    /// con `if let` condicional adentro causaban crashes esporádicos por
-    /// inestabilidad de identidad en SwiftUI.
-    private var allCollectives: [AppContext] {
-        container.contextStore.availableContexts.filter { !$0.isPersonal }
-    }
-
-    private var recentCollectives: [AppContext] {
-        let lookup = Dictionary(uniqueKeysWithValues: allCollectives.map { ($0.id, $0) })
-        return container.contextPreferencesStore.recents.compactMap { lookup[$0.contextActorId] }
-    }
-
-    private var otherCollectives: [AppContext] {
-        let recentIds = Set(recentCollectives.map(\.id))
-        return allCollectives.filter { !recentIds.contains($0.id) }
-    }
-
-    var body: some View {
-        Group {
-            if allCollectives.isEmpty {
-                ContentUnavailableView(
-                    "Sin contextos",
-                    systemImage: "rectangle.split.2x1",
-                    description: Text("Crea un contexto primero desde \"Crear contexto\".")
-                )
-            } else {
-                List {
-                    if !recentCollectives.isEmpty {
-                        Section("Recientes") {
-                            ForEach(recentCollectives) { ctx in row(ctx) }
-                        }
-                    }
-                    if !otherCollectives.isEmpty {
-                        Section(recentCollectives.isEmpty ? "Tus contextos" : "Todos") {
-                            ForEach(otherCollectives) { ctx in row(ctx) }
-                        }
-                    }
-                }
-            }
-        }
-        .navigationTitle("Elige el contexto")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    @ViewBuilder
-    private func row(_ ctx: AppContext) -> some View {
-        Button {
-            onPick(ctx)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: ctx.symbolName)
-                    .foregroundStyle(.tint)
-                    .frame(width: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(ctx.displayName).font(.callout.weight(.medium))
-                    Text("\(ctx.memberCount) miembros").font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-            }
-        }
-        .buttonStyle(.plain)
     }
 }
 

@@ -393,9 +393,9 @@ public struct PersonalSettingsView: View {
     private func contextsSection(_ contexts: ContextPreferences) -> some View {
         let canEdit = store.can("edit_contexts")
         let options = container.contextStore.collectiveContexts
-        Section("Contexto") {
+        Section("Espacio") {
             HStack {
-                Label("Contexto inicial", systemImage: "star")
+                Label("Espacio inicial", systemImage: "star")
                 Spacer()
                 Picker("", selection: Binding<UUID?>(
                     get: { contexts.defaultContextActorId },
