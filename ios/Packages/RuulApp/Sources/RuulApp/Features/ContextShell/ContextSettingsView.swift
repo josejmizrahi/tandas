@@ -109,9 +109,7 @@ public struct ContextSettingsView: View {
             // R.13.A — rolesSection eliminada. Editor granular de roles no
             // implementado; cuando se implemente vuelve al body.
             rulesSection(settings)
-            decisionsSection(settings.decisionsConfig)
-            moneySection(settings.moneyConfig)
-            reservationsSection(settings.reservationsConfig)
+            policiesSection(settings)
             invitationsSection(settings.invitationsConfig)
             governanceSection()
             governanceCatalogSection()
@@ -470,49 +468,73 @@ public struct ContextSettingsView: View {
         }
     }
 
-    // MARK: - Decisiones
+    // MARK: - Políticas (Decisiones · Dinero · Reservaciones)
+    //
+    // Founder doctrine F.1A-2 mantiene los 3 dominios como sub-grupos lógicos,
+    // pero visualmente los plegamos en una sola Section con DisclosureGroups
+    // (pattern Apple Settings.app). Wall scroll: ~12 elementos → 3 collapsed
+    // labels. El admin abre el dominio que necesita editar.
 
     @ViewBuilder
-    private func decisionsSection(_ config: ContextDecisionsConfig) -> some View {
+    private func policiesSection(_ settings: ContextSettings) -> some View {
+        Section("Políticas") {
+            DisclosureGroup {
+                decisionsRows(settings.decisionsConfig)
+            } label: {
+                Label("Decisiones", systemImage: "checkmark.bubble")
+            }
+            DisclosureGroup {
+                moneyRows(settings.moneyConfig)
+            } label: {
+                Label("Dinero", systemImage: "creditcard")
+            }
+            DisclosureGroup {
+                reservationsRows(settings.reservationsConfig)
+            } label: {
+                Label("Reservaciones", systemImage: "calendar.badge.clock")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func decisionsRows(_ config: ContextDecisionsConfig) -> some View {
         let canEdit = store.can("edit_decisions")
-        Section("Decisiones") {
-            configPicker(
-                title: "Modo de votación",
-                systemImage: "checkmark.square",
-                current: config.defaultVotingModel,
-                options: [
-                    ("yes_no_abstain", "Sí / No / Abstención"),
-                    ("single_choice", "Elegir una opción"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setDecisionsConfig(contextId: context.id, ["default_voting_model": .string(newValue)])
-            }
-            configPicker(
-                title: "Quórum",
-                systemImage: "person.3",
-                current: config.quorum,
-                options: [
-                    ("simple_majority", "Mayoría simple"),
-                    ("two_thirds_majority", "Dos tercios"),
-                    ("unanimous", "Unánime"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setDecisionsConfig(contextId: context.id, ["quorum": .string(newValue)])
-            }
-            configPicker(
-                title: "Regla de mayoría",
-                systemImage: "percent",
-                current: config.majorityRule,
-                options: [
-                    ("simple", "Simple (>50%)"),
-                    ("super", "Superior (>66%)"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setDecisionsConfig(contextId: context.id, ["majority_rule": .string(newValue)])
-            }
+        configPicker(
+            title: "Modo de votación",
+            systemImage: "checkmark.square",
+            current: config.defaultVotingModel,
+            options: [
+                ("yes_no_abstain", "Sí / No / Abstención"),
+                ("single_choice", "Elegir una opción"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setDecisionsConfig(contextId: context.id, ["default_voting_model": .string(newValue)])
+        }
+        configPicker(
+            title: "Quórum",
+            systemImage: "person.3",
+            current: config.quorum,
+            options: [
+                ("simple_majority", "Mayoría simple"),
+                ("two_thirds_majority", "Dos tercios"),
+                ("unanimous", "Unánime"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setDecisionsConfig(contextId: context.id, ["quorum": .string(newValue)])
+        }
+        configPicker(
+            title: "Regla de mayoría",
+            systemImage: "percent",
+            current: config.majorityRule,
+            options: [
+                ("simple", "Simple (>50%)"),
+                ("super", "Superior (>66%)"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setDecisionsConfig(contextId: context.id, ["majority_rule": .string(newValue)])
         }
     }
 
@@ -568,50 +590,46 @@ public struct ContextSettingsView: View {
         }
     }
 
-    // MARK: - Dinero
-
     @ViewBuilder
-    private func moneySection(_ config: ContextMoneyConfig) -> some View {
+    private func moneyRows(_ config: ContextMoneyConfig) -> some View {
         let canEdit = store.can("edit_money")
-        Section("Dinero") {
-            configPicker(
-                title: "Moneda",
-                systemImage: "creditcard",
-                current: config.currency,
-                options: [
-                    ("MXN", "MXN"), ("USD", "USD"), ("EUR", "EUR"),
-                    ("ARS", "ARS"), ("CLP", "CLP"), ("COP", "COP"), ("BRL", "BRL"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setMoneyConfig(contextId: context.id, ["currency": .string(newValue)])
-            }
-            configPicker(
-                title: "Split por defecto",
-                systemImage: "divide",
-                current: config.defaultSplit,
-                options: [
-                    ("equal", "Parejo"),
-                    ("custom", "Personalizado"),
-                    ("weighted", "Ponderado"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setMoneyConfig(contextId: context.id, ["default_split": .string(newValue)])
-            }
-            configPicker(
-                title: "Política de settlement",
-                systemImage: "calendar.badge.clock",
-                current: config.settlementPolicy,
-                options: [
-                    ("monthly", "Mensual"),
-                    ("weekly", "Semanal"),
-                    ("on_demand", "A demanda"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setMoneyConfig(contextId: context.id, ["settlement_policy": .string(newValue)])
-            }
+        configPicker(
+            title: "Moneda",
+            systemImage: "creditcard",
+            current: config.currency,
+            options: [
+                ("MXN", "MXN"), ("USD", "USD"), ("EUR", "EUR"),
+                ("ARS", "ARS"), ("CLP", "CLP"), ("COP", "COP"), ("BRL", "BRL"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setMoneyConfig(contextId: context.id, ["currency": .string(newValue)])
+        }
+        configPicker(
+            title: "Split por defecto",
+            systemImage: "divide",
+            current: config.defaultSplit,
+            options: [
+                ("equal", "Parejo"),
+                ("custom", "Personalizado"),
+                ("weighted", "Ponderado"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setMoneyConfig(contextId: context.id, ["default_split": .string(newValue)])
+        }
+        configPicker(
+            title: "Política de settlement",
+            systemImage: "calendar.badge.clock",
+            current: config.settlementPolicy,
+            options: [
+                ("monthly", "Mensual"),
+                ("weekly", "Semanal"),
+                ("on_demand", "A demanda"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setMoneyConfig(contextId: context.id, ["settlement_policy": .string(newValue)])
         }
     }
 
@@ -633,51 +651,47 @@ public struct ContextSettingsView: View {
         }
     }
 
-    // MARK: - Reservaciones
-
     @ViewBuilder
-    private func reservationsSection(_ config: ContextReservationsConfig) -> some View {
+    private func reservationsRows(_ config: ContextReservationsConfig) -> some View {
         let canEdit = store.can("edit_reservations")
-        Section("Reservaciones") {
-            configPicker(
-                title: "Prioridad",
-                systemImage: "list.number",
-                current: config.priorityPolicy,
-                options: [
-                    ("least_recent_use_wins", "Quien usó hace más tiempo"),
-                    ("first_come_first_served", "Primero en llegar"),
-                    ("round_robin", "Rotativo"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setReservationsConfig(contextId: context.id, ["priority_policy": .string(newValue)])
-            }
-            configPicker(
-                title: "Resolución de conflictos",
-                systemImage: "exclamationmark.triangle",
-                current: config.conflictResolution,
-                options: [
-                    ("community_vote", "Voto comunitario"),
-                    ("admin_decides", "Decide admin"),
-                    ("auto", "Automático"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setReservationsConfig(contextId: context.id, ["conflict_resolution": .string(newValue)])
-            }
-            configPicker(
-                title: "Cancelación",
-                systemImage: "xmark.circle",
-                current: config.cancellationPolicy,
-                options: [
-                    ("open", "Abierta"),
-                    ("strict", "Estricta"),
-                    ("admin_only", "Solo admin"),
-                ],
-                enabled: canEdit
-            ) { newValue in
-                try await store.setReservationsConfig(contextId: context.id, ["cancellation_policy": .string(newValue)])
-            }
+        configPicker(
+            title: "Prioridad",
+            systemImage: "list.number",
+            current: config.priorityPolicy,
+            options: [
+                ("least_recent_use_wins", "Quien usó hace más tiempo"),
+                ("first_come_first_served", "Primero en llegar"),
+                ("round_robin", "Rotativo"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setReservationsConfig(contextId: context.id, ["priority_policy": .string(newValue)])
+        }
+        configPicker(
+            title: "Resolución de conflictos",
+            systemImage: "exclamationmark.triangle",
+            current: config.conflictResolution,
+            options: [
+                ("community_vote", "Voto comunitario"),
+                ("admin_decides", "Decide admin"),
+                ("auto", "Automático"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setReservationsConfig(contextId: context.id, ["conflict_resolution": .string(newValue)])
+        }
+        configPicker(
+            title: "Cancelación",
+            systemImage: "xmark.circle",
+            current: config.cancellationPolicy,
+            options: [
+                ("open", "Abierta"),
+                ("strict", "Estricta"),
+                ("admin_only", "Solo admin"),
+            ],
+            enabled: canEdit
+        ) { newValue in
+            try await store.setReservationsConfig(contextId: context.id, ["cancellation_policy": .string(newValue)])
         }
     }
 
