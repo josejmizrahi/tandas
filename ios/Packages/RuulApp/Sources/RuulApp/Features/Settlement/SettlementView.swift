@@ -64,18 +64,16 @@ public struct SettlementView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if store.canSettle(in: context) {
+                // Apple HIG: una sola acción se expone directa, no dentro de
+                // un Menu ellipsis (que sugiere 2+ opciones detrás).
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            Task { await generate() }
-                        } label: {
-                            Label("Recalcular", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                        .disabled(runner.isRunning)
+                    Button {
+                        Task { await generate() }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Label("Recalcular", systemImage: "arrow.triangle.2.circlepath")
                     }
-                    .accessibilityLabel("Más opciones")
+                    .disabled(runner.isRunning)
+                    .accessibilityLabel("Recalcular liquidaciones")
                 }
             }
         }
@@ -331,8 +329,7 @@ public struct SettlementView: View {
                 }
             } label: {
                 Label("Historial liquidado (\(paidItems.count))", systemImage: "tray.full")
-                    .font(.callout)
-                    .foregroundStyle(Theme.Text.secondary)
+                    .font(.callout.weight(.medium))
             }
         }
     }
@@ -598,12 +595,9 @@ private struct ItemActionsSheet: View {
                         }
                         Spacer()
                     }
+                    statusInfo
                 } header: {
                     Text("Transferencia")
-                }
-
-                Section {
-                    statusInfo
                 }
 
                 actionsSection

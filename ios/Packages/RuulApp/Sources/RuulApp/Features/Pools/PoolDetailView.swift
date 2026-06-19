@@ -153,27 +153,15 @@ public struct PoolDetailView: View {
                     }
                 }
             } else {
-                if let target = preview.targetAmount, target > 0 {
-                    let progress = min(preview.totalBasis / target, 1)
-                    ProgressView(value: progress) {
-                        HStack {
-                            Text("Progreso a meta")
-                                .font(.callout)
-                                .foregroundStyle(Theme.Text.primary)
-                            Spacer()
-                            Text("\(Int(progress * 100))%")
-                                .font(.callout.monospacedDigit())
-                                .foregroundStyle(Theme.Text.secondary)
-                        }
-                    }
-                    if let remaining = preview.remainingToTarget, remaining > 0 {
-                        LabeledContent {
-                            Text(remaining.currencyLabel(currency))
-                                .font(.callout.monospacedDigit())
-                                .foregroundStyle(Theme.Text.secondary)
-                        } label: {
-                            Label("Falta", systemImage: "arrow.up.right")
-                        }
+                // Progress bar a meta vive en el Hero — no duplicar acá. Sólo
+                // surface "Falta $X" cuando aplica (info que NO está en Hero).
+                if let remaining = preview.remainingToTarget, remaining > 0 {
+                    LabeledContent {
+                        Text(remaining.currencyLabel(currency))
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(Theme.Text.secondary)
+                    } label: {
+                        Label("Falta", systemImage: "arrow.up.right")
                     }
                 }
                 ForEach(preview.contributors) { contributor in
