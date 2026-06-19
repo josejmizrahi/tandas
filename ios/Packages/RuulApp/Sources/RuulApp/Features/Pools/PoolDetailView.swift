@@ -110,7 +110,10 @@ public struct PoolDetailView: View {
     @ViewBuilder
     private func content(_ detail: PoolAccountDetail) -> some View {
         List {
-            heroSection(detail)
+            summarySection(detail)
+            if let hint = policyHint(detail.poolAccount.policyKey) {
+                policyDescriptionSection(hint)
+            }
             aportesSection(detail)
             if let preview = store.resolutionPreview, preview.isResolvable {
                 previewSection(detail, preview: preview)
@@ -118,6 +121,84 @@ public struct PoolDetailView: View {
             accionesSection(detail)
         }
         .listStyle(.insetGrouped)
+    }
+
+    // MARK: - Resumen (Apple-native: LabeledContent rows)
+    //
+    // Founder feedback 2026-06-19: "deberia de ver cuanto dinero hay en el pool
+    // y todo eso. tampoco me gustan las cards del dashboard del pool". Quitamos
+    // la card flotante del hero (.listRowBackground(.clear) + 38pt rounded green
+    // number) y mostramos los totales como LabeledContent rows con currencyLabel
+    // completo ("$1,500.00 MXN" no "$1.5k"). El estado vive como row, no badge.
+
+    @ViewBuilder
+    private func summarySection(_ detail: PoolAccountDetail) -> some View {
+        let currency = detail.poolAccount.currency ?? "MXN"
+        Section {
+            LabeledContent {
+                Text(detail.totals.basisTotal.currencyLabel(currency))
+                    .font(.title3.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.Tint.success)
+            } label: {
+                Label("Total en el fondo", systemImage: "banknote.fill")
+            }
+            if detail.totals.myBasis > 0 {
+                LabeledContent {
+                    Text(detail.totals.myBasis.currencyLabel(currency))
+                        .font(.callout.weight(.medium).monospacedDigit())
+                        .foregroundStyle(Theme.Text.primary)
+                } label: {
+                    Label("Tu aporte", systemImage: "person.fill")
+                }
+            }
+            LabeledContent {
+                Text(detail.poolAccount.statusLabel)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(statusColor(detail.poolAccount))
+            } label: {
+                Label("Estado", systemImage: "circle.fill")
+                    .symbolRenderingMode(.hierarchical)
+            }
+            if let target = detail.poolAccount.targetAmount, target > 0 {
+                LabeledContent {
+                    Text(target.currencyLabel(currency))
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(Theme.Text.primary)
+                } label: {
+                    Label("Meta", systemImage: "target")
+                }
+                let progress = min(detail.totals.basisTotal / target, 1)
+                let remaining = max(0, target - detail.totals.basisTotal)
+                VStack(alignment: .leading, spacing: 4) {
+                    ProgressView(value: progress)
+                        .tint(progress >= 1 ? Theme.Tint.success : Theme.Tint.primary)
+                    HStack {
+                        Text("\(Int(progress * 100))%")
+                            .font(.caption.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(Theme.Text.secondary)
+                        Spacer()
+                        if remaining > 0 {
+                            Text("Faltan \(remaining.currencyLabel(currency))")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(Theme.Text.secondary)
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text(detail.poolAccount.displayName)
+        }
+    }
+
+    @ViewBuilder
+    private func policyDescriptionSection(_ hint: String) -> some View {
+        Section {
+            Text(hint)
+                .font(.callout)
+                .foregroundStyle(Theme.Text.primary)
+        } header: {
+            Text("¿Cómo se reparte?")
+        }
     }
 
     // MARK: - Preview de la resolución (R.8.C)
@@ -153,17 +234,9 @@ public struct PoolDetailView: View {
                     }
                 }
             } else {
-                // Progress bar a meta vive en el Hero — no duplicar acá. Sólo
-                // surface "Falta $X" cuando aplica (info que NO está en Hero).
-                if let remaining = preview.remainingToTarget, remaining > 0 {
-                    LabeledContent {
-                        Text(remaining.currencyLabel(currency))
-                            .font(.callout.monospacedDigit())
-                            .foregroundStyle(Theme.Text.secondary)
-                    } label: {
-                        Label("Falta", systemImage: "arrow.up.right")
-                    }
-                }
+                // Meta/Falta + ProgressView ya viven en summarySection. Aquí
+                // sólo desglosamos las participaciones por contribuyente, que
+                // es lo único que NO se ve en el summary.
                 ForEach(preview.contributors) { contributor in
                     HStack(spacing: 12) {
                         ActorInitialsView(name: contributor.displayName ?? "?", size: 28)
@@ -226,53 +299,6 @@ public struct PoolDetailView: View {
             return "El fondo no está en un estado resolvible."
         default:
             return raw
-        }
-    }
-
-    @ViewBuilder
-    private func heroSection(_ detail: PoolAccountDetail) -> some View {
-        Section {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(detail.poolAccount.displayName)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Theme.Text.primary)
-                    Spacer()
-                    StatusBadge(detail.poolAccount.statusLabel, color: statusColor(detail.poolAccount))
-                }
-                Text(detail.totals.basisTotal.compactCurrencyLabel(detail.poolAccount.currency ?? "MXN"))
-                    .font(.system(size: 38, weight: .bold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(Theme.Tint.success)
-                if let target = detail.poolAccount.targetAmount, target > 0 {
-                    ProgressView(value: min(detail.totals.basisTotal / target, 1))
-                    Text("Meta: \(target.compactCurrencyLabel(detail.poolAccount.currency ?? "MXN"))")
-                        .font(.caption)
-                        .foregroundStyle(Theme.Text.secondary)
-                }
-                if detail.totals.myBasis > 0 {
-                    Text("Tu aporte: \(detail.totals.myBasis.compactCurrencyLabel(detail.poolAccount.currency ?? "MXN"))")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.Text.secondary)
-                }
-                // Slice 7.A.6 — política explicada en hero (no solo en footer
-                // del bloque Acciones), para que el usuario entienda CUÁL es
-                // la mecánica del bote antes de aportar.
-                if let policyHint = policyHint(detail.poolAccount.policyKey) {
-                    Label {
-                        Text(policyHint)
-                            .font(.caption)
-                            .foregroundStyle(Theme.Text.secondary)
-                    } icon: {
-                        Image(systemName: "info.circle")
-                            .font(.caption2)
-                            .foregroundStyle(Theme.Text.tertiary)
-                    }
-                    .padding(.top, 4)
-                }
-            }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
         }
     }
 
