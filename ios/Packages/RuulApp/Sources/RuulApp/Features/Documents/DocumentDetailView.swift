@@ -54,7 +54,6 @@ public struct DocumentDetailView: View {
             heroSection
             metadataSection
             linkedSection
-            actionsSection
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Documento")
@@ -227,38 +226,10 @@ public struct DocumentDetailView: View {
         }
     }
 
-    // MARK: - Actions section (Button rows nativos)
-    //
-    // Apple HIG: usar Button con Label dentro de List/Section.
-    // Dangerous: `role: .destructive` o `.foregroundStyle(.red)` solo en label.
-    // Disabled: `.disabled(true)` — sistema dim automático.
-
-    @ViewBuilder
-    private var actionsSection: some View {
-        Section("Acciones") {
-            Button {
-                Task { await openPreview() }
-            } label: {
-                Label("Ver completo", systemImage: "eye.fill")
-            }
-            .disabled(document.storagePath == nil)
-
-            Button {
-                Task { await prepareShare() }
-            } label: {
-                Label("Compartir", systemImage: "square.and.arrow.up")
-            }
-            .disabled(document.storagePath == nil)
-
-            if !document.isArchived {
-                Button(role: .destructive) {
-                    isConfirmingArchive = true
-                } label: {
-                    Label("Archivar", systemImage: "archivebox")
-                }
-            }
-        }
-    }
+    // Acciones (Ver completo / Compartir / Archivar) viven sólo en el toolbar
+    // ellipsis Menu (single source). La sección inline anterior duplicaba esos
+    // botones sin agregar valor — el Menu del toolbar ya tiene el footer
+    // explicativo cuando faltan archivos binarios.
 
     // R.13.A (founder lock 2026-06-16) — eliminada `comingSoonSection`
     // (Firmar / Pedir aprobación / Subir nueva versión). Doctrina "nada que no
