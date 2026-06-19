@@ -232,8 +232,7 @@ public struct DecisionDetailView: View {
             consequencesSection(decision)
             activitySectionList
             subscribeSectionList
-            adminSection(decision)
-            auditSection(decision)
+            moreSection(decision)
         }
         .listStyle(.insetGrouped)
     }
@@ -905,23 +904,32 @@ public struct DecisionDetailView: View {
         )
     }
 
-    // MARK: - 9. Administración
+    // MARK: - 9. Más (Administración + Auditoría — DisclosureGroup, sólo con autoridad)
+    //
+    // Alineado con la doctrina del header (líneas 20-21): admin + auditoría
+    // colapsados detrás de un DisclosureGroup. Las acciones admin siguen
+    // accesibles desde el toolbar `ellipsis` arriba (mirror); este acordeón
+    // ofrece el detalle completo con `reason` visible cuando están disabled.
 
     @ViewBuilder
-    private func adminSection(_ decision: Decision) -> some View {
+    private func moreSection(_ decision: Decision) -> some View {
         let actions = adminActions(decision)
         if hasManageAuthority && !actions.isEmpty {
             Section {
-                ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
-                    Button(role: action.role == .destructive ? .destructive : nil) {
-                        handleAdminAction(action)
-                    } label: {
-                        adminRow(action)
+                DisclosureGroup {
+                    ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
+                        Button(role: action.role == .destructive ? .destructive : nil) {
+                            handleAdminAction(action)
+                        } label: {
+                            adminRow(action)
+                        }
+                        .disabled(runner.isRunning || !action.enabled)
                     }
-                    .disabled(runner.isRunning || !action.enabled)
+                    auditRows(decision)
+                } label: {
+                    Label("Más", systemImage: "ellipsis.circle")
+                        .font(.callout.weight(.medium))
                 }
-            } header: {
-                Text("Administración")
             }
         }
     }
@@ -1006,42 +1014,36 @@ public struct DecisionDetailView: View {
         }
     }
 
-    // MARK: - 10. Auditoría
+    // MARK: - Auditoría (rows del DisclosureGroup "Más")
 
     @ViewBuilder
-    private func auditSection(_ decision: Decision) -> some View {
-        if hasManageAuthority {
-            Section {
-                if let created = decision.createdAt {
-                    LabeledContent("Creada", value: created.formatted(date: .abbreviated, time: .shortened))
-                }
-                if let by = decision.createdByActorId {
-                    LabeledContent("Propuesta por", value: store.displayName(for: by))
-                }
-                if let closesAt = decision.closesAt {
-                    LabeledContent("Cierre programado", value: closesAt.formatted(date: .abbreviated, time: .shortened))
-                }
-                if let decidedAt = decision.decidedAt {
-                    LabeledContent("Decidida", value: decidedAt.formatted(date: .abbreviated, time: .shortened))
-                }
-                if let executedAt = decision.executedAt {
-                    LabeledContent("Ejecutada", value: executedAt.formatted(date: .abbreviated, time: .shortened))
-                }
-                LabeledContent("Estado", value: decision.status)
-                LabeledContent("Modelo de voto", value: decision.voting.label)
-                LabeledContent("Tipo", value: decision.type.label)
-                LabeledContent {
-                    Text(decision.id.uuidString)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                } label: {
-                    Text("ID")
-                }
-            } header: {
-                Text("Auditoría")
-            }
+    private func auditRows(_ decision: Decision) -> some View {
+        if let created = decision.createdAt {
+            LabeledContent("Creada", value: created.formatted(date: .abbreviated, time: .shortened))
+        }
+        if let by = decision.createdByActorId {
+            LabeledContent("Propuesta por", value: store.displayName(for: by))
+        }
+        if let closesAt = decision.closesAt {
+            LabeledContent("Cierre programado", value: closesAt.formatted(date: .abbreviated, time: .shortened))
+        }
+        if let decidedAt = decision.decidedAt {
+            LabeledContent("Decidida", value: decidedAt.formatted(date: .abbreviated, time: .shortened))
+        }
+        if let executedAt = decision.executedAt {
+            LabeledContent("Ejecutada", value: executedAt.formatted(date: .abbreviated, time: .shortened))
+        }
+        LabeledContent("Estado", value: decision.status)
+        LabeledContent("Modelo de voto", value: decision.voting.label)
+        LabeledContent("Tipo", value: decision.type.label)
+        LabeledContent {
+            Text(decision.id.uuidString)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        } label: {
+            Text("ID")
         }
     }
 
