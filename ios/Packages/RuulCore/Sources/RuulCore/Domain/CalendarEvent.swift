@@ -210,6 +210,23 @@ public struct CalendarEvent: Codable, Sendable, Equatable, Identifiable {
     public var isScheduled: Bool { status == "scheduled" }
     public var isCompleted: Bool { status == "completed" }
     public var isRecurring: Bool { recurrenceRule != nil }
+
+    /// Check-in por ubicación (founder feedback 2026-06-20). Las coords se
+    /// stashean en `metadata.location.{lat, lng}` al crear/editar el evento
+    /// (resueltas vía MKLocalSearch desde la suggestion del completer). El
+    /// backend pasa metadata through sin tocarlo; close_event preserva metadata
+    /// en la chain recurrente.
+    public var locationLat: Double? {
+        metadata.objectValue?["location"]?.objectValue?["lat"]?.numberValue
+    }
+
+    public var locationLng: Double? {
+        metadata.objectValue?["location"]?.objectValue?["lng"]?.numberValue
+    }
+
+    public var hasGeoCoordinates: Bool {
+        locationLat != nil && locationLng != nil
+    }
 }
 
 /// Resultado de `create_calendar_event()`.

@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 import RuulCore
 
 // MARK: - 2. Acción principal (zona dinámica)
@@ -15,6 +16,17 @@ struct EventDetailPrimaryActionSection: View {
     let context: AppContext
     /// Acción "Llegué" — la ejecuta el parent (setea notice + recarga actividad).
     let onSelfCheckIn: () async -> Void
+
+    /// Check-in por ubicación foreground (founder feedback 2026-06-20).
+    /// Solo se activa cuando `event.hasGeoCoordinates`. El service tolera
+    /// permiso denegado en silencio — caemos al CTA manual de siempre.
+    @State private var proximity = LocationProximityService()
+
+    /// Umbral en metros para considerar "estoy en el lugar". 200m balance
+    /// entre precisión GPS típica iPhone (~10-30m al aire libre, peor en
+    /// edificios) y eventos en domicilios o restaurants donde el centro
+    /// MapKit puede caer fuera del local exacto.
+    private let proximityThresholdMeters: CLLocationDistance = 200
 
     private enum PrimaryState {
         /// Evento ya no está activo (closed / cancelled).
@@ -81,25 +93,106 @@ struct EventDetailPrimaryActionSection: View {
                 }
             }
         case .canCheckIn:
-            Section {
-                Button {
-                    Task { await onSelfCheckIn() }
-                } label: {
-                    Label("Llegué", systemImage: "checkmark.circle.fill")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.glassProminent)
-                .disabled(runner.isRunning)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-            }
+            checkInSection
         case .needsResponse:
             rsvpSection(heading: "Responde tu asistencia", current: nil)
         case .responded(let status):
             rsvpSection(heading: respondedHeading(status), current: status)
         }
+    }
+
+    /// CTA "Llegué" — se enriquece con check-in por ubicación cuando el evento
+    /// tiene coords (founder feedback 2026-06-20). Comportamiento:
+    /// - Sin coords o sin permiso: botón "Llegué" normal.
+    /// - Con coords + autorizado + lejos: botón normal + hint "A 1.2 km del
+    ///   lugar" para que el usuario sepa por qué no se auto-activó.
+    /// - Con coords + autorizado + cerca (<200m): label cambia a "Estoy aquí"
+    ///   con location.fill icon + hint "Estás en el lugar" verde.
+    /// El check-in mismo siempre es manual (no auto-trigger) — el usuario
+    /// confirma con tap. El RPC backend que recibe el check-in es el mismo.
+    @ViewBuilder
+    private var checkInSection: some View {
+        let isNear = isWithinProximity()
+        Section {
+            Button {
+                Task { await onSelfCheckIn() }
+            } label: {
+                Label(
+                    isNear ? "Estoy aquí · Llegué" : "Llegué",
+                    systemImage: isNear ? "location.fill" : "checkmark.circle.fill"
+                )
+                .font(.body.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.glassProminent)
+            .disabled(runner.isRunning)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+        } footer: {
+            proximityFooter
+        }
+        .task {
+            if event.hasGeoCoordinates {
+                proximity.requestUpdates()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var proximityFooter: some View {
+        if event.hasGeoCoordinates {
+            switch proximity.authorization {
+            case .denied:
+                // No ofender al usuario; el CTA manual sirve. Sin mensaje.
+                EmptyView()
+            case .undetermined:
+                // Aún esperando primera respuesta. Sin mensaje.
+                EmptyView()
+            case .authorized:
+                proximityReadingHint
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var proximityReadingHint: some View {
+        if let lat = event.locationLat,
+           let lng = event.locationLng,
+           let distance = proximity.distance(to: lat, lng: lng) {
+            if distance <= proximityThresholdMeters {
+                Label("Estás en el lugar", systemImage: "checkmark.seal.fill")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.Tint.success)
+            } else {
+                Label(formattedDistance(distance), systemImage: "location")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Text.secondary)
+            }
+        } else if proximity.isUpdating {
+            Label("Detectando tu ubicación…", systemImage: "location")
+                .font(.caption)
+                .foregroundStyle(Theme.Text.tertiary)
+        }
+    }
+
+    private func isWithinProximity() -> Bool {
+        guard event.hasGeoCoordinates,
+              proximity.authorization == .authorized,
+              let lat = event.locationLat,
+              let lng = event.locationLng,
+              let d = proximity.distance(to: lat, lng: lng)
+        else { return false }
+        return d <= proximityThresholdMeters
+    }
+
+    /// "150 m" / "1.2 km del lugar". Apple-style measurement formatting.
+    private func formattedDistance(_ d: CLLocationDistance) -> String {
+        let formatter = MeasurementFormatter()
+        formatter.unitOptions = .naturalScale
+        formatter.numberFormatter.maximumFractionDigits = 1
+        let measurement = Measurement(value: d, unit: UnitLength.meters)
+        return "A " + formatter.string(from: measurement) + " del lugar"
     }
 
     @ViewBuilder

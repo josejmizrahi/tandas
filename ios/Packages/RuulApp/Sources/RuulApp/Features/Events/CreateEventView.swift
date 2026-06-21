@@ -38,6 +38,11 @@ public struct CreateEventView: View {
     /// F.EVENT.7 — Apple Maps autocomplete vía MKLocalSearchCompleter.
     @State private var locationCompleter = LocationCompleter()
     @State private var suppressNextQueryUpdate = false
+    /// Check-in por ubicación (founder feedback 2026-06-20). Coords resueltas
+    /// vía MKLocalSearch al pickear una suggestion del completer. Se stashean
+    /// en `metadata.location.{lat,lng}` al crear. Se invalida si el usuario
+    /// edita el texto o cambia el mode.
+    @State private var selectedCoords: EventLocationCoords?
     /// R.12.F — schema + values del subtype (cargado on demand cuando cambia eventType).
     @State private var subtypeFields: [FormFieldSpec] = []
     @State private var subtypeDisplayName: String = ""
@@ -289,6 +294,9 @@ public struct CreateEventView: View {
                                     return
                                 }
                                 locationCompleter.setQuery(new)
+                                // Usuario tecleó algo distinto a una suggestion
+                                // resuelta → invalidar coords.
+                                selectedCoords = nil
                             }
                         ForEach(locationCompleter.suggestions) { suggestion in
                             Button {
@@ -416,7 +424,19 @@ public struct CreateEventView: View {
             ? trimmedLocation
             : nil
         let payloadVirtual: Bool = locationMode == .virtual
-        let metadataPayload: JSONValue? = subtypeMetadata.isEmpty ? nil : .object(subtypeMetadata)
+        // Metadata payload: subtype fields + location.{lat,lng} cuando hay
+        // coords resueltas (sólo en mode physical). Si ambos están vacíos,
+        // pasamos nil para que el backend use default {}.
+        let metadataPayload: JSONValue? = {
+            var dict: [String: JSONValue] = subtypeMetadata
+            if locationMode == .physical, let coords = selectedCoords {
+                dict["location"] = .object([
+                    "lat": .number(coords.lat),
+                    "lng": .number(coords.lng)
+                ])
+            }
+            return dict.isEmpty ? nil : .object(dict)
+        }()
         var createdId: UUID?
         let success = await runner.run {
             let created = try await store.createEvent(
@@ -458,6 +478,23 @@ public struct CreateEventView: View {
         suppressNextQueryUpdate = true
         locationText = composed
         locationCompleter.clear()
+        // Resolver coords vía MKLocalSearch (la suggestion del completer NO
+        // trae coordinate; pedimos placemark.coordinate del primer mapItem).
+        // Silent fail — el check-in por ubicación queda inactivo si MapKit
+        // no encuentra el lugar, pero el evento se crea igual.
+        Task { @MainActor in
+            let request = MKLocalSearch.Request()
+            request.naturalLanguageQuery = composed
+            do {
+                let response = try await MKLocalSearch(request: request).start()
+                if let first = response.mapItems.first {
+                    let c = first.placemark.coordinate
+                    selectedCoords = EventLocationCoords(lat: c.latitude, lng: c.longitude)
+                }
+            } catch {
+                selectedCoords = nil
+            }
+        }
     }
 
     // MARK: - R.6.AI.11 — AI Hero
@@ -593,6 +630,14 @@ struct LocationSuggestion: Identifiable, Hashable, Sendable {
     let id = UUID()
     let title: String
     let subtitle: String
+}
+
+/// Coords resueltas vía MKLocalSearch al pickear una suggestion. Se stashean
+/// en `event.metadata.location.{lat,lng}` para habilitar check-in por
+/// proximidad en EventDetailView (founder feedback 2026-06-20).
+struct EventLocationCoords: Equatable, Sendable {
+    let lat: Double
+    let lng: Double
 }
 
 #Preview("Crear evento") {
