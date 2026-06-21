@@ -16,8 +16,8 @@ public struct MoneyHomeView: View {
 
     @State private var store: MoneyStore
     /// D1 (re-audit 2026-06-14) — doctrina R.8.A Option C exige separar
-    /// Tesorería (obligaciones pairwise) de Fondos (pools R.8). La sección de
-    /// Fondos ahora muestra pools inline en vez de un solo `NavigationLink`.
+    /// Tesorería (obligaciones pairwise) de botes (pools R.8). La sección de
+    /// botes ahora muestra pools inline en vez de un solo `NavigationLink`.
     @State private var poolsStore: PoolsStore
     @State private var isShowingExpense = false
     @State private var isShowingGameResult = false
@@ -132,7 +132,7 @@ public struct MoneyHomeView: View {
                 tesoreriaSection
             }
             accionesSection
-            fondosSection
+            botesSection
             movimientosSection
             if !moneyActivity.isEmpty {
                 actividadSection
@@ -437,16 +437,16 @@ public struct MoneyHomeView: View {
         }
     }
 
-    // MARK: - Fondos (R.8.E + D1 doctrina R.8.A Option C)
+    // MARK: - Botes (R.8.E + D1 doctrina R.8.A Option C)
 
     @ViewBuilder
-    private var fondosSection: some View {
+    private var botesSection: some View {
         Section {
             if poolsStore.pools.isEmpty {
                 Button {
                     isShowingCreatePool = true
                 } label: {
-                    Label("Crear fondo", systemImage: "plus.circle")
+                    Label("Crear bote", systemImage: "plus.circle")
                 }
             } else {
                 ForEach(poolsStore.pools) { pool in
@@ -463,13 +463,13 @@ public struct MoneyHomeView: View {
                 NavigationLink {
                     PoolsListView(context: context, container: container)
                 } label: {
-                    Label("Ver todos los fondos", systemImage: "rectangle.stack")
+                    Label("Ver todos los botes", systemImage: "rectangle.stack")
                 }
             }
         } header: {
-            Text(poolsStore.pools.isEmpty ? "Fondos comunes" : "Fondos comunes (\(poolsStore.pools.count))")
+            Text(poolsStore.pools.isEmpty ? "Botes" : "Botes (\(poolsStore.pools.count))")
         } footer: {
-            Text("Todos aportan a un bote común y se reparte cuando se cumple algo: botes de apuestas, fondos con meta, regalos colectivos.")
+            Text("Todos aportan a un bote común y se reparte cuando se cumple algo: apuestas, metas o regalos colectivos.")
         }
     }
 
@@ -647,7 +647,7 @@ public struct MoneyHomeView: View {
                     .font(.callout.weight(.semibold).monospacedDigit())
                     .contentTransition(.numericText(value: Double(openMoney.count)))
             } label: {
-                Label("Obligaciones abiertas", systemImage: "doc.text.below.ecg.fill")
+                Label("Deudas abiertas", systemImage: "doc.text.below.ecg.fill")
             }
         } header: {
             Text("Detalles")

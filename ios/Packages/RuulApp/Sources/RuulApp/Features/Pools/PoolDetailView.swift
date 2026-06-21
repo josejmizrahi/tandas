@@ -1,7 +1,7 @@
 import SwiftUI
 import RuulCore
 
-/// R.8.E/F — detalle de un fondo: total, aportes, acción "Aportar" y flujo
+/// R.8.E/F — detalle de un bote: total, aportes, acción "Aportar" y flujo
 /// "Resolver" (winner_takes_all → picker de ganador + confirmación
 /// destructiva; equity_target → confirmación destructiva directa).
 /// Toda acción visible nace de `available_actions[]` del backend (F.2X).
@@ -43,7 +43,7 @@ public struct PoolDetailView: View {
                 }
             }
         }
-        .navigationTitle(store.detail?.poolAccount.policyLabel ?? "Fondo")
+        .navigationTitle(store.detail?.poolAccount.policyLabel ?? "Bote")
         .navigationBarTitleDisplayMode(.inline)
         .task { await store.load(poolAccountId: poolAccountId) }
         .refreshable { await store.load(poolAccountId: poolAccountId) }
@@ -75,18 +75,18 @@ public struct PoolDetailView: View {
         } message: {
             if let payout = store.resolutionPreview?.payoutAmount,
                let currency = store.resolutionPreview?.payoutCurrency ?? store.detail?.poolAccount.currency {
-                Text("Se pagará \(payout.currencyLabel(currency)) y el fondo quedará resuelto. Esta acción no se puede deshacer.")
+                Text("Se pagará \(payout.currencyLabel(currency)) y el bote quedará resuelto. Esta acción no se puede deshacer.")
             } else {
-                Text("El fondo quedará resuelto. Esta acción no se puede deshacer.")
+                Text("El bote quedará resuelto. Esta acción no se puede deshacer.")
             }
         }
         .confirmationDialog(
-            "¿Resolver el fondo?",
+            "¿Resolver el bote?",
             isPresented: $isConfirmingEquityResolve,
             titleVisibility: .visible
         ) {
             Button(
-                "Resolver fondo",
+                "Resolver bote",
                 role: ActionPresentationCatalog.isDestructive(for: "pool.resolve") ? .destructive : nil
             ) {
                 Task { await resolve(winner: nil) }
@@ -95,7 +95,7 @@ public struct PoolDetailView: View {
         } message: {
             Text("Las participaciones quedarán fijadas según lo aportado. Esta acción no se puede deshacer.")
         }
-        .alert("Fondo resuelto", isPresented: Binding(
+        .alert("Bote resuelto", isPresented: Binding(
             get: { resultNotice != nil },
             set: { if !$0 { resultNotice = nil } }
         )) {
@@ -140,7 +140,7 @@ public struct PoolDetailView: View {
                     .font(.title3.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.Tint.success)
             } label: {
-                Label("Total en el fondo", systemImage: "banknote.fill")
+                Label("Total en el bote", systemImage: "banknote.fill")
             }
             if detail.totals.myBasis > 0 {
                 LabeledContent {
@@ -279,7 +279,7 @@ public struct PoolDetailView: View {
         case "equity_target":
             return "Cada contribuyente recibirá una participación proporcional a su aporte."
         default:
-            return "Resolución según la política del fondo."
+            return "Resolución según la política del bote."
         }
     }
 
@@ -296,7 +296,7 @@ public struct PoolDetailView: View {
         case let s where s.contains("total basis is below target_amount"):
             return "El total aportado todavía no llega a la meta."
         case let s where s.contains("pool is not resolvable"):
-            return "El fondo no está en un estado resolvible."
+            return "El bote no está en un estado resolvible."
         default:
             return raw
         }
@@ -308,7 +308,7 @@ public struct PoolDetailView: View {
         case "winner_takes_all":
             return "El bote completo se paga a una sola persona ganadora al cerrarlo."
         case "equity_target":
-            return "Cada participante recupera su aporte cuando se cierre el fondo."
+            return "Cada participante recupera su aporte cuando se cierre el bote."
         case "proportional":
             return "Las ganancias se reparten en proporción a lo que aportó cada quien."
         default:
@@ -458,7 +458,7 @@ public struct PoolDetailView: View {
             if let payout = result.payoutAmount, let winnerName {
                 resultNotice = "Se pagó \(payout.currencyLabel(result.payoutCurrency)) a \(winnerName)."
             } else {
-                resultNotice = "El fondo quedó resuelto."
+                resultNotice = "El bote quedó resuelto."
             }
         }
         if !success {
@@ -516,10 +516,10 @@ private struct ContributePoolSheet: View {
                     }
                     .disabled((amount ?? 0) <= 0 || runner.isRunning)
                 } footer: {
-                    Text("El aporte queda registrado en el fondo hasta que se resuelva.")
+                    Text("El aporte queda registrado en el bote hasta que se resuelva.")
                 }
             }
-            .navigationTitle("Aportar al fondo")
+            .navigationTitle("Aportar al bote")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

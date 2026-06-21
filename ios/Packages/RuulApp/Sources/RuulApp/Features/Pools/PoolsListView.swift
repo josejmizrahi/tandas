@@ -1,7 +1,7 @@
 import SwiftUI
 import RuulCore
 
-/// R.8.E — Fondos del contexto (pools): botes (winner_takes_all) y fondos
+/// R.8.E — Botes del contexto (pools): botes (winner_takes_all) y botes
 /// con meta (equity_target). Backend = autoridad: nombres, totales y status
 /// vienen de `list_context_pools`.
 public struct PoolsListView: View {
@@ -32,7 +32,7 @@ public struct PoolsListView: View {
                 content
             }
         }
-        .navigationTitle("Fondos")
+        .navigationTitle("Botes")
         .task { await store.load(context: context) }
         .refreshable { await store.load(context: context) }
         .refreshOnReappear(if: store.phase.isLoaded) {
@@ -45,7 +45,7 @@ public struct PoolsListView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
-                .accessibilityLabel("Crear fondo")
+                .accessibilityLabel("Crear bote")
             }
         }
         .sheet(isPresented: $isShowingCreate) {
@@ -58,14 +58,14 @@ public struct PoolsListView: View {
         if store.pools.isEmpty {
             VStack(spacing: Theme.Spacing.md) {
                 RuulEmptyState(
-                    title: "Sin fondos todavía",
+                    title: "Sin botes todavía",
                     systemImage: "banknote",
-                    message: "Crea un bote para la próxima noche de juegos o un fondo con meta para un proyecto."
+                    message: "Crea un bote para la próxima noche de juegos o un bote con meta para un viaje."
                 )
                 Button {
                     isShowingCreate = true
                 } label: {
-                    Label("Crear fondo", systemImage: "plus")
+                    Label("Crear bote", systemImage: "plus")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -126,7 +126,7 @@ public struct PoolsListView: View {
     }
 }
 
-#Preview("Fondos") {
+#Preview("Botes") {
     NavigationStack {
         PoolsListView(
             context: AppContext(

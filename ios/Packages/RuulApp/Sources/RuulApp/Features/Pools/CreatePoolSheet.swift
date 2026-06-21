@@ -1,8 +1,8 @@
 import SwiftUI
 import RuulCore
 
-/// R.8.E — crear un fondo: nombre + política (solo las 2 MVP: Bote /
-/// Fondo con meta) + meta opcional. El backend valida (`create_pool`).
+/// R.8.E — crear un bote: nombre + política + meta opcional. El backend
+/// valida (`create_pool`).
 public struct CreatePoolSheet: View {
     let context: AppContext
     let store: PoolsStore
@@ -44,7 +44,7 @@ public struct CreatePoolSheet: View {
                     )
                     policyRow(
                         key: "equity_target",
-                        label: "Fondo con meta",
+                        label: "Bote con meta",
                         description: "Cada quien aporta hasta llegar a una meta. Al resolver quedan fijadas las participaciones."
                     )
                     policyRow(
@@ -56,7 +56,7 @@ public struct CreatePoolSheet: View {
                     Text("¿Cómo se reparte?")
                 }
 
-                // Meta solo aplica al fondo "Con meta" (equity_target). Para
+                // Meta solo aplica al bote "Con meta" (equity_target). Para
                 // bote y proporcional el monto target no tiene efecto backend.
                 if policyKey == "equity_target" {
                     Section {
@@ -72,7 +72,7 @@ public struct CreatePoolSheet: View {
                     } header: {
                         Text("Meta")
                     } footer: {
-                        Text("Hasta cuánto se aporta. El fondo deja de aceptar aportes al llegar a la meta.")
+                        Text("Hasta cuánto se aporta. El bote deja de aceptar aportes al llegar a la meta.")
                     }
                 } else {
                     Section("Moneda") {
@@ -88,13 +88,13 @@ public struct CreatePoolSheet: View {
                         if runner.isRunning {
                             ProgressView().frame(maxWidth: .infinity)
                         } else {
-                            Text("Crear fondo").frame(maxWidth: .infinity)
+                            Text("Crear bote").frame(maxWidth: .infinity)
                         }
                     }
                     .disabled(!isValid || runner.isRunning)
                 }
             }
-            .navigationTitle("Crear fondo")
+            .navigationTitle("Crear bote")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -165,7 +165,7 @@ public struct CreatePoolSheet: View {
     }
 }
 
-#Preview("Crear fondo") {
+#Preview("Crear bote") {
     CreatePoolSheet(
         context: AppContext(
             id: MockRuulRPCClient.DemoIds.cenaSemanal,
