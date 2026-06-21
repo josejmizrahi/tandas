@@ -391,6 +391,7 @@ public struct EventDetailView: View {
             EventDetailNextSessionSection(event: event, store: store)
             EventDetailSeriesSection(event: event, context: context, container: container)
             EventDetailLocationSection(event: event)
+            EventDetailTripSection(event: event)
             // — Personas —
             EventDetailParticipantsSection(
                 store: store,

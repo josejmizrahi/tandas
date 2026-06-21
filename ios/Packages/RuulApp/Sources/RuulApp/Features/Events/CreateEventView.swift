@@ -19,6 +19,8 @@ public struct CreateEventView: View {
     @State private var aiPromptText = ""
     @State private var lastConsidered: [RuulAIContext.Considered] = []
     @State private var startsAt = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+    @State private var tripEndsAt = Calendar.current.date(byAdding: .day, value: 4, to: Date()) ?? Date()
+    @State private var tripBudgetPerPerson = ""
     @State private var locationText = ""
     /// R.5V.3A.event (2026-06-08) — 3 modos de ubicación:
     /// - `.physical` — dirección fija (default).
@@ -181,6 +183,19 @@ public struct CreateEventView: View {
         }
     }
 
+    @ViewBuilder
+    private var tripSection: some View {
+        Section {
+            DatePicker("Regreso", selection: $tripEndsAt, in: startsAt..., displayedComponents: .date)
+            TextField("Presupuesto por persona", text: $tripBudgetPerPerson)
+                .keyboardType(.decimalPad)
+        } header: {
+            Text("Viaje")
+        } footer: {
+            Text("Ruul usará estas fechas para mostrar el itinerario base y ordenar gastos, botes y reservas del viaje.")
+        }
+    }
+
     private var canSubmit: Bool {
         validationHint == nil && !runner.isRunning
     }
@@ -199,6 +214,9 @@ public struct CreateEventView: View {
         if recurrence != .none && seriesBound == .count && (parsedOccurrenceCount ?? 0) <= 0 {
             return "Indica cuántas ocurrencias quieres."
         }
+        if eventType == .trip && tripEndsAt < startsAt {
+            return "La fecha de regreso debe ser posterior al inicio del viaje."
+        }
         return nil
     }
 
@@ -215,6 +233,15 @@ public struct CreateEventView: View {
                         }
                     }
                     DatePicker("Cuándo", selection: $startsAt)
+                        .onChange(of: startsAt) { _, newValue in
+                            if tripEndsAt < newValue {
+                                tripEndsAt = Calendar.current.date(byAdding: .day, value: 3, to: newValue) ?? newValue
+                            }
+                        }
+                }
+
+                if eventType == .trip {
+                    tripSection
                 }
 
                 Section {
@@ -435,6 +462,16 @@ public struct CreateEventView: View {
                     "lng": .number(coords.lng)
                 ])
             }
+            if eventType == .trip {
+                var trip: [String: JSONValue] = [:]
+                if let budget = parsedTripBudget {
+                    trip["budget_per_person"] = .number(budget)
+                    trip["budget_currency"] = .string("MXN")
+                }
+                if !trip.isEmpty {
+                    dict["trip"] = .object(trip)
+                }
+            }
             return dict.isEmpty ? nil : .object(dict)
         }()
         var createdId: UUID?
@@ -445,6 +482,7 @@ public struct CreateEventView: View {
                     title: title.trimmingCharacters(in: .whitespaces),
                     eventType: eventType,
                     startsAt: startsAt,
+                    endsAt: eventType == .trip ? tripEndsAt : nil,
                     locationText: payloadLocation,
                     isVirtual: payloadVirtual,
                     recurrenceRule: recurrence.ruleValue,
@@ -465,6 +503,14 @@ public struct CreateEventView: View {
                 dismiss()
             }
         }
+    }
+
+    private var parsedTripBudget: Double? {
+        let trimmed = tripBudgetPerPerson
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+        guard !trimmed.isEmpty else { return nil }
+        return Double(trimmed)
     }
 
     /// El usuario tappea una sugerencia → componemos `title, subtitle` y
@@ -508,8 +554,9 @@ public struct CreateEventView: View {
             examples: [
                 "Cena el viernes 8pm en casa de Maria",
                 "Reunión el lunes a las 10am",
+                "Vamos a Vallarta en octubre",
                 "Noche de juegos el sábado",
-                "Cumpleaños de Aaron el 15 a las 7pm"
+                "Cada quien pone 500 para el viaje"
             ],
             footerWhenIdle: "Descríbelo con tus palabras o llena los campos abajo.",
             footerWhenLoaded: "El evento ya está armado. Ajusta lo que necesites y crea.",
@@ -557,6 +604,9 @@ public struct CreateEventView: View {
             timeHint: s.timeHint
         ) {
             startsAt = parsedDate
+            if eventType == .trip {
+                tripEndsAt = Calendar.current.date(byAdding: .day, value: 3, to: parsedDate) ?? parsedDate
+            }
         }
         if !s.locationText.isEmpty {
             // F.EVENT.7 — suprime el siguiente onChange del completer así
