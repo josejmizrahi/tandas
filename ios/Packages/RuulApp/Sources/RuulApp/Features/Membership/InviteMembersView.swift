@@ -63,11 +63,9 @@ public struct InviteMembersView: View {
         NavigationStack {
             List {
                 shareSection
-                if !activeInvites.isEmpty {
-                    codigosActivosSection
-                }
                 personasEnRuulSection
-                agregarPersonaSection
+                contactosSection
+                advancedSection
             }
             .navigationTitle("Invitar a \(context.displayName)")
             .navigationBarTitleDisplayMode(.inline)
@@ -186,20 +184,11 @@ public struct InviteMembersView: View {
         await loadActiveInvites()
     }
 
-    // MARK: - P0.2 — Códigos activos
-
-    @ViewBuilder
-    private var codigosActivosSection: some View {
-        Section {
-            ForEach(activeInvites) { row in
-                inviteRow(row)
-            }
-        } header: {
-            Text("Códigos activos (\(activeInvites.count))")
-        } footer: {
-            Text("Si compartiste un código con la persona equivocada, revócalo aquí. El link generado arriba siempre es el más reciente.")
-        }
-    }
+    // MARK: - P0.2 — Códigos activos (rows del DisclosureGroup "Más opciones")
+    //
+    // El header viejo "Códigos activos" + footer aclaratorio se incorporaron en
+    // `activeInvitesRows` (definido junto al manualFormRows arriba). Inviterow
+    // se reusa.
 
     @ViewBuilder
     private func inviteRow(_ row: ContextInvitePreview) -> some View {
@@ -381,12 +370,10 @@ public struct InviteMembersView: View {
         }
     }
 
-    // MARK: - 3. Agregar persona (placeholder)
+    // MARK: - 3. Desde tus contactos (entry primario)
 
     @ViewBuilder
-    private var agregarPersonaSection: some View {
-        // Contactos: row prominente que abre el picker. Tap a un contacto =
-        // se agrega automáticamente (sin pasos manuales).
+    private var contactosSection: some View {
         Section {
             Button {
                 isShowingContactPicker = true
@@ -397,40 +384,70 @@ public struct InviteMembersView: View {
         } header: {
             Text("Desde tus contactos")
         } footer: {
-            Text("Toca para abrir tu app de Contactos. La persona se agrega como miembro pendiente al instante.")
+            Text("Abre tu app de Contactos. La persona se agrega como miembro pendiente al instante.")
         }
+    }
 
-        Section {
-            TextField("Nombre", text: $newName)
-                .textInputAutocapitalization(.words)
-                .autocorrectionDisabled()
-                .textContentType(.name)
-            TextField("Teléfono (opcional)", text: $newPhone)
-                .keyboardType(.phonePad)
-                .textContentType(.telephoneNumber)
-            TextField("Email (opcional)", text: $newEmail)
-                .keyboardType(.emailAddress)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textContentType(.emailAddress)
-        } header: {
-            Text("O escribir manualmente")
-        } footer: {
-            Text("Para gente que aún no usa Ruul. Aparece de inmediato en miembros, eventos y gastos. Cuando se registre con su teléfono o email, su historia se vincula automáticamente.")
-        }
+    // MARK: - 4. Avanzado (manual form + códigos activos, colapsado)
+    //
+    // Para nuevos hosts, el flow primary es Share link + Personas en Ruul +
+    // Contactos. El form manual ("escribir nombre/teléfono/email") y los
+    // códigos activos (audit) viven detrás de un DisclosureGroup para no
+    // desordenar la decisión principal.
 
+    @ViewBuilder
+    private var advancedSection: some View {
         Section {
-            Button {
-                Task { await createPlaceholder() }
-            } label: {
-                if runner.isRunning {
-                    ProgressView().frame(maxWidth: .infinity)
-                } else {
-                    Label("Agregar a \(context.displayName)", systemImage: "person.fill.badge.plus")
-                        .frame(maxWidth: .infinity)
+            DisclosureGroup {
+                manualFormRows
+                if !activeInvites.isEmpty {
+                    activeInvitesRows
                 }
+            } label: {
+                Label("Más opciones", systemImage: "ellipsis.circle")
+                    .font(.callout.weight(.medium))
             }
-            .disabled(!canCreatePlaceholder)
+        }
+    }
+
+    @ViewBuilder
+    private var manualFormRows: some View {
+        Text("Para gente que aún no usa Ruul ni está en tus contactos:")
+            .font(.caption)
+            .foregroundStyle(Theme.Text.secondary)
+        TextField("Nombre", text: $newName)
+            .textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .textContentType(.name)
+        TextField("Teléfono (opcional)", text: $newPhone)
+            .keyboardType(.phonePad)
+            .textContentType(.telephoneNumber)
+        TextField("Email (opcional)", text: $newEmail)
+            .keyboardType(.emailAddress)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .textContentType(.emailAddress)
+        Button {
+            Task { await createPlaceholder() }
+        } label: {
+            if runner.isRunning {
+                ProgressView().frame(maxWidth: .infinity)
+            } else {
+                Label("Agregar a \(context.displayName)", systemImage: "person.fill.badge.plus")
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .disabled(!canCreatePlaceholder)
+    }
+
+    @ViewBuilder
+    private var activeInvitesRows: some View {
+        Text("Códigos activos (\(activeInvites.count))")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Theme.Text.secondary)
+            .padding(.top, 4)
+        ForEach(activeInvites) { row in
+            inviteRow(row)
         }
     }
 

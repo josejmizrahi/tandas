@@ -102,9 +102,9 @@ public struct CreateContextView: View {
                         .buttonStyle(.plain)
                     }
                 } header: {
-                    Text("Tipo")
+                    Text("¿Qué tipo de espacio es?")
                 } footer: {
-                    Text("Las capabilities las determina el backend según el tipo. Tú no decides permisos individuales aquí.")
+                    Text("Después puedes cambiarlo desde la configuración del espacio.")
                 }
 
                 Section {
@@ -151,47 +151,23 @@ public struct CreateContextView: View {
         .ruulSheet()
     }
 
+    // Capability chips eliminados (founder feedback "que sigue → onboarding"
+    // 2026-06-20): jerga técnica que el creador no necesita ver al elegir
+    // tipo. Las capabilities las maneja el backend según subtype — el usuario
+    // solo elige el concepto humano (Familia · Viaje · Grupo · …).
+
     @ViewBuilder
     private func subtypeRow(_ option: Subtype) -> some View {
-        let caps = capStore.capabilities(forSubtype: option.rawValue)
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Label(option.label, systemImage: option.symbolName)
-                    .foregroundStyle(.primary)
-                Spacer()
-                if subtype == option {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(.tint)
-                }
-            }
-            if !caps.isEmpty {
-                FlowingChips(items: capabilityHints(caps))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        HStack {
+            Label(option.label, systemImage: option.symbolName)
+                .foregroundStyle(.primary)
+            Spacer()
+            if subtype == option {
+                Image(systemName: "checkmark")
+                    .foregroundStyle(.tint)
             }
         }
-        .padding(.vertical, 2)
         .contentShape(Rectangle())
-    }
-
-    /// Convierte capability keys en labels cortos amigables.
-    private func capabilityHints(_ keys: [String]) -> [String] {
-        keys.compactMap { key in
-            switch key {
-            case "can_have_members": return "Miembros"
-            case "can_have_beneficiaries": return "Beneficiarios"
-            case "can_have_trustees": return "Trustees"
-            case "can_have_shareholders": return "Accionistas"
-            case "can_hold_money": return "Dinero"
-            case "can_hold_assets": return "Activos"
-            case "can_own_resources": return "Recursos"
-            case "can_issue_decisions": return "Decisiones"
-            case "can_receive_contributions": return "Aportaciones"
-            case "can_govern_resources": return "Gobierno"
-            case "can_receive_obligations", "can_issue_obligations": return nil
-            default: return capStore.displayName(for: key)
-            }
-        }
     }
 
     private func create() async {
@@ -222,33 +198,6 @@ public struct CreateContextView: View {
                 dismiss()
             }
         }
-    }
-}
-
-/// Wrap horizontal de chips compacto sin overflow.
-private struct FlowingChips: View {
-    let items: [String]
-
-    var body: some View {
-        let rows = chunked(items, per: 4)
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                HStack(spacing: 6) {
-                    ForEach(row, id: \.self) { item in
-                        Text(item)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.secondary.badgeFill, in: Capsule())
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-        }
-    }
-
-    private func chunked(_ items: [String], per size: Int) -> [[String]] {
-        guard size > 0 else { return [items] }
-        return stride(from: 0, to: items.count, by: size).map { Array(items[$0..<min($0+size, items.count)]) }
     }
 }
 
