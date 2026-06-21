@@ -502,7 +502,7 @@ public struct ContextsListView: View {
         case "project":      return "Proyecto"
         case "trip":         return "Viaje"
         case "company":      return "Negocio"
-        case "trust":        return "Trust"
+        case "trust":        return "Fideicomiso"
         default:             return context.subtype
         }
     }

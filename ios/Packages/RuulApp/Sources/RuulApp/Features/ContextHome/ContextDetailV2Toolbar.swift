@@ -105,12 +105,12 @@ struct ContextDetailV2Toolbar: ToolbarContent {
         case "create", "creation":     return "Crear"
         case "money", "monetary":      return "Dinero"
         case "people", "members":      return "Personas"
-        case "governance":             return "Gobierno"
+        case "governance":             return "Administración"
         case "rules":                  return "Reglas"
         case "events", "calendar":     return "Eventos"
         case "resources":              return "Recursos"
         case "documents":              return "Documentos"
-        case "subcontexts", "children": return "Espacios hijos"
+        case "subcontexts", "children": return "Subgrupos"
         case "settings":               return "Configuración"
         default:                       return section.replacingOccurrences(of: "_", with: " ").capitalized
         }

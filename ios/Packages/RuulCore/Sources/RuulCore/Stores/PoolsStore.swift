@@ -39,4 +39,15 @@ public final class PoolsStore {
         await load(context: context)
         return result
     }
+
+    /// 2026-06-21 — quick contribute desde la lista de botes (P0 #6 friend-group
+    /// launch). Antes el usuario tenía que abrir cada bote para aportar; ahora
+    /// puede hacerlo en 2 taps desde la lista. Recarga la lista para que el
+    /// total se actualice inmediatamente.
+    @discardableResult
+    public func contribute(_ input: ContributeToPoolInput, context: AppContext) async throws -> PoolContributionResult {
+        let result = try await rpc.contributeToPool(input)
+        await load(context: context)
+        return result
+    }
 }

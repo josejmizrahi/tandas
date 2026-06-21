@@ -37,7 +37,7 @@ public struct CreateChildContextSheet: View {
             case .trip: return "Viaje"
             case .friendGroup: return "Grupo de amigos"
             case .company: return "Negocio"
-            case .trust: return "Trust"
+            case .trust: return "Fideicomiso"
             case .other: return "Otro"
             }
         }

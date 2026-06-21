@@ -140,11 +140,21 @@ private struct CurrentGroupNavigation<Content: View>: View {
     let onJoinGroup: () -> Void
     @ViewBuilder let content: (AppContext) -> Content
 
+    /// 2026-06-21 — switcher de grupo ubicuo en tabs Eventos/Dinero/Miembros.
+    /// Antes el usuario quedaba "atrapado" en el grupo activo y sólo podía
+    /// cambiarlo desde Inicio o Ajustes. Ahora el leading toolbar item muestra
+    /// el grupo actual + chevron y abre `ContextSwitcherSheet`.
+    @State private var isShowingSwitcher = false
+
     private var currentGroup: AppContext? {
         if let current = container.contextStore.currentContext, !current.isPersonal {
             return current
         }
         return container.contextStore.collectiveContexts.first
+    }
+
+    private var hasMultipleGroups: Bool {
+        container.contextStore.collectiveContexts.count > 1
     }
 
     var body: some View {
@@ -153,6 +163,15 @@ private struct CurrentGroupNavigation<Content: View>: View {
                 if let group = currentGroup {
                     content(group)
                         .id(group.id)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                GroupSwitcherToolbarButton(
+                                    group: group,
+                                    hasMultipleGroups: hasMultipleGroups,
+                                    onTap: { isShowingSwitcher = true }
+                                )
+                            }
+                        }
                 } else {
                     LaunchNoGroupView(
                         title: emptyTitle,
@@ -168,6 +187,17 @@ private struct CurrentGroupNavigation<Content: View>: View {
                 }
                 selectFirstGroupIfNeeded()
             }
+            .sheet(isPresented: $isShowingSwitcher) {
+                ContextSwitcherSheet(
+                    container: container,
+                    currentContextId: currentGroup?.id
+                ) { context in
+                    container.contextStore.switchTo(context)
+                    Task {
+                        await container.contextPreferencesStore.recordVisit(context.id)
+                    }
+                }
+            }
         }
     }
 
@@ -176,6 +206,41 @@ private struct CurrentGroupNavigation<Content: View>: View {
         if container.contextStore.currentContext?.isPersonal != false {
             container.contextStore.switchTo(first)
         }
+    }
+}
+
+/// Switcher de grupo en el leading toolbar item.
+/// Muestra ícono + nombre del grupo + chevron. Tap abre `ContextSwitcherSheet`.
+/// Si el usuario sólo tiene 1 grupo, el chevron se oculta (no hay a dónde
+/// cambiar) pero el botón sigue siendo tappeable para descubrir Crear/Unirme.
+private struct GroupSwitcherToolbarButton: View {
+    let group: AppContext
+    let hasMultipleGroups: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Image(systemName: group.symbolName)
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.callout)
+                Text(group.displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if hasMultipleGroups {
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                        .opacity(0.7)
+                }
+            }
+            .foregroundStyle(.tint)
+            .frame(maxWidth: 200, alignment: .leading)
+        }
+        .accessibilityLabel("Cambiar de grupo")
+        .accessibilityHint(hasMultipleGroups
+            ? "Toca para elegir otro grupo"
+            : "Toca para crear o unirte a otro grupo")
     }
 }
 

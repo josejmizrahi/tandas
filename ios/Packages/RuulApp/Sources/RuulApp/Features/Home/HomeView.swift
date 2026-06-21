@@ -26,6 +26,10 @@ public struct HomeView: View {
     @State private var isShowingAllAttention = false
     @State private var overviews: [ContextOverview] = []
     @State private var quickStart: QuickStartSnapshot?
+    /// 2026-06-21 — P0 #7 friend-group launch: el paso "Elegir reglas" del
+    /// QuickStart abre directo la biblioteca de presets en vez de mandar a
+    /// Ajustes (que mostraba Rules vacío y el usuario no descubría la library).
+    @State private var presetLibraryTarget: PresetLibraryTarget?
 
     public init(
         container: DependencyContainer,
@@ -71,6 +75,9 @@ public struct HomeView: View {
                         presentedAttention = AttentionDispatcher.destination(for: item)
                     }
                 }
+            }
+            .sheet(item: $presetLibraryTarget) { target in
+                RulePresetLibrarySheet(context: target.context, store: target.store)
             }
         }
     }
@@ -237,7 +244,7 @@ public struct HomeView: View {
                     subtitle: "Cómo funciona el grupo",
                     systemImage: "ruler.fill",
                     isDone: quickStart.hasRules,
-                    action: onOpenSettings
+                    action: { openPresetLibrary(for: quickStart.contextId) }
                 )
                 quickStartRow(
                     title: "Registrar primer gasto",
@@ -450,6 +457,23 @@ public struct HomeView: View {
         container.contextStore.availableContexts.first { $0.id == id }
     }
 
+}
+
+// MARK: - Preset library shortcut (P0 #7)
+
+/// Wrapper Identifiable para `.sheet(item:)` de la biblioteca de presets.
+private struct PresetLibraryTarget: Identifiable {
+    let id: UUID
+    let context: AppContext
+    let store: RulesStore
+}
+
+extension HomeView {
+    fileprivate func openPresetLibrary(for contextId: UUID) {
+        guard let context = resolveContext(contextId) else { return }
+        let store = RulesStore(rpc: container.rpc)
+        presetLibraryTarget = PresetLibraryTarget(id: contextId, context: context, store: store)
+    }
 }
 
 private struct QuickStartSnapshot {

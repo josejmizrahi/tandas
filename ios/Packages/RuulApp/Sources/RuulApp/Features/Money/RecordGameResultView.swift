@@ -9,7 +9,12 @@ public struct RecordGameResultView: View {
     let container: DependencyContainer
 
     @Environment(\.dismiss) private var dismiss
-    @State private var gameName = "Catan"
+    /// 2026-06-21 — P0 #5 friend-group launch: presets de juego visibles para
+    /// que el usuario no tenga que escribir "Quiniela del Mundial" a mano cada
+    /// vez. El gameName sigue siendo texto libre (backend pass-through), pero
+    /// el picker arriba sugiere los tipos comunes.
+    @State private var preset: GamePreset = .poker
+    @State private var gameName = GamePreset.poker.defaultName
     @State private var winnerActorId: UUID?
     @State private var loserActorId: UUID?
     @State private var amountText = "100"
@@ -28,6 +33,17 @@ public struct RecordGameResultView: View {
         NavigationStack {
             Form {
                 Section("Juego") {
+                    Picker("Tipo", selection: $preset) {
+                        ForEach(GamePreset.allCases) { p in
+                            Label(p.label, systemImage: p.symbolName).tag(p)
+                        }
+                    }
+                    .onChange(of: preset) { _, newValue in
+                        // El usuario puede editar el nombre libremente; sólo
+                        // pre-llenamos al cambiar el preset (no machacamos lo
+                        // que ya escribió si vuelve al mismo preset).
+                        gameName = newValue.defaultName
+                    }
                     TextField("Nombre del juego", text: $gameName)
                     HStack {
                         Text("Apuesta $")
@@ -227,6 +243,64 @@ public struct RecordFineView: View {
             )
         }
         if success { dismiss() }
+    }
+}
+
+// MARK: - Game presets (P0 #5)
+
+/// Presets de juegos comunes en grupos de amigos. UI sugar: el preset cambia
+/// el nombre por defecto. El backend sigue guardando `game_name` como texto
+/// libre (sin schema change). Cuando el founder valide, podemos persistir el
+/// tipo en `obligations.metadata.game_type` para analytics/leaderboards.
+private enum GamePreset: String, CaseIterable, Identifiable {
+    case poker
+    case quiniela
+    case mundial
+    case fantasy
+    case domino
+    case billar
+    case boardGame
+    case otro
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .poker:      return "Poker"
+        case .quiniela:   return "Quiniela"
+        case .mundial:    return "Mundial"
+        case .fantasy:    return "Fantasy"
+        case .domino:     return "Dominó"
+        case .billar:     return "Billar"
+        case .boardGame:  return "Juego de mesa"
+        case .otro:       return "Otro"
+        }
+    }
+
+    var defaultName: String {
+        switch self {
+        case .poker:      return "Poker"
+        case .quiniela:   return "Quiniela"
+        case .mundial:    return "Quiniela del Mundial"
+        case .fantasy:    return "Fantasy"
+        case .domino:     return "Dominó"
+        case .billar:     return "Billar"
+        case .boardGame:  return "Catan"
+        case .otro:       return ""
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .poker:      return "suit.spade.fill"
+        case .quiniela:   return "list.number"
+        case .mundial:    return "soccerball"
+        case .fantasy:    return "sportscourt.fill"
+        case .domino:     return "rectangle.split.3x1.fill"
+        case .billar:     return "circle.fill"
+        case .boardGame:  return "dice.fill"
+        case .otro:       return "gamecontroller.fill"
+        }
     }
 }
 

@@ -214,17 +214,17 @@ struct ContextDetailV2ActivitySection: View {
         case "obligation.cancelled":                              return "Compromiso cancelado"
         case "obligation.disputed":                               return "Compromiso disputado"
         case "obligation.forgiven":                               return "Compromiso perdonado"
-        // Membresía / espacio
-        case "membership.joined", "member.joined":                return "Se unió al espacio"
+        // Membresía / grupo
+        case "membership.joined", "member.joined":                return "Se unió al grupo"
         case "membership.invited", "member.invited":              return "Miembro invitado"
         case "membership.removed", "member.removed":              return "Miembro removido"
-        case "membership.left", "member.left":                    return "Salió del espacio"
+        case "membership.left", "member.left":                    return "Salió del grupo"
         case "membership.state_changed":                          return "Estado del miembro cambió"
         case "invite.created":                                    return "Invitación creada"
         case "invite.revoked":                                    return "Invitación cancelada"
-        case "context.created":                                   return "Espacio creado"
-        case "context.updated":                                   return "Espacio actualizado"
-        case "context.archived":                                  return "Espacio archivado"
+        case "context.created":                                   return "Grupo creado"
+        case "context.updated":                                   return "Grupo actualizado"
+        case "context.archived":                                  return "Grupo archivado"
         // Documentos / reglas / suscripciones
         case "document.created", "document.registered":           return "Nuevo documento"
         case "document.archived":                                 return "Documento archivado"
@@ -260,11 +260,11 @@ struct ContextDetailV2ActivitySection: View {
         case "right":        return "Derecho"
         case "invite":       return "Invitación"
         case "membership":   return "Membresía"
-        case "context":      return "Espacio"
+        case "context":      return "Grupo"
         case "rule":         return "Regla"
         case "split":        return "Split"
         case "subscription": return "Suscripción"
-        case "governance":   return "Gobierno"
+        case "governance":   return "Administración"
         default:             return domain.capitalized
         }
     }

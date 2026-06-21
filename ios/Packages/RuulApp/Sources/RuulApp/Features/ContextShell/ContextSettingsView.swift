@@ -280,7 +280,7 @@ public struct ContextSettingsView: View {
             }
         } header: {
             HStack {
-                Text("Gobierno")
+                Text("Administración")
                 Spacer()
                 if canEdit {
                     Button {
@@ -290,7 +290,7 @@ public struct ContextSettingsView: View {
                             .foregroundStyle(.tint)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Nueva política de gobernanza")
+                    .accessibilityLabel("Nueva política de administración")
                 }
             }
         } footer: {

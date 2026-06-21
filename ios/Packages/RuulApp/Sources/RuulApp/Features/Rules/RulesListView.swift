@@ -272,14 +272,21 @@ public struct RulesListView: View {
 
 // MARK: - Preset Library
 
-private struct RulePresetLibrarySheet: View {
+/// 2026-06-21 — `public` para que HomeView pueda abrirla desde el QuickStart
+/// "Elegir reglas" sin pasar por Ajustes. Friend-group onboarding P0 #7.
+public struct RulePresetLibrarySheet: View {
     let context: AppContext
     let store: RulesStore
 
     @Environment(\.dismiss) private var dismiss
     @State private var runner = ActionRunner()
 
-    var body: some View {
+    public init(context: AppContext, store: RulesStore) {
+        self.context = context
+        self.store = store
+    }
+
+    public var body: some View {
         NavigationStack {
             List {
                 Section {

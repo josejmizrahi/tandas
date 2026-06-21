@@ -141,7 +141,7 @@ private struct TreeNodeRow: View {
         case "trip": return "Viaje"
         case "friend_group": return "Grupo"
         case "company": return "Negocio"
-        case "trust": return "Trust"
+        case "trust": return "Fideicomiso"
         default: return subtype
         }
     }

@@ -83,7 +83,7 @@ public struct MySubscriptionsView: View {
         case .event:      return "Evento"
         case .obligation: return "Obligación"
         case .actor:      return "Persona"
-        case .context:    return "Espacio"
+        case .context:    return "Grupo"
         }
     }
 }

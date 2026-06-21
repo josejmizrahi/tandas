@@ -94,7 +94,7 @@ struct ContextDetailV2HeroSection: View {
         case "trust":        return "Fideicomiso"
         case "friend_group": return "Grupo de amigos"
         case "company":      return "Empresa"
-        default:             return "Espacio"
+        default:             return "Grupo"
         }
     }
 }

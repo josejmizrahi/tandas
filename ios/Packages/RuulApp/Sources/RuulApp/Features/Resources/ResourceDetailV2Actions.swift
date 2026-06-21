@@ -79,7 +79,7 @@ enum ResourceDetailV2ActionsCopy {
         switch section {
         case "general":      return "General"
         case "ownership":    return "Propiedad"
-        case "rights":       return "Derechos"
+        case "rights":       return "Permisos"
         case "documents":    return "Documentos"
         case "reservations": return "Reservaciones"
         case "monetary", "money": return "Dinero"

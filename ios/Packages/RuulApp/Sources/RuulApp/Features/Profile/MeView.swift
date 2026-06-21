@@ -417,7 +417,7 @@ public struct MeView: View {
                 tint: Theme.Tint.info
             )
         } header: {
-            Text("Espacios")
+            Text("Grupos")
         } footer: {
             Text("Crea un grupo nuevo o únete a uno con el código que te compartieron.")
         }

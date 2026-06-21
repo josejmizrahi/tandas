@@ -34,7 +34,7 @@ public struct CreateContextView: View {
             case .community: return "Comunidad"
             case .project: return "Proyecto"
             case .company: return "Negocio"
-            case .trust: return "Trust"
+            case .trust: return "Fideicomiso"
             }
         }
 

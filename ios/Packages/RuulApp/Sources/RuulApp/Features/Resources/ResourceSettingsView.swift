@@ -208,7 +208,7 @@ public struct ResourceSettingsView: View {
 
     @ViewBuilder
     private func rightsSection(_ settings: ResourceSettings) -> some View {
-        Section("Derechos") {
+        Section("Permisos") {
             ForEach(["OWN", "MANAGE", "USE", "VIEW", "BENEFICIARY"], id: \.self) { kind in
                 if let count = settings.rightsSummary[kind], count > 0 {
                     InfoRow(symbolName: rightIcon(kind),
@@ -217,11 +217,11 @@ public struct ResourceSettingsView: View {
                 }
             }
             if !store.can("manage_rights") {
-                Text("Solo OWN/MANAGE puede editar derechos.")
+                Text("Solo OWN/MANAGE puede editar permisos.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Otorgar / revocar derechos llega en una próxima versión.")
+                Text("Otorgar / revocar permisos llega en una próxima versión.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
