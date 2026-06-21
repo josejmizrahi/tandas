@@ -85,6 +85,15 @@ struct MemberReputationSnapshot: Identifiable {
 }
 
 enum MemberReputationBuilder {
+    /// R.14.C (2026-06-21) — refactor de 3-4 RPC calls a 1.
+    ///
+    /// Antes: listEvents + listObligations + contextSummary + N×listEventParticipants.
+    /// Para un grupo de 8 miembros con 40 eventos = ~43 round-trips por load.
+    ///
+    /// Ahora: 1 sola RPC `list_context_members_with_reputation` retorna las
+    /// 9 métricas pre-agregadas en SQL. El score sigue computándose en cliente
+    /// (UI policy). Si el RPC no devuelve un miembro (placeholders / invitados
+    /// no incluidos), su snapshot queda en 0.
     static func load(
         context: AppContext,
         members: [ContextMember],
@@ -95,97 +104,23 @@ enum MemberReputationBuilder {
         guard !activeMembers.isEmpty else { return [:] }
 
         do {
-            async let eventsTask = rpc.listEvents(contextId: context.id)
-            async let obligationsTask = rpc.listObligations(contextId: context.id)
-            async let summaryTask = rpc.contextSummary(contextId: context.id)
-            let (events, obligations, summary) = try await (eventsTask, obligationsTask, summaryTask)
+            let rows = try await rpc.listContextMembersWithReputation(contextId: context.id)
+            let rowsByActor = Dictionary(uniqueKeysWithValues: rows.map { ($0.actorId, $0) })
 
-            let relevantEvents = events
-                .filter { !$0.isScheduled }
-                .sorted { ($0.startsAt ?? .distantPast) > ($1.startsAt ?? .distantPast) }
-                .prefix(40)
-
-            let participantsByEvent = await withTaskGroup(of: (UUID, [EventParticipant]).self) { group in
-                for event in relevantEvents {
-                    group.addTask {
-                        let participants = (try? await rpc.listEventParticipants(eventId: event.id)) ?? []
-                        return (event.id, participants)
-                    }
+            return Dictionary(uniqueKeysWithValues: activeMembers.compactMap { member -> (UUID, MemberReputationSnapshot)? in
+                var stats = MemberReputationStats(member: member)
+                if let row = rowsByActor[member.actorId] {
+                    stats.attendedEvents = row.attendedEvents
+                    stats.missedEvents = row.missedEvents
+                    stats.lateEvents = row.lateEvents
+                    stats.cancelledEvents = row.cancelledEvents
+                    stats.hostedEvents = row.hostedEvents
+                    stats.openFines = row.openFines
+                    stats.openMoneyObligations = row.openMoney
+                    stats.settledMoneyObligations = row.settledMoney
+                    stats.recentActivityCount = row.recentActivityCount
                 }
-                var out: [UUID: [EventParticipant]] = [:]
-                for await (eventId, participants) in group {
-                    out[eventId] = participants
-                }
-                return out
-            }
-
-            var stats = Dictionary(
-                uniqueKeysWithValues: activeMembers.map { member in
-                    (member.actorId, MemberReputationStats(member: member))
-                }
-            )
-
-            for event in relevantEvents {
-                if let hostId = event.hostActorId, stats[hostId] != nil {
-                    stats[hostId]?.hostedEvents += 1
-                }
-                for participant in participantsByEvent[event.id, default: []] {
-                    guard stats[participant.participantActorId] != nil else { continue }
-                    stats[participant.participantActorId]?.rsvpEvents += participant.rsvpAt == nil ? 0 : 1
-                    switch participant.status {
-                    case "attended":
-                        stats[participant.participantActorId]?.attendedEvents += 1
-                    case "late":
-                        stats[participant.participantActorId]?.attendedEvents += 1
-                        stats[participant.participantActorId]?.lateEvents += 1
-                    case "cancelled", "declined":
-                        stats[participant.participantActorId]?.cancelledEvents += 1
-                    case "no_show", "absent", "missed":
-                        stats[participant.participantActorId]?.missedEvents += 1
-                    default:
-                        if participant.checkedIn {
-                            stats[participant.participantActorId]?.attendedEvents += 1
-                        }
-                    }
-                    if (participant.minutesLate ?? 0) > 0 {
-                        stats[participant.participantActorId]?.lateEvents += 1
-                    }
-                }
-            }
-
-            for obligation in obligations {
-                if stats[obligation.debtorActorId] != nil {
-                    if obligation.isMoneyKind {
-                        if obligation.isOpen {
-                            stats[obligation.debtorActorId]?.openMoneyObligations += 1
-                            if obligation.obligationType == "fine" {
-                                stats[obligation.debtorActorId]?.openFines += 1
-                            }
-                        } else {
-                            stats[obligation.debtorActorId]?.settledMoneyObligations += 1
-                        }
-                    } else if obligation.isCompleted {
-                        stats[obligation.debtorActorId]?.completedCommitments += 1
-                    } else if obligation.isOpen {
-                        stats[obligation.debtorActorId]?.openCommitments += 1
-                    }
-                }
-                if stats[obligation.creditorActorId] != nil, obligation.isMoneyKind, !obligation.isOpen {
-                    stats[obligation.creditorActorId]?.settledMoneyObligations += 1
-                }
-            }
-
-            for activity in summary.recentActivity {
-                guard let actorId = activity.actorId, stats[actorId] != nil else { continue }
-                stats[actorId]?.recentActivityCount += 1
-                if activity.eventType.hasPrefix("expense.") || activity.eventType.hasPrefix("money.") {
-                    stats[actorId]?.moneyActivityCount += 1
-                }
-            }
-
-            return Dictionary(uniqueKeysWithValues: stats.values.map { snapshot in
-                let result = snapshot.snapshot()
-                return (result.member.actorId, result)
+                return (member.actorId, stats.snapshot())
             })
         } catch {
             return [:]

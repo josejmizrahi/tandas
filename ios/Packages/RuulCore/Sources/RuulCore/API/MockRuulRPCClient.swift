@@ -478,6 +478,16 @@ public actor MockRuulRPCClient: RuulRPCClient {
         return ContextCandidates(personalContext: me.actor, contexts: candidates)
     }
 
+    public func listContextMembersWithReputation(contextId: UUID) async throws -> [MemberReputationRow] {
+        try throwIfNeeded()
+        let members = memberships[contextId] ?? []
+        // Mock: retornamos rows con métricas en 0; el demo de reputación se
+        // sigue alimentando del cliente builder en testing local.
+        return members.map { m in
+            MemberReputationRow(actorId: m.actorId, displayName: m.displayName, membershipType: m.membershipType)
+        }
+    }
+
     public func contextSummary(contextId: UUID) async throws -> ContextSummary {
         try throwIfNeeded()
         guard let context = actors[contextId] else {

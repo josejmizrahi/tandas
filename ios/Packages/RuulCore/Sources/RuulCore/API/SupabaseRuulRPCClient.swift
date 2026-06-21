@@ -160,6 +160,10 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         try await call("context_summary", params: ContextIdParams(contextId: contextId))
     }
 
+    public func listContextMembersWithReputation(contextId: UUID) async throws -> [MemberReputationRow] {
+        try await call("list_context_members_with_reputation", params: ContextIdParams(contextId: contextId))
+    }
+
     public func contextDetailDescriptor(contextId: UUID) async throws -> ContextDetailDescriptor {
         struct Params: Encodable, Sendable {
             let pContextActorId: UUID

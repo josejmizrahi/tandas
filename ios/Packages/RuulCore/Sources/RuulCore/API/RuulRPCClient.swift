@@ -40,6 +40,11 @@ public protocol RuulRPCClient: Sendable {
     func contextCandidates() async throws -> ContextCandidates
     /// `context_summary(p_context_actor_id)`
     func contextSummary(contextId: UUID) async throws -> ContextSummary
+    /// R.14.C — `list_context_members_with_reputation(p_context_id)`. Devuelve
+    /// los miembros active del contexto con 9 métricas pre-agregadas. Sustituye
+    /// 4 RPC calls (listEvents + listObligations + contextSummary +
+    /// N×listEventParticipants) por 1 sola.
+    func listContextMembersWithReputation(contextId: UUID) async throws -> [MemberReputationRow]
     /// `context_detail_descriptor(p_context_actor_id)` — R.5A.B.7. Descriptor
     /// consolidado (context+membership+my_permissions+roles+sections+widgets+
     /// actions+metrics+8 previews). ContextDetailView v2 (tabs).
