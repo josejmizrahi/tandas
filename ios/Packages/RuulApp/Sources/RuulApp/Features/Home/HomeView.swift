@@ -380,6 +380,21 @@ public struct HomeView: View {
                             .background(Theme.Tint.warning.opacity(0.15), in: Capsule())
                             .foregroundStyle(Theme.Tint.warning)
                     }
+                    // R.14.B — chip "💰 $X" si el grupo tiene botes abiertos.
+                    if let poolsTotal = overview.poolsTotal,
+                       let currency = overview.poolsCurrency,
+                       poolsTotal > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "banknote.fill")
+                                .font(.caption2)
+                            Text(poolsTotal.compactCurrencyLabel(currency))
+                                .font(.caption2.weight(.semibold).monospacedDigit())
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Theme.Tint.success.opacity(0.15), in: Capsule())
+                        .foregroundStyle(Theme.Tint.success)
+                    }
                 }
                 if let caption = spaceCaption(overview) {
                     Text(caption)
@@ -410,9 +425,32 @@ public struct HomeView: View {
         if let balance = overview.myBalance, let currency = overview.balanceCurrency, balance > 0 {
             return "Te deben " + balance.compactCurrencyLabel(currency)
         }
+        // R.14.B — última actividad (fallback antes de "X miembros"). Sólo
+        // surface si fue dentro de los últimos 30 días: si fue hace 2 meses
+        // mostrarla no aporta valor.
+        if let last = overview.lastActivityAt,
+           let label = relativeActivityLabel(last) {
+            return label
+        }
         if overview.memberCount > 1 {
             return "\(overview.memberCount) miembros"
         }
+        return nil
+    }
+
+    /// R.14.B — etiqueta relativa "Hoy"/"Ayer"/"Hace N días" para `last_activity_at`.
+    /// Devuelve nil si la actividad es > 30 días (silencioso) o vino del futuro.
+    private func relativeActivityLabel(_ date: Date) -> String? {
+        let now = Date()
+        let delta = now.timeIntervalSince(date)
+        guard delta > 0 else { return nil }
+        let cal = Calendar.current
+        if cal.isDateInToday(date) { return "Activo hoy" }
+        if cal.isDateInYesterday(date) { return "Activo ayer" }
+        let days = cal.dateComponents([.day], from: date, to: now).day ?? 0
+        if days <= 7 { return "Activo hace \(days) días" }
+        if days <= 14 { return "Activo hace 1 semana" }
+        if days <= 30 { return "Activo hace \(days / 7) semanas" }
         return nil
     }
 

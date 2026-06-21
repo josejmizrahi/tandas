@@ -221,6 +221,11 @@ public struct ContextOverview: Codable, Sendable, Equatable, Hashable, Identifia
     public let nextEventTitle: String?
     public let myBalance: Double?
     public let balanceCurrency: String?
+    /// R.14.B (2026-06-21) — agregados para friend-group launch P0 #3/#4.
+    public let poolsTotal: Double?
+    public let poolsCurrency: String?
+    public let poolsCount: Int
+    public let lastActivityAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case contextActorId = "context_actor_id"
@@ -235,6 +240,10 @@ public struct ContextOverview: Codable, Sendable, Equatable, Hashable, Identifia
         case nextEventTitle = "next_event_title"
         case myBalance = "my_balance"
         case balanceCurrency = "balance_currency"
+        case poolsTotal = "pools_total"
+        case poolsCurrency = "pools_currency"
+        case poolsCount = "pools_count"
+        case lastActivityAt = "last_activity_at"
     }
 
     public init(
@@ -249,7 +258,11 @@ public struct ContextOverview: Codable, Sendable, Equatable, Hashable, Identifia
         nextEventAt: Date? = nil,
         nextEventTitle: String? = nil,
         myBalance: Double? = nil,
-        balanceCurrency: String? = nil
+        balanceCurrency: String? = nil,
+        poolsTotal: Double? = nil,
+        poolsCurrency: String? = nil,
+        poolsCount: Int = 0,
+        lastActivityAt: Date? = nil
     ) {
         self.contextActorId = contextActorId
         self.displayName = displayName
@@ -263,6 +276,10 @@ public struct ContextOverview: Codable, Sendable, Equatable, Hashable, Identifia
         self.nextEventTitle = nextEventTitle
         self.myBalance = myBalance
         self.balanceCurrency = balanceCurrency
+        self.poolsTotal = poolsTotal
+        self.poolsCurrency = poolsCurrency
+        self.poolsCount = poolsCount
+        self.lastActivityAt = lastActivityAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -279,6 +296,10 @@ public struct ContextOverview: Codable, Sendable, Equatable, Hashable, Identifia
         self.nextEventTitle = try c.decodeIfPresent(String.self, forKey: .nextEventTitle)
         self.myBalance = try c.decodeIfPresent(Double.self, forKey: .myBalance)
         self.balanceCurrency = try c.decodeIfPresent(String.self, forKey: .balanceCurrency)
+        self.poolsTotal = try c.decodeIfPresent(Double.self, forKey: .poolsTotal)
+        self.poolsCurrency = try c.decodeIfPresent(String.self, forKey: .poolsCurrency)
+        self.poolsCount = try c.decodeIfPresent(Int.self, forKey: .poolsCount) ?? 0
+        self.lastActivityAt = try c.decodeIfPresent(Date.self, forKey: .lastActivityAt)
     }
 
     public var id: UUID { contextActorId }
