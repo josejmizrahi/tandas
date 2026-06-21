@@ -100,7 +100,7 @@ public struct ObligationDetailView: View {
                     }
                     Button("Cancelar", role: .cancel) {}
                 } message: {
-                    Text("El compromiso queda perdonado. No afecta el balance del espacio.")
+                    Text("El compromiso queda perdonado. No afecta el balance del grupo.")
                 }
                 // R.7.x — governance sheet (requires_decision path).
                 .confirmationDialog(
@@ -108,12 +108,12 @@ public struct ObligationDetailView: View {
                     isPresented: $isShowingGovernanceSheet,
                     titleVisibility: .visible
                 ) {
-                    Button("Crear decisión") {
+                    Button("Crear votación") {
                         Task { await requestGovernanceForgive() }
                     }
                     Button("Cancelar", role: .cancel) {}
                 } message: {
-                    Text("Condonar este compromiso requiere votación colectiva. Se creará una decisión para que los miembros aprueben.")
+                    Text("Condonar este compromiso requiere aprobación del grupo. Se creará una votación para que los miembros aprueben.")
                 }
                 // R.7.x — push DecisionDetailView cuando request_governance_action devuelve decision_id.
                 .sheet(item: Binding(
@@ -257,7 +257,7 @@ public struct ObligationDetailView: View {
     private var settlePathSection: some View {
         Section {
             Label {
-                Text("Esta deuda se salda en el neteo del espacio. Liquidaciones suma todo lo que debes a cada miembro y lo cierra junto.")
+                Text("Esta deuda se salda en el neteo del grupo. Liquidaciones suma todo lo que debes a cada miembro y lo cierra junto.")
                     .font(.callout)
                     .foregroundStyle(Theme.Text.primary)
             } icon: {
@@ -540,7 +540,7 @@ private struct WhyObligationSheet: View {
     private func sourceLabel(_ source: String) -> String {
         switch source {
         case "rule": return "Generada por una regla"
-        case "decision": return "Resultado de una decisión"
+        case "decision": return "Resultado de una votación"
         case "event": return "Ligada a un evento"
         case "reservation": return "Ligada a una reservación"
         case "manual": return "Creada manualmente"

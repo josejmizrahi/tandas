@@ -34,15 +34,15 @@ struct ReserveResourceForEventSheet: View {
                     }
                 } else if resources.isEmpty {
                     ContentUnavailableView(
-                        "Sin recursos",
+                        "Sin cosas reservables",
                         systemImage: "shippingbox",
-                        description: Text("Este espacio no tiene recursos para reservar.")
+                        description: Text("Este grupo no tiene cosas para reservar.")
                     )
                 } else {
                     pickerList
                 }
             }
-            .navigationTitle("Elegir recurso")
+            .navigationTitle("Elegir cosa")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -96,7 +96,7 @@ struct ReserveResourceForEventSheet: View {
                     }
                 }
             } header: {
-                Text("Recursos del espacio (\(resources.count))")
+                Text("Cosas reservables (\(resources.count))")
             } footer: {
                 if let event {
                     Text("La reserva quedará asociada a “\(event.title)”.")

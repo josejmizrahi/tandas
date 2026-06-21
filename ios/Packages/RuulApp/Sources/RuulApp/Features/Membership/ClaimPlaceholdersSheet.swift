@@ -118,7 +118,7 @@ struct ClaimPlaceholdersSheet: View {
         let totalContexts = matches.reduce(0) { $0 + $1.contextCount }
         let names = matches.map { "“\($0.displayName)”" }.joined(separator: ", ")
         if matches.count == 1 {
-            return "Alguien ya te agregó como \(names) en \(totalContexts == 1 ? "1 espacio" : "\(totalContexts) espacios") de Ruul. Reclama tu historia para empezar con todo dentro."
+            return "Alguien ya te agregó como \(names) en \(totalContexts == 1 ? "1 grupo" : "\(totalContexts) grupos") de Ruul. Reclama tu historia para empezar con todo dentro."
         }
         // 7.G.1 — copy sin "hereda" (legal/técnico) + plural correcto.
         return "Tu teléfono o correo aparece en \(matches.count) invitaciones. Reclamarlas trae toda la historia que ya estaba a tu nombre."
@@ -229,7 +229,7 @@ struct ClaimPlaceholdersSheet: View {
         case "trust":        return "Fideicomiso"
         case "friend_group": return "Grupo"
         case "company":      return "Empresa"
-        default:             return "Espacio"
+        default:             return "Grupo"
         }
     }
 }

@@ -91,7 +91,7 @@ public struct CreateDecisionView: View {
                 Section("Propuesta") {
                     TextField("¿Qué hay que decidir?", text: $title, axis: .vertical)
                         .lineLimit(1...3)
-                    TextField("Contexto o detalles (opcional)", text: $description, axis: .vertical)
+                    TextField("Detalles opcionales", text: $description, axis: .vertical)
                         .lineLimit(2...5)
                 }
 
@@ -123,7 +123,7 @@ public struct CreateDecisionView: View {
                 Text(submitFooter)
             }
         }
-        .navigationTitle("Nueva decisión")
+        .navigationTitle("Nueva votación")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -214,7 +214,7 @@ public struct CreateDecisionView: View {
             Text("Acción a proponer")
         } footer: {
             if !selectedActionLabel.isEmpty {
-                Text("El backend abrirá una decisión para votar esta acción sobre \(selectedEntityName).")
+                Text("Ruul abrirá una votación para aprobar esta acción sobre \(selectedEntityName).")
             }
         }
     }
@@ -321,7 +321,7 @@ public struct CreateDecisionView: View {
             } header: {
                 Text("Plantilla")
             } footer: {
-                Text("Las plantillas estructuran la decisión y ejecutan su efecto al aprobarse. Déjala en «libre» para una decisión sin plantilla.")
+                Text("Las plantillas estructuran la votación y aplican su efecto al aprobarse. Déjala en «libre» para una votación sin plantilla.")
             }
         }
     }
@@ -355,7 +355,7 @@ public struct CreateDecisionView: View {
         } header: {
             Text("Parámetros")
         } footer: {
-            Text("Define el objeto de la decisión. Estos valores se aplican cuando se aprueba.")
+            Text("Define los datos de la votación. Estos valores se aplican cuando se aprueba.")
         }
     }
 
@@ -413,7 +413,7 @@ public struct CreateDecisionView: View {
     private func fieldLabel(_ field: DecisionTemplatePayloadSchema.Field) -> String {
         let base: String
         switch field.name {
-        case "resource_id": base = "Recurso"
+        case "resource_id": base = "Cosa"
         case "rule_id": base = "Regla"
         case "holder_actor_id": base = "Beneficiario"
         case "right_kind": base = "Derecho"
@@ -547,7 +547,7 @@ public struct CreateDecisionView: View {
             if selectedActionKey == nil {
                 return "Elige la acción que quieres proponer."
             }
-            return "Se abre una decisión para votar la acción sobre \(selectedEntityName). El backend exige la mayoría definida por la política del espacio."
+            return "Se abre una votación para aprobar la acción sobre \(selectedEntityName). Se usará la mayoría configurada del grupo."
         }
         if let template = selectedTemplate {
             if template.isComingSoon {
@@ -574,9 +574,9 @@ public struct CreateDecisionView: View {
     private var aiHero: some View {
         RuulAIHeroView(
             headline: "Pídele a Ruul",
-            subtitle: "Describe la decisión y la armamos por ti",
+            subtitle: "Describe la votación y la armamos por ti",
             placeholder: "Ej: ¿Compramos el coche nuevo?",
-            ctaLabel: "Pensar decisión",
+            ctaLabel: "Pensar votación",
             examples: [
                 "¿Compramos el coche nuevo?",
                 "Cambiar la cena al sábado",
@@ -584,7 +584,7 @@ public struct CreateDecisionView: View {
                 "Subir la cuota mensual"
             ],
             footerWhenIdle: "Descríbela con tus palabras o escribe el título manualmente.",
-            footerWhenLoaded: "La decisión ya está armada abajo. Ajústala si quieres.",
+            footerWhenLoaded: "La votación ya está armada abajo. Ajústala si quieres.",
             prompt: $aiPromptText,
             considered: $lastConsidered,
             phase: aiPhase,
@@ -728,7 +728,7 @@ enum DecisionTarget: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .free:     return "Pregunta libre"
         case .member:   return "Un miembro"
-        case .resource: return "Un recurso"
+        case .resource: return "Una cosa"
         case .rule:     return "Una regla"
         }
     }
@@ -747,11 +747,11 @@ enum DecisionTarget: String, CaseIterable, Identifiable, Hashable {
         case .free:
             return "Cualquier propuesta sin objetivo específico (compra, cambio, evento futuro)."
         case .member:
-            return "Promover, pausar o remover a alguien del espacio."
+            return "Promover, pausar o remover a alguien del grupo."
         case .resource:
-            return "Transferir, archivar o cambiar derechos sobre un recurso."
+            return "Transferir, archivar o cambiar acceso sobre una cosa del grupo."
         case .rule:
-            return "Archivar una regla automática del espacio."
+            return "Archivar una regla automática del grupo."
         }
     }
 
@@ -759,7 +759,7 @@ enum DecisionTarget: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .free:     return ""
         case .member:   return "Miembro"
-        case .resource: return "Recurso"
+        case .resource: return "Cosa"
         case .rule:     return "Regla"
         }
     }
@@ -836,7 +836,7 @@ private struct EntityPickerView: View {
     @ViewBuilder
     private var memberList: some View {
         if members.isEmpty {
-            RuulEmptyState(title: "Sin miembros", systemImage: "person.2", message: "No hay miembros activos en este espacio.")
+            RuulEmptyState(title: "Sin miembros", systemImage: "person.2", message: "No hay miembros activos en este grupo.")
         } else {
             List {
                 ForEach(filteredMembers) { m in
@@ -865,7 +865,7 @@ private struct EntityPickerView: View {
     @ViewBuilder
     private var resourceList: some View {
         if resources.isEmpty {
-            RuulEmptyState(title: "Sin recursos", systemImage: "shippingbox", message: "Este espacio no tiene recursos aún.")
+            RuulEmptyState(title: "Sin cosas", systemImage: "shippingbox", message: "Este grupo no tiene cosas registradas aún.")
         } else {
             List {
                 ForEach(filteredResources) { r in
@@ -888,14 +888,14 @@ private struct EntityPickerView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .searchable(text: $query, prompt: "Buscar recurso")
+            .searchable(text: $query, prompt: "Buscar cosa")
         }
     }
 
     @ViewBuilder
     private var ruleList: some View {
         if rules.isEmpty {
-            RuulEmptyState(title: "Sin reglas", systemImage: "scroll", message: "Este espacio no tiene reglas activas.")
+            RuulEmptyState(title: "Sin reglas", systemImage: "scroll", message: "Este grupo no tiene reglas activas.")
         } else {
             List {
                 ForEach(filteredRules) { rule in

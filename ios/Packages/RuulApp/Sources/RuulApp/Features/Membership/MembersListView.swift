@@ -18,6 +18,7 @@ public struct MembersListView: View {
     @State private var store: MembersStore
     @State private var isShowingInvite = false
     @State private var query: String = ""
+    @State private var reputation: [UUID: MemberReputationSnapshot] = [:]
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -41,9 +42,11 @@ public struct MembersListView: View {
         .navigationTitle("Miembros")
         .task {
             await store.load(context: context)
+            await loadReputation()
         }
         .refreshable {
             await store.load(context: context)
+            await loadReputation()
         }
         .refreshOnReappear(if: store.phase.isLoaded) {
             await store.load(context: context)
@@ -79,6 +82,9 @@ public struct MembersListView: View {
             let grouped = groupByRole(filtered)
             List {
                 heroSection(store.members)
+                if !reputation.isEmpty {
+                    leaderboardsSection
+                }
                 ForEach(MemberRole.displayOrder, id: \.self) { role in
                     if let items = grouped[role], !items.isEmpty {
                         Section {
@@ -201,22 +207,99 @@ public struct MembersListView: View {
                     .lineLimit(1)
             }
             Spacer()
-            switch role {
-            case .pending:
-                Image(systemName: "clock")
-                    .font(.caption)
-                    .foregroundStyle(Theme.Text.tertiary)
-                    .accessibilityLabel("Pendiente de unirse (sin app)")
-            case .invited:
-                // R.5Z.fix.3 — distingue del placeholder con clock con icono de sobre.
-                Image(systemName: "envelope.badge.fill")
-                    .font(.caption)
-                    .foregroundStyle(Theme.Tint.warning)
-                    .accessibilityLabel("Invitación pendiente de aceptar")
-            default:
-                EmptyView()
+            if let snapshot = reputation[member.actorId], role != .pending, role != .invited {
+                reputationBadge(snapshot)
+            } else {
+                switch role {
+                case .pending:
+                    Image(systemName: "clock")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.tertiary)
+                        .accessibilityLabel("Pendiente de unirse (sin app)")
+                case .invited:
+                    // R.5Z.fix.3 — distingue del placeholder con clock con icono de sobre.
+                    Image(systemName: "envelope.badge.fill")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Tint.warning)
+                        .accessibilityLabel("Invitación pendiente de aceptar")
+                default:
+                    EmptyView()
+                }
             }
         }
+    }
+
+    @ViewBuilder
+    private func reputationBadge(_ snapshot: MemberReputationSnapshot) -> some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text("\(snapshot.score)")
+                .font(.caption.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(snapshot.tint)
+            Text("score")
+                .font(.caption2)
+                .foregroundStyle(Theme.Text.tertiary)
+        }
+        .accessibilityLabel("Score estimado \(snapshot.score)")
+    }
+
+    // MARK: - Reputation + leaderboards
+
+    private var leaderboardsSection: some View {
+        let snapshots = reputation.values
+            .filter { !$0.member.isPlaceholder && !$0.member.isInvited }
+        let fame = snapshots
+            .filter { $0.hasSignals }
+            .sorted { lhs, rhs in
+                if lhs.score != rhs.score { return lhs.score > rhs.score }
+                return lhs.member.displayName < rhs.member.displayName
+            }
+            .prefix(3)
+        let shame = snapshots
+            .filter { $0.shamePoints > 0 }
+            .sorted { lhs, rhs in
+                if lhs.shamePoints != rhs.shamePoints { return lhs.shamePoints > rhs.shamePoints }
+                return lhs.member.displayName < rhs.member.displayName
+            }
+            .prefix(3)
+
+        return Section {
+            if fame.isEmpty && shame.isEmpty {
+                Label("Aún no hay señales suficientes", systemImage: "chart.bar.doc.horizontal")
+                    .foregroundStyle(Theme.Text.secondary)
+            } else {
+                ForEach(Array(fame)) { snapshot in
+                    ReputationLeaderboardRow(
+                        title: snapshot.member.displayName,
+                        subtitle: snapshot.bestSignal,
+                        value: "\(snapshot.score)",
+                        systemImage: "trophy.fill",
+                        tint: Theme.Tint.success
+                    )
+                }
+                ForEach(Array(shame)) { snapshot in
+                    ReputationLeaderboardRow(
+                        title: snapshot.member.displayName,
+                        subtitle: snapshot.riskSignal,
+                        value: "\(snapshot.shamePoints)",
+                        systemImage: "exclamationmark.triangle.fill",
+                        tint: Theme.Tint.warning
+                    )
+                }
+            }
+        } header: {
+            Text("Reputación")
+        } footer: {
+            Text("Score estimado con asistencia, organización, pagos, multas y actividad reciente. El ranking definitivo debe venir del backend.")
+        }
+    }
+
+    private func loadReputation() async {
+        reputation = await MemberReputationBuilder.load(
+            context: context,
+            members: store.members,
+            rpc: container.rpc
+        )
     }
 
     /// R.5W — Subtítulo unificado. Placeholders muestran su contacto +
@@ -313,6 +396,41 @@ private enum MemberRole: String, CaseIterable, Hashable {
         case .pending:  return Theme.Tint.warning
         case .guest:    return Theme.Text.secondary
         case .viewer:   return Theme.Text.tertiary
+        }
+    }
+}
+
+// MARK: - Reputation presentation
+
+private struct ReputationLeaderboardRow: View {
+    let title: String
+    let subtitle: String
+    let value: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Label {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(Theme.Text.primary)
+                        .lineLimit(1)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Text(value)
+                    .font(.caption.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
+            }
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(tint)
         }
     }
 }

@@ -232,12 +232,12 @@ public struct RuleDetailView: View {
             isPresented: $isShowingArchiveSheet,
             titleVisibility: .visible
         ) {
-            Button("Crear decisión") {
+            Button("Crear votación") {
                 Task { await requestGovernanceArchive() }
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Archivar \(rule.title) requiere votación colectiva. Se creará una decisión para que los miembros aprueben.")
+            Text("Archivar \(rule.title) requiere aprobación del grupo. Se creará una votación para que los miembros aprueben.")
         }
         // R.7.x — push DecisionDetailView cuando request_governance_action devuelve decisionId.
         .sheet(item: Binding(

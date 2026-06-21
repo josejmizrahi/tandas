@@ -234,7 +234,7 @@ public struct EventDetailView: View {
             }
             Button("Seguir asistiendo", role: .cancel) {}
         } message: {
-            Text("Si cancelas el mismo día del evento, las reglas del espacio pueden generar una multa.")
+            Text("Si cancelas el mismo día del evento, las reglas del grupo pueden generar una multa.")
         }
         .confirmationDialog(
             "¿Cerrar este evento?",

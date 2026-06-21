@@ -23,6 +23,7 @@ public struct MemberDetailView: View {
     /// Si `member.remove` viene con `mode=request_decision`, el flow de remove abre el
     /// sheet de governance en vez de invocar `remove_member` directo.
     @State private var memberActions: [AvailableAction] = []
+    @State private var reputation: MemberReputationSnapshot?
     /// P1.5 — pausa directa (set_membership_state).
     @State private var isConfirmingPause = false
     @State private var pauseRunner = ActionRunner()
@@ -90,6 +91,10 @@ public struct MemberDetailView: View {
                 }
             } header: {
                 Text("Información")
+            }
+
+            if let reputation {
+                reputationSection(reputation)
             }
 
             // R.2R — compromisos donde participa este miembro
@@ -173,7 +178,7 @@ public struct MemberDetailView: View {
                             Button(role: .destructive) {
                                 handleMemberAction("member.remove")
                             } label: {
-                                Label("Remover del espacio", systemImage: "person.badge.minus")
+                                Label("Remover del grupo", systemImage: "person.badge.minus")
                             }
                         }
                     } label: {
@@ -186,6 +191,7 @@ public struct MemberDetailView: View {
         .task {
             await loadObligations()
             await loadMemberActions()
+            await loadReputation()
         }
         .sheet(item: Binding(get: { selectedObligationId.map { ObligationIdSheetWrapper(id: $0) } },
                               set: { selectedObligationId = $0?.id })) { wrapper in
@@ -216,7 +222,7 @@ public struct MemberDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Perderá acceso a todo el espacio: eventos, recursos, dinero y actividad.")
+            Text("Perderá acceso a todo el grupo: eventos, cosas, dinero y actividad.")
         }
         // P1.5 — pausa directa (la policy del contexto no exige voto).
         .confirmationDialog(
@@ -229,7 +235,7 @@ public struct MemberDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("No podrá operar en el espacio hasta que un administrador lo reactive.")
+            Text("No podrá operar en el grupo hasta que un administrador lo reactive.")
         }
         .actionErrorAlert(pauseRunner)
         // R.7.E/F — Governance sheet genérico para member.remove / pause / promote.
@@ -238,7 +244,7 @@ public struct MemberDetailView: View {
             isPresented: $isShowingGovernanceSheet,
             titleVisibility: .visible
         ) {
-            Button("Crear decisión") {
+            Button("Crear votación") {
                 Task { await requestGovernanceForSelectedAction() }
             }
             Button("Cancelar", role: .cancel) {
@@ -277,6 +283,38 @@ public struct MemberDetailView: View {
     }
 
     // MARK: - R.2R obligations
+
+    @ViewBuilder
+    private func reputationSection(_ snapshot: MemberReputationSnapshot) -> some View {
+        Section {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("\(snapshot.score)")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(snapshot.tint)
+                    Text("score estimado")
+                        .font(.callout)
+                        .foregroundStyle(Theme.Text.secondary)
+                    Spacer(minLength: 0)
+                }
+                ProgressView(value: Double(snapshot.score), total: 100)
+                    .tint(snapshot.tint)
+            }
+            if let attendance = snapshot.attendancePercent {
+                LabeledContent("Asistencia", value: "\(attendance)%")
+            }
+            LabeledContent("Eventos organizados", value: "\(snapshot.hostedEvents)")
+            LabeledContent("Compromisos cumplidos", value: "\(snapshot.completedCommitments)")
+            LabeledContent("Pagos liquidados", value: "\(snapshot.settledMoneyObligations)")
+            if snapshot.shamePoints > 0 {
+                LabeledContent("Riesgo visible", value: snapshot.riskSignal)
+            }
+        } header: {
+            Text("Reputación")
+        } footer: {
+            Text("Estimación local con señales actuales del grupo. El score definitivo debería calcularse en backend.")
+        }
+    }
 
     @ViewBuilder
     private var obligationsSection: some View {
@@ -378,13 +416,13 @@ public struct MemberDetailView: View {
     private var governanceMessage: String {
         switch governanceAction?.actionKey {
         case "member.remove":
-            return "Remover a \(member.displayName) requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+            return "Remover a \(member.displayName) requiere aprobación del grupo. Se creará una votación para que los miembros aprueben."
         case "member.pause":
-            return "Pausar a \(member.displayName) requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+            return "Pausar a \(member.displayName) requiere aprobación del grupo. Se creará una votación para que los miembros aprueben."
         case "member.promote":
-            return "Promover a \(member.displayName) a admin requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+            return "Promover a \(member.displayName) a admin requiere aprobación del grupo. Se creará una votación para que los miembros aprueben."
         default:
-            return "Esta acción requiere votación colectiva. Se creará una decisión para que los miembros aprueben."
+            return "Esta acción requiere aprobación del grupo. Se creará una votación para que los miembros aprueben."
         }
     }
 
@@ -455,6 +493,20 @@ public struct MemberDetailView: View {
         } catch {
             memberObligations = []
         }
+    }
+
+    private func loadReputation() async {
+        guard let container, !context.isPersonal else {
+            reputation = nil
+            return
+        }
+        let members = store.members.isEmpty ? [member] : store.members
+        let snapshots = await MemberReputationBuilder.load(
+            context: context,
+            members: members,
+            rpc: container.rpc
+        )
+        reputation = snapshots[member.actorId]
     }
 
     // MARK: - F.MEMBER.2 — role assignment catalog

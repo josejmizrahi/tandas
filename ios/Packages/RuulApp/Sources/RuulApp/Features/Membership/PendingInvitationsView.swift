@@ -56,7 +56,7 @@ public struct PendingInvitationsView: View {
             RuulEmptyState(
                 title: "Sin invitaciones",
                 systemImage: "tray",
-                message: "Cuando alguien te invite directamente a un espacio, aparecerá aquí."
+                message: "Cuando alguien te invite directamente a un grupo, aparecerá aquí."
                 )
         } else {
             List {

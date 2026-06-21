@@ -59,7 +59,7 @@ struct ParticipantsFullView: View {
                 } header: {
                     Text("Invitados externos")
                 } footer: {
-                    Text("Acompañantes que no son miembros del espacio. Cuentan en el reparto del gasto según su parte.")
+                    Text("Acompañantes que no son miembros del grupo. Cuentan en el reparto del gasto según su parte.")
                 }
             }
         }

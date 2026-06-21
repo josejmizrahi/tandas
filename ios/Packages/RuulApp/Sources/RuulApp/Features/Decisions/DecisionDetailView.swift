@@ -74,11 +74,11 @@ public struct DecisionDetailView: View {
                 if let decision = store.decision {
                     detailList(decision)
                 } else {
-                    RuulErrorState(message: "Esta decisión ya no existe o no la puedes ver.")
+                    RuulErrorState(message: "Esta votación ya no existe o no la puedes ver.")
                 }
             }
         }
-        .navigationTitle(store.decision?.title ?? "Decisión")
+        .navigationTitle(store.decision?.title ?? "Votación")
         .navigationBarTitleDisplayMode(.inline)
         // P0 fix 2026-06-08 — toolbar Menu mirror de adminSection (Estado /
         // Editar). Acceso rápido desde header sin scroll hasta DisclosureGroup.
@@ -116,7 +116,7 @@ public struct DecisionDetailView: View {
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("Acciones de la decisión")
+                    .accessibilityLabel("Acciones de la votación")
                 }
             }
         }
@@ -146,8 +146,8 @@ public struct DecisionDetailView: View {
             }
             Button("Seguir votando", role: .cancel) {}
         }
-        .confirmationDialog("¿Ejecutar la decisión?", isPresented: $isConfirmingExecute, titleVisibility: .visible) {
-            Button("Ejecutar") {
+        .confirmationDialog("¿Aplicar el resultado?", isPresented: $isConfirmingExecute, titleVisibility: .visible) {
+            Button("Aplicar resultado") {
                 Task {
                     await runner.run {
                         try await store.execute(decisionId: decisionId, context: context)
@@ -158,8 +158,8 @@ public struct DecisionDetailView: View {
             }
             Button("Todavía no", role: .cancel) {}
         }
-        .confirmationDialog("¿Cancelar la decisión?", isPresented: $isConfirmingCancel, titleVisibility: .visible) {
-            Button("Cancelar decisión", role: .destructive) {
+        .confirmationDialog("¿Cancelar la votación?", isPresented: $isConfirmingCancel, titleVisibility: .visible) {
+            Button("Cancelar votación", role: .destructive) {
                 Task {
                     await runner.run {
                         _ = try await store.close(decisionId: decisionId, context: context)
@@ -444,7 +444,7 @@ public struct DecisionDetailView: View {
         case "executed":
             return "Ya se aplicó"
         case "cancelled":
-            return "La decisión fue cancelada"
+            return "La votación fue cancelada"
         default:
             return ""
         }
@@ -468,7 +468,7 @@ public struct DecisionDetailView: View {
                     unsupportedVoteCard(decision)
                 }
             } header: {
-                Text("Tu decisión")
+                Text("Tu voto")
             } footer: {
                 if let mine = store.myVote(myActorId: myActorId) {
                     HStack(spacing: 6) {
@@ -817,7 +817,7 @@ public struct DecisionDetailView: View {
                 : "Se aplicará la propuesta tal como fue planteada."
             return [
                 ConsequenceItem(title: "Si se aprueba",  body: approveBody),
-                ConsequenceItem(title: "Si se rechaza", body: "La decisión no se aplicará."),
+                ConsequenceItem(title: "Si se rechaza", body: "La propuesta no se aplicará."),
             ]
         default:
             return []
@@ -997,7 +997,7 @@ public struct DecisionDetailView: View {
             }
             if decision.isApproved, store.canDo("execute_decision") {
                 out.append(AdminActionItem(
-                    kind: .executeDecision, label: "Ejecutar decisión", reason: nil, enabled: true,
+                    kind: .executeDecision, label: "Aplicar resultado", reason: nil, enabled: true,
                     symbol: "play.circle.fill", tint: .purple
                 ))
             }
@@ -1292,7 +1292,7 @@ private struct DecisionActivityFullView: View {
                 }
             }
         }
-        .navigationTitle("Actividad de la decisión")
+        .navigationTitle("Actividad de la votación")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

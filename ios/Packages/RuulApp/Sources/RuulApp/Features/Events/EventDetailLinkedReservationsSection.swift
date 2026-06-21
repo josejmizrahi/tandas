@@ -29,7 +29,7 @@ struct EventDetailLinkedReservationsSection: View {
                     } label: {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(linkedResourceNames[reservation.resourceId] ?? "Recurso")
+                                Text(linkedResourceNames[reservation.resourceId] ?? "Cosa")
                                     .font(.callout.weight(.medium))
                                     .foregroundStyle(Theme.Text.primary)
                                     .lineLimit(1)
@@ -45,7 +45,7 @@ struct EventDetailLinkedReservationsSection: View {
                     }
                 }
             } header: {
-                Text(linkedReservations.count == 1 ? "Recurso reservado" : "Recursos reservados (\(linkedReservations.count))")
+                Text(linkedReservations.count == 1 ? "Cosa reservada" : "Cosas reservadas (\(linkedReservations.count))")
             } footer: {
                 if let single = linkedReservations.first, linkedReservations.count == 1 {
                     Text(linkedReservationStatusLabel(single.status))

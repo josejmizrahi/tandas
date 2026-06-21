@@ -16,6 +16,7 @@ public struct RulesListView: View {
 
     @State private var store: RulesStore
     @State private var isShowingCreate = false
+    @State private var isShowingPresetLibrary = false
     @State private var query: String = ""
 
     public init(context: AppContext, container: DependencyContainer) {
@@ -47,16 +48,29 @@ public struct RulesListView: View {
         .toolbar {
             if store.canManage(in: context) {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        isShowingCreate = true
+                    Menu {
+                        Button {
+                            isShowingPresetLibrary = true
+                        } label: {
+                            Label("Usar preset", systemImage: "square.grid.2x2.fill")
+                        }
+                        Button {
+                            isShowingCreate = true
+                        } label: {
+                            Label("Crear regla", systemImage: "plus")
+                        }
                     } label: {
-                        Label("Crear regla", systemImage: "plus")
+                        Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Crear regla")
                 }
             }
         }
         .sheet(isPresented: $isShowingCreate) {
             CreateRuleWizard(context: context, store: store, rpc: container.rpc)
+        }
+        .sheet(isPresented: $isShowingPresetLibrary) {
+            RulePresetLibrarySheet(context: context, store: store)
         }
     }
 
@@ -65,11 +79,26 @@ public struct RulesListView: View {
     @ViewBuilder
     private var loadedContent: some View {
         if store.rules.isEmpty {
-            RuulEmptyState(
-                title: "Sin reglas",
-                systemImage: "ruler",
-                message: "Las reglas convierten acuerdos en consecuencias automáticas: llegar tarde → multa, cancelar el mismo día → multa."
-            )
+            List {
+                Section {
+                    RuulEmptyState(
+                        title: "Sin reglas",
+                        systemImage: "ruler",
+                        message: "Elige un preset para arrancar rápido o crea una regla personalizada."
+                    )
+                    .listRowBackground(Color.clear)
+                    if store.canManage(in: context) {
+                        Button {
+                            isShowingPresetLibrary = true
+                        } label: {
+                            Label("Elegir preset", systemImage: "square.grid.2x2.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
         } else {
             let filtered = filter(store.rules)
             let active = filtered.filter(\.isActive)
@@ -241,6 +270,222 @@ public struct RulesListView: View {
     }
 }
 
+// MARK: - Preset Library
+
+private struct RulePresetLibrarySheet: View {
+    let context: AppContext
+    let store: RulesStore
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var runner = ActionRunner()
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(GroupRulePreset.allCases) { preset in
+                        Button {
+                            Task { await apply(preset) }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: preset.symbolName)
+                                    .font(.title3)
+                                    .foregroundStyle(preset.tint)
+                                    .frame(width: 32)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(preset.title)
+                                        .font(.callout.weight(.medium))
+                                        .foregroundStyle(Theme.Text.primary)
+                                    Text(preset.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(Theme.Text.secondary)
+                                        .lineLimit(2)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(Theme.Text.tertiary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(runner.isRunning)
+                    }
+                } header: {
+                    Text("Cómo funciona nuestro grupo")
+                } footer: {
+                    Text("Los presets crean reglas editables. Ruul omite reglas con el mismo título si ya existen.")
+                }
+            }
+            .navigationTitle("Biblioteca de reglas")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cerrar") { dismiss() }
+                }
+            }
+            .actionErrorAlert(runner)
+        }
+        .ruulSheet()
+    }
+
+    private func apply(_ preset: GroupRulePreset) async {
+        let existingTitles = Set(store.rules.map { $0.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+        let inputs = preset.inputs(contextId: context.id).filter { input in
+            !existingTitles.contains(input.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+        }
+        let success = await runner.run {
+            for input in inputs {
+                _ = try await store.createRule(input, context: context)
+            }
+        }
+        if success { dismiss() }
+    }
+}
+
+private enum GroupRulePreset: String, CaseIterable, Identifiable {
+    case relaxedDinner
+    case organizedDinner
+    case competitiveGroup
+    case travelers
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .relaxedDinner:    return "Cena relajada"
+        case .organizedDinner:  return "Cena organizada"
+        case .competitiveGroup: return "Grupo competitivo"
+        case .travelers:        return "Viajeros"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .relaxedDinner:
+            return "Sin multas; acuerdos visibles para convivir sin presión."
+        case .organizedDinner:
+            return "Tolerancia de llegada, cancelación tardía y norma de no-show."
+        case .competitiveGroup:
+            return "Multas base y norma de puntos para rankings y juegos."
+        case .travelers:
+            return "Fondo común, reservaciones y cancelaciones para viajes."
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .relaxedDinner:    return "fork.knife"
+        case .organizedDinner:  return "calendar.badge.checkmark"
+        case .competitiveGroup: return "trophy.fill"
+        case .travelers:        return "airplane"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .relaxedDinner:    return Theme.Tint.success
+        case .organizedDinner:  return Theme.Tint.warning
+        case .competitiveGroup: return .purple
+        case .travelers:        return Theme.Tint.info
+        }
+    }
+
+    func inputs(contextId: UUID) -> [CreateRuleInput] {
+        switch self {
+        case .relaxedDinner:
+            return [
+                norm(
+                    contextId: contextId,
+                    title: "Sin multas por defecto",
+                    body: "El grupo no cobra multas automáticas. Los gastos se registran y se liquidan con buena fe."
+                )
+            ]
+
+        case .organizedDinner:
+            return [
+                CreateRuleInput(
+                    contextId: contextId,
+                    title: "Multa por llegar tarde (>15 min)",
+                    triggerEventType: RuleTrigger.checkedIn.rawValue,
+                    conditionTree: RuleConditionBuilder.lateMoreThan(minutes: 15),
+                    consequences: RuleConsequenceBuilder.fine(amount: 100, currency: "MXN"),
+                    ruleType: "automation"
+                ),
+                CreateRuleInput(
+                    contextId: contextId,
+                    title: "Multa por cancelar el mismo día",
+                    triggerEventType: RuleTrigger.participationCancelled.rawValue,
+                    conditionTree: RuleConditionBuilder.sameDayCancellation(),
+                    consequences: RuleConsequenceBuilder.fine(amount: 100, currency: "MXN"),
+                    ruleType: "automation"
+                ),
+                norm(
+                    contextId: contextId,
+                    title: "No-show cuenta para asistencia",
+                    body: "Si alguien confirma y no llega, el grupo puede marcarlo como falta al cerrar el evento."
+                )
+            ]
+
+        case .competitiveGroup:
+            return [
+                CreateRuleInput(
+                    contextId: contextId,
+                    title: "Multa competitiva por llegar tarde",
+                    triggerEventType: RuleTrigger.checkedIn.rawValue,
+                    conditionTree: RuleConditionBuilder.lateMoreThan(minutes: 10),
+                    consequences: RuleConsequenceBuilder.fine(amount: 100, currency: "MXN"),
+                    ruleType: "automation"
+                ),
+                CreateRuleInput(
+                    contextId: contextId,
+                    title: "Multa competitiva por cancelar tarde",
+                    triggerEventType: RuleTrigger.participationCancelled.rawValue,
+                    conditionTree: RuleConditionBuilder.sameDayCancellation(),
+                    consequences: RuleConsequenceBuilder.fine(amount: 150, currency: "MXN"),
+                    ruleType: "automation"
+                ),
+                norm(
+                    contextId: contextId,
+                    title: "Puntos del grupo",
+                    body: "El grupo puede llevar puntos por asistencia, juegos ganados, organización y pagos a tiempo."
+                )
+            ]
+
+        case .travelers:
+            return [
+                CreateRuleInput(
+                    contextId: contextId,
+                    title: "Multa por cancelar reservación tarde",
+                    triggerEventType: RuleTrigger.reservationCancelled.rawValue,
+                    conditionTree: RuleConditionBuilderR2S5.cancelledLessHoursBefore(48),
+                    consequences: RuleConsequenceBuilder.fine(amount: 500, currency: "MXN"),
+                    ruleType: "automation",
+                    targetScope: RuleTargetScope.reservation.rawValue
+                ),
+                norm(
+                    contextId: contextId,
+                    title: "Fondo común del viaje",
+                    body: "El grupo usa un bote para reservas, anticipos y gastos comunes del viaje."
+                ),
+                norm(
+                    contextId: contextId,
+                    title: "Gastos del viaje",
+                    body: "Los gastos compartidos se registran en Ruul y se liquidan antes de cerrar el viaje."
+                )
+            ]
+        }
+    }
+
+    private func norm(contextId: UUID, title: String, body: String) -> CreateRuleInput {
+        CreateRuleInput(
+            contextId: contextId,
+            title: title,
+            body: body,
+            ruleType: "norm"
+        )
+    }
+}
+
 // MARK: - RuleGroup (trigger grouping helper)
 
 private enum RuleGroup: String, CaseIterable, Hashable {
@@ -265,7 +510,7 @@ private enum RuleGroup: String, CaseIterable, Hashable {
         case .events:       return "Eventos"
         case .reservations: return "Reservaciones"
         case .money:        return "Dinero"
-        case .decisions:    return "Decisiones"
+        case .decisions:    return "Votaciones"
         case .other:        return "Otras"
         }
     }

@@ -29,7 +29,7 @@ public struct JoinByCodeView: View {
                         .font(.title3.monospaced())
                         .multilineTextAlignment(.center)
                 } footer: {
-                    Text("Pídele el código a quien administra el espacio.")
+                    Text("Pídele el código a quien administra el grupo.")
                 }
 
                 Section {
@@ -103,13 +103,13 @@ public struct JoinByCodeView: View {
             return "Código incorrecto. Revisa que esté bien escrito o pídele uno nuevo."
         }
         if raw.contains("already") || raw.contains("duplicate") {
-            return "Ya eres miembro de este espacio. Búscalo en tu lista de espacios."
+            return "Ya eres miembro de este grupo. Búscalo en Ajustes > Grupo."
         }
         if raw.contains("revoked") {
             return "Este código fue cancelado por el administrador. Pide uno nuevo."
         }
         if raw.contains("archived") || raw.contains("closed") {
-            return "Este espacio ya no está activo."
+            return "Este grupo ya no está activo."
         }
         if raw.contains("network") || raw.contains("internet") {
             return "Sin conexión. Revisa tu red e intenta de nuevo."

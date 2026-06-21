@@ -71,7 +71,7 @@ struct EventDetailInfoSection: View {
                     Text(until.formatted(date: .abbreviated, time: .omitted))
                 }
             }
-            LabeledContent("Espacio") {
+            LabeledContent("Grupo") {
                 Text(context.displayName)
                     .multilineTextAlignment(.trailing)
             }

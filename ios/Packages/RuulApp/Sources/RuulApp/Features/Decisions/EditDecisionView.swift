@@ -61,12 +61,12 @@ public struct EditDecisionView: View {
                     LabeledContent("Estado", value: decision.statusLabel)
                     LabeledContent("Modo de votación", value: decision.voting.label)
                 } footer: {
-                    Text("Esta pantalla solo edita la pregunta, el detalle y la fecha de cierre. El modo de votación y las opciones no se pueden cambiar después de abierta la decisión.")
+                    Text("Esta pantalla solo edita la pregunta, el detalle y la fecha de cierre. El modo de votación y las opciones no se pueden cambiar después de abrirla.")
                 }
 
                 Section("Pregunta") {
                     TextField("Título", text: $title)
-                    TextField("Contexto adicional (opcional)", text: $description, axis: .vertical)
+                    TextField("Detalles opcionales", text: $description, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
@@ -81,7 +81,7 @@ public struct EditDecisionView: View {
                     Text("Al pasar esta fecha la votación se cerrará automáticamente y se contarán los votos emitidos hasta ese momento. Déjala en blanco para mantenerla abierta hasta que la cierres manualmente.")
                 }
             }
-            .navigationTitle("Editar decisión")
+            .navigationTitle("Editar votación")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -35,7 +35,7 @@ public struct NoContextsView: View {
             VStack(spacing: 8) {
                 Text("Bienvenido a Ruul")
                     .font(.title2.weight(.semibold))
-                Text("Donde tus grupos viven, deciden y recuerdan. Crea tu primer espacio (una cena semanal, tu familia, un viaje…) o únete con un código de invitación.")
+                Text("Donde tus amigos organizan cenas, viajes, gastos, botes y votaciones. Crea tu primer grupo o únete con un código de invitación.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -57,9 +57,7 @@ public struct NoContextsView: View {
                 }
 
                 Button(action: onCreate) {
-                    // 7.C.4 (audit 2026-06-14) — terminología "espacios" del
-                    // Slice 7.A.1 + copy más invitacional ("primer espacio").
-                    Label("Crear mi primer espacio", systemImage: "plus")
+                    Label("Crear mi primer grupo", systemImage: "plus")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glassProminent)

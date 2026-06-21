@@ -66,20 +66,21 @@ public struct CreateContextView: View {
 
     private var capStore: ActorCapabilitiesStore { container.actorCapabilitiesStore }
 
-    /// Solo se ofrecen los subtypes que el catálogo del backend reconoce.
-    /// Cualquier subtype nuevo del backend (sin label/icon iOS) queda fuera
-    /// hasta que se agregue al enum.
+    /// Launch de amigos: la superficie pública sólo ofrece grupos humanos.
+    /// Tipos empresariales/proyecto/trust siguen soportados por backend, pero
+    /// no se muestran en el flujo inicial.
     private var availableSubtypes: [Subtype] {
         let known = Set(capStore.catalog?.subtypes.map(\.actorSubtype) ?? [])
-        let filtered = Subtype.allCases.filter { known.isEmpty || known.contains($0.rawValue) }
-        return filtered.isEmpty ? Subtype.allCases : filtered
+        let launchSubtypes: [Subtype] = [.friendGroup, .trip, .family, .community]
+        let filtered = launchSubtypes.filter { known.isEmpty || known.contains($0.rawValue) }
+        return filtered.isEmpty ? launchSubtypes : filtered
     }
 
     public var body: some View {
         NavigationStack {
             Form {
                 Section("Nombre") {
-                    TextField("Cena Semanal, Familia, Viaje Japón…", text: $displayName)
+                    TextField("Cena Semanal, Viaje Japón…", text: $displayName)
                 }
 
                 CreationGuardView(
@@ -102,9 +103,9 @@ public struct CreateContextView: View {
                         .buttonStyle(.plain)
                     }
                 } header: {
-                    Text("¿Qué tipo de espacio es?")
+                    Text("¿Qué tipo de grupo es?")
                 } footer: {
-                    Text("Después puedes cambiarlo desde la configuración del espacio.")
+                    Text("Después puedes cambiarlo desde la configuración del grupo.")
                 }
 
                 Section {
@@ -114,15 +115,15 @@ public struct CreateContextView: View {
                         if runner.isRunning {
                             ProgressView().frame(maxWidth: .infinity)
                         } else {
-                            Text("Crear espacio").frame(maxWidth: .infinity)
+                            Text("Crear grupo").frame(maxWidth: .infinity)
                         }
                     }
                     .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty || runner.isRunning)
                 } footer: {
-                    Text("Tú quedas como fundador con rol de admin. Después puedes invitar miembros con un código.")
+                    Text("Tú quedas como fundador. Después puedes invitar amigos con un link o código.")
                 }
             }
-            .navigationTitle("Nuevo espacio")
+            .navigationTitle("Nuevo grupo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

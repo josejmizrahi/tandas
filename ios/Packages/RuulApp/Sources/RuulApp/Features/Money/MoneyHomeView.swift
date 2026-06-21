@@ -507,7 +507,7 @@ public struct MoneyHomeView: View {
                 Label("Movimientos", systemImage: "list.bullet.rectangle")
             }
         } footer: {
-            Text("El registro de gastos, pagos y liquidaciones del espacio.")
+            Text("El registro de gastos, pagos y liquidaciones del grupo.")
         }
     }
 

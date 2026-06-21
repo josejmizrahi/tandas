@@ -53,12 +53,12 @@ public struct ContextSwitcherSheet: View {
                 }
                 createSection
             }
-            .navigationTitle("Cambiar de espacio")
+            .navigationTitle("Cambiar de grupo")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $searchText,
                 placement: .navigationBarDrawer(displayMode: .automatic),
-                prompt: "Buscar espacios"
+                prompt: "Buscar grupos"
             )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -134,7 +134,7 @@ public struct ContextSwitcherSheet: View {
             Button {
                 isShowingCreateContext = true
             } label: {
-                Label("Crear espacio nuevo", systemImage: "plus.circle.fill")
+                Label("Crear grupo nuevo", systemImage: "plus.circle.fill")
             }
         }
     }
@@ -191,7 +191,7 @@ public struct ContextSwitcherSheet: View {
                         Text(context.memberCount == 1 ? "1 miembro" : "\(context.memberCount) miembros")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Text("Tu espacio personal")
+                        Text("Tu cuenta personal")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }

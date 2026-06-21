@@ -86,8 +86,8 @@ struct EventDetailRulesSection: View {
     }
 }
 
-/// Fondos abiertos del espacio (los pools viven a nivel contexto — la sección
-/// lo dice explícitamente; no se inventa una relación evento→pool).
+/// Botes abiertos del grupo (los pools viven a nivel contexto; no se inventa
+/// una relación evento→pool).
 struct EventDetailPoolsSection: View {
     let context: AppContext
     let container: DependencyContainer
@@ -122,7 +122,7 @@ struct EventDetailPoolsSection: View {
                 }
             } header: {
                 HStack {
-                    Text("Fondos comunes del espacio")
+                    Text("Botes del grupo")
                     Spacer()
                     if pools.count > 3 {
                         NavigationLink {
@@ -140,7 +140,7 @@ struct EventDetailPoolsSection: View {
                 }
                 .textCase(nil)
             } footer: {
-                Text("Atajo a los fondos de \(context.displayName). Los fondos viven en el espacio (Dinero → Fondos comunes), no en este evento.")
+                Text("Atajo a los botes de \(context.displayName). Los botes viven en el grupo (Dinero → Botes), no en este evento.")
             }
         }
         Color.clear

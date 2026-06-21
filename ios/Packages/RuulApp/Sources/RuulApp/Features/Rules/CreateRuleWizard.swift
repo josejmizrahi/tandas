@@ -477,7 +477,7 @@ public struct CreateRuleWizard: View {
     private var footerText: String {
         switch template {
         case .lateFee:
-            return "Si alguien llega más de \(Int(thresholdMinutes)) minutos tarde a un evento, se le cobra automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency) al espacio."
+            return "Si alguien llega más de \(Int(thresholdMinutes)) minutos tarde a un evento, se le cobra automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency) al grupo."
         case .sameDayCancellation:
             return "Si alguien cancela su asistencia el mismo día del evento, se le cobra automáticamente una multa de $\(fineAmount.formatted(.number)) \(currency)."
         case .lateReservationCancel:
@@ -485,7 +485,7 @@ public struct CreateRuleWizard: View {
         case .expenseAlert:
             return "Si alguien registra un gasto mayor a $\(expenseThreshold.formatted(.number)) \(currency), se marca como importante y aparece en Atención para revisión."
         case .textNorm:
-            return "Las normas escritas no generan multas ni cargos automáticos. Solo quedan como acuerdos visibles para todos los miembros del espacio."
+            return "Las normas escritas no generan multas ni cargos automáticos. Solo quedan como acuerdos visibles para todos los miembros del grupo."
         }
     }
 

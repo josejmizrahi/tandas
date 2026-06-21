@@ -33,7 +33,7 @@ struct EventDetailRelatedResourcesSection: View {
                     }
                 }
             } header: {
-                Text("Recursos")
+                Text("Cosas")
             }
         }
     }
@@ -45,7 +45,7 @@ struct EventDetailRelatedResourcesSection: View {
         for activity in eventActivity {
             guard let id = activity.resourceId, !seen.contains(id) else { continue }
             seen.insert(id)
-            let title = activity.payload?["title"]?.stringValue ?? "Recurso"
+            let title = activity.payload?["title"]?.stringValue ?? "Cosa"
             out.append(EventDetailRelatedItem(id: id, title: title, trailing: nil))
         }
         return out

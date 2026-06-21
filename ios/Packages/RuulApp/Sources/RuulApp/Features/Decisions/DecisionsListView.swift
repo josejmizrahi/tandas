@@ -30,7 +30,7 @@ public struct DecisionsListView: View {
         Group {
             switch store.phase {
             case .idle, .loading:
-                RuulLoadingState(title: "Cargando decisiones…")
+                RuulLoadingState(title: "Cargando votaciones…")
             case .failed(let message):
                 RuulErrorState(message: message) {
                     Task { await store.load(context: context) }
@@ -39,7 +39,7 @@ public struct DecisionsListView: View {
                 loadedContent
             }
         }
-        .navigationTitle("Decisiones")
+        .navigationTitle("Votaciones")
         .task {
             await store.load(context: context)
         }
@@ -73,9 +73,9 @@ public struct DecisionsListView: View {
     private var loadedContent: some View {
         if store.decisions.isEmpty {
             RuulEmptyState(
-                title: "Sin decisiones",
+                title: "Sin votaciones",
                 systemImage: "checkmark.seal",
-                message: "Propón algo y que el espacio vote: cambiar una regla, aprobar un gasto, resolver un conflicto."
+                message: "Propón algo y que el grupo vote: cambiar una regla, aprobar un gasto o resolver un conflicto."
             )
         } else {
             let filtered = filter(store.decisions)
@@ -110,7 +110,7 @@ public struct DecisionsListView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .searchable(text: $query, prompt: "Buscar decisión")
+            .searchable(text: $query, prompt: "Buscar votación")
             .searchToolbarBehavior(.minimize)
         }
     }
@@ -133,7 +133,7 @@ public struct DecisionsListView: View {
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundStyle(openCount > 0 ? .purple : Theme.Text.secondary)
                         VStack(alignment: .leading, spacing: 0) {
-                            Text(openCount == 1 ? "decisión abierta" : "decisiones abiertas")
+                            Text(openCount == 1 ? "votación abierta" : "votaciones abiertas")
                                 .font(.callout)
                                 .foregroundStyle(Theme.Text.secondary)
                             if decisions.count > openCount {

@@ -230,7 +230,7 @@ public struct ContextCalendarView: View {
                 .foregroundStyle(Theme.Tint.success)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 2) {
-                Text(resourceNames[reservation.resourceId] ?? "Recurso")
+                Text(resourceNames[reservation.resourceId] ?? "Cosa")
                     .font(.callout.weight(.medium))
                 Text(rangeText(reservation))
                     .font(.caption)

@@ -74,7 +74,7 @@ public struct CreateObligationView: View {
             case .delivery:    return "La persona entrega un objeto, archivo o entregable."
             case .attendance:  return "La persona se compromete a asistir a algo."
             case .document:    return "La persona firma o sube un documento."
-            case .reservation: return "La persona reserva un lugar o un recurso."
+            case .reservation: return "La persona reserva un lugar o una cosa del grupo."
             case .custom:      return "Cualquier otro compromiso que no encaja en los anteriores."
             }
         }

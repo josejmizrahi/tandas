@@ -179,7 +179,7 @@ extension EventDetailView {
         // request_resource_reservation; iOS sólo gatea por estado del evento.
         if event.isScheduled || event.status == "in_progress" {
             out.append(MoreActionItem(
-                kind: .reserveResource, label: "Reservar recurso",
+                kind: .reserveResource, label: "Reservar cosa",
                 symbol: "calendar.badge.checkmark", isDestructive: false,
                 action: nil
             ))

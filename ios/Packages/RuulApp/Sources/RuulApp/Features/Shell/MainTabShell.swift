@@ -1,18 +1,15 @@
 import SwiftUI
 import RuulCore
 
-/// F.NAV — Shell global con 5 tabs (PRODUCTION post-F.NAV.7).
+/// Shell global de lanzamiento para grupos de amigos.
 ///
-/// Doctrina F.NAV (`Plans/Doctrine/FNAV_AppShellNavigation.md`):
-/// Home / Contextos / Crear / Actividad / Yo. ContextHome vive dentro de la
-/// tab Contextos como destination push de `ContextsListView`. El switcher es
-/// sheet (F.NAV.4). El tab Crear no tiene contenido propio — auto-bounce a
-/// `CreateIntentSheet` (F.NAV.5).
+/// Navegación primaria: Inicio / Eventos / Dinero / Miembros / Ajustes.
+/// Las primitivas avanzadas siguen existiendo, pero la superficie principal
+/// opera sobre el grupo actual y optimiza los flujos diarios de amigos.
 public struct MainTabShell: View {
     let container: DependencyContainer
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .home
-    @State private var previousTab: AppTab = .home
     @State private var isShowingCreateSheet = false
     @State private var isShowingJoinByCode = false
     @State private var prefilledInviteCode: String?
@@ -20,114 +17,70 @@ public struct MainTabShell: View {
     /// tapea el `tabViewBottomAccessory`. Sheet único globalmente; cualquier kind
     /// presente o futuro (incluye R.6 rule_violation vía `.unsupported`).
     @State private var presentedAttention: AttentionDestination?
-    /// NavigationStack path del tab Contextos, levantado al shell para que
-    /// `jumpToContext` desde Home/atención pueda empujar directo al
-    /// ContextHome del target en vez de dejar al usuario en la lista.
-    @State private var contextsPath: [AppContext] = []
-
     public init(container: DependencyContainer) {
         self.container = container
     }
 
-    /// Cambia al tab Contextos y empuja el ContextHome del target.
-    /// Llamado desde Home (tarjetas Continuar, attention items).
-    ///
-    /// Doctrina de orden:
-    ///   1. Switch de tab PRIMERO, para que SwiftUI commitee la transición
-    ///      y el NavigationStack del tab Contextos esté visible antes de
-    ///      mutar su path (si pusheas con el tab oculto, la barra/contenido
-    ///      no propagan al revelarse).
-    ///   2. Si el target ya está al tope del stack (mismo contexto al que
-    ///      el usuario estaba antes de irse a Home), NO toques el path —
-    ///      el switch de tab basta para revelar la vista existente.
-    ///   3. Si es un contexto distinto, primero pop a `[]` y luego push
-    ///      en el siguiente runloop para forzar a SwiftUI a desmontar el
-    ///      destination anterior antes de montar el nuevo. Reemplazar
-    ///      `[A]` por `[B]` en un solo tick deja al NavigationStack en
-    ///      un estado inconsistente (toolbar vacío + descriptor stale).
+    /// Home ahora cambia el grupo activo y lleva al centro operativo del grupo.
     private func jumpToContext(_ context: AppContext) {
         container.contextStore.switchTo(context)
-        selectedTab = .contexts
-        if contextsPath.last?.id != context.id {
-            DispatchQueue.main.async {
-                contextsPath = []
-                DispatchQueue.main.async {
-                    contextsPath = [context]
-                }
-            }
-        }
+        selectedTab = .events
         Task { await container.contextPreferencesStore.recordVisit(context.id) }
     }
 
-    /// F.NAV.7 fix: Binding proxy intercepta la selección del tab antes de
-    /// mutar el state. Si el usuario tapea `.create`, abrimos la sheet y NO
-    /// movemos el selectedTab (que se quedará en el tab previo). Esto evita
-    /// los crashes esporádicos del patrón onChange.
-    private var tabBinding: Binding<AppTab> {
-        Binding(
-            get: { selectedTab },
-            set: { newValue in
-                if newValue == .create {
-                    isShowingCreateSheet = true
-                } else {
-                    previousTab = selectedTab
-                    selectedTab = newValue
-                }
-            }
-        )
-    }
-
     public var body: some View {
-        TabView(selection: tabBinding) {
-            Tab("Home", systemImage: "house.fill", value: AppTab.home) {
+        TabView(selection: $selectedTab) {
+            Tab("Inicio", systemImage: "house.fill", value: AppTab.home) {
                 HomeView(
                     container: container,
                     jumpToContext: jumpToContext,
-                    onTriggerCreate: { isShowingCreateSheet = true }
+                    onTriggerCreate: { isShowingCreateSheet = true },
+                    onOpenSettings: { selectedTab = .settings }
                 )
             }
 
-            Tab("Espacios", systemImage: "square.grid.2x2.fill", value: AppTab.contexts) {
-                // ContextsListView trae su propio NavigationStack con path bindeado.
-                ContextsListView(container: container, path: $contextsPath)
-            }
-
-            Tab("Crear", systemImage: "plus.circle.fill", value: AppTab.create, role: nil) {
-                // F.NAV.5 — el tab Crear no tiene contenido propio. Al
-                // seleccionarlo abrimos la sheet intent-first y volvemos al
-                // tab anterior (patrón Twitter/Instagram).
-                Color.clear
-            }
-
-            Tab("Actividad", systemImage: "bell.fill", value: AppTab.activity) {
-                NavigationStack {
-                    MyActivityFeedView(container: container)
-                        .navigationTitle("Actividad")
-                        // R.4D (P1.1) — centro de notificaciones con badge de
-                        // no-leídas en el toolbar de la tab Actividad.
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                NavigationLink {
-                                    NotificationCenterView(container: container)
-                                } label: {
-                                    Image(systemName: container.notificationsStore.unreadCount > 0
-                                          ? "bell.badge.fill" : "bell")
-                                        .symbolRenderingMode(.palette)
-                                        .foregroundStyle(.red, Color.accentColor)
-                                        .accessibilityLabel(
-                                            container.notificationsStore.unreadCount > 0
-                                            ? "Notificaciones, \(container.notificationsStore.unreadCount) sin leer"
-                                            : "Notificaciones"
-                                        )
-                                }
-                            }
-                        }
-                        .task { await container.notificationsStore.load() }
+            Tab("Eventos", systemImage: "calendar", value: AppTab.events) {
+                CurrentGroupNavigation(
+                    container: container,
+                    emptyTitle: "Crea un grupo para programar eventos",
+                    emptyMessage: "Invita a tus amigos y arma la próxima cena, viaje o noche de juegos.",
+                    onCreateGroup: { isShowingCreateSheet = true },
+                    onJoinGroup: { isShowingJoinByCode = true }
+                ) { group in
+                    EventsListView(context: group, container: container)
                 }
             }
 
-            Tab("Yo", systemImage: "person.crop.circle.fill", value: AppTab.me) {
-                MeView(container: container, goToContexts: { selectedTab = .contexts })
+            Tab("Dinero", systemImage: "dollarsign.circle", value: AppTab.money) {
+                CurrentGroupNavigation(
+                    container: container,
+                    emptyTitle: "Crea un grupo para llevar cuentas",
+                    emptyMessage: "Registra gastos, botes, juegos y liquidaciones con tu grupo.",
+                    onCreateGroup: { isShowingCreateSheet = true },
+                    onJoinGroup: { isShowingJoinByCode = true }
+                ) { group in
+                    MoneyHomeView(context: group, container: container)
+                }
+            }
+
+            Tab("Miembros", systemImage: "person.3", value: AppTab.members) {
+                CurrentGroupNavigation(
+                    container: container,
+                    emptyTitle: "Crea un grupo para invitar amigos",
+                    emptyMessage: "Los miembros, pendientes e invitados viven en un solo lugar.",
+                    onCreateGroup: { isShowingCreateSheet = true },
+                    onJoinGroup: { isShowingJoinByCode = true }
+                ) { group in
+                    MembersListView(context: group, container: container)
+                }
+            }
+
+            Tab("Ajustes", systemImage: "gearshape", value: AppTab.settings) {
+                LaunchSettingsView(
+                    container: container,
+                    onCreate: { isShowingCreateSheet = true },
+                    onJoin: { isShowingJoinByCode = true }
+                )
             }
         }
         // R.5Y.A3 — Attention Center cross-context pegado sobre el tab bar.
@@ -143,7 +96,9 @@ public struct MainTabShell: View {
             }
         }
         .sheet(isPresented: $isShowingCreateSheet) {
-            CreateIntentSheet(container: container)
+            CreateIntentSheet(container: container) { destination in
+                presentedAttention = destination
+            }
         }
         .sheet(isPresented: $isShowingJoinByCode, onDismiss: { prefilledInviteCode = nil }) {
             JoinByCodeView(container: container, prefilledCode: prefilledInviteCode)
@@ -170,12 +125,280 @@ public struct MainTabShell: View {
     }
 }
 
-/// F.NAV.1 — enum identifier para las 5 tabs.
+/// Enum identifier para las 5 tabs de lanzamiento.
 public enum AppTab: Hashable {
-    case home, contexts, create, activity, me
+    case home, events, money, members, settings
 }
 
-// MARK: - Stubs F.NAV.1
+// MARK: - Current Group Wrappers
+
+private struct CurrentGroupNavigation<Content: View>: View {
+    let container: DependencyContainer
+    let emptyTitle: String
+    let emptyMessage: String
+    let onCreateGroup: () -> Void
+    let onJoinGroup: () -> Void
+    @ViewBuilder let content: (AppContext) -> Content
+
+    private var currentGroup: AppContext? {
+        if let current = container.contextStore.currentContext, !current.isPersonal {
+            return current
+        }
+        return container.contextStore.collectiveContexts.first
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let group = currentGroup {
+                    content(group)
+                        .id(group.id)
+                } else {
+                    LaunchNoGroupView(
+                        title: emptyTitle,
+                        message: emptyMessage,
+                        onCreateGroup: onCreateGroup,
+                        onJoinGroup: onJoinGroup
+                    )
+                }
+            }
+            .task {
+                if container.contextStore.phase == .idle {
+                    await container.contextStore.load()
+                }
+                selectFirstGroupIfNeeded()
+            }
+        }
+    }
+
+    private func selectFirstGroupIfNeeded() {
+        guard let first = container.contextStore.collectiveContexts.first else { return }
+        if container.contextStore.currentContext?.isPersonal != false {
+            container.contextStore.switchTo(first)
+        }
+    }
+}
+
+private struct LaunchNoGroupView: View {
+    let title: String
+    let message: String
+    let onCreateGroup: () -> Void
+    let onJoinGroup: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label(title, systemImage: "person.3.fill")
+        } description: {
+            Text(message)
+        } actions: {
+            VStack(spacing: 10) {
+                Button(action: onCreateGroup) {
+                    Label("Crear grupo", systemImage: "plus.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent)
+
+                Button(action: onJoinGroup) {
+                    Label("Unirme con código", systemImage: "ticket")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glass)
+            }
+            .controlSize(.large)
+        }
+        .padding(.horizontal, 24)
+    }
+}
+
+private struct LaunchSettingsView: View {
+    let container: DependencyContainer
+    let onCreate: () -> Void
+    let onJoin: () -> Void
+
+    @State private var isShowingSwitcher = false
+    @State private var isShowingInvite = false
+    @State private var isShowingGroupSettings = false
+    @State private var isShowingMe = false
+    @State private var isShowingNotifications = false
+    @State private var membersStore: MembersStore
+
+    init(
+        container: DependencyContainer,
+        onCreate: @escaping () -> Void,
+        onJoin: @escaping () -> Void
+    ) {
+        self.container = container
+        self.onCreate = onCreate
+        self.onJoin = onJoin
+        _membersStore = State(initialValue: MembersStore(rpc: container.rpc))
+    }
+
+    private var currentGroup: AppContext? {
+        if let current = container.contextStore.currentContext, !current.isPersonal {
+            return current
+        }
+        return container.contextStore.collectiveContexts.first
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                groupSection
+                if let group = currentGroup {
+                    peopleSection(group)
+                    rulesSection(group)
+                    adminSection(group)
+                }
+                accountSection
+            }
+            .navigationTitle("Ajustes")
+            .task {
+                await container.contextStore.load()
+                await container.notificationsStore.load()
+                if let group = currentGroup {
+                    await membersStore.load(context: group)
+                }
+            }
+            .refreshable {
+                await container.contextStore.load()
+                await container.notificationsStore.load()
+                if let group = currentGroup {
+                    await membersStore.load(context: group)
+                }
+            }
+            .sheet(isPresented: $isShowingSwitcher) {
+                ContextSwitcherSheet(
+                    container: container,
+                    currentContextId: currentGroup?.id
+                ) { context in
+                    container.contextStore.switchTo(context)
+                    Task {
+                        await container.contextPreferencesStore.recordVisit(context.id)
+                        await membersStore.load(context: context)
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingInvite) {
+                if let group = currentGroup {
+                    InviteMembersView(context: group, store: membersStore, container: container)
+                }
+            }
+            .sheet(isPresented: $isShowingGroupSettings) {
+                if let group = currentGroup {
+                    ContextSettingsView(context: group, container: container)
+                }
+            }
+            .sheet(isPresented: $isShowingMe) {
+                MeView(container: container, goToContexts: { isShowingMe = false })
+            }
+            .sheet(isPresented: $isShowingNotifications) {
+                NotificationCenterView(container: container)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var groupSection: some View {
+        Section {
+            if let group = currentGroup {
+                Button {
+                    isShowingSwitcher = true
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(group.displayName)
+                                .font(.callout.weight(.medium))
+                            Text("Grupo actual")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: group.symbolName)
+                    }
+                }
+            }
+
+            Button(action: onCreate) {
+                Label("Crear grupo", systemImage: "plus.circle.fill")
+            }
+
+            Button(action: onJoin) {
+                Label("Unirme con código", systemImage: "ticket")
+            }
+        } header: {
+            Text("Grupo")
+        }
+    }
+
+    @ViewBuilder
+    private func peopleSection(_ group: AppContext) -> some View {
+        Section {
+            NavigationLink {
+                MembersListView(context: group, container: container)
+            } label: {
+                Label("Miembros", systemImage: "person.3.fill")
+            }
+
+            Button {
+                isShowingInvite = true
+            } label: {
+                Label("Invitar amigos", systemImage: "person.badge.plus")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rulesSection(_ group: AppContext) -> some View {
+        Section {
+            NavigationLink {
+                RulesListView(context: group, container: container)
+            } label: {
+                Label("Cómo funciona el grupo", systemImage: "ruler.fill")
+            }
+        } footer: {
+            Text("Reglas, multas automáticas y acuerdos del grupo.")
+        }
+    }
+
+    @ViewBuilder
+    private func adminSection(_ group: AppContext) -> some View {
+        Section {
+            Button {
+                isShowingGroupSettings = true
+            } label: {
+                Label("Administración avanzada", systemImage: "slider.horizontal.3")
+            }
+        } header: {
+            Text("Administración")
+        } footer: {
+            Text("Roles, invitaciones, reglas avanzadas y configuración del grupo.")
+        }
+    }
+
+    @ViewBuilder
+    private var accountSection: some View {
+        Section {
+            Button {
+                isShowingNotifications = true
+            } label: {
+                Label(
+                    container.notificationsStore.unreadCount > 0
+                    ? "Notificaciones (\(container.notificationsStore.unreadCount))"
+                    : "Notificaciones",
+                    systemImage: container.notificationsStore.unreadCount > 0 ? "bell.badge.fill" : "bell"
+                )
+            }
+
+            Button {
+                isShowingMe = true
+            } label: {
+                Label("Mi cuenta", systemImage: "person.crop.circle")
+            }
+        } header: {
+            Text("Cuenta")
+        }
+    }
+}
 
 #Preview("Tab Shell (demo)") {
     MainTabShell(container: .demo())

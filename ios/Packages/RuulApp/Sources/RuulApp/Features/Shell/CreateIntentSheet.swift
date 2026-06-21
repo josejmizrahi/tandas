@@ -45,38 +45,47 @@ public struct CreateIntentSheet: View {
                 contextPickerSection
 
                 Section {
-                    intentRow(.event,     icon: "calendar.badge.plus",     tint: .orange, label: "Programar algo",
-                              detail: "Crear un evento del espacio.")
-                    intentRow(.reservation, icon: "calendar.badge.clock",  tint: .orange, label: "Hacer reservación",
-                              detail: "Reservar un recurso para unas fechas.")
-                    intentRow(.expense,   icon: "dollarsign.circle.fill",  tint: .green,  label: "Registrar gasto compartido",
-                              detail: "Pagaste algo del grupo y otros te deben su parte.")
-                    intentRow(.pool,      icon: "banknote.fill",           tint: .green,  label: "Crear fondo común",
-                              detail: "Todos aportan a un bote y se reparte al cumplir algo.")
-                    intentRow(.decision,  icon: "checkmark.bubble.fill",   tint: .purple, label: "Crear propuesta",
-                              detail: "Abrir una decisión para votar.")
-                    intentRow(.obligation, icon: "checklist",              tint: .indigo, label: "Asignar compromiso",
-                              detail: "Pedir una acción, aprobación o entrega a alguien.")
-                    intentRow(.document,  icon: "paperclip",               tint: .secondary, label: "Subir documento",
-                              detail: "Adjuntar un archivo a un recurso.")
-                    intentRow(.resource,  icon: "shippingbox.fill",        tint: .orange, label: "Agregar recurso",
-                              detail: "Una casa, cuenta, vehículo o activo.")
+                    intentRow(.event, icon: "calendar.badge.plus", tint: .orange, label: "Crear reunión",
+                              detail: "Cena, viaje, juego o plan del grupo.")
+                    intentRow(.expense, icon: "dollarsign.circle.fill", tint: .green, label: "Registrar gasto",
+                              detail: "Pagaste algo y el grupo se reparte su parte.")
+                    intentRow(.pool, icon: "banknote.fill", tint: .green, label: "Crear bote",
+                              detail: "Todos aportan para una meta, apuesta o fondo.")
+                    intentRow(.decision, icon: "checkmark.bubble.fill", tint: .purple, label: "Crear votación",
+                              detail: "Elegir fecha, lugar, plan o regla.")
+                    intentRow(.invite, icon: "person.badge.plus", tint: .blue, label: "Invitar amigos",
+                              detail: "Compartir link o agregar personas pendientes.")
                 } header: {
-                    Text("¿Qué quieres hacer?")
+                    Text("Acciones rápidas")
                         .font(.subheadline.weight(.semibold))
+                }
+
+                Section {
+                    DisclosureGroup {
+                        intentRow(.reservation, icon: "calendar.badge.clock", tint: .orange, label: "Hacer reservación",
+                                  detail: "Reservar una cosa del grupo para unas fechas.")
+                        intentRow(.obligation, icon: "checklist", tint: .indigo, label: "Asignar compromiso",
+                                  detail: "Pedir una acción, aprobación o entrega.")
+                        intentRow(.document, icon: "paperclip", tint: .secondary, label: "Subir documento",
+                                  detail: "Adjuntar archivo, recibo o comprobante.")
+                        intentRow(.resource, icon: "shippingbox.fill", tint: .orange, label: "Agregar cosa",
+                                  detail: "Casa, coche, equipo u otro activo compartido.")
+                    } label: {
+                        Label("Más opciones", systemImage: "ellipsis.circle")
+                    }
                 }
 
                 Section {
                     Button {
                         isShowingCreateContext = true
                     } label: {
-                        intentLabel(icon: "rectangle.split.2x1.fill", tint: .blue,
-                                    label: "Crear espacio",
-                                    detail: "Una familia, viaje, proyecto, comunidad…")
+                        intentLabel(icon: "person.3.fill", tint: .blue,
+                                    label: "Crear grupo",
+                                    detail: "El lugar para tus cenas, viajes, botes y gastos.")
                     }
                     .buttonStyle(.plain)
                 } header: {
-                    Text("Espacio nuevo")
+                    Text("Grupo nuevo")
                 }
 
                 aiIntentSection
@@ -149,7 +158,7 @@ public struct CreateIntentSheet: View {
         if let picked = pickedContext, contextChoices.count > 0 {
             Section {
                 Menu {
-                    Picker("Espacio", selection: Binding(
+                    Picker("Grupo", selection: Binding(
                         get: { picked.id },
                         set: { newId in
                             pickedContextId = newId
@@ -159,7 +168,7 @@ public struct CreateIntentSheet: View {
                         }
                     )) {
                         ForEach(contextChoices) { ctx in
-                            Text(ctx.isPersonal ? "Mi espacio" : ctx.displayName).tag(ctx.id)
+                            Text(ctx.isPersonal ? "Mi cuenta" : ctx.displayName).tag(ctx.id)
                         }
                     }
                 } label: {
@@ -172,7 +181,7 @@ public struct CreateIntentSheet: View {
                             Text("En")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Text(picked.isPersonal ? "Mi espacio" : picked.displayName)
+                            Text(picked.isPersonal ? "Mi cuenta" : picked.displayName)
                                 .font(.callout.weight(.medium))
                                 .foregroundStyle(.primary)
                         }
@@ -238,7 +247,7 @@ public struct CreateIntentSheet: View {
                         .font(.callout)
                 }
             } footer: {
-                Text("Describe lo que quieres hacer y Ruul propone una intención.")
+                Text("Describe lo que quieres hacer y Ruul abre el formulario correcto.")
             }
         }
     }
@@ -326,21 +335,22 @@ public struct CreateIntentSheet: View {
 
     private func intentLabel(for intent: Intent) -> String {
         switch intent {
-        case .event:       return "Programar algo"
-        case .expense:     return "Registrar gasto compartido"
-        case .decision:    return "Crear propuesta"
+        case .event:       return "Crear reunión"
+        case .expense:     return "Registrar gasto"
+        case .decision:    return "Crear votación"
         case .obligation:  return "Asignar compromiso"
         case .document:    return "Subir documento"
-        case .resource:    return "Agregar recurso"
+        case .resource:    return "Agregar cosa"
         case .reservation: return "Hacer reservación"
-        case .pool:        return "Crear fondo común"
+        case .pool:        return "Crear bote"
+        case .invite:      return "Invitar amigos"
         }
     }
 
     // MARK: - Tipos
 
     enum Intent: Hashable {
-        case event, expense, decision, document, resource, reservation, obligation, pool
+        case event, expense, decision, document, resource, reservation, obligation, pool, invite
 
         /// R.6.AI.2 — mapeo desde el `intentKey` string del modelo on-device.
         /// Lowercase + trim para tolerar variantes (e.g., "Event", "events").
@@ -353,7 +363,10 @@ public struct CreateIntentSheet: View {
             case "resource", "resources":                 self = .resource
             case "reservation", "reservations":           self = .reservation
             case "obligation", "obligations", "debt":     self = .obligation
-            case "pool", "pools", "fondo", "fondos":      self = .pool
+            case "pool", "pools", "fondo", "fondos", "bote", "botes":
+                self = .pool
+            case "invite", "invites", "invitation", "invitations", "member", "members":
+                self = .invite
             default:                                       return nil
             }
         }
@@ -386,6 +399,7 @@ private struct FormDestination: View {
     @State private var moneyStore: MoneyStore
     @State private var resourcesStore: ResourcesStore
     @State private var poolsStore: PoolsStore
+    @State private var membersStore: MembersStore
 
     init(intent: CreateIntentSheet.Intent, context: AppContext, container: DependencyContainer, onClose: @escaping () -> Void, onCreated: @escaping (AttentionDestination) -> Void) {
         self.intent = intent
@@ -403,6 +417,7 @@ private struct FormDestination: View {
         ))
         _resourcesStore = State(initialValue: ResourcesStore(rpc: container.rpc))
         _poolsStore = State(initialValue: PoolsStore(rpc: container.rpc))
+        _membersStore = State(initialValue: MembersStore(rpc: container.rpc))
     }
 
     var body: some View {
@@ -422,7 +437,7 @@ private struct FormDestination: View {
                 CreateDecisionView(context: context, container: container, onCreated: { decisionId in
                     onCreated(.decision(decisionId: decisionId, contextActorId: context.id))
                 })
-                    .navigationTitle("Nueva decisión")
+                    .navigationTitle("Nueva votación")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
@@ -465,6 +480,8 @@ private struct FormDestination: View {
             CreatePoolSheet(context: context, store: poolsStore, onCreated: { poolId in
                 onCreated(.poolDetail(poolAccountId: poolId, contextActorId: context.id))
             })
+        case .invite:
+            InviteMembersView(context: context, store: membersStore, container: container)
         }
     }
 }
@@ -520,8 +537,8 @@ private struct DocumentIntentLanding: View {
                                     .foregroundStyle(.tint)
                                     .frame(width: 28)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Sin recurso").font(.callout.weight(.medium))
-                                    Text("Documento del espacio").font(.caption).foregroundStyle(.secondary)
+                                    Text("Sin cosa").font(.callout.weight(.medium))
+                                    Text("Documento del grupo").font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
@@ -563,7 +580,7 @@ private struct DocumentIntentLanding: View {
                                 .buttonStyle(.plain)
                             }
                         } header: {
-                            Text("Adjuntar a recurso")
+                            Text("Adjuntar a cosa")
                         }
                     }
                 }
@@ -646,9 +663,9 @@ private struct ReservationIntentLanding: View {
             case .loaded:
                 if reservableResources.isEmpty {
                     ContentUnavailableView(
-                        "Sin recursos reservables",
+                        "Sin cosas reservables",
                         systemImage: "calendar.badge.exclamationmark",
-                        description: Text("\(context.displayName) no tiene casas, vehículos, equipos u otros activos reservables.")
+                        description: Text("\(context.displayName) no tiene casas, vehículos, equipos u otras cosas reservables.")
                     )
                 } else {
                     List {

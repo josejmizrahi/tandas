@@ -53,7 +53,7 @@ public struct ContextSettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Configuración del espacio")
+            .navigationTitle("Configuración del grupo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -128,7 +128,7 @@ public struct ContextSettingsView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("El espacio desaparecerá de las listas de todos los miembros; la historia se conserva. Por default requiere votación colectiva.")
+            Text("El grupo desaparecerá de las listas de todos los miembros; la historia se conserva. Por default requiere votación colectiva.")
         }
         .actionErrorAlert(archiveRunner)
         .sheet(item: Binding(
@@ -150,11 +150,11 @@ public struct ContextSettingsView: View {
                 Button(role: .destructive) {
                     isConfirmingArchive = true
                 } label: {
-                    Label("Archivar espacio", systemImage: "archivebox")
+                Label("Archivar grupo", systemImage: "archivebox")
                 }
                 .disabled(archiveRunner.isRunning)
             } footer: {
-                Text("Acción peligrosa: por default requiere una decisión aprobada por el grupo (política context_archive_requires_vote).")
+                Text("Acción peligrosa: por default requiere una votación aprobada por el grupo.")
             }
         }
     }
@@ -173,7 +173,7 @@ public struct ContextSettingsView: View {
             targetType: "actor",
             targetId: context.id,
             payload: .object([:]),
-            title: "Archivar espacio: \(context.displayName)",
+            title: "Archivar grupo: \(context.displayName)",
             closesAt: nil,
             clientId: archiveClientId
         )
@@ -222,7 +222,7 @@ public struct ContextSettingsView: View {
             } header: {
                 Text("Qué requiere aprobación (\(voteActions.count))")
             } footer: {
-                Text("Defaults del sistema. Las políticas de este espacio pueden cambiarlos arriba.")
+                Text("Defaults del sistema. Las políticas de este grupo pueden cambiarlos arriba.")
             }
         }
     }
@@ -297,7 +297,7 @@ public struct ContextSettingsView: View {
             if canEdit {
                 Text("Toca una política para editarla. Eliminar = swipe izquierdo.")
             } else {
-                Text("Sólo quien tiene autoridad para ejecutar decisiones puede editar políticas.")
+                Text("Sólo quien puede aplicar votaciones aprobadas puede editar políticas.")
             }
         }
 
@@ -339,7 +339,7 @@ public struct ContextSettingsView: View {
                     Label("Revocar delegación", systemImage: "arrow.uturn.backward")
                 }
             } else {
-                Text("No has delegado tu voto en este espacio.")
+                Text("No has delegado tu voto en este grupo.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Button {
@@ -358,7 +358,7 @@ public struct ContextSettingsView: View {
         } header: {
             Text("Mi voto")
         } footer: {
-            Text("Mientras delegues, tu peso de voto se suma al del delegado en decisiones de este espacio.")
+            Text("Mientras delegues, tu peso de voto se suma al del delegado en votaciones de este grupo.")
         }
     }
 
@@ -481,7 +481,7 @@ public struct ContextSettingsView: View {
             DisclosureGroup {
                 decisionsRows(settings.decisionsConfig)
             } label: {
-                Label("Decisiones", systemImage: "checkmark.bubble")
+                Label("Votaciones", systemImage: "checkmark.bubble")
             }
             DisclosureGroup {
                 moneyRows(settings.moneyConfig)
@@ -806,7 +806,7 @@ private struct EditContextGeneralSheet: View {
         NavigationStack {
             Form {
                 Section("Nombre") {
-                    TextField("Nombre del espacio", text: $displayName)
+                    TextField("Nombre del grupo", text: $displayName)
                 }
                 Section("Descripción") {
                     TextField("Descripción (opcional)", text: $description, axis: .vertical)

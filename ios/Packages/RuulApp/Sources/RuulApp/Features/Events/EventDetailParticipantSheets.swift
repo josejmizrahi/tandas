@@ -55,7 +55,7 @@ struct AddParticipantsSheet: View {
                 RuulEmptyState(
                     title: "Sin miembros para agregar",
                     systemImage: "person.2",
-                    message: "Todos los miembros activos del espacio ya son participantes del evento.\n\nPara invitar a alguien externo, usa «Invitar externo» en el toolbar."
+                    message: "Todos los miembros activos del grupo ya son participantes del evento.\n\nPara invitar a alguien externo, usa «Invitar externo» en el toolbar."
                 )
             } else {
                 List {
@@ -86,9 +86,9 @@ struct AddParticipantsSheet: View {
                             .buttonStyle(.plain)
                         }
                     } header: {
-                        Text("Miembros del espacio")
+                        Text("Miembros del grupo")
                     } footer: {
-                        Text("Solo aparecen los miembros activos del espacio que aún no son participantes.")
+                        Text("Solo aparecen los miembros activos del grupo que aún no son participantes.")
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -98,7 +98,7 @@ struct AddParticipantsSheet: View {
 
     private func load() async {
         guard let ctxId = contextId else {
-            phase = .failed(message: "Espacio del evento desconocido")
+            phase = .failed(message: "Grupo del evento desconocido")
             return
         }
         if members.isEmpty { phase = .loading }
@@ -155,7 +155,7 @@ struct AddEventGuestSheet: View {
                 } header: {
                     Text("Datos del invitado")
                 } footer: {
-                    Text("El invitado no será miembro del espacio. Solo aparece en este evento y cuenta en el reparto del gasto según su parte.")
+                    Text("El invitado no será miembro del grupo. Solo aparece en este evento y cuenta en el reparto del gasto según su parte.")
                 }
 
                 Section {

@@ -8,7 +8,7 @@ import RuulCore
 /// List(.insetGrouped) {
 ///   Section { hero greeting }
 ///   Section("Atención")     // attention_inbox cross-context (items específicos)
-///   Section("Tus espacios") // TODOS los espacios collective ordenados por prioridad
+///   Section("Tus grupos")   // TODOS los grupos ordenados por prioridad
 /// }
 /// ```
 ///
@@ -20,21 +20,30 @@ public struct HomeView: View {
     let container: DependencyContainer
     let jumpToContext: (AppContext) -> Void
     let onTriggerCreate: () -> Void
+    let onOpenSettings: () -> Void
 
     @State private var presentedAttention: AttentionDestination?
     @State private var isShowingAllAttention = false
     @State private var overviews: [ContextOverview] = []
+    @State private var quickStart: QuickStartSnapshot?
 
-    public init(container: DependencyContainer, jumpToContext: @escaping (AppContext) -> Void, onTriggerCreate: @escaping () -> Void) {
+    public init(
+        container: DependencyContainer,
+        jumpToContext: @escaping (AppContext) -> Void,
+        onTriggerCreate: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void = {}
+    ) {
         self.container = container
         self.jumpToContext = jumpToContext
         self.onTriggerCreate = onTriggerCreate
+        self.onOpenSettings = onOpenSettings
     }
 
     public var body: some View {
         NavigationStack {
             List {
                 heroSection
+                quickStartSection
                 attentionSection
                 spacesSection
             }
@@ -68,10 +77,13 @@ public struct HomeView: View {
 
     private func loadOverviews() async {
         do {
-            overviews = try await container.rpc.homeOverview()
+            let loaded = try await container.rpc.homeOverview()
+            overviews = loaded
+            await loadQuickStart(from: loaded)
         } catch {
             // Silent — la Section "Hoy en tus espacios" se oculta si vacía.
             overviews = []
+            quickStart = nil
         }
     }
 
@@ -186,9 +198,119 @@ public struct HomeView: View {
         }
     }
 
-    // MARK: - 3. Tus espacios
+    // MARK: - 2.5 Arranque rápido
 
-    /// Una sola sección con TODOS los espacios collective, ordenados por
+    @ViewBuilder
+    private var quickStartSection: some View {
+        if let quickStart, !quickStart.isComplete {
+            Section {
+                HStack(spacing: 12) {
+                    Image(systemName: "flag.checkered")
+                        .foregroundStyle(Theme.Tint.primary)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(quickStart.contextName)
+                            .font(.callout.weight(.medium))
+                            .foregroundStyle(Theme.Text.primary)
+                        Text("\(quickStart.completedCount) de \(quickStart.totalCount) pasos listos")
+                            .font(.caption)
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                quickStartRow(
+                    title: "Invitar amigos",
+                    subtitle: "Que todos puedan confirmar y dividir gastos",
+                    systemImage: "person.badge.plus",
+                    isDone: quickStart.hasInvitedFriends,
+                    action: onOpenSettings
+                )
+                quickStartRow(
+                    title: "Crear próxima reunión",
+                    subtitle: "Cena, viaje, juego o plan del grupo",
+                    systemImage: "calendar.badge.plus",
+                    isDone: quickStart.hasUpcomingEvent,
+                    action: onTriggerCreate
+                )
+                quickStartRow(
+                    title: "Elegir reglas",
+                    subtitle: "Cómo funciona el grupo",
+                    systemImage: "ruler.fill",
+                    isDone: quickStart.hasRules,
+                    action: onOpenSettings
+                )
+                quickStartRow(
+                    title: "Registrar primer gasto",
+                    subtitle: "Para ver saldos y liquidar",
+                    systemImage: "receipt.fill",
+                    isDone: quickStart.hasMoneyActivity,
+                    action: onTriggerCreate
+                )
+            } header: {
+                Text("Arranque rápido")
+            } footer: {
+                Text("Completa estos pasos para que el grupo pueda usar Ruul en menos de 5 minutos.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func quickStartRow(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isDone: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: isDone ? "checkmark.circle.fill" : systemImage)
+                    .foregroundStyle(isDone ? Theme.Tint.success : Theme.Tint.primary)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(Theme.Text.primary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Theme.Text.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if !isDone {
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.Text.tertiary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func loadQuickStart(from overviews: [ContextOverview]) async {
+        let collectives = overviews.filter { $0.actorKind != "person" }
+        guard let overview = collectives.sorted(by: bySpacesPriority).first else {
+            quickStart = nil
+            return
+        }
+
+        async let rulesTask: [Rule]? = try? container.rpc.listRules(contextId: overview.contextActorId)
+        async let obligationsTask: [Obligation]? = try? container.rpc.listObligations(contextId: overview.contextActorId)
+        let (rules, obligations) = await (rulesTask ?? [], obligationsTask ?? [])
+        let moneyTypes: Set<String> = ["expense_share", "iou", "contribution", "dues", "game_debt", "trip_share"]
+        quickStart = QuickStartSnapshot(
+            contextId: overview.contextActorId,
+            contextName: overview.displayName,
+            hasInvitedFriends: overview.memberCount > 1,
+            hasUpcomingEvent: overview.nextEventAt != nil,
+            hasRules: rules.contains { $0.isActive },
+            hasMoneyActivity: obligations.contains { $0.isMoneyKind && moneyTypes.contains($0.obligationType) }
+        )
+    }
+
+    // MARK: - 3. Tus grupos
+
+    /// Una sola sección con TODOS los grupos, ordenados por
     /// prioridad: pendientes desc → deuda → próximo evento → último visitado.
     /// Siempre visible (siempre que haya al menos un collective); los
     /// actionables suben de forma natural sin necesidad de un fallback.
@@ -210,10 +332,10 @@ public struct HomeView: View {
                     }
                 }
             } header: {
-                Text("Tus espacios")
+                Text("Tus grupos")
             } footer: {
                 if hidden > 0 {
-                    Text("Y \(hidden) más en la pestaña Espacios.")
+                    Text("Y \(hidden) más desde Ajustes > Grupo.")
                 }
             }
         }
@@ -328,6 +450,26 @@ public struct HomeView: View {
         container.contextStore.availableContexts.first { $0.id == id }
     }
 
+}
+
+private struct QuickStartSnapshot {
+    let contextId: UUID
+    let contextName: String
+    let hasInvitedFriends: Bool
+    let hasUpcomingEvent: Bool
+    let hasRules: Bool
+    let hasMoneyActivity: Bool
+
+    var totalCount: Int { 4 }
+    var completedCount: Int {
+        [
+            hasInvitedFriends,
+            hasUpcomingEvent,
+            hasRules,
+            hasMoneyActivity
+        ].filter { $0 }.count
+    }
+    var isComplete: Bool { completedCount == totalCount }
 }
 
 // MARK: - Sheet "Todos los pendientes"

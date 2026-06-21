@@ -310,7 +310,7 @@ public struct InviteMembersView: View {
             } header: {
                 Text("Personas en Ruul")
             } footer: {
-                Text("Personas con quien compartes otros espacios. Tap para invitarlas — les llega como invitación pendiente.")
+                Text("Personas con quien compartes otros grupos. Tap para invitarlas — les llega como invitación pendiente.")
             }
         }
     }
