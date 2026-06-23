@@ -30,6 +30,10 @@ public struct ObligationDetailView: View {
     @State private var isShowingGovernanceSheet = false
     @State private var governanceClientId: String = UUID().uuidString
     @State private var pendingDecisionId: UUID?
+    /// 2026-06-21 — friend-group launch P1: el botón "Ir a Dinero" del
+    /// settlePathSection antes hacía dismiss() y forzaba al usuario a navegar
+    /// al tab Dinero a mano. Ahora abre SettlementView directo en sheet.
+    @State private var isShowingSettlement = false
 
     public init(obligationId: UUID, context: AppContext, container: DependencyContainer) {
         self.obligationId = obligationId
@@ -124,6 +128,15 @@ public struct ObligationDetailView: View {
                 }) { wrapper in
                     NavigationStack {
                         DecisionDetailView(decisionId: wrapper.id, context: context, container: container)
+                    }
+                }
+                // 2026-06-21 — friend-group launch P1: SettlementView inline
+                // sin perder el detalle de la obligación.
+                .sheet(isPresented: $isShowingSettlement, onDismiss: {
+                    Task { await load() }
+                }) {
+                    NavigationStack {
+                        SettlementView(context: context, container: container)
                     }
                 }
         }
@@ -265,14 +278,14 @@ public struct ObligationDetailView: View {
                     .foregroundStyle(Theme.Tint.info)
             }
             Button {
-                dismiss()
+                isShowingSettlement = true
             } label: {
-                Label("Ir a Dinero", systemImage: "arrow.right.circle.fill")
+                Label("Liquidar ahora", systemImage: "arrow.right.circle.fill")
             }
         } header: {
             Text("¿Cómo se salda?")
         } footer: {
-            Text("Pronto vas a poder iniciar el neteo desde aquí mismo.")
+            Text("Abre Liquidaciones para marcar como pagado. La contraparte confirma desde su lado.")
         }
     }
 

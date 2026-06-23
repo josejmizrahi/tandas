@@ -12,6 +12,12 @@ public struct ActivityFeedView: View {
     /// V.3 — export de la memoria institucional (CSV vía ShareLink).
     @State private var exportItem: ExportedHistory?
     @State private var isExporting = false
+    /// 2026-06-21 — friend-group launch P1: filtrar eventos system-generated
+    /// (rule.evaluated, settlement.* automáticos, etc.) por default. El
+    /// founder de un grupo de amigos quiere ver "qué pasó esta semana", no
+    /// ver 30 filas de "Regla evaluada · Sin coincidencia". Toggle persiste
+    /// en sesión solamente — no requiere setting backend.
+    @State private var showsSystemEvents = false
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -42,33 +48,39 @@ public struct ActivityFeedView: View {
             await store.load(context: context)
         }
         .toolbar {
-            if store.hasDescendants {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Toggle(isOn: Binding(
-                        get: { store.includeDescendants },
-                        set: { newValue in
-                            Task { await store.setIncludeDescendants(newValue, context: context) }
-                        }
-                    )) {
-                        Label("Incluir subespacios", systemImage: "list.bullet.indent")
-                    }
-                    .toggleStyle(.button)
-                }
-            }
-            // V.3 — "memoria institucional exportable": la promesa de la
-            // visión ("historial completo, export simple") en CSV.
+            // 2026-06-21 — toggle "Mostrar técnicas" + opciones secundarias en
+            // Menu para no saturar el toolbar. Default: ocultar system events
+            // (rule.evaluated, settlement.batch_generated, etc.).
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Task { await exportHistory() }
+                Menu {
+                    Toggle(isOn: $showsSystemEvents) {
+                        Label("Mostrar eventos técnicos", systemImage: "gearshape.2")
+                    }
+                    if store.hasDescendants {
+                        Toggle(isOn: Binding(
+                            get: { store.includeDescendants },
+                            set: { newValue in
+                                Task { await store.setIncludeDescendants(newValue, context: context) }
+                            }
+                        )) {
+                            Label("Incluir subgrupos", systemImage: "list.bullet.indent")
+                        }
+                    }
+                    Divider()
+                    Button {
+                        Task { await exportHistory() }
+                    } label: {
+                        Label("Exportar historial (CSV)", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(isExporting || !store.phase.isLoaded)
                 } label: {
                     if isExporting {
                         ProgressView()
                     } else {
-                        Image(systemName: "square.and.arrow.up")
-                            .accessibilityLabel("Exportar historial")
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .accessibilityLabel("Filtros de actividad")
                     }
                 }
-                .disabled(isExporting || !store.phase.isLoaded)
             }
         }
         .sheet(item: $selectedEvent) { event in
@@ -122,6 +134,22 @@ public struct ActivityFeedView: View {
                 systemImage: "clock.arrow.circlepath",
                 message: "Todo lo que pase en \(context.displayName) queda registrado aquí: eventos, gastos, multas, decisiones, reservaciones…"
                 )
+        } else if visibleEvents.isEmpty {
+            // Todo lo cargado es system-generated y el filtro está OFF.
+            VStack(spacing: Theme.Spacing.md) {
+                RuulEmptyState(
+                    title: "Sólo actividad técnica",
+                    systemImage: "gearshape.2",
+                    message: "Los eventos visibles están filtrados. Activa \"Mostrar eventos técnicos\" si quieres ver todo el detalle del sistema."
+                )
+                Button {
+                    showsSystemEvents = true
+                } label: {
+                    Label("Mostrar eventos técnicos", systemImage: "gearshape.2")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+            }
         } else {
             List {
                 ForEach(groupedByDay, id: \.day) { group in
@@ -193,9 +221,18 @@ public struct ActivityFeedView: View {
 
     // MARK: - Agrupación por día
 
+    /// 2026-06-21 — feed filtrado por el toggle "Mostrar técnicas". Cuando
+    /// está OFF (default), excluye los eventos `isSystemGenerated` que son
+    /// ruido para el usuario típico de friend-group (rule.evaluated, settlement
+    /// automáticos, etc.). El export CSV sigue trayendo todo sin filtro.
+    private var visibleEvents: [ActivityEvent] {
+        if showsSystemEvents { return store.events }
+        return store.events.filter { !$0.isSystemGenerated }
+    }
+
     private var groupedByDay: [(day: String, events: [ActivityEvent])] {
         let calendar = Calendar.current
-        let groups = Dictionary(grouping: store.events) { event -> Date in
+        let groups = Dictionary(grouping: visibleEvents) { event -> Date in
             calendar.startOfDay(for: event.occurredAt ?? .distantPast)
         }
         return groups
