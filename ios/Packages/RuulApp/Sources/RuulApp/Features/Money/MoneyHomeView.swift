@@ -126,20 +126,22 @@ public struct MoneyHomeView: View {
 
     @ViewBuilder
     private var content: some View {
-        List {
-            heroSection
-            if !tesoreriaPending.isEmpty {
-                tesoreriaSection
+        ScrollViewReader { proxy in
+            List {
+                heroSection
+                if !tesoreriaPending.isEmpty {
+                    tesoreriaSection
+                }
+                accionesSection
+                botesSection
+                movimientosSection
+                if !moneyActivity.isEmpty {
+                    actividadSection
+                }
+                detallesSection(proxy: proxy)
             }
-            accionesSection
-            botesSection
-            movimientosSection
-            if !moneyActivity.isEmpty {
-                actividadSection
-            }
-            detallesSection
+            .listStyle(.insetGrouped)
         }
-        .listStyle(.insetGrouped)
     }
 
     // MARK: - Datos derivados
@@ -211,18 +213,29 @@ public struct MoneyHomeView: View {
     }
 
     private var heroAllClear: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+        // R.15 fix — mi posición es 0, pero el grupo puede tener deudas
+        // abiertas de terceros (mismo filtro que la Tesorería, sin
+        // aportaciones a botes). El hero no debe decir "todo al día"
+        // en absoluto cuando abajo hay deudas del grupo.
+        let groupPending = tesoreriaPending.count
+        return VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.title)
                     .foregroundStyle(Theme.Tint.success)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Todo está al día")
+                    Text(groupPending == 0 ? "Todo está al día" : "Tú estás al día")
                         .font(.title2.weight(.bold))
                         .foregroundStyle(Theme.Text.primary)
-                    Text("No debes dinero. Nadie te debe dinero.")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.Text.secondary)
+                    Text(
+                        groupPending == 0
+                            ? "No debes dinero. Nadie te debe dinero."
+                            : groupPending == 1
+                                ? "No debes dinero. El grupo tiene 1 deuda abierta."
+                                : "No debes dinero. El grupo tiene \(groupPending) deudas abiertas."
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Text.secondary)
                 }
                 Spacer(minLength: 0)
             }
@@ -234,6 +247,17 @@ public struct MoneyHomeView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            } else {
+                // R.15 fix — sin permiso de registrar, la pantalla no debe
+                // quedar sin acción: al menos poder ver los movimientos.
+                NavigationLink {
+                    LedgerBrowserView(context: context, container: container)
+                } label: {
+                    Label("Ver movimientos", systemImage: "list.bullet.rectangle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
                 .controlSize(.large)
             }
         }
@@ -617,7 +641,7 @@ public struct MoneyHomeView: View {
     // MARK: - Detalles
 
     @ViewBuilder
-    private var detallesSection: some View {
+    private func detallesSection(proxy: ScrollViewProxy) -> some View {
         Section {
             LabeledContent {
                 Text(balanceBruto.currencyLabel(currencyCode))
@@ -642,12 +666,39 @@ public struct MoneyHomeView: View {
             } label: {
                 Label("Crédito total", systemImage: "arrow.up.right.circle.fill")
             }
-            LabeledContent {
-                Text("\(openMoney.count)")
-                    .font(.callout.weight(.semibold).monospacedDigit())
-                    .contentTransition(.numericText(value: Double(openMoney.count)))
-            } label: {
-                Label("Deudas abiertas", systemImage: "doc.text.below.ecg.fill")
+            if openMoney.isEmpty {
+                LabeledContent {
+                    Text("0")
+                        .font(.callout.weight(.semibold).monospacedDigit())
+                } label: {
+                    Label("Deudas abiertas", systemImage: "doc.text.below.ecg.fill")
+                }
+            } else {
+                // R.15 fix — la fila navega: lleva a la lista de Tesorería de
+                // arriba (misma pantalla) o, si esa sección no está visible,
+                // abre la primera deuda abierta. HStack plano (no Button +
+                // LabeledContent, ver P0 2026-06-08).
+                Button {
+                    if let first = tesoreriaPending.first {
+                        withAnimation { proxy.scrollTo(first.id, anchor: .center) }
+                    } else if let firstOpen = openMoney.first {
+                        selectedObligationId = firstOpen.id
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        Label("Deudas abiertas", systemImage: "doc.text.below.ecg.fill")
+                            .foregroundStyle(Theme.Text.primary)
+                        Spacer(minLength: 12)
+                        Text("\(openMoney.count)")
+                            .font(.callout.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(Theme.Text.secondary)
+                            .contentTransition(.numericText(value: Double(openMoney.count)))
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Theme.Text.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
             }
         } header: {
             Text("Detalles")
