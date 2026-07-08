@@ -68,6 +68,9 @@ public struct MyReservationsView: View {
                             row(entry)
                         }
                         .buttonStyle(.plain)
+                        .swipeActions(edge: .trailing) {
+                            swipeActions(entry)
+                        }
                     }
                 } header: {
                     Label(filter.headerLabel, systemImage: filter.headerSymbol)
@@ -141,6 +144,29 @@ public struct MyReservationsView: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(statusTint(entry.reservation.status))
         }
+    }
+
+    // MARK: - Swipe actions
+
+    /// R.15 — cancelar desde la lista. Todas las entries son mías (filtro
+    /// `isMine` en `load()`), así que "Cancelar" es honesto para reservas
+    /// requested/approved que aún no terminan. Mismo path que
+    /// ContextReservationsView, incluido el reload post-acción.
+    /// No hay "Aprobar"/"Confirmar": esta vista sólo agrega reservas donde soy
+    /// requester/beneficiario y no carga `myPermissions` por contexto.
+    @ViewBuilder
+    private func swipeActions(_ entry: Entry) -> some View {
+        let r = entry.reservation
+        if (r.status == "requested" || r.status == "approved") && r.endsAt >= Date() {
+            Button("Cancelar", role: .destructive) {
+                Task { await runAndReload { try await container.rpc.cancelReservation(reservationId: r.id) } }
+            }
+        }
+    }
+
+    private func runAndReload(_ action: () async throws -> Void) async {
+        try? await action()
+        await load()
     }
 
     private func rangeText(_ r: Reservation) -> String {
