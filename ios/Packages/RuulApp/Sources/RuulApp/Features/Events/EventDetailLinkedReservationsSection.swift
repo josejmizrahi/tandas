@@ -10,11 +10,18 @@ import RuulCore
 /// para los 5 partidos). Si no hay reservaciones linkeadas, no renderiza.
 /// Tap → push ResourceDetailViewV2 (donde el usuario ya ve detalles del
 /// recurso + linkedEvents de vuelta).
+///
+/// R.15 — swipe actions inline "Aprobar" (requested) / "Confirmar" (approved)
+/// para quien tiene `reservations.manage`, mismos paths que
+/// `ContextReservationsView`. Tras la acción, el padre recarga vía `onChanged`.
 struct EventDetailLinkedReservationsSection: View {
     let linkedReservations: [Reservation]
     let linkedResourceNames: [UUID: String]
     let context: AppContext
     let container: DependencyContainer
+    let store: EventDetailStore
+    /// Recarga las reservaciones linkeadas en el padre (dueño del @State).
+    let onChanged: () async -> Void
 
     var body: some View {
         if !linkedReservations.isEmpty {
@@ -43,6 +50,9 @@ struct EventDetailLinkedReservationsSection: View {
                                 .foregroundStyle(linkedReservationTint(reservation.status))
                         }
                     }
+                    .swipeActions(edge: .trailing) {
+                        reservationSwipeActions(reservation)
+                    }
                 }
             } header: {
                 Text(linkedReservations.count == 1 ? "Cosa reservada" : "Cosas reservadas (\(linkedReservations.count))")
@@ -52,6 +62,34 @@ struct EventDetailLinkedReservationsSection: View {
                 }
             }
         }
+    }
+
+    /// Mismo gate que `ReservationsStore.canManage(in:)` — replica porque esta
+    /// section vive del `EventDetailStore` (que ya trae `my_permissions` del
+    /// mismo `context_summary`).
+    private var canManageReservations: Bool {
+        context.isPersonal || store.myPermissions.contains("reservations.manage")
+    }
+
+    @ViewBuilder
+    private func reservationSwipeActions(_ reservation: Reservation) -> some View {
+        if canManageReservations && reservation.isPending {
+            Button("Aprobar") {
+                Task { await runAndReload { try await container.rpc.approveReservation(reservationId: reservation.id) } }
+            }
+            .tint(.green)
+        }
+        if canManageReservations && reservation.status == "approved" {
+            Button("Confirmar") {
+                Task { await runAndReload { try await container.rpc.confirmReservation(reservationId: reservation.id) } }
+            }
+            .tint(.blue)
+        }
+    }
+
+    private func runAndReload(_ action: () async throws -> Void) async {
+        try? await action()
+        await onChanged()
     }
 
     private func linkedReservationRange(_ r: Reservation) -> String {

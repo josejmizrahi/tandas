@@ -388,10 +388,19 @@ public struct EventDetailView: View {
                 onSelfCheckIn: { await selfCheckIn() }
             )
             EventDetailDescriptionSection(event: event)
-            EventDetailNextSessionSection(event: event, store: store)
+            EventDetailNextSessionSection(
+                event: event,
+                store: store,
+                canChangeHost: hasManageAuthority,
+                onChangeHost: { isShowingNextHostPicker = true }
+            )
             EventDetailSeriesSection(event: event, context: context, container: container)
             EventDetailLocationSection(event: event)
-            EventDetailTripSection(event: event)
+            EventDetailTripSection(
+                event: event,
+                store: store,
+                onRecordExpense: { openExpenseSheet() }
+            )
             // — Personas —
             EventDetailParticipantsSection(
                 store: store,
@@ -418,7 +427,9 @@ public struct EventDetailView: View {
                 linkedReservations: linkedReservations,
                 linkedResourceNames: linkedResourceNames,
                 context: context,
-                container: container
+                container: container,
+                store: store,
+                onChanged: { await loadLinkedReservations() }
             )
             EventDetailRelatedResourcesSection(
                 eventActivity: eventActivity,

@@ -3,6 +3,17 @@ import RuulCore
 
 struct EventDetailTripSection: View {
     let event: CalendarEvent
+    /// R.15 — para gatear el CTA de gasto con `available_actions[]` (mismo
+    /// gate que EventDetailMoneySection).
+    let store: EventDetailStore
+    /// Abre la misma sheet de gasto scoped al evento (openExpenseSheet en
+    /// EventDetailView — mismo MoneyStore + EventScope).
+    let onRecordExpense: () -> Void
+
+    /// Mismo criterio que `EventDetailMoneySection.recordExpenseAction`.
+    private var recordExpenseAction: AvailableAction? {
+        store.availableActions.first { $0.actionKey == "record_expense" }
+    }
 
     var body: some View {
         if event.type == .trip {
@@ -27,6 +38,16 @@ struct EventDetailTripSection: View {
                 LabeledContent("Estado") {
                     Text(tripStatus)
                         .foregroundStyle(statusTint)
+                }
+                // R.15 — CTA de gasto scoped al viaje. Sólo si el backend
+                // trae record_expense; disabled respeta el `enabled` (P0.5).
+                if let action = recordExpenseAction {
+                    Button {
+                        onRecordExpense()
+                    } label: {
+                        Label("Registrar gasto del viaje", systemImage: "banknote")
+                    }
+                    .disabled(!action.enabled)
                 }
             } header: {
                 Text("Viaje")

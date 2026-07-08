@@ -9,6 +9,11 @@ import RuulCore
 struct EventDetailNextSessionSection: View {
     let event: CalendarEvent
     let store: EventDetailStore
+    /// R.15 — mismo gate que el item "Cambiar próximo anfitrión" del toolbar
+    /// (`hasManageAuthority` en EventDetailView).
+    let canChangeHost: Bool
+    /// Abre el mismo `NextHostPickerSheet` del toolbar (estado en el padre).
+    let onChangeHost: () -> Void
 
     var body: some View {
         if event.isRecurring && event.isScheduled {
@@ -38,18 +43,31 @@ struct EventDetailNextSessionSection: View {
                       let hostName = preview.nextActorName,
                       let nextStart = EventDetailFormatting.nextOccurrenceDate(for: event) {
                 Section {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Organiza \(hostName)")
-                                .font(.callout.weight(.medium))
-                                .foregroundStyle(Theme.Text.primary)
-                            Text(nextStart.formatted(.dateTime.weekday(.wide).day().month(.wide)))
-                                .font(.caption)
-                                .foregroundStyle(Theme.Text.secondary)
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Organiza \(hostName)")
+                                    .font(.callout.weight(.medium))
+                                    .foregroundStyle(Theme.Text.primary)
+                                Text(nextStart.formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.Text.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: "person.2.crop.square.stack.fill")
+                                .foregroundStyle(Theme.Tint.primary)
                         }
-                    } icon: {
-                        Image(systemName: "person.2.crop.square.stack.fill")
+                        Spacer(minLength: 0)
+                        // R.15 — la fila del anfitrión expone la acción del
+                        // toolbar directamente (antes era un Label muerto).
+                        if canChangeHost {
+                            Button("Cambiar") {
+                                onChangeHost()
+                            }
+                            .font(.callout)
+                            .buttonStyle(.borderless)
                             .foregroundStyle(Theme.Tint.primary)
+                        }
                     }
                 } header: {
                     HStack(spacing: 6) {
