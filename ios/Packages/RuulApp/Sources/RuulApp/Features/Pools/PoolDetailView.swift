@@ -52,6 +52,8 @@ public struct PoolDetailView: View {
             ContributePoolSheet(
                 poolAccountId: poolAccountId,
                 currency: store.detail?.poolAccount.currency ?? "MXN",
+                context: context,
+                container: container,
                 store: store
             )
         }
@@ -469,24 +471,20 @@ public struct PoolDetailView: View {
 
 // MARK: - Sheet de aporte
 
-/// R.8.E — aporte simple en efectivo al fondo (`contribute_to_pool`,
-/// basis_kind='cash').
-///
-/// Issue 2 founder (audit 2026-06-14, BLOQUEADO BACKEND) — el founder pidió
-/// poder "registrar un aporte de otra persona" (caso: admin/treasurer recibe
-/// efectivo y lo registra a nombre del aportante). El RPC backend
-/// `contribute_to_pool` actualmente NO acepta `p_contributor_actor_id`: el
-/// contributor se infiere del caller. Se requiere update backend antes de
-/// poder cablear un picker "A nombre de" aquí. Documentar en backlog R.8 y
-/// agregar `p_contributor_actor_id` (opcional, con permission check
-/// `pool.contribute_on_behalf` o `money.settle`).
+/// R.8.E + R.14.F — aporte en efectivo al fondo (`contribute_to_pool`,
+/// basis_kind='cash'), propio o a nombre de otro miembro (issue 2 founder,
+/// audit 2026-06-14: admin/tesorero recibe efectivo y lo registra a nombre
+/// del aportante — desbloqueado con `p_contributor_actor_id` en backend).
 private struct ContributePoolSheet: View {
     let poolAccountId: UUID
     let currency: String
+    let context: AppContext
+    let container: DependencyContainer
     let store: PoolDetailStore
 
     @Environment(\.dismiss) private var dismiss
     @State private var amountText = ""
+    @State private var contributorId: UUID?
     @State private var runner = ActionRunner()
 
     private var amount: Double? { Double(amountText.replacingOccurrences(of: ",", with: "")) }
@@ -494,7 +492,7 @@ private struct ContributePoolSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Tu aporte") {
+                Section("Aporte") {
                     HStack {
                         Text("$")
                         TextField("0.00", text: $amountText)
@@ -503,6 +501,12 @@ private struct ContributePoolSheet: View {
                             .foregroundStyle(Theme.Text.secondary)
                     }
                 }
+
+                ContributorPickerSection(
+                    context: context,
+                    container: container,
+                    contributorId: $contributorId
+                )
 
                 Section {
                     Button {
@@ -539,7 +543,8 @@ private struct ContributePoolSheet: View {
                 basisKind: "cash",
                 amount: amount,
                 currency: currency,
-                clientId: UUID().uuidString
+                clientId: UUID().uuidString,
+                contributorActorId: contributorId
             ))
         }
         if success { dismiss() }

@@ -2109,6 +2109,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pValuationMethod: String?
             let pValuationNotes: String?
             let pClientId: String?
+            let pContributorActorId: UUID?
             enum CodingKeys: String, CodingKey {
                 case pPoolAccountId = "p_pool_account_id"
                 case pBasisKind = "p_basis_kind"
@@ -2118,6 +2119,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pValuationMethod = "p_valuation_method"
                 case pValuationNotes = "p_valuation_notes"
                 case pClientId = "p_client_id"
+                case pContributorActorId = "p_contributor_actor_id"
             }
         }
         return try await call("contribute_to_pool", params: Params(
@@ -2128,7 +2130,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pAssetResourceId: input.assetResourceId,
             pValuationMethod: input.valuationMethod,
             pValuationNotes: input.valuationNotes,
-            pClientId: input.clientId
+            pClientId: input.clientId,
+            pContributorActorId: input.contributorActorId
         ))
     }
 

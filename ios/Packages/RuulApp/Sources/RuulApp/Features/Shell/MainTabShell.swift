@@ -35,7 +35,12 @@ public struct MainTabShell: View {
                     container: container,
                     jumpToContext: jumpToContext,
                     onTriggerCreate: { isShowingCreateSheet = true },
-                    onOpenSettings: { selectedTab = .settings }
+                    onOpenSettings: { selectedTab = .settings },
+                    jumpToContextMoney: { context in
+                        container.contextStore.switchTo(context)
+                        selectedTab = .money
+                        Task { await container.contextPreferencesStore.recordVisit(context.id) }
+                    }
                 )
             }
 

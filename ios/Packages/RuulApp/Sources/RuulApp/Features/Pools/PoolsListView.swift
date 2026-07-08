@@ -55,7 +55,7 @@ public struct PoolsListView: View {
             CreatePoolSheet(context: context, store: store)
         }
         .sheet(item: $quickContributeTarget) { pool in
-            QuickContributeSheet(pool: pool, context: context, store: store)
+            QuickContributeSheet(pool: pool, context: context, container: container, store: store)
         }
     }
 
@@ -150,10 +150,12 @@ public struct PoolsListView: View {
 private struct QuickContributeSheet: View {
     let pool: PoolAccount
     let context: AppContext
+    let container: DependencyContainer
     let store: PoolsStore
 
     @Environment(\.dismiss) private var dismiss
     @State private var amountText = ""
+    @State private var contributorId: UUID?
     @State private var runner = ActionRunner()
 
     private var amount: Double? {
@@ -179,7 +181,7 @@ private struct QuickContributeSheet: View {
                     }
                 }
 
-                Section("Tu aporte") {
+                Section("Aporte") {
                     HStack {
                         Text("$")
                         TextField("0.00", text: $amountText)
@@ -188,6 +190,12 @@ private struct QuickContributeSheet: View {
                             .foregroundStyle(Theme.Text.secondary)
                     }
                 }
+
+                ContributorPickerSection(
+                    context: context,
+                    container: container,
+                    contributorId: $contributorId
+                )
 
                 Section {
                     Button {
@@ -225,7 +233,8 @@ private struct QuickContributeSheet: View {
                     basisKind: "cash",
                     amount: amount,
                     currency: currency,
-                    clientId: UUID().uuidString
+                    clientId: UUID().uuidString,
+                    contributorActorId: contributorId
                 ),
                 context: context
             )
