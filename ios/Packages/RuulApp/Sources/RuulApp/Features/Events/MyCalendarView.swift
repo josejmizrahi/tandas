@@ -14,6 +14,7 @@ public struct MyCalendarView: View {
     @State private var aggregatedObligations: [(obligation: Obligation, context: AppContext)] = []
     @State private var displayedMonth: Date
     @State private var selectedDay: Date?
+    @State private var createEventTarget: AppContext?
 
     private let cal = Calendar.current
 
@@ -41,6 +42,18 @@ public struct MyCalendarView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
+        .sheet(item: $createEventTarget) { ctx in
+            // Trae su propio NavigationStack interno (mismo patrón que HomeView).
+            CreateEventView(
+                context: ctx,
+                store: EventsStore(rpc: container.rpc),
+                container: container,
+                onCreated: { _ in
+                    createEventTarget = nil
+                    Task { await load() }
+                }
+            )
+        }
     }
 
     // MARK: - Loading
@@ -190,6 +203,7 @@ public struct MyCalendarView: View {
                         .foregroundStyle(Theme.Text.secondary)
                 }
                 .padding(.vertical, Theme.Spacing.xs)
+                createEventButton
             } header: {
                 Text(day.formatted(date: .complete, time: .omitted))
             }
@@ -239,12 +253,43 @@ public struct MyCalendarView: View {
             if !dayReservations.isEmpty {
                 Section {
                     ForEach(dayReservations, id: \.reservation.id) { entry in
-                        reservationRow(entry.reservation, contextName: entry.context.displayName)
+                        NavigationLink {
+                            ResourceDetailViewV2(
+                                resourceId: entry.reservation.resourceId,
+                                context: entry.context,
+                                container: container
+                            )
+                        } label: {
+                            reservationRow(entry.reservation, contextName: entry.context.displayName)
+                        }
                     }
                 } header: {
                     Label("Mis reservaciones", systemImage: "calendar.badge.clock")
                         .foregroundStyle(Theme.Text.secondary)
                 }
+            }
+        }
+    }
+
+    /// R.15 — un día libre invita a crear algo. Con 1 solo colectivo va
+    /// directo; con varios, Menu para elegir el grupo; sin colectivos no hay
+    /// dónde crear y no mostramos nada.
+    @ViewBuilder
+    private var createEventButton: some View {
+        let collectives = container.contextStore.collectiveContexts
+        if collectives.count == 1, let only = collectives.first {
+            Button {
+                createEventTarget = only
+            } label: {
+                Label("Crear evento", systemImage: "plus.circle.fill")
+            }
+        } else if collectives.count > 1 {
+            Menu {
+                ForEach(collectives) { ctx in
+                    Button(ctx.displayName) { createEventTarget = ctx }
+                }
+            } label: {
+                Label("Crear evento", systemImage: "plus.circle.fill")
             }
         }
     }
