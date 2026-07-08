@@ -15,7 +15,8 @@
 | Slice A (P0 #3+#4) | `db419ea` | Home aggregates: chip de botes + actividad reciente cross-grupos (mig `r14_b`) |
 | Slice B (P0 #1) | `44ed89c` | Reputación consolidada en backend: `list_context_members_with_reputation` 1 RPC (mig `r14_c`) |
 | P1 #2 + #6 | `fccc7ee` | Filtro de eventos técnicos en Activity + "Liquidar ahora" directo desde obligación |
-| **R.14.D** (Hall of Shame → P0 acordado) | este commit | **Reputación opt-out por grupo**: toggle "Mostrar reputación" en Ajustes → Miembros (gate `context.manage`), slot `members_config.show_reputation` en `update_context`/`context_settings_summary`, y la RPC de reputación devuelve `[]` con el flag apagado — iOS oculta leaderboards/badges/detalle sin lógica extra (mig `r14_d`) |
+| **R.14.D** (Hall of Shame → P0 acordado) | `cf9978f` | **Reputación opt-out por grupo**: toggle "Mostrar reputación" en Ajustes → Miembros (gate `context.manage`), slot `members_config.show_reputation` en `update_context`/`context_settings_summary`, y la RPC de reputación devuelve `[]` con el flag apagado — iOS oculta leaderboards/badges/detalle sin lógica extra (mig `r14_d`) |
+| **R.14.E** (CI honesto) | este commit | **edge-tests verde otra vez** — llevaba rojo desde 2026-06-16. 3 causas raíz: (1) r12_f dejó un overload ambiguo de `update_calendar_event` (8 vs 9 params) → DROP del legacy; (2) las seed rules R.14 contaminan smokes que assertan multas/conteos exactos → opt-out explícito `r14_skip_seed_rules` en 10 smokes (los que fijan su propio mundo de reglas); (3) R.RES.POLICY (granularity=day, min 1 día en casas) invalidó reservas de prueba de 2-12 horas → ventanas de 1 día. Suite completa 75/75 verificada localmente con replay de la cadena entera (mig `r14_e`) |
 
 **Pendiente para lanzar:** Slice D — founder smoke iPhone JJ (10 flows §10; requiere
 device, incluye ahora "apagar reputación desde Ajustes → desaparecen rankings").
