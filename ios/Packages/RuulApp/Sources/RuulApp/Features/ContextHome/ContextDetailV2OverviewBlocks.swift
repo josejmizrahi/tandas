@@ -8,8 +8,11 @@ import RuulCore
 // row del body. Affordances secundarias (Calendario) viven en el
 // toolbar `+` Menu via descriptor.actions section=events.
 //
-// Empty state: row CTA "Crear el primer evento" → EventsListView (donde
-// vive el toolbar `+` para crear). Mismo patrón que D7 Recursos.
+// Empty state: row CTA "Crear el primer evento" abre CreateEventView
+// directo en sheet (R.15 — antes navegaba a EventsListView: otro empty
+// state + botón `+`, doble hop). Al crear, se cierra la sheet y se empuja
+// el EventDetailView del evento nuevo (mismo patrón CreatedEventTarget +
+// navigationDestination(item:) que EventsListView).
 //
 // Histórico: pre-E.5 mezclaba 2 drill rows en el body (Calendario + Ver
 // todos los eventos) que contaminaban la Section con affordances. E.5
@@ -20,15 +23,44 @@ struct ContextDetailV2EventsSection: View {
     let context: AppContext
     let container: DependencyContainer
 
+    // R.15 — estado local para el CTA del empty state: sheet de creación +
+    // push al detalle del evento recién creado.
+    @State private var eventsStore: EventsStore
+    @State private var isShowingCreate = false
+    @State private var createdEvent: CreatedEventTarget?
+
+    private struct CreatedEventTarget: Identifiable, Hashable {
+        let id: UUID
+    }
+
+    init(descriptor: ContextDetailDescriptor, context: AppContext, container: DependencyContainer) {
+        self.descriptor = descriptor
+        self.context = context
+        self.container = container
+        _eventsStore = State(initialValue: EventsStore(rpc: container.rpc))
+    }
+
     var body: some View {
         let d = descriptor
         Section {
             if d.eventsPreview.isEmpty {
-                NavigationLink {
-                    EventsListView(context: context, container: container)
+                Button {
+                    isShowingCreate = true
                 } label: {
                     Label("Crear el primer evento", systemImage: "calendar.badge.plus")
                         .foregroundStyle(Theme.Tint.primary)
+                }
+                .sheet(isPresented: $isShowingCreate) {
+                    CreateEventView(context: context, store: eventsStore, container: container, onCreated: { id in
+                        isShowingCreate = false
+                        createdEvent = CreatedEventTarget(id: id)
+                    })
+                }
+                // Anclado al row visible: el push sólo se dispara desde la
+                // sheet que ese mismo row presentó, así que el row sigue
+                // instalado cuando `createdEvent` se setea.
+                .navigationDestination(item: $createdEvent) { created in
+                    EventDetailView(eventId: created.id, context: context, container: container)
                 }
             } else {
                 ForEach(d.eventsPreview.prefix(3)) { ev in
