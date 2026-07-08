@@ -1316,6 +1316,9 @@ public struct ContributeToPoolInput: Sendable, Equatable {
     public var valuationMethod: String?
     public var valuationNotes: String?
     public var clientId: String?
+    /// R.14.F — aporte a nombre de otro miembro (admin/tesorero recibe efectivo).
+    /// nil → el caller. Backend exige `money.settle` cuando difiere del caller.
+    public var contributorActorId: UUID?
 
     public init(
         poolAccountId: UUID,
@@ -1325,7 +1328,8 @@ public struct ContributeToPoolInput: Sendable, Equatable {
         assetResourceId: UUID? = nil,
         valuationMethod: String? = nil,
         valuationNotes: String? = nil,
-        clientId: String? = nil
+        clientId: String? = nil,
+        contributorActorId: UUID? = nil
     ) {
         self.poolAccountId = poolAccountId
         self.basisKind = basisKind
@@ -1335,6 +1339,7 @@ public struct ContributeToPoolInput: Sendable, Equatable {
         self.valuationMethod = valuationMethod
         self.valuationNotes = valuationNotes
         self.clientId = clientId
+        self.contributorActorId = contributorActorId
     }
 }
 

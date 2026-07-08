@@ -84,7 +84,7 @@ public struct ActivityFeedView: View {
             }
         }
         .sheet(item: $selectedEvent) { event in
-            ActivityDetailView(event: event, context: context, store: store)
+            ActivityDetailView(event: event, context: context, store: store, container: container)
         }
         .sheet(item: $exportItem) { item in
             ExportHistorySheet(item: item, contextName: context.displayName)
@@ -242,17 +242,61 @@ public struct ActivityFeedView: View {
 }
 
 /// F.13 — detalle de un evento de actividad: payload legible.
+/// R.15 — deja de ser un dead-end: si el evento tiene sujeto navegable
+/// (gasto, evento, votación, recurso), ofrece "Ver relacionado" (mismo
+/// patrón que MyActivityFeedView.subjectDestination).
 public struct ActivityDetailView: View {
     let event: ActivityEvent
     let context: AppContext
     let store: ActivityStore
+    let container: DependencyContainer?
 
     @Environment(\.dismiss) private var dismiss
 
-    public init(event: ActivityEvent, context: AppContext, store: ActivityStore) {
+    public init(event: ActivityEvent, context: AppContext, store: ActivityStore, container: DependencyContainer? = nil) {
         self.event = event
         self.context = context
         self.store = store
+        self.container = container
+    }
+
+    private enum RelatedSubject {
+        case resource(UUID)
+        case event(UUID)
+        case decision(UUID)
+        case obligation(UUID)
+
+        var label: String {
+            switch self {
+            case .resource: return "Ver recurso"
+            case .event: return "Ver evento"
+            case .decision: return "Ver votación"
+            case .obligation: return "Ver movimiento"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .resource: return "shippingbox"
+            case .event: return "calendar"
+            case .decision: return "checkmark.seal"
+            case .obligation: return "dollarsign.circle"
+            }
+        }
+    }
+
+    private var relatedSubject: RelatedSubject? {
+        if let id = event.obligationId { return .obligation(id) }
+        if let id = event.decisionId { return .decision(id) }
+        if let id = event.resourceId { return .resource(id) }
+        guard let subjectId = event.subjectId else { return nil }
+        switch event.subjectType {
+        case "resource":       return .resource(subjectId)
+        case "calendar_event": return .event(subjectId)
+        case "decision":       return .decision(subjectId)
+        case "obligation":     return .obligation(subjectId)
+        default:               return nil
+        }
     }
 
     public var body: some View {
@@ -302,6 +346,25 @@ public struct ActivityDetailView: View {
                                     value: payloadValueLabel(value)
                                 )
                             }
+                        }
+                    }
+                }
+
+                if let container, let related = relatedSubject {
+                    Section {
+                        NavigationLink {
+                            switch related {
+                            case .resource(let id):
+                                ResourceDetailViewV2(resourceId: id, context: context, container: container)
+                            case .event(let id):
+                                EventDetailView(eventId: id, context: context, container: container)
+                            case .decision(let id):
+                                DecisionDetailView(decisionId: id, context: context, container: container)
+                            case .obligation(let id):
+                                ObligationDetailView(obligationId: id, context: context, container: container)
+                            }
+                        } label: {
+                            Label(related.label, systemImage: related.symbol)
                         }
                     }
                 }

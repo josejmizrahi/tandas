@@ -3804,6 +3804,11 @@ public actor MockRuulRPCClient: RuulRPCClient {
         if ["cash", "pending_stake"].contains(input.basisKind), input.currency == nil {
             throw RuulError.backend(.validation(message: "currency is required for cash/pending_stake"))
         }
+        // R.14.F — aporte a nombre de otro (espejo del gate backend).
+        let contributor = input.contributorActorId ?? me.id
+        if contributor != me.id, input.basisKind == "asset" {
+            throw RuulError.backend(.validation(message: "asset contributions must be made by the owner (no on-behalf)"))
+        }
 
         var pairedObligationId: UUID?
         var transactionId: UUID?
@@ -3813,7 +3818,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
             let obligation = Obligation(
                 id: UUID(),
                 contextActorId: pool.parentContextActorId,
-                debtorActorId: me.id,
+                debtorActorId: contributor,
                 creditorActorId: pool.poolActorId,
                 obligationType: "contribution",
                 amount: input.amount,
@@ -3827,8 +3832,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
         let entry = PoolBasisEntry(
             basisEntryId: UUID(),
-            contributorActorId: me.id,
-            contributorDisplayName: actors[me.id]?.displayName ?? me.displayName,
+            contributorActorId: contributor,
+            contributorDisplayName: actors[contributor]?.displayName ?? me.displayName,
             basisKind: input.basisKind,
             basisAmount: input.amount,
             currency: input.currency,

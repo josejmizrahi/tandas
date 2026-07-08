@@ -21,6 +21,8 @@ public struct HomeView: View {
     let jumpToContext: (AppContext) -> Void
     let onTriggerCreate: () -> Void
     let onOpenSettings: () -> Void
+    /// R.15 — salto directo al Dinero del grupo (chips de botes/deuda).
+    let jumpToContextMoney: (AppContext) -> Void
 
     @State private var presentedAttention: AttentionDestination?
     @State private var isShowingAllAttention = false
@@ -30,17 +32,37 @@ public struct HomeView: View {
     /// QuickStart abre directo la biblioteca de presets en vez de mandar a
     /// Ajustes (que mostraba Rules vacío y el usuario no descubría la library).
     @State private var presetLibraryTarget: PresetLibraryTarget?
+    /// R.15 — los pasos del QuickStart abren el flujo real pre-scopeado al
+    /// grupo, no superficies genéricas.
+    @State private var quickStartAction: QuickStartAction?
 
     public init(
         container: DependencyContainer,
         jumpToContext: @escaping (AppContext) -> Void,
         onTriggerCreate: @escaping () -> Void,
-        onOpenSettings: @escaping () -> Void = {}
+        onOpenSettings: @escaping () -> Void = {},
+        jumpToContextMoney: @escaping (AppContext) -> Void = { _ in }
     ) {
         self.container = container
         self.jumpToContext = jumpToContext
         self.onTriggerCreate = onTriggerCreate
         self.onOpenSettings = onOpenSettings
+        self.jumpToContextMoney = jumpToContextMoney
+    }
+
+    /// R.15 — sheets del QuickStart, scopeadas al grupo del arranque rápido.
+    private enum QuickStartAction: Identifiable {
+        case invite(AppContext)
+        case createEvent(AppContext)
+        case recordExpense(AppContext)
+
+        var id: String {
+            switch self {
+            case .invite(let ctx): return "invite-\(ctx.id)"
+            case .createEvent(let ctx): return "event-\(ctx.id)"
+            case .recordExpense(let ctx): return "expense-\(ctx.id)"
+            }
+        }
     }
 
     public var body: some View {
@@ -56,11 +78,18 @@ public struct HomeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .task {
+                // R.15 — el Home puede ser la primera pantalla en cold-launch:
+                // sin contextStore cargado, los taps de grupo eran no-ops
+                // silenciosos (resolveContext devolvía nil).
+                if container.contextStore.availableContexts.isEmpty {
+                    await container.contextStore.load()
+                }
                 await container.attentionInboxStore.load()
                 await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
                 await loadOverviews()
             }
             .refreshable {
+                await container.contextStore.load()
                 await container.attentionInboxStore.load()
                 await container.invitationsStore.load(actorId: container.currentActorStore.actorId)
                 await loadOverviews()
@@ -78,6 +107,33 @@ public struct HomeView: View {
             }
             .sheet(item: $presetLibraryTarget) { target in
                 RulePresetLibrarySheet(context: target.context, store: target.store)
+            }
+            .sheet(item: $quickStartAction) { action in
+                switch action {
+                case .invite(let ctx):
+                    NavigationStack {
+                        InviteMembersView(
+                            context: ctx,
+                            store: MembersStore(rpc: container.rpc),
+                            container: container
+                        )
+                    }
+                case .createEvent(let ctx):
+                    CreateEventView(
+                        context: ctx,
+                        store: EventsStore(rpc: container.rpc),
+                        container: container
+                    )
+                case .recordExpense(let ctx):
+                    RecordExpenseView(
+                        context: ctx,
+                        store: MoneyStore(
+                            rpc: container.rpc,
+                            myActorId: container.currentActorStore.actorId
+                        ),
+                        container: container
+                    )
+                }
             }
         }
     }
@@ -230,14 +286,14 @@ public struct HomeView: View {
                     subtitle: "Que todos puedan confirmar y dividir gastos",
                     systemImage: "person.badge.plus",
                     isDone: quickStart.hasInvitedFriends,
-                    action: onOpenSettings
+                    action: { openQuickStart(for: quickStart.contextId) { .invite($0) } }
                 )
                 quickStartRow(
                     title: "Crear próxima reunión",
                     subtitle: "Cena, viaje, juego o plan del grupo",
                     systemImage: "calendar.badge.plus",
                     isDone: quickStart.hasUpcomingEvent,
-                    action: onTriggerCreate
+                    action: { openQuickStart(for: quickStart.contextId) { .createEvent($0) } }
                 )
                 quickStartRow(
                     title: "Elegir reglas",
@@ -251,7 +307,7 @@ public struct HomeView: View {
                     subtitle: "Para ver saldos y liquidar",
                     systemImage: "receipt.fill",
                     isDone: quickStart.hasMoneyActivity,
-                    action: onTriggerCreate
+                    action: { openQuickStart(for: quickStart.contextId) { .recordExpense($0) } }
                 )
             } header: {
                 Text("Arranque rápido")
@@ -330,13 +386,17 @@ public struct HomeView: View {
         if !visible.isEmpty {
             Section {
                 ForEach(visible) { overview in
-                    Button {
-                        if let ctx = resolveContext(overview.contextActorId) {
-                            jumpToContext(ctx)
+                    spaceRow(overview)
+                        .contentShape(Rectangle())
+                        .onTapGesture { openOverview(overview) }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button {
+                                openOverview(overview, money: true)
+                            } label: {
+                                Label("Dinero", systemImage: "dollarsign.circle.fill")
+                            }
+                            .tint(Theme.Tint.success)
                         }
-                    } label: {
-                        spaceRow(overview)
-                    }
                 }
             } header: {
                 Text("Tus grupos")
@@ -373,27 +433,39 @@ public struct HomeView: View {
                         .foregroundStyle(Theme.Text.primary)
                         .lineLimit(1)
                     if overview.pendingCount > 0 {
-                        Text("\(overview.pendingCount)")
-                            .font(.caption2.weight(.bold).monospacedDigit())
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 1)
-                            .background(Theme.Tint.warning.opacity(0.15), in: Capsule())
-                            .foregroundStyle(Theme.Tint.warning)
+                        // R.15 — el chip de pendientes abre la lista de atención.
+                        Button {
+                            isShowingAllAttention = true
+                        } label: {
+                            Text("\(overview.pendingCount)")
+                                .font(.caption2.weight(.bold).monospacedDigit())
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 1)
+                                .background(Theme.Tint.warning.opacity(0.15), in: Capsule())
+                                .foregroundStyle(Theme.Tint.warning)
+                        }
+                        .buttonStyle(.borderless)
                     }
                     // R.14.B — chip "💰 $X" si el grupo tiene botes abiertos.
+                    // R.15 — tap directo al Dinero del grupo.
                     if let poolsTotal = overview.poolsTotal,
                        let currency = overview.poolsCurrency,
                        poolsTotal > 0 {
-                        HStack(spacing: 2) {
-                            Image(systemName: "banknote.fill")
-                                .font(.caption2)
-                            Text(poolsTotal.compactCurrencyLabel(currency))
-                                .font(.caption2.weight(.semibold).monospacedDigit())
+                        Button {
+                            openOverview(overview, money: true)
+                        } label: {
+                            HStack(spacing: 2) {
+                                Image(systemName: "banknote.fill")
+                                    .font(.caption2)
+                                Text(poolsTotal.compactCurrencyLabel(currency))
+                                    .font(.caption2.weight(.semibold).monospacedDigit())
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Theme.Tint.success.opacity(0.15), in: Capsule())
+                            .foregroundStyle(Theme.Tint.success)
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                        .background(Theme.Tint.success.opacity(0.15), in: Capsule())
-                        .foregroundStyle(Theme.Tint.success)
+                        .buttonStyle(.borderless)
                     }
                 }
                 if let caption = spaceCaption(overview) {
@@ -493,6 +565,34 @@ public struct HomeView: View {
 
     private func resolveContext(_ id: UUID) -> AppContext? {
         container.contextStore.availableContexts.first { $0.id == id }
+    }
+
+    /// R.15 — abre el grupo (o su Dinero) garantizando que el contextStore
+    /// esté cargado; antes el tap era un no-op silencioso en cold-launch.
+    private func openOverview(_ overview: ContextOverview, money: Bool = false) {
+        Task {
+            if resolveContext(overview.contextActorId) == nil {
+                await container.contextStore.load()
+            }
+            guard let ctx = resolveContext(overview.contextActorId) else { return }
+            if money {
+                jumpToContextMoney(ctx)
+            } else {
+                jumpToContext(ctx)
+            }
+        }
+    }
+
+    /// R.15 — resuelve el contexto del QuickStart (cargando si hace falta) y
+    /// presenta la sheet del flujo real.
+    private func openQuickStart(for contextId: UUID, _ make: @escaping (AppContext) -> QuickStartAction) {
+        Task {
+            if resolveContext(contextId) == nil {
+                await container.contextStore.load()
+            }
+            guard let ctx = resolveContext(contextId) else { return }
+            quickStartAction = make(ctx)
+        }
     }
 
 }

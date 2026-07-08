@@ -18,9 +18,16 @@ public struct EventsListView: View {
 
     @State private var store: EventsStore
     @State private var isShowingCreate = false
+    /// R.15 — al crear un evento desde el tab, empujamos su detalle (misma
+    /// conducta que el "+" global de CreateIntentSheet).
+    @State private var createdEvent: CreatedEventTarget?
     @State private var query: String = ""
     /// R.5V.Zoom — Namespace para matched transition source → destination zoom.
     @Namespace private var zoomNamespace
+
+    private struct CreatedEventTarget: Identifiable, Hashable {
+        let id: UUID
+    }
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -63,7 +70,13 @@ public struct EventsListView: View {
             }
         }
         .sheet(isPresented: $isShowingCreate) {
-            CreateEventView(context: context, store: store, container: container)
+            CreateEventView(context: context, store: store, container: container, onCreated: { id in
+                isShowingCreate = false
+                createdEvent = CreatedEventTarget(id: id)
+            })
+        }
+        .navigationDestination(item: $createdEvent) { created in
+            EventDetailView(eventId: created.id, context: context, container: container)
         }
     }
 

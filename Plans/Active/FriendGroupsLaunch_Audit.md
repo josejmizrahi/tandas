@@ -23,6 +23,33 @@ device, incluye ahora "apagar reputación desde Ajustes → desaparecen rankings
 **Post-launch (§11):** trip↔pool · host inicial · guest split · external payout ·
 AI parser · cron observability — sin cambios de prioridad.
 
+## R.15 — App viva (2026-07-08, founder: "Home no conectado + sheets muertas")
+
+Auditoría de conectividad en 4 frentes (Home, botes en eventos, sheets
+informativas, tabs). Shipped en este slice:
+
+| Fix | Detalle |
+|---|---|
+| Aportar a bote POR OTRO miembro | mig `r14_f`: `contribute_to_pool(p_contributor_actor_id)` gate `money.settle` + membership + no-asset. iOS: `ContributorPickerSection` ("A nombre de") en `ContributePoolSheet` y `QuickContributeSheet`. Validado funcional (3 asserts) + 75/75 smokes |
+| Home: tap muerto en cold-launch | `HomeView.task` carga `contextStore` (antes `resolveContext` era nil y el tap de grupo no hacía nada) |
+| Home: QuickStart directo | "Invitar amigos" → `InviteMembersView` del grupo (antes: tab Ajustes) · "Crear reunión" → `CreateEventView` scopeada · "Registrar gasto" → `RecordExpenseView` scopeada (antes: CreateIntentSheet genérico) |
+| Home: chips accionables | chip pendientes → lista de atención · chip 💰 botes → Dinero del grupo (`jumpToContextMoney` nuevo) · swipe "Dinero" en filas de grupo |
+| Crear evento → detalle | `EventsListView` pasa `onCreated` y empuja `EventDetailView` (consistente con el "+" global) |
+| ActivityDetail deja de ser dead-end | sección "Ver relacionado" navega a gasto/evento/votación/recurso (patrón `subjectDestination` de MyActivityFeed) |
+
+**Backlog restante de la auditoría R.15** (file:line verificados 2026-07-08):
+
+- P1 · Reserva ligada a evento sin Aprobar/Confirmar inline (`EventDetailLinkedReservationsSection.swift:13`; RPCs ya existen)
+- P1 · `MyReservationsView` sin CTA aprobar/cancelar (`MyReservationsView.swift:42-48`)
+- P1 · Heros "N eventos"/"N miembros" con glass interactivo pero sin tap (`EventsListView.swift:114-147`, `MembersListView.swift:140-169`)
+- P1 · MoneyHome sección "Detalles" inerte; "Deudas abiertas (N)" no navega (`MoneyHomeView.swift:619-657`)
+- P2 · `EventDetailNextSessionSection` "Organiza X" sin cambiar anfitrión inline (`:9`; `NextHostPickerSheet` ya existe en toolbar)
+- P2 · `EventDetailTripSection` sin "Registrar gasto del viaje" (`:4`)
+- P2 · `WhyObligationSheet`/`WhyDecisionResult` nombran la fuente sin navegar a ella (`ObligationDetailView.swift:514`, `DecisionDetailView.swift:1130`; puede requerir sourceId en RPC)
+- P2 · Empty state de eventos en grupo hace hop extra (`ContextDetailV2OverviewBlocks.swift:26-32`) · "Día libre" sin CTA (`MyCalendarView.swift:183-195`) · fila de reservación no tappable (`MyCalendarView.swift:239-248`)
+- P2 · AttentionDispatcher: scopes `reservation`/`settlement_item`/`pool` de rule_attention_items caen a "Próximamente" (`AttentionDispatcher.swift:104-126`); ramas `.decision/.obligation/...` sin fallback de contexto (`:234-249`)
+- P2 · Hero de Dinero contradice tesorería para admins sin deuda propia (`MoneyHomeView.swift:202-211` vs `:331-345`)
+
 ---
 
 ## 0 · Resumen Ejecutivo
