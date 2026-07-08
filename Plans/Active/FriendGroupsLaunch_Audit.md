@@ -37,7 +37,16 @@ informativas, tabs). Shipped en este slice:
 | Crear evento → detalle | `EventsListView` pasa `onCreated` y empuja `EventDetailView` (consistente con el "+" global) |
 | ActivityDetail deja de ser dead-end | sección "Ver relacionado" navega a gasto/evento/votación/recurso (patrón `subjectDestination` de MyActivityFeed) |
 
-**Backlog restante de la auditoría R.15** (file:line verificados 2026-07-08):
+**R.15.B (2026-07-08, mismo día)** — el backlog de abajo se ejecutó COMPLETO
+en 6 slices paralelos (commits R.15.B 1-6/6), con 3 excepciones honestas:
+(a) "Ver lo generado" en WhyDecisionResult requiere backend — `why_decision_result`
+no expone IDs tipados de lo ejecutado (falta algo como `executed_targets[]`);
+(b) Aprobar/Confirmar en MyReservationsView — la vista filtra por `isMine` y el
+modelo no expone al aprobador: gatearlo en cliente violaría F.2X;
+(c) preseleccionar fecha al crear evento desde el calendario — el init de
+CreateEventView no acepta fecha (mejora menor futura).
+
+**Backlog ejecutado en R.15.B** (file:line verificados 2026-07-08):
 
 - P1 · Reserva ligada a evento sin Aprobar/Confirmar inline (`EventDetailLinkedReservationsSection.swift:13`; RPCs ya existen)
 - P1 · `MyReservationsView` sin CTA aprobar/cancelar (`MyReservationsView.swift:42-48`)
