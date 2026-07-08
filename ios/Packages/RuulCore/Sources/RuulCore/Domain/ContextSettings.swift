@@ -9,6 +9,8 @@ public struct ContextSettings: Decodable, Sendable, Equatable {
     public let moneyConfig: ContextMoneyConfig
     public let reservationsConfig: ContextReservationsConfig
     public let invitationsConfig: ContextInvitationsConfig
+    /// R.14.D — opcional en el wire: backends pre-R.14.D no emiten el slot.
+    public let membersConfig: ContextMembersConfig?
     public let availableActions: [String]
 
     enum CodingKeys: String, CodingKey {
@@ -18,6 +20,7 @@ public struct ContextSettings: Decodable, Sendable, Equatable {
         case moneyConfig = "money_config"
         case reservationsConfig = "reservations_config"
         case invitationsConfig = "invitations_config"
+        case membersConfig = "members_config"
         case availableActions = "available_actions"
     }
 
@@ -28,6 +31,7 @@ public struct ContextSettings: Decodable, Sendable, Equatable {
         moneyConfig: ContextMoneyConfig,
         reservationsConfig: ContextReservationsConfig,
         invitationsConfig: ContextInvitationsConfig,
+        membersConfig: ContextMembersConfig? = nil,
         availableActions: [String]
     ) {
         self.contextActorId = contextActorId
@@ -36,10 +40,14 @@ public struct ContextSettings: Decodable, Sendable, Equatable {
         self.moneyConfig = moneyConfig
         self.reservationsConfig = reservationsConfig
         self.invitationsConfig = invitationsConfig
+        self.membersConfig = membersConfig
         self.availableActions = availableActions
     }
 
     public func can(_ action: String) -> Bool { availableActions.contains(action) }
+
+    /// Default opt-out: la reputación está visible salvo que el grupo la apague.
+    public var showReputation: Bool { membersConfig?.showReputation ?? true }
 }
 
 public struct ContextGeneralSummary: Decodable, Sendable, Equatable {
@@ -103,5 +111,14 @@ public struct ContextInvitationsConfig: Decodable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case whoCanInvite = "who_can_invite"
         case openInvites = "open_invites"
+    }
+}
+
+/// R.14.D — configuración de miembros (reputación opt-out por grupo).
+public struct ContextMembersConfig: Decodable, Sendable, Equatable {
+    public let showReputation: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case showReputation = "show_reputation"
     }
 }

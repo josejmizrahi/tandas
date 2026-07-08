@@ -1054,6 +1054,25 @@ struct MockClientTests {
         #expect(second.moneyConfig.settlementPolicy == "weekly")
     }
 
+    @Test("R.14.D — apagar show_reputation vacía la reputación del grupo")
+    func reputationOptOutMock() async throws {
+        let mock = await makeDemoClient()
+        let cena = MockRuulRPCClient.DemoIds.cenaSemanal
+        let before = try await mock.listContextMembersWithReputation(contextId: cena)
+        #expect(!before.isEmpty)
+        let settings = try await mock.updateContext(UpdateContextInput(
+            contextId: cena, membersConfig: .object(["show_reputation": .bool(false)])
+        ))
+        #expect(settings.membersConfig?.showReputation == false)
+        let after = try await mock.listContextMembersWithReputation(contextId: cena)
+        #expect(after.isEmpty)
+        // Re-encender restaura la visibilidad (default opt-out).
+        let restored = try await mock.updateContext(UpdateContextInput(
+            contextId: cena, membersConfig: .object(["show_reputation": .bool(true)])
+        ))
+        #expect(restored.showReputation)
+    }
+
     @Test("update_context rechaza visibility inválida")
     func updateContextRejectsInvalidVisibility() async throws {
         let mock = await makeDemoClient()

@@ -441,7 +441,8 @@ public struct ContextSettingsView: View {
 
     @ViewBuilder
     private func membersSection(_ settings: ContextSettings) -> some View {
-        Section("Miembros") {
+        let canEdit = store.can("edit_general")
+        Section {
             NavigationLink {
                 MembersListView(context: context, container: container)
             } label: {
@@ -452,6 +453,29 @@ public struct ContextSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            // R.14.D — opt-out de reputación por grupo. Backend = autoridad:
+            // con el toggle apagado la RPC de reputación devuelve vacío para todos.
+            HStack {
+                Label("Mostrar reputación", systemImage: "trophy")
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { settings.showReputation },
+                    set: { newValue in
+                        guard newValue != settings.showReputation, canEdit else { return }
+                        Task {
+                            await runner.run {
+                                try await store.setMembersConfig(contextId: context.id, ["show_reputation": .bool(newValue)])
+                            }
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .disabled(!canEdit || runner.isRunning)
+            }
+        } header: {
+            Text("Miembros")
+        } footer: {
+            Text("Con la reputación apagada nadie ve rankings ni score de miembros en este grupo.")
         }
     }
 

@@ -4,6 +4,24 @@
 **Doctrina:** Ruul como app de amigos arriba; infraestructura social abajo.
 **Meta:** un grupo nuevo crea grupo + invita + agenda + gasto en **< 5 min**.
 
+## Estado 2026-07-08 (verificado contra código)
+
+**Los 8 P0 del §3 están shipped**, más el noveno acordado con la contra-auditoría:
+
+| Slice | Commit | Contenido |
+|---|---|---|
+| Slice 0 + P0 #5/#6/#7 | `aeb8ba4` | Terminology sweep (50+ leaks) · switcher multi-grupo · game variants picker · quick contribute swipe · QuickStart → RulePresetLibrarySheet |
+| Slice A (P0 #2) | `06b3ece` | Seed rules automáticas al crear grupos de amigos (mig `r14_seed_friend_group_rules`) |
+| Slice A (P0 #3+#4) | `db419ea` | Home aggregates: chip de botes + actividad reciente cross-grupos (mig `r14_b`) |
+| Slice B (P0 #1) | `44ed89c` | Reputación consolidada en backend: `list_context_members_with_reputation` 1 RPC (mig `r14_c`) |
+| P1 #2 + #6 | `fccc7ee` | Filtro de eventos técnicos en Activity + "Liquidar ahora" directo desde obligación |
+| **R.14.D** (Hall of Shame → P0 acordado) | este commit | **Reputación opt-out por grupo**: toggle "Mostrar reputación" en Ajustes → Miembros (gate `context.manage`), slot `members_config.show_reputation` en `update_context`/`context_settings_summary`, y la RPC de reputación devuelve `[]` con el flag apagado — iOS oculta leaderboards/badges/detalle sin lógica extra (mig `r14_d`) |
+
+**Pendiente para lanzar:** Slice D — founder smoke iPhone JJ (10 flows §10; requiere
+device, incluye ahora "apagar reputación desde Ajustes → desaparecen rankings").
+**Post-launch (§11):** trip↔pool · host inicial · guest split · external payout ·
+AI parser · cron observability — sin cambios de prioridad.
+
 ---
 
 ## 0 · Resumen Ejecutivo
