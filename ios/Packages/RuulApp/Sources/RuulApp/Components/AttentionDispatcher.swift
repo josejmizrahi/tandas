@@ -16,11 +16,15 @@ import RuulCore
 /// `AttentionDispatcher.destination(for:container:)` + en `AttentionDestinationSheet.body`,
 /// y opcionalmente registrar presentación en `AttentionPresentation`.
 public enum AttentionDestination: Identifiable, Hashable {
-    case decision(decisionId: UUID, contextActorId: UUID)
-    case obligation(obligationId: UUID, contextActorId: UUID)
-    case settlement(contextActorId: UUID, highlightItemId: UUID?)
-    case resourceDetail(resourceId: UUID, contextActorId: UUID)
-    case reservationConflict(conflictId: UUID, resourceId: UUID, contextActorId: UUID)
+    // R.15 — `contextDisplayName` opcional en cases entity-scoped: permite a
+    // `AttentionDestinationSheet.wrapped` construir un AppContext mínimo cuando
+    // el lookup en `availableContexts` falla (mismo fallback que .context/.money/
+    // .event). Los factories estáticos de abajo preservan las firmas viejas.
+    case decision(decisionId: UUID, contextActorId: UUID, contextDisplayName: String?)
+    case obligation(obligationId: UUID, contextActorId: UUID, contextDisplayName: String?)
+    case settlement(contextActorId: UUID, highlightItemId: UUID?, contextDisplayName: String?)
+    case resourceDetail(resourceId: UUID, contextActorId: UUID, contextDisplayName: String?)
+    case reservationConflict(conflictId: UUID, resourceId: UUID, contextActorId: UUID, contextDisplayName: String?)
     case pendingInvitations
     /// R.5Z.fix.CC.2 — context-scoped destination. Usado por items con
     /// `cta_scope_kind=context` (rule_violation, policy_violation, recordatorios
@@ -37,24 +41,54 @@ public enum AttentionDestination: Identifiable, Hashable {
     case event(eventId: UUID, contextActorId: UUID, contextDisplayName: String)
     /// Pool/fondo scope. Push a PoolDetailView post-create desde el flow
     /// "+ Crear → Crear fondo común".
-    case poolDetail(poolAccountId: UUID, contextActorId: UUID)
+    case poolDetail(poolAccountId: UUID, contextActorId: UUID, contextDisplayName: String?)
     /// Kind no soportado por iOS aún. Render UX honesto, no crash.
     case unsupported(kind: String)
 
     public var id: String {
         switch self {
-        case .decision(let id, _):                      return "decision-\(id)"
-        case .obligation(let id, _):                    return "obligation-\(id)"
-        case .settlement(let ctx, let item):            return "settlement-\(ctx)-\(item?.uuidString ?? "_")"
-        case .resourceDetail(let id, _):                return "resource-\(id)"
-        case .reservationConflict(let id, _, _):        return "reservation-conflict-\(id)"
+        case .decision(let id, _, _):                   return "decision-\(id)"
+        case .obligation(let id, _, _):                 return "obligation-\(id)"
+        case .settlement(let ctx, let item, _):         return "settlement-\(ctx)-\(item?.uuidString ?? "_")"
+        case .resourceDetail(let id, _, _):             return "resource-\(id)"
+        case .reservationConflict(let id, _, _, _):     return "reservation-conflict-\(id)"
         case .pendingInvitations:                       return "pending-invitations"
         case .context(let ctx, _):                      return "context-\(ctx)"
         case .money(let ctx, _):                        return "money-\(ctx)"
         case .event(let id, _, _):                      return "event-\(id)"
-        case .poolDetail(let id, _):                    return "pool-\(id)"
+        case .poolDetail(let id, _, _):                 return "pool-\(id)"
         case .unsupported(let kind):                    return "unsupported-\(kind)"
         }
+    }
+
+    // MARK: - R.15 source-compat factories
+    // Preservan las firmas previas a `contextDisplayName` para call sites que
+    // no tienen el nombre del contexto a la mano (CreateIntentSheet,
+    // NotificationCenterView). El sheet cae a "context_not_found" solo si
+    // además el contexto no está en availableContexts.
+
+    public static func decision(decisionId: UUID, contextActorId: UUID) -> AttentionDestination {
+        .decision(decisionId: decisionId, contextActorId: contextActorId, contextDisplayName: nil)
+    }
+
+    public static func obligation(obligationId: UUID, contextActorId: UUID) -> AttentionDestination {
+        .obligation(obligationId: obligationId, contextActorId: contextActorId, contextDisplayName: nil)
+    }
+
+    public static func settlement(contextActorId: UUID, highlightItemId: UUID?) -> AttentionDestination {
+        .settlement(contextActorId: contextActorId, highlightItemId: highlightItemId, contextDisplayName: nil)
+    }
+
+    public static func resourceDetail(resourceId: UUID, contextActorId: UUID) -> AttentionDestination {
+        .resourceDetail(resourceId: resourceId, contextActorId: contextActorId, contextDisplayName: nil)
+    }
+
+    public static func reservationConflict(conflictId: UUID, resourceId: UUID, contextActorId: UUID) -> AttentionDestination {
+        .reservationConflict(conflictId: conflictId, resourceId: resourceId, contextActorId: contextActorId, contextDisplayName: nil)
+    }
+
+    public static func poolDetail(poolAccountId: UUID, contextActorId: UUID) -> AttentionDestination {
+        .poolDetail(poolAccountId: poolAccountId, contextActorId: contextActorId, contextDisplayName: nil)
     }
 }
 
@@ -64,19 +98,19 @@ public enum AttentionDispatcher {
     public static func destination(for item: AttentionItem) -> AttentionDestination {
         switch item.kind {
         case "decision_vote":
-            return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId)
+            return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "governance_pending":
             // R.7.G — proponente espera aprobación. ctaScopeId=decision_id desde backend.
-            return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId)
+            return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "obligation_pay", "obligation_complete":
-            return .obligation(obligationId: item.ctaScopeId, contextActorId: item.contextActorId)
+            return .obligation(obligationId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "settlement_open":
             // ctaScopeId = settlement_item.id (para highlight futuro)
-            return .settlement(contextActorId: item.contextActorId, highlightItemId: item.ctaScopeId)
+            return .settlement(contextActorId: item.contextActorId, highlightItemId: item.ctaScopeId, contextDisplayName: item.contextDisplayName)
         case "resource_conflict_direct":
             // ctaScopeId = resource_id (R.5Y.A1 emit). conflictsCard del Resource V2
             // cubre la resolución (R.5B.5b 3-kind dialog).
-            return .resourceDetail(resourceId: item.ctaScopeId, contextActorId: item.contextActorId)
+            return .resourceDetail(resourceId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "reservation_conflict":
             // subject_id = reservation_conflict.id · resource_id top-level (R.5Y.A1.2)
             // permite cargar ReservationConflictView con el conflict + resource.
@@ -86,7 +120,8 @@ public enum AttentionDispatcher {
             return .reservationConflict(
                 conflictId: item.subjectId,
                 resourceId: resourceId,
-                contextActorId: item.contextActorId
+                contextActorId: item.contextActorId,
+                contextDisplayName: item.contextDisplayName
             )
         case "invitation":
             return .pendingInvitations
@@ -106,11 +141,31 @@ public enum AttentionDispatcher {
         case "context":
             return .context(contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "resource":
-            return .resourceDetail(resourceId: item.ctaScopeId, contextActorId: item.contextActorId)
+            return .resourceDetail(resourceId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "obligation":
-            return .obligation(obligationId: item.ctaScopeId, contextActorId: item.contextActorId)
+            return .obligation(obligationId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "decision":
-            return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId)
+            return .decision(decisionId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
+        case "reservation":
+            // R.15 — items rule-emitted sobre reservaciones. ReservationConflictView
+            // requiere el resource_id top-level; si el item no lo trae, caemos al
+            // contexto (mejor que "Próximamente").
+            guard let resourceId = item.resourceId else {
+                return .context(contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
+            }
+            return .reservationConflict(
+                conflictId: item.ctaScopeId,
+                resourceId: resourceId,
+                contextActorId: item.contextActorId,
+                contextDisplayName: item.contextDisplayName
+            )
+        case "settlement_item":
+            // R.15 — mismo mapeo que el kind settlement_open: SettlementView del
+            // contexto con el item como highlight.
+            return .settlement(contextActorId: item.contextActorId, highlightItemId: item.ctaScopeId, contextDisplayName: item.contextDisplayName)
+        case "pool":
+            // R.15 — items sobre fondos comunes pushean a PoolDetailView.
+            return .poolDetail(poolAccountId: item.ctaScopeId, contextActorId: item.contextActorId, contextDisplayName: item.contextDisplayName)
         case "money_transaction":
             // R.5Z.fix.CC.2.2 — items sobre gastos/payments individuales pushean
             // a la lista de movimientos del contexto.
@@ -231,24 +286,24 @@ public struct AttentionDestinationSheet: View {
 
     public var body: some View {
         switch destination {
-        case .decision(let decisionId, let contextActorId):
-            wrapped(contextActorId: contextActorId) { ctx in
+        case .decision(let decisionId, let contextActorId, let contextDisplayName):
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 DecisionDetailView(decisionId: decisionId, context: ctx, container: container)
             }
-        case .obligation(let obligationId, let contextActorId):
-            wrapped(contextActorId: contextActorId) { ctx in
+        case .obligation(let obligationId, let contextActorId, let contextDisplayName):
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 ObligationDetailView(obligationId: obligationId, context: ctx, container: container)
             }
-        case .settlement(let contextActorId, _):
-            wrapped(contextActorId: contextActorId) { ctx in
+        case .settlement(let contextActorId, _, let contextDisplayName):
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 SettlementView(context: ctx, container: container)
             }
-        case .resourceDetail(let resourceId, let contextActorId):
-            wrapped(contextActorId: contextActorId) { ctx in
+        case .resourceDetail(let resourceId, let contextActorId, let contextDisplayName):
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 ResourceDetailViewV2(resourceId: resourceId, context: ctx, container: container)
             }
-        case .reservationConflict(let conflictId, let resourceId, let contextActorId):
-            wrapped(contextActorId: contextActorId) { ctx in
+        case .reservationConflict(let conflictId, let resourceId, let contextActorId, let contextDisplayName):
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 ReservationConflictBootstrap(
                     conflictId: conflictId,
                     resourceId: resourceId,
@@ -278,9 +333,9 @@ public struct AttentionDestinationSheet: View {
             wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 EventDetailView(eventId: eventId, context: ctx, container: container)
             }
-        case .poolDetail(let poolAccountId, let contextActorId):
+        case .poolDetail(let poolAccountId, let contextActorId, let contextDisplayName):
             // Push a PoolDetailView post-create desde "+ Crear → Crear fondo".
-            wrapped(contextActorId: contextActorId) { ctx in
+            wrapped(contextActorId: contextActorId, fallbackDisplayName: contextDisplayName) { ctx in
                 PoolDetailView(poolAccountId: poolAccountId, context: ctx, container: container)
             }
         case .unsupported(let kind):

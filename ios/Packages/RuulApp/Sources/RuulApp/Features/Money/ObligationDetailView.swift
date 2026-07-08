@@ -19,6 +19,10 @@ public struct ObligationDetailView: View {
     /// R.2S.10 — sheet "¿Por qué este compromiso?" con why_obligation_exists.
     @State private var why: WhyObligationExists?
     @State private var isLoadingWhy = false
+    /// R.15 — regla fuente resuelta para el link "Ver regla". `RuleDetailView`
+    /// necesita el objeto `Rule` completo (no existe rule_detail por id), así
+    /// que se resuelve en `load()` vía `listRules` cuando hay `sourceRuleId`.
+    @State private var sourceRule: Rule?
     /// F.MONEY.4 — sheet de edición de la obligación.
     @State private var isShowingEdit = false
     /// R.7.x — confirmación destructive del forgive directo (no-governance path).
@@ -241,6 +245,9 @@ public struct ObligationDetailView: View {
             // (founder option B, Apple Wallet pattern). El body solo describe.
 
             // R.2S.10 — ¿Por qué este compromiso?
+            // R.15 — la sheet nombra la fuente pero no navega a ella; estos
+            // links llevan directo al evento / votación / regla de origen
+            // usando los source ids que `obligation_detail` ya expone.
             Section {
                 Button {
                     Task { await loadWhy() }
@@ -248,6 +255,28 @@ public struct ObligationDetailView: View {
                     Label("¿Por qué este compromiso?", systemImage: "questionmark.circle")
                 }
                 .disabled(isLoadingWhy)
+
+                if let eventId = detail.sourceEventId {
+                    NavigationLink {
+                        EventDetailView(eventId: eventId, context: context, container: container)
+                    } label: {
+                        Label("Ver evento", systemImage: "calendar")
+                    }
+                }
+                if let decisionId = detail.sourceDecisionId {
+                    NavigationLink {
+                        DecisionDetailView(decisionId: decisionId, context: context, container: container)
+                    } label: {
+                        Label("Ver votación", systemImage: "checkmark.seal")
+                    }
+                }
+                if let rule = sourceRule {
+                    NavigationLink {
+                        RuleDetailView(rule: rule)
+                    } label: {
+                        Label("Ver regla", systemImage: "wand.and.rays")
+                    }
+                }
             }
         }
         .listStyle(.insetGrouped)
@@ -431,6 +460,14 @@ public struct ObligationDetailView: View {
             detail = loadedDetail
             memberNamesById = Dictionary(uniqueKeysWithValues: summary.members.map { ($0.actorId, $0.displayName) })
             phase = .loaded
+            // R.15 — resolver la regla fuente (best-effort: si falla la
+            // lectura, simplemente no aparece el link "Ver regla").
+            if let ruleId = loadedDetail.sourceRuleId {
+                let rules = (try? await rpc.listRules(contextId: context.id)) ?? []
+                sourceRule = rules.first { $0.id == ruleId }
+            } else {
+                sourceRule = nil
+            }
         } catch {
             phase = .failed(message: UserFacingError.from(error).message)
         }

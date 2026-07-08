@@ -137,6 +137,11 @@ public struct MembersListView: View {
             guard let count = byRole[role]?.count, count > 0 else { return nil }
             return (role, count)
         }
+        // R.15 — el glass interactivo prometía tap pero no hacía nada (falso
+        // affordance). Ahora el tap abre el flujo de invitar (mismo sheet que
+        // el toolbar), gateado por el mismo permiso. Sin permiso, el hero se
+        // queda no-interactivo (glass regular, sin acción).
+        let canInvite = store.canInvite(in: context)
         Section {
             GlassEffectContainer(spacing: Theme.Spacing.sm) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.md) {
@@ -161,7 +166,14 @@ public struct MembersListView: View {
                 }
                 .padding(Theme.Spacing.lg)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
+                .glassEffect(canInvite ? .regular.interactive() : .regular, in: .rect(cornerRadius: 18))
+                .contentShape(.rect(cornerRadius: 18))
+                .onTapGesture {
+                    guard canInvite else { return }
+                    isShowingInvite = true
+                }
+                .accessibilityAddTraits(canInvite ? .isButton : [])
+                .accessibilityHint(canInvite ? Text("Invitar a alguien al espacio") : Text(""))
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
