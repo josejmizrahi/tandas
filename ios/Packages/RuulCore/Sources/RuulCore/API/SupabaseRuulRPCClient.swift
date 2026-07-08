@@ -91,6 +91,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pMoneyConfig: JSONValue?
             let pReservationsConfig: JSONValue?
             let pInvitationsConfig: JSONValue?
+            let pMembersConfig: JSONValue?
             enum CodingKeys: String, CodingKey {
                 case pContextActorId = "p_context_actor_id"
                 case pDisplayName = "p_display_name"
@@ -101,6 +102,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pMoneyConfig = "p_money_config"
                 case pReservationsConfig = "p_reservations_config"
                 case pInvitationsConfig = "p_invitations_config"
+                case pMembersConfig = "p_members_config"
             }
         }
         return try await call("update_context", params: Params(
@@ -112,7 +114,8 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pDecisionsConfig: input.decisionsConfig,
             pMoneyConfig: input.moneyConfig,
             pReservationsConfig: input.reservationsConfig,
-            pInvitationsConfig: input.invitationsConfig
+            pInvitationsConfig: input.invitationsConfig,
+            pMembersConfig: input.membersConfig
         ))
     }
 

@@ -18,7 +18,7 @@ public protocol RuulRPCClient: Sendable {
     func personalSettingsSummary() async throws -> PersonalSettings
     /// `context_settings_summary(p_context_actor_id)` — F.1A-2.
     func contextSettingsSummary(contextId: UUID) async throws -> ContextSettings
-    /// `update_context(p_context_actor_id, display_name?, description?, visibility?, image_url?, decisions_config?, money_config?, reservations_config?, invitations_config?)` — F.1A polish.
+    /// `update_context(p_context_actor_id, display_name?, description?, visibility?, image_url?, decisions_config?, money_config?, reservations_config?, invitations_config?, members_config?)` — F.1A polish + R.14.D.
     /// Devuelve el `ContextSettings` actualizado para refresh inmediato.
     func updateContext(_ input: UpdateContextInput) async throws -> ContextSettings
     /// `resource_settings_summary(p_resource_id)` — F.1A-3.
@@ -753,6 +753,8 @@ public struct UpdateContextInput: Sendable, Equatable {
     public var moneyConfig: JSONValue?
     public var reservationsConfig: JSONValue?
     public var invitationsConfig: JSONValue?
+    /// R.14.D — slot `members_config` (p.ej. `show_reputation`).
+    public var membersConfig: JSONValue?
 
     public init(
         contextId: UUID,
@@ -763,7 +765,8 @@ public struct UpdateContextInput: Sendable, Equatable {
         decisionsConfig: JSONValue? = nil,
         moneyConfig: JSONValue? = nil,
         reservationsConfig: JSONValue? = nil,
-        invitationsConfig: JSONValue? = nil
+        invitationsConfig: JSONValue? = nil,
+        membersConfig: JSONValue? = nil
     ) {
         self.contextId = contextId
         self.displayName = displayName
@@ -774,6 +777,7 @@ public struct UpdateContextInput: Sendable, Equatable {
         self.moneyConfig = moneyConfig
         self.reservationsConfig = reservationsConfig
         self.invitationsConfig = invitationsConfig
+        self.membersConfig = membersConfig
     }
 }
 

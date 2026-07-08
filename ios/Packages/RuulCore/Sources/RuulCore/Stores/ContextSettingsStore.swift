@@ -87,4 +87,12 @@ public final class ContextSettingsStore {
             invitationsConfig: .object(fields)
         ))
     }
+
+    /// R.14.D — actualiza members_config (show_reputation).
+    public func setMembersConfig(contextId: UUID, _ fields: [String: JSONValue]) async throws {
+        try await update(UpdateContextInput(
+            contextId: contextId,
+            membersConfig: .object(fields)
+        ))
+    }
 }

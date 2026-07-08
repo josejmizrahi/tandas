@@ -231,6 +231,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
         let moneyMeta = meta["money_config"]?.objectValue ?? [:]
         let reservationsMeta = meta["reservations_config"]?.objectValue ?? [:]
         let invitationsMeta = meta["invitations_config"]?.objectValue ?? [:]
+        let membersMeta = meta["members_config"]?.objectValue ?? [:]
 
         return ContextSettings(
             contextActorId: contextId,
@@ -260,6 +261,9 @@ public actor MockRuulRPCClient: RuulRPCClient {
             invitationsConfig: ContextInvitationsConfig(
                 whoCanInvite: invitationsMeta["who_can_invite"]?.stringValue ?? "admins",
                 openInvites: invitationsMeta["open_invites"]?.boolValue ?? false
+            ),
+            membersConfig: ContextMembersConfig(
+                showReputation: membersMeta["show_reputation"]?.boolValue ?? true
             ),
             availableActions: actions
         )
@@ -304,6 +308,7 @@ public actor MockRuulRPCClient: RuulRPCClient {
         mergeSlot("money_config", with: input.moneyConfig)
         mergeSlot("reservations_config", with: input.reservationsConfig)
         mergeSlot("invitations_config", with: input.invitationsConfig)
+        mergeSlot("members_config", with: input.membersConfig)
         contextMetadata[input.contextId] = .object(meta)
 
         // Actualizar actor (display_name, visibility) si vinieron.
@@ -480,6 +485,11 @@ public actor MockRuulRPCClient: RuulRPCClient {
 
     public func listContextMembersWithReputation(contextId: UUID) async throws -> [MemberReputationRow] {
         try throwIfNeeded()
+        // R.14.D: igual que el backend, [] cuando el grupo apagó la reputación.
+        let membersMeta = contextMetadata[contextId]?.objectValue?["members_config"]?.objectValue ?? [:]
+        if membersMeta["show_reputation"]?.boolValue == false {
+            return []
+        }
         let members = memberships[contextId] ?? []
         // Mock: retornamos rows con métricas en 0; el demo de reputación se
         // sigue alimentando del cliente builder en testing local.
