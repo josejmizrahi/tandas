@@ -118,13 +118,16 @@ struct EventDetailDecisionsSection: View {
             } footer: {
                 Text("Votaciones abiertas de \(context.displayName) y las vinculadas a este evento.")
             }
+        } else if !didLoad {
+            // Loader invisible SOLO mientras carga — evita el gap fantasma. Al
+            // cargar y quedar vacío no renderiza nada.
+            Color.clear
+                .frame(height: 0)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .task { await loadIfNeeded() }
         }
-        // El .task vive fuera del if: corre aunque la section aún no exista.
-        Color.clear
-            .frame(height: 0)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .task { await loadIfNeeded() }
     }
 
     /// Abiertas del contexto + referenciadas por la actividad del evento

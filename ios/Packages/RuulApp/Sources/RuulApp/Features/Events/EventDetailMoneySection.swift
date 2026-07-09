@@ -88,13 +88,17 @@ struct EventDetailMoneySection: View {
             } footer: {
                 footerText
             }
+        } else if !didLoad {
+            // Loader invisible SOLO mientras carga — evita el gap fantasma de una
+            // sección implícita en cada evento. Al cargar y quedar vacío no
+            // renderiza nada (antes el Color.clear vivía siempre fuera del if).
+            Color.clear
+                .frame(height: 0)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .task { await loadIfNeeded() }
         }
-        // El .task vive fuera del if: corre aunque la section aún no exista.
-        Color.clear
-            .frame(height: 0)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .task { await loadIfNeeded() }
     }
 
     @ViewBuilder

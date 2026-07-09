@@ -68,12 +68,14 @@ struct EventDetailRulesSection: View {
             } footer: {
                 Text("Se evalúan automáticamente con los check-ins y cancelaciones de este evento.")
             }
+        } else if !didLoad {
+            Color.clear
+                .frame(height: 0)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .task { await loadIfNeeded() }
         }
-        Color.clear
-            .frame(height: 0)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .task { await loadIfNeeded() }
     }
 
     private func loadIfNeeded() async {
@@ -148,12 +150,14 @@ struct EventDetailPoolsSection: View {
             } footer: {
                 Text("Atajo a los botes de \(context.displayName). Los botes viven en el grupo (Dinero → Botes), no en este evento.")
             }
+        } else if !didLoad {
+            Color.clear
+                .frame(height: 0)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .task { await loadIfNeeded() }
         }
-        Color.clear
-            .frame(height: 0)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .task { await loadIfNeeded() }
     }
 
     private func loadIfNeeded() async {
