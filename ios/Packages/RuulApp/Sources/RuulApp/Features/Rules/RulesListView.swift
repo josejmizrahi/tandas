@@ -3,9 +3,10 @@ import RuulCore
 
 /// F.8 — lista de reglas del contexto.
 ///
-/// **R.5V.X (2026-06-09)** — Rebuild Apple-native + Liquid Glass (mismo patrón
+/// **R.5V.X (2026-06-09)** — Rebuild Apple-native (mismo patrón
 /// que MyResourcesView / EventsListView / MembersListView v3):
-/// 1. Hero Liquid Glass: count de activas + breakdown chips por trigger
+/// 1. Hero plano (lenguaje del hero de Dinero): count de activas + breakdown
+///    chips por trigger
 /// 2. `.searchable` para filtrar por título / descripción
 /// 3. Sections por trigger semántico (Eventos / Reservaciones / Dinero / Otros)
 ///    con tints. Final: section "Pausadas" para rules con status != active.
@@ -157,7 +158,8 @@ public struct RulesListView: View {
         }
     }
 
-    // MARK: - Hero (Liquid Glass)
+    // MARK: - Hero (R.17 — mismo lenguaje que el hero de Dinero: typography
+    // prominente plana, etiqueta semántica y botón de acción. Sin glass flotante.)
 
     @ViewBuilder
     private func heroSection(_ rules: [Rule]) -> some View {
@@ -168,42 +170,48 @@ public struct RulesListView: View {
             return (g, count)
         }
         Section {
-            GlassEffectContainer(spacing: Theme.Spacing.sm) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
-                        Text("\(active.count)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(Theme.Tint.primary)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(active.count == 1 ? "regla activa" : "reglas activas")
-                                .font(.callout)
-                                .foregroundStyle(Theme.Text.secondary)
-                            if rules.count > active.count {
-                                Text("\(rules.count - active.count) pausada\(rules.count - active.count == 1 ? "" : "s")")
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.Text.tertiary)
-                            }
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    if !breakdown.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.xs) {
-                                ForEach(breakdown, id: \.0) { group, count in
-                                    groupChip(group, count: count)
-                                }
-                            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Reglas", systemImage: "scroll")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.Tint.primary)
+                    Text("\(active.count)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Theme.Text.primary)
+                    Text(heroSubtitle(activeCount: active.count, pausedCount: rules.count - active.count))
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+                if breakdown.count > 1 {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(breakdown, id: \.0) { group, count in
+                            groupChip(group, count: count)
                         }
                     }
                 }
-                .padding(Theme.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
+                if store.canManage(in: context) {
+                    Button {
+                        isShowingCreate = true
+                    } label: {
+                        Label("Crear regla", systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.md, leading: Theme.Spacing.lg, bottom: Theme.Spacing.md, trailing: Theme.Spacing.lg))
+            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
         }
+    }
+
+    private func heroSubtitle(activeCount: Int, pausedCount: Int) -> String {
+        var parts: [String] = [activeCount == 1 ? "regla activa" : "reglas activas"]
+        if pausedCount > 0 {
+            parts.append("\(pausedCount) pausada\(pausedCount == 1 ? "" : "s")")
+        }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder

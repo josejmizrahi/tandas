@@ -1,10 +1,10 @@
 import SwiftUI
 import RuulCore
 
-/// R.10.A — Dashboard widgets section (code move, zero behavior change).
+/// R.10.A — Dashboard widgets section (movido del monolito previo 677–831).
 ///
 /// Doctrina: R.5V native-first · "Section is the card".
-/// Movido del monolito previo (677–831).
+/// R.17 — tiles glass → filas planas nativas (LabeledContent) en la Section.
 
 struct ResourceDetailV2DashboardSection: View {
     let widgets: [ResourceWidget]
@@ -13,28 +13,19 @@ struct ResourceDetailV2DashboardSection: View {
     let container: DependencyContainer
 
     var body: some View {
+        // R.17 — filas planas nativas dentro de la Section ("Section is the
+        // card"). Antes: carousel horizontal de tiles con Liquid Glass.
         Section {
-            ScrollView(.horizontal, showsIndicators: false) {
-                // R.5V.Glass.C2 founder feedback — mismo glass que childrenSection.
-                GlassEffectContainer(spacing: 12) {
-                    HStack(spacing: 12) {
-                        ForEach(widgets) { widget in
-                            widgetCard(widget)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                }
+            ForEach(widgets) { widget in
+                widgetRow(widget)
             }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
         } header: {
             Text("Dashboard")
         }
     }
 
     @ViewBuilder
-    private func widgetCard(_ widget: ResourceWidget) -> some View {
+    private func widgetRow(_ widget: ResourceWidget) -> some View {
         if ResourceDetailV2DashboardRouter.destinationKey(widget.widgetKey) != nil {
             NavigationLink {
                 ResourceDetailV2DashboardRouter.destination(
@@ -44,11 +35,10 @@ struct ResourceDetailV2DashboardSection: View {
                     container: container
                 )
             } label: {
-                widgetCardBody(widget, tappable: true)
+                widgetRowLabel(widget)
             }
-            .buttonStyle(.plain)
         } else {
-            widgetCardBody(widget, tappable: false)
+            widgetRowLabel(widget)
         }
     }
 
@@ -93,42 +83,25 @@ struct ResourceDetailV2DashboardSection: View {
     }
 
     @ViewBuilder
-    private func widgetCardBody(_ widget: ResourceWidget, tappable: Bool) -> some View {
+    private func widgetRowLabel(_ widget: ResourceWidget) -> some View {
         let headline = widgetHeadline(widget)
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                Image(systemName: widget.icon ?? "rectangle.stack")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(headline?.tint ?? Theme.Tint.primary)
-                Spacer()
-                if tappable {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Theme.Text.tertiary)
-                }
-            }
-            Spacer(minLength: 0)
+        LabeledContent {
             if let headline {
                 Text(headline.value)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(headline.tint)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+            }
+        } label: {
+            Label {
                 Text(widget.displayName)
-                    .font(.caption)
-                    .foregroundStyle(Theme.Text.secondary)
-                    .lineLimit(2)
-            } else {
-                Text(widget.displayName)
-                    .font(.callout.weight(.semibold))
                     .foregroundStyle(Theme.Text.primary)
                     .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+            } icon: {
+                Image(systemName: widget.icon ?? "rectangle.stack")
+                    .foregroundStyle(headline?.tint ?? Theme.Tint.primary)
             }
         }
-        .frame(width: 150, height: 130, alignment: .topLeading)
-        .padding(14)
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
     }
 }
 

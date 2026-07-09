@@ -3,9 +3,9 @@ import RuulCore
 
 /// F.6 — lista de recursos visibles del contexto.
 ///
-/// **R.5V.X (2026-06-09)** — Rebuild Apple-native + Liquid Glass (mismo patrón
+/// **R.5V.X (2026-06-09)** — Rebuild Apple-native (mismo patrón
 /// que MyResourcesView v3, ahora paridad per-context):
-/// 1. Hero Liquid Glass: count + breakdown chips por clase
+/// 1. Hero plano (lenguaje del hero de Dinero): count + breakdown chips por clase
 /// 2. `.searchable` para filtrar por nombre
 /// 3. Sections por clase (Bienes raíces / Finanzas / Vehículos / etc.) con
 ///    tints semánticos
@@ -225,7 +225,9 @@ public struct ResourcesListView: View {
         .matchedTransitionSource(id: resource.resourceId, in: zoomNamespace)
     }
 
-    // MARK: - Hero (Liquid Glass) — dos overloads por shape (Personal/Context)
+    // MARK: - Hero (R.17 — mismo lenguaje que el hero de Dinero: typography
+    // prominente plana, etiqueta semántica y botón de acción. Sin glass
+    // flotante.) Dos overloads por shape (Personal/Context).
 
     @ViewBuilder
     private func heroSectionPersonal(_ resources: [MyWorldResource]) -> some View {
@@ -256,34 +258,39 @@ public struct ResourcesListView: View {
             return (g, n)
         }
         Section {
-            GlassEffectContainer(spacing: Theme.Spacing.sm) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
-                        Text("\(count)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(Theme.Tint.primary)
-                        Text(count == 1 ? labelSingular : labelPlural)
-                            .font(.callout)
-                            .foregroundStyle(Theme.Text.secondary)
-                        Spacer(minLength: 0)
-                    }
-                    if !breakdown.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.xs) {
-                                ForEach(breakdown, id: \.0) { group, n in
-                                    classChip(group, count: n)
-                                }
-                            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Recursos", systemImage: "shippingbox")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.Tint.primary)
+                    Text("\(count)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Theme.Text.primary)
+                    Text(count == 1 ? labelSingular : labelPlural)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+                if breakdown.count > 1 {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(breakdown, id: \.0) { group, n in
+                            classChip(group, count: n)
                         }
                     }
                 }
-                .padding(Theme.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
+                if store.canCreate(in: context) {
+                    Button {
+                        isShowingCreate = true
+                    } label: {
+                        Label("Crear recurso", systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.md, leading: Theme.Spacing.lg, bottom: Theme.Spacing.md, trailing: Theme.Spacing.lg))
+            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
         }
     }
 

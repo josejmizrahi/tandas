@@ -16,7 +16,7 @@ import RuulCore
 /// ```
 /// List(.insetGrouped) {
 ///   Section { RuulDetailHero "Mi espacio" }
-///   Section "Favoritos" { carousel horizontal }
+///   Section "Favoritos" { rows densos (mismo row que "Todos") }
 ///   Section "Todos los espacios" { rows densos con métricas }  // sort by last_visited
 ///   Section "Acciones" { Crear espacio / Unirse con código }
 /// }
@@ -200,7 +200,8 @@ public struct ContextsListView: View {
         }
     }
 
-    // MARK: - Favoritos (horizontal carousel embebido en row)
+    // MARK: - Favoritos (rows nativos — mismo row denso que "Todos los
+    // espacios"; el carousel glass anterior se sentía como widget pegado)
 
     @ViewBuilder
     private var favoritesSection: some View {
@@ -208,22 +209,24 @@ public struct ContextsListView: View {
             .filter { $0.isRoot && !$0.isPersonal }
         if !favorites.isEmpty {
             Section {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    GlassEffectContainer(spacing: 12) {
-                        HStack(spacing: 12) {
-                            ForEach(favorites) { ctx in
-                                contextCard(ctx, isFavorite: true)
+                ForEach(favorites) { ctx in
+                    Button {
+                        openContext(ctx)
+                    } label: {
+                        contextRowLabel(ctx, isFavorite: true, overview: overviewMap[ctx.id])
+                    }
+                    .matchedTransitionSource(id: ctx.id, in: zoomNamespace)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button {
+                            Task {
+                                try? await preferencesStore.setFavorite(ctx.id, isFavorite: false)
                             }
+                        } label: {
+                            Label("Quitar", systemImage: "star.slash.fill")
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .scrollTargetLayout()
+                        .tint(Theme.Tint.warning)
                     }
                 }
-                .scrollTargetBehavior(.viewAligned)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
             } header: {
                 Label("Favoritos", systemImage: "star.fill")
                     .foregroundStyle(Theme.Tint.warning)
@@ -417,60 +420,6 @@ public struct ContextsListView: View {
         } header: {
             Text("Acciones")
         }
-    }
-
-    // MARK: - Card visual (carousel — Apple Home / V.3 Continuar pattern)
-
-    @ViewBuilder
-    private func contextCard(_ ctx: AppContext, isFavorite: Bool) -> some View {
-        Button {
-            openContext(ctx)
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Image(systemName: ctx.symbolName)
-                        .font(.system(size: 26, weight: .semibold))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(Theme.Tint.primary)
-                        .frame(width: 40, height: 40)
-                        .background(Theme.Tint.primary.opacity(0.12), in: Circle())
-                        .contentTransition(.symbolEffect(.replace))
-                    Spacer()
-                    Image(systemName: isFavorite ? "star.fill" : "star")
-                        .font(.caption2)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(isFavorite ? Theme.Tint.warning : .clear)
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                Spacer(minLength: 0)
-                Text(ctx.displayName)
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(Theme.Text.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Text(cardCaption(ctx))
-                    .font(.caption2)
-                    .foregroundStyle(Theme.Text.secondary)
-                    .lineLimit(1)
-            }
-            .frame(width: 150, height: 140, alignment: .topLeading)
-            .padding(14)
-            // R.5V.Glass.C2 founder feedback — mismo Liquid Glass interactivo
-            // que los children cards en ContextDetailViewV2.
-            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-        .matchedTransitionSource(id: ctx.id, in: zoomNamespace)
-    }
-
-    private func cardCaption(_ ctx: AppContext) -> String {
-        let kind = subtypeLabel(ctx) ?? ""
-        if ctx.memberCount > 0 {
-            return kind.isEmpty
-                ? "\(ctx.memberCount) miembros"
-                : "\(kind) · \(ctx.memberCount)"
-        }
-        return kind
     }
 
     // MARK: - Helpers

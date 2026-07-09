@@ -3,9 +3,10 @@ import RuulCore
 
 /// F.10 — lista de decisiones del contexto.
 ///
-/// **R.5V.X (2026-06-09)** — Rebuild Apple-native + Liquid Glass (mismo patrón
+/// **R.5V.X (2026-06-09)** — Rebuild Apple-native (mismo patrón
 /// que MyResources/Events/Members/Rules v3):
-/// 1. Hero Liquid Glass: count de abiertas + breakdown chips por status
+/// 1. Hero plano (lenguaje del hero de Dinero): count de abiertas + breakdown
+///    chips por status
 /// 2. `.searchable` para filtrar por título / descripción
 /// 3. Sections por status (Abiertas / Aprobadas / Rechazadas / Ejecutadas /
 ///    Canceladas) con tints semánticos
@@ -115,7 +116,9 @@ public struct DecisionsListView: View {
         }
     }
 
-    // MARK: - Hero
+    // MARK: - Hero (R.17 — mismo lenguaje que el hero de Dinero: typography
+    // prominente plana, etiqueta semántica y botón de acción. Sin custom card
+    // ni glass flotante.)
 
     @ViewBuilder
     private func heroSection(_ decisions: [Decision]) -> some View {
@@ -126,42 +129,48 @@ public struct DecisionsListView: View {
         }
         let openCount = byGroup[.open]?.count ?? 0
         Section {
-            GlassEffectContainer(spacing: Theme.Spacing.sm) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
-                        Text("\(openCount)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(openCount > 0 ? .purple : Theme.Text.secondary)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(openCount == 1 ? "votación abierta" : "votaciones abiertas")
-                                .font(.callout)
-                                .foregroundStyle(Theme.Text.secondary)
-                            if decisions.count > openCount {
-                                Text("\(decisions.count - openCount) en historial")
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.Text.tertiary)
-                            }
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    if !breakdown.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.xs) {
-                                ForEach(breakdown, id: \.0) { group, count in
-                                    statusChip(group, count: count)
-                                }
-                            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Votaciones", systemImage: "checkmark.seal")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.purple)
+                    Text("\(openCount)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(openCount > 0 ? .purple : Theme.Text.secondary)
+                    Text(heroSubtitle(openCount: openCount, total: decisions.count))
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+                if breakdown.count > 1 {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(breakdown, id: \.0) { group, count in
+                            statusChip(group, count: count)
                         }
                     }
                 }
-                .padding(Theme.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
+                if store.canCreate(in: context) {
+                    Button {
+                        isShowingCreate = true
+                    } label: {
+                        Label("Proponer votación", systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.md, leading: Theme.Spacing.lg, bottom: Theme.Spacing.md, trailing: Theme.Spacing.lg))
+            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
         }
+    }
+
+    private func heroSubtitle(openCount: Int, total: Int) -> String {
+        var parts: [String] = [openCount == 1 ? "votación abierta" : "votaciones abiertas"]
+        if total > openCount {
+            parts.append("\(total - openCount) en historial")
+        }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder

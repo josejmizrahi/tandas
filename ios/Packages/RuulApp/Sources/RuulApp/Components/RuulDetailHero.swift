@@ -82,12 +82,12 @@ public struct RuulDetailHero: View {
                 }
             }
         }
-        .padding(Theme.Spacing.lg)
+        .padding(.vertical, Theme.Spacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // R.5V.Glass.C1 (fix founder 2026-06-08) — Liquid Glass neutro.
-        // El tint queda solo en el icon circle; el glass del card es regular
-        // para no convertir cada hero en una cápsula de color saturada.
-        .glassEffect(.regular, in: Theme.cardShape(Theme.Radius.cardHero))
+        // R.17 (founder 2026-07-09: "no me gusta ese card… de todos lados") —
+        // hero PLANO, mismo lenguaje que el hero de Dinero: typography
+        // prominente sobre el fondo agrupado, sin glass card flotante.
+        // El tint vive solo en el icon circle.
     }
 }
 

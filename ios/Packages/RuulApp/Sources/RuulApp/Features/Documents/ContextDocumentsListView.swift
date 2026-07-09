@@ -3,10 +3,10 @@ import RuulCore
 
 /// Documents V2 · D.3 — lista cross-resource de documentos del contexto.
 ///
-/// **R.5V.X (2026-06-09)** — Rebuild Apple-native + Liquid Glass (mismo patrón
+/// **R.5V.X (2026-06-09)** — Rebuild Apple-native (mismo patrón
 /// que MyResources/Events/Members/Rules/Decisions/Resources v3):
-/// 1. Hero Liquid Glass: count + breakdown chips por tipo (Contratos /
-///    Recibos / IDs / etc.)
+/// 1. Hero plano (lenguaje del hero de Dinero): count + breakdown chips por
+///    tipo (Contratos / Recibos / IDs / etc.)
 /// 2. `.searchable` por título / resource displayName
 /// 3. Sections por DocumentType (Contratos / Recibos / Identificaciones /
 ///    Estados de cuenta / Fotos / Otros) con tints semánticos
@@ -151,7 +151,8 @@ public struct ContextDocumentsListView: View {
         }
     }
 
-    // MARK: - Hero (Liquid Glass)
+    // MARK: - Hero (R.17 — mismo lenguaje que el hero de Dinero: typography
+    // prominente plana, etiqueta semántica y botón de acción. Sin glass flotante.)
 
     @ViewBuilder
     private func heroSection(_ docs: [Document]) -> some View {
@@ -162,42 +163,46 @@ public struct ContextDocumentsListView: View {
             return (t, count)
         }
         Section {
-            GlassEffectContainer(spacing: Theme.Spacing.sm) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
-                        Text("\(active.count)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(Theme.Tint.primary)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(active.count == 1 ? "documento" : "documentos")
-                                .font(.callout)
-                                .foregroundStyle(Theme.Text.secondary)
-                            if docs.count > active.count {
-                                Text("\(docs.count - active.count) archivado\(docs.count - active.count == 1 ? "" : "s")")
-                                    .font(.caption2)
-                                    .foregroundStyle(Theme.Text.tertiary)
-                            }
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    if !breakdown.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.xs) {
-                                ForEach(breakdown, id: \.0) { type, count in
-                                    typeChip(type, count: count)
-                                }
-                            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Documentos", systemImage: "doc.text")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.Tint.primary)
+                    Text("\(active.count)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Theme.Text.primary)
+                    Text(heroSubtitle(activeCount: active.count, archivedCount: docs.count - active.count))
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+                if breakdown.count > 1 {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(breakdown, id: \.0) { type, count in
+                            typeChip(type, count: count)
                         }
                     }
                 }
-                .padding(Theme.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
+                Button {
+                    showAttachPicker()
+                } label: {
+                    Label("Adjuntar documento", systemImage: "paperclip")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.md, leading: Theme.Spacing.lg, bottom: Theme.Spacing.md, trailing: Theme.Spacing.lg))
+            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
         }
+    }
+
+    private func heroSubtitle(activeCount: Int, archivedCount: Int) -> String {
+        var parts: [String] = [activeCount == 1 ? "documento activo" : "documentos activos"]
+        if archivedCount > 0 {
+            parts.append("\(archivedCount) archivado\(archivedCount == 1 ? "" : "s")")
+        }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
