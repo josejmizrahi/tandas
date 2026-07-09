@@ -31,9 +31,9 @@ struct DigitalAssetRenderer: ResourceSubtypeRenderer {
     }
 
     /// R.10.F.f Hero subtitle — plataforma como identity (App Store style).
-    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView? {
         guard let platform = d.resource.metadataString("platform") else {
-            return AnyView(EmptyView())
+            return nil
         }
         return AnyView(
             Text(platform)

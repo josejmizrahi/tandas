@@ -55,9 +55,9 @@ struct FinancialRenderer: ResourceSubtypeRenderer {
     /// R.10.F.f Hero subtitle — balance prominent estilo Apple Wallet.
     /// El "Saldo" deja de aparecer en `informationFields` cuando el Hero
     /// ya lo muestra (E.4 dedup).
-    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView? {
         guard let balance = d.metrics.balance, let currency = d.metrics.currency else {
-            return AnyView(EmptyView())
+            return nil
         }
         return AnyView(
             Text(balance.compactCurrencyLabel(currency))

@@ -48,13 +48,14 @@ public struct MemberDetailView: View {
     public var body: some View {
         // R.5V.X 2026-06-08 — Apple-native canonical Detail pattern (V.4/V.5).
         List {
-            // Hero
+            // Hero — celda agrupada nativa (patrón canónico R.17.1). El avatar
+            // reemplaza al symbol badge de RuulDetailHero para personas.
             Section {
-                HStack(spacing: 14) {
+                HStack(spacing: Theme.Spacing.md) {
                     ActorInitialsView(name: member.displayName, size: 56)
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                         Text(member.displayName)
-                            .font(.title3.bold())
+                            .font(.title2.weight(.bold))
                             .foregroundStyle(Theme.Text.primary)
                             .lineLimit(2)
                         if let type = member.membershipType {
@@ -66,13 +67,14 @@ public struct MemberDetailView: View {
                     Spacer(minLength: 0)
                     if isMe {
                         Text("Tú")
-                            .font(.caption.weight(.medium))
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(Theme.Tint.primary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Theme.Tint.primary.badgeFillSubtle, in: Capsule())
                     }
                 }
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
+                .ruulHeroRow()
             }
 
             Section {
@@ -300,12 +302,19 @@ public struct MemberDetailView: View {
                 ProgressView(value: Double(snapshot.score), total: 100)
                     .tint(snapshot.tint)
             }
+            // Solo señales con valor — sin filas en cero que ensucien la tarjeta.
             if let attendance = snapshot.attendancePercent {
                 LabeledContent("Asistencia", value: "\(attendance)%")
             }
-            LabeledContent("Eventos organizados", value: "\(snapshot.hostedEvents)")
-            LabeledContent("Compromisos cumplidos", value: "\(snapshot.completedCommitments)")
-            LabeledContent("Pagos liquidados", value: "\(snapshot.settledMoneyObligations)")
+            if snapshot.hostedEvents > 0 {
+                LabeledContent("Eventos organizados", value: "\(snapshot.hostedEvents)")
+            }
+            if snapshot.completedCommitments > 0 {
+                LabeledContent("Compromisos cumplidos", value: "\(snapshot.completedCommitments)")
+            }
+            if snapshot.settledMoneyObligations > 0 {
+                LabeledContent("Pagos liquidados", value: "\(snapshot.settledMoneyObligations)")
+            }
             if snapshot.shamePoints > 0 {
                 LabeledContent("Riesgo visible", value: snapshot.riskSignal)
             }

@@ -28,16 +28,28 @@ struct ResourceDetailV2HeroSection: View {
         return Section {
             // R.17 — hero canónico. `renderer.heroSubtitle(d)` (Financial balance /
             // Trip date range / etc.) va en el accessory, debajo de los chips.
-            RuulDetailHero(
-                title: d.resource.displayName,
-                systemImage: d.subtype.icon ?? d.class.icon ?? "cube",
-                tint: Theme.Tint.primary,
-                status: d.state.archived ? .archived : nil,
-                chips: chips
-            ) {
-                renderer.heroSubtitle(d)
+            // Sólo se monta cuando el renderer aporta contenido (evita gap fantasma).
+            if let subtitle = renderer.heroSubtitle(d) {
+                RuulDetailHero(
+                    title: d.resource.displayName,
+                    systemImage: d.subtype.icon ?? d.class.icon ?? "cube",
+                    tint: Theme.Tint.primary,
+                    status: d.state.archived ? .archived : nil,
+                    chips: chips
+                ) {
+                    subtitle
+                }
+                .ruulHeroRow()
+            } else {
+                RuulDetailHero(
+                    title: d.resource.displayName,
+                    systemImage: d.subtype.icon ?? d.class.icon ?? "cube",
+                    tint: Theme.Tint.primary,
+                    status: d.state.archived ? .archived : nil,
+                    chips: chips
+                )
+                .ruulHeroRow()
             }
-            .ruulHeroRow()
         }
     }
 }

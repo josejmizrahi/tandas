@@ -50,9 +50,9 @@ struct VehicleRenderer: ResourceSubtypeRenderer {
 
     /// R.10.F.f Hero subtitle — placa monospaced. Identity field para vehículos
     /// (es lo primero que checas).
-    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView? {
         guard let plate = d.resource.metadataString("license_plate") else {
-            return AnyView(EmptyView())
+            return nil
         }
         return AnyView(
             Text(plate)

@@ -26,9 +26,9 @@ protocol ResourceSubtypeRenderer {
     func informationFields(_ d: ResourceDetailDescriptor) -> AnyView
 
     /// Fila bajo el título en el Hero (balance grande / placa monospaced /
-    /// destino + fechas). Default: `EmptyView`. Se renderiza solo cuando el
-    /// renderer aporta info crítica del subtype.
-    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView
+    /// destino + fechas). Devuelve `nil` cuando el subtype no aporta info — el
+    /// hero NO monta el accessory, evitando un gap fantasma. Default: `nil`.
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView?
 
     /// Sections específicas del subtype, entre Info y los Linked* genéricos.
     /// Default: `EmptyView`.
@@ -40,8 +40,8 @@ protocol ResourceSubtypeRenderer {
 }
 
 extension ResourceSubtypeRenderer {
-    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView {
-        AnyView(EmptyView())
+    func heroSubtitle(_ d: ResourceDetailDescriptor) -> AnyView? {
+        nil
     }
 
     func subtypeSpecificSections(

@@ -298,22 +298,8 @@ public struct DecisionDetailView: View {
         let participation = Int((Double(voted) / Double(totalMembers) * 100.0).rounded())
 
         Section {
-            HStack(spacing: 12) {
-                Image(systemName: statusSymbol(decision.status))
-                    .font(.title2)
-                    .foregroundStyle(statusColor(decision.status))
-                    .frame(width: 44, height: 44)
-                    .background(statusColor(decision.status).badgeFillSubtle, in: Circle())
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(decision.statusLabel)
-                        .font(.title3.weight(.semibold))
-                    Text(statusSubtitle(decision))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-
+            // R.17.1 — el status ya vive prominente en el hero (chip + icono +
+            // countdown). Aquí sólo el desglose numérico, sin duplicar la cabecera.
             LabeledContent("Votos") {
                 Text("\(voted)/\(store.members.count)")
                     .font(.callout.weight(.semibold))
@@ -342,6 +328,11 @@ public struct DecisionDetailView: View {
             }
         } header: {
             Text("Estado")
+        } footer: {
+            let subtitle = statusSubtitle(decision)
+            if !subtitle.isEmpty {
+                Text(subtitle)
+            }
         }
     }
 
