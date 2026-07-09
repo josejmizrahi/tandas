@@ -122,61 +122,90 @@ public struct EventsListView: View {
         }
     }
 
-    // MARK: - Hero (Liquid Glass summary)
+    // MARK: - Hero (R.17 — mismo lenguaje que el hero de Dinero:
+    // typography prominente plana, etiqueta semántica y botón de acción.
+    // Sin custom card ni glass flotante.)
 
     @ViewBuilder
     private func heroSection(_ upcoming: [CalendarEvent]) -> some View {
         Section {
-            // R.15 — el hero interactivo abre el primer evento próximo
-            // (`store.upcoming` ya viene ordenado por startsAt ascendente).
-            // NavigationLink oculto (opacity 0) para no dibujar chevron sobre
-            // la glass card; sin próximos, el hero queda inerte.
-            ZStack {
-                if let next = upcoming.first {
-                    NavigationLink {
-                        EventDetailView(eventId: next.id, context: context, container: container)
-                    } label: {
-                        EmptyView()
-                    }
-                    .opacity(0)
-                    .accessibilityLabel("Abrir próximo evento: \(next.title)")
-                }
-                heroCard(upcoming)
-            }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.md, leading: Theme.Spacing.lg, bottom: Theme.Spacing.md, trailing: Theme.Spacing.lg))
+            heroContent(upcoming)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
         }
     }
 
     @ViewBuilder
-    private func heroCard(_ upcoming: [CalendarEvent]) -> some View {
-        let breakdown = upcomingBreakdown(upcoming)
-        GlassEffectContainer(spacing: Theme.Spacing.sm) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
-                    Text("\(upcoming.count)")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
+    private func heroContent(_ upcoming: [CalendarEvent]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            if let next = upcoming.first {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Próximo plan", systemImage: "calendar")
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(Theme.Tint.primary)
-                    Text(upcoming.count == 1 ? "evento próximo" : "eventos próximos")
-                        .font(.callout)
+                    Text(next.title)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(Theme.Text.primary)
+                        .lineLimit(2)
+                    Text(heroSubtitle(next, total: upcoming.count))
+                        .font(.subheadline)
                         .foregroundStyle(Theme.Text.secondary)
-                    Spacer(minLength: 0)
                 }
-                if !breakdown.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: Theme.Spacing.xs) {
-                            ForEach(breakdown, id: \.0) { horizon, count in
-                                horizonChip(horizon, count: count)
-                            }
+                let breakdown = upcomingBreakdown(upcoming)
+                if breakdown.count > 1 {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(breakdown, id: \.0) { horizon, count in
+                            horizonChip(horizon, count: count)
                         }
                     }
                 }
+                NavigationLink {
+                    EventDetailView(eventId: next.id, context: context, container: container)
+                } label: {
+                    Label("Ver evento", systemImage: "arrow.right.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            } else {
+                HStack(spacing: 12) {
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.title)
+                        .foregroundStyle(Theme.Tint.primary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sin planes próximos")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(Theme.Text.primary)
+                        Text("Arma la próxima cena, viaje o juego del grupo.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.Text.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                if store.canCreate(in: context) {
+                    Button {
+                        isShowingCreate = true
+                    } label: {
+                        Label("Crear evento", systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
             }
-            .padding(Theme.Spacing.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
         }
+    }
+
+    private func heroSubtitle(_ next: CalendarEvent, total: Int) -> String {
+        var parts: [String] = []
+        if let starts = next.startsAt {
+            parts.append(starts.formatted(date: .abbreviated, time: .shortened))
+        }
+        if total > 1 {
+            parts.append("\(total) eventos próximos")
+        }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
