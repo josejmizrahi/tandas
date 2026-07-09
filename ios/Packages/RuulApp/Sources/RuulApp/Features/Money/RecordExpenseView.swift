@@ -14,14 +14,56 @@ public struct EventScope: Sendable, Equatable, Identifiable {
     /// proporcionalmente: monto_por_actor = total * weight / sum(weights).
     /// Si vacío o todos == 1, se comporta como split equal estándar.
     public let weights: [UUID: Int]
+    /// R.9.GUESTS — acompañantes sin nombre (+N del RSVP) por anfitrión.
+    /// Solo informativo: el peso ya viene sumado en `weights`; el backend
+    /// (`_event_split_weights`) es la autoridad del cómputo.
+    public let plusCounts: [UUID: Int]
+    /// R.9.GUESTS — invitados externos (`event_guests`) con nombre. Solo
+    /// informativo: su parte la paga el miembro que los invitó (`hostActorId`).
+    public let guests: [GuestInfo]
+
+    /// R.9.GUESTS — invitado externo del evento mostrado como fila informativa
+    /// en el editor de reparto, asignado a su anfitrión.
+    public struct GuestInfo: Sendable, Equatable, Identifiable {
+        public let id: UUID
+        public let displayName: String
+        public let countShare: Int
+        /// Miembro que lo invitó — su deuda absorbe la parte del guest.
+        public let hostActorId: UUID
+
+        public init(id: UUID, displayName: String, countShare: Int, hostActorId: UUID) {
+            self.id = id
+            self.displayName = displayName
+            self.countShare = countShare
+            self.hostActorId = hostActorId
+        }
+
+        public init(_ guest: EventGuest) {
+            self.init(
+                id: guest.id,
+                displayName: guest.displayName,
+                countShare: guest.countShare,
+                hostActorId: guest.invitedByActorId
+            )
+        }
+    }
 
     public var id: UUID { eventId }
 
-    public init(eventId: UUID, eventTitle: String, participantActorIds: Set<UUID>, weights: [UUID: Int] = [:]) {
+    public init(
+        eventId: UUID,
+        eventTitle: String,
+        participantActorIds: Set<UUID>,
+        weights: [UUID: Int] = [:],
+        plusCounts: [UUID: Int] = [:],
+        guests: [GuestInfo] = []
+    ) {
         self.eventId = eventId
         self.eventTitle = eventTitle
         self.participantActorIds = participantActorIds
         self.weights = weights
+        self.plusCounts = plusCounts
+        self.guests = guests
     }
 
     /// Peso de un actor (default 1). Cuando todos los weights son 1 o vacío,
@@ -32,6 +74,16 @@ public struct EventScope: Sendable, Equatable, Identifiable {
 
     /// `true` si hay al menos un peso > 1 → split se hace proporcional.
     public var hasWeights: Bool { weights.values.contains(where: { $0 > 1 }) }
+
+    /// R.9.GUESTS — acompañantes sin nombre de un actor (default 0).
+    public func plusCount(for actorId: UUID) -> Int {
+        plusCounts[actorId] ?? 0
+    }
+
+    /// R.9.GUESTS — invitados externos anfitrioneados por un actor.
+    public func guests(hostedBy actorId: UUID) -> [GuestInfo] {
+        guests.filter { $0.hostActorId == actorId }
+    }
 
     /// Suma de pesos de los actores activos (los de `participantActorIds`).
     public var totalWeight: Int {
@@ -162,10 +214,18 @@ public struct RecordExpenseView: View {
                             Spacer()
                         }
                     } footer: {
-                        Text({
-                            let n = scope.participantActorIds.count
-                            return "El reparto se limita a \(n) \(n == 1 ? "invitado" : "invitados") del evento."
-                        }())
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text({
+                                let n = scope.participantActorIds.count
+                                return "El reparto se limita a \(n) \(n == 1 ? "invitado" : "invitados") del evento."
+                            }())
+                            // R.9.GUESTS — copy honesta: los +N y los invitados
+                            // externos cuentan en el reparto; su parte la paga
+                            // el miembro que los invitó (backend event_weights).
+                            if scope.hasWeights {
+                                Text("Los +N y los invitados con nombre también cuentan: su parte la paga quien los invitó (reparto entre \(scope.totalWeight) personas).")
+                            }
+                        }
                     }
                 }
 
@@ -316,6 +376,30 @@ public struct RecordExpenseView: View {
                             .foregroundStyle(Color.accentColor)
                     }
                 }
+                // R.9.GUESTS — filas informativas: los +1 e invitados externos
+                // del evento aparecen bajo su anfitrión. No son participantes
+                // editables — su parte la paga el anfitrión (el backend ya los
+                // pondera en event_weights). Si se excluye al anfitrión, sus
+                // invitados salen del reparto con él (tachado).
+                if let scope = eventScope {
+                    let plus = scope.plusCount(for: member.actorId)
+                    if plus > 0 {
+                        guestNoteRow(
+                            icon: "person.fill.badge.plus",
+                            text: plus == 1 ? "1 acompañante (+1)" : "\(plus) acompañantes (+\(plus))",
+                            isExcluded: isExcluded
+                        )
+                    }
+                    ForEach(scope.guests(hostedBy: member.actorId)) { guest in
+                        guestNoteRow(
+                            icon: "person.crop.circle.badge.plus",
+                            text: guest.countShare > 1
+                                ? "\(guest.displayName) · \(guest.countShare) lugares"
+                                : guest.displayName,
+                            isExcluded: isExcluded
+                        )
+                    }
+                }
             }
 
             Spacer()
@@ -371,6 +455,21 @@ public struct RecordExpenseView: View {
                 }
             }
         }
+    }
+
+    /// R.9.GUESTS — fila informativa de un acompañante/invitado externo bajo
+    /// su anfitrión en el editor de reparto.
+    @ViewBuilder
+    private func guestNoteRow(icon: String, text: String, isExcluded: Bool) -> some View {
+        Label {
+            Text(text)
+                .strikethrough(isExcluded)
+        } icon: {
+            Image(systemName: icon)
+                .symbolRenderingMode(.hierarchical)
+        }
+        .font(.caption)
+        .foregroundStyle(isExcluded ? Theme.Text.tertiary : Theme.Text.secondary)
     }
 
     /// R.9.C — estado del preview ponderado del backend. Loading mientras
@@ -911,5 +1010,47 @@ public struct RecordExpenseView: View {
         ),
         store: MoneyStore(rpc: MockRuulRPCClient.demo()),
         container: .demo()
+    )
+}
+
+// R.9.GUESTS — gasto desde un evento con +1s e invitados externos: David
+// trae +2 acompañantes e Isaac invitó a Raquel (event_guest). Los pesos
+// (1+2=3 David, 1+1=2 Isaac) se muestran con badge ×N y filas informativas
+// bajo cada anfitrión.
+#Preview("Gasto desde evento (+1s e invitados)") {
+    RecordExpenseView(
+        context: AppContext(
+            id: MockRuulRPCClient.DemoIds.cenaSemanal,
+            kind: .collective,
+            subtype: "friend_group",
+            displayName: "Cena Semanal"
+        ),
+        store: MoneyStore(rpc: MockRuulRPCClient.demo()),
+        container: .demo(),
+        eventScope: EventScope(
+            eventId: UUID(),
+            eventTitle: "Cena de los jueves",
+            participantActorIds: [
+                MockRuulRPCClient.DemoIds.jose,
+                MockRuulRPCClient.DemoIds.david,
+                MockRuulRPCClient.DemoIds.isaac,
+                MockRuulRPCClient.DemoIds.moises
+            ],
+            weights: [
+                MockRuulRPCClient.DemoIds.jose: 1,
+                MockRuulRPCClient.DemoIds.david: 3,
+                MockRuulRPCClient.DemoIds.isaac: 2,
+                MockRuulRPCClient.DemoIds.moises: 1
+            ],
+            plusCounts: [MockRuulRPCClient.DemoIds.david: 2],
+            guests: [
+                EventScope.GuestInfo(
+                    id: UUID(),
+                    displayName: "Raquel",
+                    countShare: 1,
+                    hostActorId: MockRuulRPCClient.DemoIds.isaac
+                )
+            ]
+        )
     )
 }

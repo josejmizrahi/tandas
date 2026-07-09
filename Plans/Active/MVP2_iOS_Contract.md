@@ -411,12 +411,27 @@ pending_confirmation → paid | cancelled | disputed.
   `{event_id, amount, currency, total_weight, splits:[{actor_id, weight, amount}]}`.
 - Gate `expense.large`: solo con policy explícita `large_expense_requires_vote`
   del contexto (threshold de catálogo o 5000).
+- R.16.A (`20260709010000`): `mark_obligation_paid_external(p_obligation_id,
+  p_channel, p_note?, p_client_id?)` — el ACREEDOR confirma que recibió el pago
+  de una obligación money `open` fuera de la app (`cash|transfer|venmo|other`).
+  Status → `settled` + `money_transaction` type=`payment` (from=deudor,
+  to=acreedor, splits payer/creditor → ledger R.9.D). Compat R.2N: si la
+  obligación es un iou novado cierra su `settlement_item` 1:1 y finaliza el
+  batch si era el último pendiente. El deudor recibe 42501 (su camino sigue
+  siendo el handshake R.5Z). Idempotente por `p_client_id` (patrón D9).
+  Descriptor: `obligation_available_actions` gana `mark_paid_external`
+  (money+open, enabled solo creditor). Activity: `obligation.settled_external`
+  (catalogado). Distinto de `forgive_obligation`: condonar ≠ pagar.
 
 ### 14.11 Pools (R.8 completo)
 - `pool_accounts` + `pool_basis_entries`; pool = actor collective
   subtype='pool' del contexto padre (`r8_a`).
 - `create_pool` · `contribute_to_pool` · `list_context_pools` ·
   `pool_account_detail` (`r8_b`).
+- R.16.B (`20260709020000`): `list_context_pools` expone `metadata` (jsonb de
+  `pool_accounts.metadata`, ya persistido por `create_pool(p_metadata)`).
+  Convención iOS: `metadata.source_event_id` liga un bote con el evento
+  (viaje) desde el que se creó. `pool_account_detail` NO lo expone aún.
 - `preview_pool_resolution(p_pool_account_id)` ·
   `resolve_pool(p_pool_account_id, p_resolution, p_client_id)` (`r8_c`):
   `winner_takes_all` (payout pool→ganador; stakes cristalizan) y

@@ -433,6 +433,14 @@ public protocol RuulRPCClient: Sendable {
     /// `governance_required` (42501) — el caller debe primero conseguir aprobación vía
     /// `request_governance_action('obligation.forgive', target_id=obligation)`.
     func forgiveObligation(obligationId: UUID, reason: String?) async throws -> ObligationForgivenResult
+    /// `mark_obligation_paid_external(p_obligation_id, p_channel, p_note?, p_client_id?)` — R.16.A.
+    /// El ACREEDOR confirma que recibió el pago fuera de la app (channel:
+    /// `cash`/`transfer`/`venmo`/`other`). Status pasa a `settled` + money_transaction
+    /// type=`payment`; si la obligación era un iou del neteo R.2N también cierra su
+    /// settlement_item 1:1. Solo obligaciones money + open. Permiso: solo creditor
+    /// (el deudor recibe 42501 — su camino es el settlement handshake R.5Z).
+    /// Idempotente por `clientId` (patrón D9).
+    func markObligationPaidExternal(obligationId: UUID, channel: String, note: String?, clientId: String?) async throws -> ObligationPaidExternalResult
 
     // MARK: - Pools (R.8)
 
@@ -1281,6 +1289,9 @@ public struct CreatePoolInput: Sendable, Equatable {
     /// Requerido (> 0) por el backend cuando `policyKey == "equity_target"`.
     public var targetAmount: Double?
     public var description: String?
+    /// R.16.B — `p_metadata` jsonb libre. `{"source_event_id": "<uuid>"}` liga
+    /// el bote con el evento (viaje) desde el que se creó.
+    public var metadata: JSONValue?
     public var clientId: String?
 
     public init(
@@ -1291,6 +1302,7 @@ public struct CreatePoolInput: Sendable, Equatable {
         currency: String? = nil,
         targetAmount: Double? = nil,
         description: String? = nil,
+        metadata: JSONValue? = nil,
         clientId: String? = nil
     ) {
         self.contextId = contextId
@@ -1300,6 +1312,7 @@ public struct CreatePoolInput: Sendable, Equatable {
         self.currency = currency
         self.targetAmount = targetAmount
         self.description = description
+        self.metadata = metadata
         self.clientId = clientId
     }
 }

@@ -38,6 +38,15 @@ public struct ObligationDetailView: View {
     /// settlePathSection antes hacía dismiss() y forzaba al usuario a navegar
     /// al tab Dinero a mano. Ahora abre SettlementView directo en sheet.
     @State private var isShowingSettlement = false
+    /// R.16.A — sheet "Me pagaron por fuera": el acreedor confirma que recibió
+    /// el pago fuera de la app (efectivo/transferencia/Venmo/otro). La acción
+    /// nace del descriptor (`mark_paid_external`) como el resto — el backend
+    /// gatea creditor + money + open.
+    @State private var isShowingPaidExternalSheet = false
+    @State private var paidExternalChannel: String = "cash"
+    @State private var paidExternalNote: String = ""
+    /// Idempotencia D9: se genera al abrir la sheet y se reusa en reintentos.
+    @State private var paidExternalClientId: String = UUID().uuidString
 
     public init(obligationId: UUID, context: AppContext, container: DependencyContainer) {
         self.obligationId = obligationId
@@ -142,6 +151,10 @@ public struct ObligationDetailView: View {
                     NavigationStack {
                         SettlementView(context: context, container: container)
                     }
+                }
+                // R.16.A — sheet compacta del pago externo.
+                .sheet(isPresented: $isShowingPaidExternalSheet) {
+                    paidExternalSheet
                 }
         }
     }
@@ -370,6 +383,12 @@ public struct ObligationDetailView: View {
             } else {
                 isConfirmingForgive = true
             }
+        case .markObligationPaidExternal:
+            // R.16.A — el acreedor confirma el pago recibido por fuera.
+            paidExternalChannel = "cash"
+            paidExternalNote = ""
+            paidExternalClientId = UUID().uuidString
+            isShowingPaidExternalSheet = true
         default:
             // R.13.B — inalcanzable post-gating. El filtro `ActionRouter.isWired`
             // del toolbar excluye action_keys sin handler. Si llega aquí algo
@@ -484,6 +503,79 @@ public struct ObligationDetailView: View {
         }
         if success {
             isShowingCompleteSheet = false
+            await load()
+            await container.attentionInboxStore.load() // D5
+        }
+    }
+
+    // MARK: - R.16.A Pago externo ("Me pagaron por fuera")
+
+    /// Canales que acepta `mark_obligation_paid_external` (key wire → label ES).
+    private struct ExternalChannel: Identifiable {
+        let key: String
+        let label: String
+        var id: String { key }
+    }
+
+    private static let externalChannels: [ExternalChannel] = [
+        ExternalChannel(key: "cash", label: "Efectivo"),
+        ExternalChannel(key: "transfer", label: "Transferencia"),
+        ExternalChannel(key: "venmo", label: "Venmo"),
+        ExternalChannel(key: "other", label: "Otro")
+    ]
+
+    @ViewBuilder
+    private var paidExternalSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Canal", selection: $paidExternalChannel) {
+                        ForEach(Self.externalChannels) { channel in
+                            Text(channel.label).tag(channel.key)
+                        }
+                    }
+                    TextField("Nota (opcional)", text: $paidExternalNote, axis: .vertical)
+                        .lineLimit(2...4)
+                } header: {
+                    Text("¿Cómo te pagaron?")
+                } footer: {
+                    Text("La deuda cierra como pagada y el pago queda registrado en el historial del grupo.")
+                }
+            }
+            .navigationTitle("Me pagaron por fuera")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { isShowingPaidExternalSheet = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Confirmar") {
+                        Task { await markPaidExternal() }
+                    }
+                    .disabled(runner.isRunning)
+                }
+            }
+            .actionErrorAlert(runner)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    /// R.16.A — confirma el pago externo. El backend valida acreedor + money +
+    /// open y cierra la deuda como `settled` (con su transacción `payment`);
+    /// errores llegan traducidos vía `RPCErrorMapper`.
+    private func markPaidExternal() async {
+        let trimmed = paidExternalNote.trimmingCharacters(in: .whitespaces)
+        let success = await runner.run {
+            _ = try await rpc.markObligationPaidExternal(
+                obligationId: obligationId,
+                channel: paidExternalChannel,
+                note: trimmed.isEmpty ? nil : trimmed,
+                clientId: paidExternalClientId
+            )
+        }
+        if success {
+            isShowingPaidExternalSheet = false
             await load()
             await container.attentionInboxStore.load() // D5
         }

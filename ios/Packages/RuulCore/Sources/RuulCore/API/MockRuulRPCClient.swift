@@ -3776,7 +3776,8 @@ public actor MockRuulRPCClient: RuulRPCClient {
             currency: input.currency,
             targetAmount: input.targetAmount,
             createdByActorId: me.id,
-            createdAt: Date()
+            createdAt: Date(),
+            metadata: input.metadata
         )
         mockPools[poolAccountId] = pool
         emit(input.contextId, "pool.created", payload: .object([
@@ -4343,6 +4344,78 @@ public actor MockRuulRPCClient: RuulRPCClient {
         )
     }
 
+    public func markObligationPaidExternal(obligationId: UUID, channel: String, note: String?, clientId: String?) async throws -> ObligationPaidExternalResult {
+        try throwIfNeeded()
+        guard ["cash", "transfer", "venmo", "other"].contains(channel) else {
+            throw RuulError.backend(.validation(message: "invalid channel \(channel)"))
+        }
+        guard let existing = obligations[obligationId] else {
+            throw RuulError.unexpected(message: "obligación no encontrada")
+        }
+        if existing.status == "settled" {
+            return ObligationPaidExternalResult(
+                changed: false,
+                obligationId: existing.id,
+                status: "settled",
+                channel: channel,
+                noop: true
+            )
+        }
+        guard existing.obligationKind == "money" else {
+            throw RuulError.unexpected(message: "solo obligaciones de dinero se pueden marcar como pagadas por fuera")
+        }
+        guard existing.status == "open" else {
+            throw RuulError.unexpected(message: "no se puede marcar como pagada una obligación en estado \(existing.status)")
+        }
+        // R.16.A — solo el ACREEDOR confirma que recibió el pago.
+        guard existing.debtorActorId != me.id else {
+            throw RuulError.unexpected(message: "El deudor no puede marcar el pago externo: pide a quien recibió el pago que lo marque.")
+        }
+        guard existing.creditorActorId == me.id else {
+            throw RuulError.unexpected(message: "Solo el acreedor puede marcar el pago externo.")
+        }
+        let updated = Obligation(
+            id: existing.id,
+            contextActorId: existing.contextActorId,
+            debtorActorId: existing.debtorActorId,
+            creditorActorId: existing.creditorActorId,
+            obligationType: existing.obligationType,
+            obligationKind: existing.obligationKind,
+            amount: existing.amount,
+            currency: existing.currency,
+            status: "settled",
+            dueAt: existing.dueAt,
+            sourceEventId: existing.sourceEventId,
+            sourceRuleId: existing.sourceRuleId,
+            sourceDecisionId: existing.sourceDecisionId,
+            sourceReservationId: existing.sourceReservationId,
+            title: existing.title,
+            description: existing.description,
+            completedAt: existing.completedAt,
+            completedByActorId: existing.completedByActorId,
+            completionNotes: existing.completionNotes,
+            createdAt: existing.createdAt
+        )
+        obligations[obligationId] = updated
+        if let ctxId = existing.contextActorId {
+            emit(ctxId, "obligation.settled_external", actorId: me.id, payload: .object([
+                "obligation_kind": .string(existing.obligationKind),
+                "creditor": .string(existing.creditorActorId.uuidString),
+                "debtor": .string(existing.debtorActorId.uuidString),
+                "channel": .string(channel),
+                "note": note.map(JSONValue.string) ?? .null
+            ]))
+        }
+        return ObligationPaidExternalResult(
+            changed: true,
+            obligationId: existing.id,
+            status: "settled",
+            transactionId: UUID(),
+            channel: channel,
+            noop: false
+        )
+    }
+
     public func obligationDetail(obligationId: UUID) async throws -> ObligationDetail {
         try throwIfNeeded()
         guard let obligation = obligations[obligationId] else {
@@ -4366,6 +4439,16 @@ public actor MockRuulRPCClient: RuulRPCClient {
                 actionKey: "pay", label: "Pagar", section: "obligations",
                 enabled: isDebtor,
                 reason: isDebtor ? "Eres el deudor de esta obligación" : "Solo el deudor puede pagar"
+            ))
+        }
+        // R.16.A — pago externo: money + open, enabled solo para el acreedor
+        // (paridad con obligation_available_actions del backend).
+        if obligation.obligationKind == "money", obligation.status == "open" {
+            actions.append(AvailableAction(
+                actionKey: "mark_paid_external", label: "Me pagaron por fuera", section: "obligations",
+                enabled: isCreditor,
+                reason: isCreditor ? "Confirmas que recibiste el pago fuera de la app"
+                    : "Solo quien recibe el pago puede marcarlo"
             ))
         }
         if obligation.obligationKind != "money", active.contains(obligation.status) {

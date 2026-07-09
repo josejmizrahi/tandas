@@ -18,6 +18,15 @@ public struct CreateEventView: View {
     @State private var suggestionService = EventSuggestionService()
     @State private var aiPromptText = ""
     @State private var lastConsidered: [RuulAIContext.Considered] = []
+    /// Parser de una línea — "Cena viernes 8pm en casa de Pedro" → pre-llena
+    /// el form (`EventDraftParserService`). Complementa al AI Hero: mismo
+    /// gating por availability, sin pre-aggregation (frase corta, cero RPC).
+    @State private var draftParser = EventDraftParserService()
+    @State private var oneLinerText = ""
+    /// Último título/ubicación aplicados por el parser — para no pisar lo
+    /// que el usuario ya editó a mano al re-interpretar.
+    @State private var lastDraftTitle: String?
+    @State private var lastDraftLocation: String?
     @State private var startsAt = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
     @State private var tripEndsAt = Calendar.current.date(byAdding: .day, value: 4, to: Date()) ?? Date()
     @State private var tripBudgetPerPerson = ""
@@ -36,6 +45,12 @@ public struct CreateEventView: View {
     @State private var occurrenceCountText = "10"
     @State private var seriesUntil = Calendar.current.date(byAdding: .month, value: 3, to: Date()) ?? Date()
     @State private var inviteAllMembers = true
+    /// Host inicial (founder 2026-07-09: "Esta vez organiza X"). nil = Tú —
+    /// el backend defaultea `host_actor_id` al caller cuando `p_host_actor_id`
+    /// llega null (`coalesce(p_host_actor_id, v_caller)`).
+    @State private var hostActorId: UUID? = nil
+    /// Miembros activos del contexto (sin el caller) elegibles como anfitrión.
+    @State private var hostCandidates: [ContextMember] = []
     @State private var runner = ActionRunner()
     /// F.EVENT.7 — Apple Maps autocomplete vía MKLocalSearchCompleter.
     @State private var locationCompleter = LocationCompleter()
@@ -225,6 +240,8 @@ public struct CreateEventView: View {
             Form {
                 aiHero
 
+                oneLinerParserSection
+
                 Section("Evento") {
                     TextField("Título (Cena de los jueves…)", text: $title)
                     Picker("Tipo", selection: $eventType) {
@@ -364,6 +381,29 @@ public struct CreateEventView: View {
                     }
                 }
 
+                // Host inicial (founder 2026-07-09): "Esta vez organiza X".
+                // Sólo en contextos compartidos con otros miembros activos.
+                // nil = Tú → no se manda p_host_actor_id y el backend
+                // defaultea el host al caller.
+                if !context.isPersonal && !hostCandidates.isEmpty {
+                    Section {
+                        Picker("¿Quién organiza?", selection: $hostActorId) {
+                            Text("Tú").tag(UUID?.none)
+                            ForEach(hostCandidates) { member in
+                                Text(member.displayName).tag(UUID?.some(member.actorId))
+                            }
+                        }
+                    } header: {
+                        Text("Anfitrión")
+                    } footer: {
+                        if recurrence == .weekly {
+                            Text("Esta vez organiza quien elijas; en las siguientes semanas el host rota entre los miembros.")
+                        } else {
+                            Text("Por defecto organizas tú. Si esta vez organiza alguien más, elígelo aquí.")
+                        }
+                    }
+                }
+
                 if !context.isPersonal {
                     Section("Invitados") {
                         Toggle("Invitar a todos los miembros", isOn: $inviteAllMembers)
@@ -413,8 +453,25 @@ public struct CreateEventView: View {
             }
             .actionErrorAlert(runner)
             .task(id: eventType.rawValue) { await loadSubtypeFields() }
+            .task { await loadHostCandidates() }
         }
         .ruulSheet()
+    }
+
+    /// Host inicial — miembros activos del contexto, excluyendo al caller
+    /// (el caller es la opción "Tú" del picker). Silent fail: sin candidatos
+    /// la sección no se muestra y el evento se crea con host = caller.
+    private func loadHostCandidates() async {
+        guard !context.isPersonal else { return }
+        do {
+            let summary = try await container.rpc.contextSummary(contextId: context.id)
+            let myId = container.currentActorStore.actorId
+            hostCandidates = summary.members.filter {
+                $0.membershipStatus == "active" && $0.actorId != myId
+            }
+        } catch {
+            hostCandidates = []
+        }
     }
 
     /// R.12.F — carga el subtype del catalog matching `eventType.rawValue`
@@ -488,6 +545,7 @@ public struct CreateEventView: View {
                     recurrenceRule: recurrence.ruleValue,
                     recurrenceCount: count,
                     recurrenceUntil: until,
+                    hostActorId: hostActorId,
                     inviteAllMembers: inviteAllMembers,
                     clientId: UUID().uuidString,
                     metadata: metadataPayload
@@ -613,6 +671,86 @@ public struct CreateEventView: View {
             // no abre la lista de resultados sugeridos automáticamente.
             suppressNextQueryUpdate = true
             locationText = s.locationText
+        }
+    }
+
+    // MARK: - Parser de una línea (EventDraftParserService)
+
+    /// TextField compacto "Escríbelo en una línea…" + "Interpretar". Mismo
+    /// gating que el AI Hero: si el modelo on-device no está disponible, la
+    /// sección no aparece. El draft pre-llena title/startsAt/locationText/
+    /// locationMode; el usuario ajusta y confirma con "Crear evento".
+    @ViewBuilder
+    private var oneLinerParserSection: some View {
+        if draftParser.isAvailable {
+            Section {
+                HStack(spacing: 10) {
+                    Image(systemName: "text.line.first.and.arrowtriangle.forward")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Theme.Tint.primary)
+                    TextField("Escríbelo en una línea…", text: $oneLinerText)
+                        .textInputAutocapitalization(.sentences)
+                        .disabled(draftParser.phase == .loading)
+                        .onSubmit { Task { await interpretOneLiner() } }
+                    if draftParser.phase == .loading {
+                        ProgressView()
+                    } else {
+                        Button("Interpretar") {
+                            Task { await interpretOneLiner() }
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(oneLinerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            } footer: {
+                if case .failed(let message) = draftParser.phase {
+                    Label(message, systemImage: "exclamationmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(Theme.Tint.warning)
+                } else {
+                    Text("Ej: \"Cena viernes 8pm en casa de Pedro\" — Ruul llena el formulario y tú ajustas.")
+                }
+            }
+        }
+    }
+
+    private func interpretOneLiner() async {
+        guard let draft = await draftParser.parse(oneLinerText) else { return }
+        applyEventDraft(draft)
+    }
+
+    /// Aplica el draft a los @State del form. No pisa título/ubicación que el
+    /// usuario ya editó a mano (detectado comparando contra lo último que
+    /// aplicó el propio parser); fecha y modo de ubicación sí se actualizan
+    /// porque el DatePicker/Picker no distinguen edición manual.
+    private func applyEventDraft(_ draft: EventDraft) {
+        let draftTitle = draft.title.trimmingCharacters(in: .whitespaces)
+        let currentTitle = title.trimmingCharacters(in: .whitespaces)
+        if !draftTitle.isEmpty && (currentTitle.isEmpty || currentTitle == lastDraftTitle) {
+            title = draftTitle
+            lastDraftTitle = draftTitle
+        }
+        if let resolved = EventDraftDateResolver.resolve(
+            dayHint: draft.dayHint,
+            timeHint: draft.timeHint
+        ) {
+            startsAt = resolved
+        }
+        if draft.isVirtual {
+            locationMode = .virtual
+        } else {
+            let draftLocation = draft.locationText.trimmingCharacters(in: .whitespaces)
+            let currentLocation = locationText.trimmingCharacters(in: .whitespaces)
+            if !draftLocation.isEmpty && (currentLocation.isEmpty || currentLocation == lastDraftLocation) {
+                locationMode = .physical
+                // F.EVENT.7 — suprime el onChange del completer para no abrir
+                // la lista de sugerencias automáticamente (mismo patrón que
+                // applyAISuggestion).
+                suppressNextQueryUpdate = true
+                locationText = draftLocation
+                selectedCoords = nil
+                lastDraftLocation = draftLocation
+            }
         }
     }
 }

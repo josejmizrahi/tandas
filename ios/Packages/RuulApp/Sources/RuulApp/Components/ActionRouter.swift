@@ -141,6 +141,8 @@ public enum QuickActionDestination: Sendable, Equatable {
     case markObligationCompleted
     case editObligation
     case forgiveObligation
+    /// R.16.A — el acreedor confirma que recibió el pago fuera de la app.
+    case markObligationPaidExternal
 }
 
 /// F.2X — Helpers de construcción y debugging del router.
@@ -171,6 +173,7 @@ public enum ActionRouter {
         case "mark_completed":       return .markObligationCompleted
         case "edit_obligation":      return .editObligation
         case "forgive":              return .forgiveObligation
+        case "mark_paid_external":   return .markObligationPaidExternal
 
         default:                     return nil
         }
@@ -242,6 +245,7 @@ public enum ActionRouter {
         "mark_completed",
         "edit_obligation",
         "forgive",
+        "mark_paid_external",
 
         // Rule
         "archive_rule",

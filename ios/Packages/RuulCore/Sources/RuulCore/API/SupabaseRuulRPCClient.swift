@@ -2033,6 +2033,27 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
         ))
     }
 
+    public func markObligationPaidExternal(obligationId: UUID, channel: String, note: String?, clientId: String?) async throws -> ObligationPaidExternalResult {
+        struct Params: Encodable, Sendable {
+            let pObligationId: UUID
+            let pChannel: String
+            let pNote: String?
+            let pClientId: String?
+            enum CodingKeys: String, CodingKey {
+                case pObligationId = "p_obligation_id"
+                case pChannel = "p_channel"
+                case pNote = "p_note"
+                case pClientId = "p_client_id"
+            }
+        }
+        return try await call("mark_obligation_paid_external", params: Params(
+            pObligationId: obligationId,
+            pChannel: channel,
+            pNote: note,
+            pClientId: clientId
+        ))
+    }
+
     public func updateObligation(_ input: UpdateObligationInput) async throws -> Obligation {
         struct Params: Encodable, Sendable {
             let pObligationId: UUID
@@ -2075,6 +2096,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             let pCurrency: String?
             let pTargetAmount: Double?
             let pDescription: String?
+            let pMetadata: JSONValue?
             let pClientId: String?
             enum CodingKeys: String, CodingKey {
                 case pParentContextActorId = "p_parent_context_actor_id"
@@ -2084,6 +2106,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
                 case pCurrency = "p_currency"
                 case pTargetAmount = "p_target_amount"
                 case pDescription = "p_description"
+                case pMetadata = "p_metadata"
                 case pClientId = "p_client_id"
             }
         }
@@ -2095,6 +2118,7 @@ public struct SupabaseRuulRPCClient: RuulRPCClient {
             pCurrency: input.currency,
             pTargetAmount: input.targetAmount,
             pDescription: input.description,
+            pMetadata: input.metadata,
             pClientId: input.clientId
         ))
     }
