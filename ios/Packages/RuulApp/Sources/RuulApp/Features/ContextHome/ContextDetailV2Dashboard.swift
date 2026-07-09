@@ -10,37 +10,27 @@ struct ContextDetailV2DashboardSection: View {
     let container: DependencyContainer
 
     var body: some View {
+        // R.17 — filas planas nativas dentro de la Section ("Section is the
+        // card"). Antes: carousel horizontal de tiles con Liquid Glass.
         Section {
-            ScrollView(.horizontal, showsIndicators: false) {
-                // R.5V.Glass.C2 founder feedback — mismo glass que childrenSection.
-                GlassEffectContainer(spacing: 12) {
-                    HStack(spacing: 12) {
-                        ForEach(widgets) { widget in
-                            contextWidgetCard(widget)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                }
+            ForEach(widgets) { widget in
+                contextWidgetRow(widget)
             }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
         } header: {
             Text("Dashboard")
         }
     }
 
     @ViewBuilder
-    private func contextWidgetCard(_ widget: ContextWidget) -> some View {
+    private func contextWidgetRow(_ widget: ContextWidget) -> some View {
         if contextWidgetDestinationKey(widget.widgetKey) != nil {
             NavigationLink {
                 contextWidgetDestination(widgetKey: widget.widgetKey)
             } label: {
-                contextWidgetCardBody(widget, tappable: true)
+                contextWidgetRowLabel(widget)
             }
-            .buttonStyle(.plain)
         } else {
-            contextWidgetCardBody(widget, tappable: false)
+            contextWidgetRowLabel(widget)
         }
     }
 
@@ -96,43 +86,25 @@ struct ContextDetailV2DashboardSection: View {
     }
 
     @ViewBuilder
-    private func contextWidgetCardBody(_ widget: ContextWidget, tappable: Bool) -> some View {
+    private func contextWidgetRowLabel(_ widget: ContextWidget) -> some View {
         let headline = contextWidgetHeadline(widget)
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                Image(systemName: widget.icon ?? "rectangle.stack")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(headline?.tint ?? Theme.Tint.primary)
-                Spacer()
-                if tappable {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Theme.Text.tertiary)
-                }
-            }
-            Spacer(minLength: 0)
+        LabeledContent {
             if let headline {
                 Text(headline.value)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.callout.weight(.semibold).monospacedDigit())
                     .foregroundStyle(headline.tint)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+            }
+        } label: {
+            Label {
                 Text(widget.displayName)
-                    .font(.caption)
-                    .foregroundStyle(Theme.Text.secondary)
-                    .lineLimit(2)
-            } else {
-                Text(widget.displayName)
-                    .font(.callout.weight(.semibold))
                     .foregroundStyle(Theme.Text.primary)
                     .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+            } icon: {
+                Image(systemName: widget.icon ?? "rectangle.stack")
+                    .foregroundStyle(headline?.tint ?? Theme.Tint.primary)
             }
         }
-        .frame(width: 150, height: 130, alignment: .topLeading)
-        .padding(14)
-        // R.5V.Glass.C2 founder feedback — Liquid Glass como en childrenSection.
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
     }
 
     private func contextWidgetDestinationKey(_ key: String) -> String? {

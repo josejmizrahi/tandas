@@ -3,9 +3,9 @@ import RuulCore
 
 /// F.NAV.8 — Vista plana cross-context de recursos visibles para el caller.
 ///
-/// **R.5V.X (2026-06-08)** — Rebuild Apple-native + Liquid Glass:
-/// 1. Hero summary card con Liquid Glass interactivo (total + breakdown por
-///    clase). Mismo glass que dashboard widgets en ResourceDetailViewV2.
+/// **R.5V.X (2026-06-08)** — Rebuild Apple-native:
+/// 1. Hero plano (lenguaje del hero de Dinero — R.17): total + breakdown por
+///    clase, sin glass flotante.
 /// 2. `.searchable` para filtrar por nombre.
 /// 3. Sections agrupadas por clase (Bienes raíces / Vehículos / Finanzas /
 ///    Documentos / Equipos / Activos digitales / Viajes / Otros) con tints
@@ -94,7 +94,8 @@ public struct MyResourcesView: View {
         }
     }
 
-    // MARK: - Hero (Liquid Glass summary)
+    // MARK: - Hero (R.17 — mismo lenguaje que el hero de Dinero: typography
+    // prominente plana y etiqueta semántica. Sin custom card ni glass flotante.)
 
     @ViewBuilder
     private func heroSection(_ resources: [MyWorldResource]) -> some View {
@@ -105,34 +106,29 @@ public struct MyResourcesView: View {
                 return (klass, count)
             }
         Section {
-            GlassEffectContainer(spacing: Theme.Spacing.sm) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
-                        Text("\(resources.count)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(Theme.Tint.primary)
-                        Text(resources.count == 1 ? "recurso visible" : "recursos visibles")
-                            .font(.callout)
-                            .foregroundStyle(Theme.Text.secondary)
-                        Spacer(minLength: 0)
-                    }
-                    if !breakdown.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.xs) {
-                                ForEach(breakdown, id: \.0) { klass, count in
-                                    classChip(klass, count: count)
-                                }
-                            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Tus recursos", systemImage: "shippingbox")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.Tint.primary)
+                    Text("\(resources.count)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Theme.Text.primary)
+                    Text(resources.count == 1 ? "recurso visible" : "recursos visibles")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.Text.secondary)
+                }
+                if breakdown.count > 1 {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(breakdown, id: \.0) { klass, count in
+                            classChip(klass, count: count)
                         }
                     }
                 }
-                .padding(Theme.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.md, leading: Theme.Spacing.lg, bottom: Theme.Spacing.md, trailing: Theme.Spacing.lg))
+            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
         }
     }
 
