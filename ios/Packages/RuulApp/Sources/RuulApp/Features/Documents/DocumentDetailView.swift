@@ -140,29 +140,14 @@ public struct DocumentDetailView: View {
     @ViewBuilder
     private var heroSection: some View {
         Section {
-            HStack(alignment: .top, spacing: Theme.Spacing.md) {
-                Image(systemName: document.documentType.symbolName)
-                    .font(.system(size: 32))
-                    .foregroundStyle(documentTint)
-                    .frame(width: 56, height: 56)
-                    .background(documentTint.badgeFill, in: Circle())
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(document.title)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(Theme.Text.primary)
-                        .lineLimit(2)
-                    Text(heroSubtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.Text.secondary)
-                        .lineLimit(2)
-                }
-                Spacer(minLength: 0)
-                if document.isArchived {
-                    RuulStatusBadge(.archived)
-                }
-            }
-            .padding(.vertical, 6)
+            RuulDetailHero(
+                title: document.title,
+                subtitle: heroSubtitle,
+                systemImage: document.documentType.symbolName,
+                tint: documentTint,
+                status: document.isArchived ? .archived : nil
+            )
+            .ruulHeroRow()
         }
     }
 

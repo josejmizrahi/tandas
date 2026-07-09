@@ -32,9 +32,7 @@ struct ContextDetailV2HeroSection: View {
                 status: nil,
                 chips: chips
             )
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .ruulHeroRow()
         }
     }
 
@@ -61,14 +59,14 @@ struct ContextDetailV2HeroSection: View {
         }
     }
 
-    private var chips: [String] {
+    private var chips: [RuulHeroChip] {
         guard !context.isPersonal else { return [] }
-        var out: [String] = []
+        var out: [RuulHeroChip] = []
         if context.memberCount > 1 {
-            out.append("\(context.memberCount) miembros")
+            out.append(RuulHeroChip("\(context.memberCount) miembros"))
         }
         if let role = primaryRoleLabel {
-            out.append(role)
+            out.append(RuulHeroChip(role))
         }
         return out
     }

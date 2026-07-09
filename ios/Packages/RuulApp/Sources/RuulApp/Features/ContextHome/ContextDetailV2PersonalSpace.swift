@@ -27,9 +27,7 @@ struct ContextDetailV2PersonalSpace: View {
                     status: nil,
                     chips: []
                 )
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .ruulHeroRow()
             }
 
             // Attention items para el actor personal (filtrados por contextActorId == personal actor).

@@ -19,44 +19,25 @@ struct ResourceDetailV2HeroSection: View {
     var body: some View {
         let d = descriptor
         let renderer = ResourceSubtypeRegistry.renderer(for: d.class.classKey)
-        Section {
-            HStack(alignment: .center, spacing: 14) {
-                Image(systemName: d.subtype.icon ?? d.class.icon ?? "cube")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(Theme.Tint.primary)
-                    .frame(width: 56, height: 56)
-                    .background(Theme.Tint.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(d.resource.displayName)
-                        .font(.title3.bold())
-                        .foregroundStyle(Theme.Text.primary)
-                        .lineLimit(2)
-                    HStack(spacing: 6) {
-                        ResourceDetailV2ChipBadge(text: d.subtype.displayName, tint: Theme.Tint.primary)
-                        if d.state.archived {
-                            RuulStatusBadge(.archived)
-                        }
-                        // R.10.F.h (2026-06-15) — locked badge UNIVERSAL.
-                        // Antes vivía sólo en DocumentRenderer.heroSubtitle;
-                        // ahora cualquier resource (vehicle/property/financial)
-                        // muestra el state al-vuelo en el Hero.
-                        if d.state.lockedForGovernance {
-                            Label("Bloqueado", systemImage: "lock.fill")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.purple)
-                                .labelStyle(.titleAndIcon)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.purple.opacity(0.15), in: Capsule())
-                        }
-                    }
-                    renderer.heroSubtitle(d)
-                }
-                Spacer(minLength: 0)
+        // Chip de subtipo + (R.10.F.h) badge de bloqueo UNIVERSAL — cualquier
+        // resource (vehicle/property/financial) muestra el state al-vuelo.
+        var chips: [RuulHeroChip] = [RuulHeroChip(d.subtype.displayName)]
+        if d.state.lockedForGovernance {
+            chips.append(RuulHeroChip("Bloqueado", symbol: "lock.fill", tint: .purple))
+        }
+        return Section {
+            // R.17 — hero canónico. `renderer.heroSubtitle(d)` (Financial balance /
+            // Trip date range / etc.) va en el accessory, debajo de los chips.
+            RuulDetailHero(
+                title: d.resource.displayName,
+                systemImage: d.subtype.icon ?? d.class.icon ?? "cube",
+                tint: Theme.Tint.primary,
+                status: d.state.archived ? .archived : nil,
+                chips: chips
+            ) {
+                renderer.heroSubtitle(d)
             }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
+            .ruulHeroRow()
         }
     }
 }

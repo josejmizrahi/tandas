@@ -239,87 +239,39 @@ public struct DecisionDetailView: View {
 
     // MARK: - 1. Hero (pregunta primero)
 
-    @ViewBuilder
     private func heroSection(_ decision: Decision) -> some View {
-        Section {
-            VStack(spacing: 14) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.tint)
-                    .symbolRenderingMode(.hierarchical)
-                    .frame(width: 80, height: 80)
-                    .background(Color.accentColor.badgeFill, in: Circle())
-
-                Text(decision.title)
-                    .font(.title2.weight(.bold))
-                    .multilineTextAlignment(.center)
-
-                if let description = decision.description, !description.isEmpty {
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                HStack(spacing: 8) {
-                    heroChip(
-                        symbol: statusSymbol(decision.status),
-                        text: decision.statusLabel,
-                        tint: statusColor(decision.status)
-                    )
-                    // P1.7 — countdown reactivo al cierre (Text relativo se
-                    // auto-actualiza) + participación visible antes de votar.
-                    if decision.isOpen, let closesAt = decision.closesAt {
-                        countdownChip(closesAt: closesAt)
-                    }
-                    if let hint = heroHint(decision) {
-                        heroChip(symbol: hint.symbol, text: hint.text, tint: hint.tint)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 4, trailing: 4))
-        }
-    }
-
-    @ViewBuilder
-    private func heroChip(symbol: String, text: String, tint: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: symbol)
-                .font(.caption.weight(.semibold))
-            Text(text)
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(tint.badgeFillSubtle, in: Capsule())
-    }
-
-    /// P1.7 — chip con cuenta regresiva viva al cierre. `Text(_:style:.relative)`
-    /// se auto-actualiza cada segundo sin timers manuales.
-    @ViewBuilder
-    private func countdownChip(closesAt: Date) -> some View {
-        let expired = closesAt <= Date()
-        HStack(spacing: 6) {
-            Image(systemName: "clock")
-                .font(.caption.weight(.semibold))
-            if expired {
-                Text("Cierre vencido")
-                    .font(.caption.weight(.semibold))
+        // R.17 — hero canónico centrado. Status + countdown vivo + participación
+        // como chips (P1.7: `countdownTo` renderiza `Text(_:style:.relative)`
+        // que se auto-actualiza sin timers).
+        var chips: [RuulHeroChip] = [
+            RuulHeroChip(
+                decision.statusLabel,
+                symbol: statusSymbol(decision.status),
+                tint: statusColor(decision.status)
+            )
+        ]
+        if decision.isOpen, let closesAt = decision.closesAt {
+            if closesAt <= Date() {
+                chips.append(RuulHeroChip("Cierre vencido", symbol: "clock", tint: .orange))
             } else {
-                (Text("Cierra en ") + Text(closesAt, style: .relative))
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
+                chips.append(RuulHeroChip("Cierra", symbol: "clock", tint: .orange, countdownTo: closesAt))
             }
         }
-        .foregroundStyle(Color.orange)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.orange.badgeFillSubtle, in: Capsule())
+        if let hint = heroHint(decision) {
+            chips.append(RuulHeroChip(hint.text, symbol: hint.symbol, tint: hint.tint))
+        }
+        let description = decision.description.flatMap { $0.isEmpty ? nil : $0 }
+        return Section {
+            RuulDetailHero(
+                title: decision.title,
+                subtitle: description,
+                systemImage: "checkmark.seal.fill",
+                tint: Theme.Tint.primary,
+                chips: chips,
+                alignment: .center
+            )
+            .ruulHeroRow()
+        }
     }
 
     private func heroHint(_ decision: Decision) -> (text: String, symbol: String, tint: Color)? {

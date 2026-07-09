@@ -84,9 +84,7 @@ public struct RuleDetailView: View {
                     status: rule.isActive ? .active : .inactive,
                     chips: []
                 )
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .ruulHeroRow()
             }
 
             if let body = rule.body, !body.isEmpty {

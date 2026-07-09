@@ -192,9 +192,7 @@ public struct ObligationDetailView: View {
                     tint: Theme.Tint.primary,
                     status: RuulStatusBadge.State.obligation(detail.status)
                 )
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .ruulHeroRow()
             }
 
             if let description = detail.description, !description.isEmpty {
