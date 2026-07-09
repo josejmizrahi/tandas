@@ -137,47 +137,41 @@ public struct MembersListView: View {
             guard let count = byRole[role]?.count, count > 0 else { return nil }
             return (role, count)
         }
-        // R.15 — el glass interactivo prometía tap pero no hacía nada (falso
-        // affordance). Ahora el tap abre el flujo de invitar (mismo sheet que
-        // el toolbar), gateado por el mismo permiso. Sin permiso, el hero se
-        // queda no-interactivo (glass regular, sin acción).
+        // R.17 — mismo lenguaje que el hero de Dinero: typography prominente
+        // plana, etiqueta semántica y botón de acción prominente. Sin glass
+        // flotante (el card anterior se sentía como widget pegado).
         let canInvite = store.canInvite(in: context)
         Section {
-            GlassEffectContainer(spacing: Theme.Spacing.sm) {
-                VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
-                        Text("\(members.count)")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundStyle(Theme.Tint.primary)
-                        Text(members.count == 1 ? "miembro" : "miembros")
-                            .font(.callout)
-                            .foregroundStyle(Theme.Text.secondary)
-                        Spacer(minLength: 0)
-                    }
-                    if !breakdown.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: Theme.Spacing.xs) {
-                                ForEach(breakdown, id: \.0) { role, count in
-                                    roleChip(role, count: count)
-                                }
-                            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Tu grupo", systemImage: "person.3.fill")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.Tint.primary)
+                    Text(members.count == 1 ? "1 persona" : "\(members.count) personas")
+                        .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Theme.Text.primary)
+                }
+                if breakdown.count > 1 {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        ForEach(breakdown, id: \.0) { role, count in
+                            roleChip(role, count: count)
                         }
                     }
                 }
-                .padding(Theme.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .glassEffect(canInvite ? .regular.interactive() : .regular, in: .rect(cornerRadius: 18))
-                .contentShape(.rect(cornerRadius: 18))
-                .onTapGesture {
-                    guard canInvite else { return }
-                    isShowingInvite = true
+                if canInvite {
+                    Button {
+                        isShowingInvite = true
+                    } label: {
+                        Label("Invitar amigos", systemImage: "person.badge.plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
                 }
-                .accessibilityAddTraits(canInvite ? .isButton : [])
-                .accessibilityHint(canInvite ? Text("Invitar a alguien al espacio") : Text(""))
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.md, leading: Theme.Spacing.lg, bottom: Theme.Spacing.md, trailing: Theme.Spacing.lg))
+            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
         }
     }
 
