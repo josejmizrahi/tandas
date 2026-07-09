@@ -433,7 +433,8 @@ public struct ContextDetailViewV2: View {
         // Obligation: scope de obligación, defensive fallback a MoneyHomeView.
         case .markObligationCompleted,
              .editObligation,
-             .forgiveObligation:
+             .forgiveObligation,
+             .markObligationPaidExternal:
             pushedActionDestination = .money
         case nil:
             // Unknown action_key sin handler — surface honest copy en vez

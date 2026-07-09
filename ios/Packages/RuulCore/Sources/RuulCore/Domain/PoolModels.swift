@@ -55,6 +55,10 @@ public struct PoolAccount: Decodable, Sendable, Equatable, Identifiable {
     public let createdAt: Date?
     public let updatedAt: Date?
     public let resolvedAt: Date?
+    /// R.16.B — `pool_accounts.metadata` (jsonb libre; `source_event_id` liga
+    /// el bote con el evento desde el que se creó). Solo lo expone
+    /// `list_context_pools()` post-R.16.B; en shapes viejos viene nil.
+    public let metadata: JSONValue?
     /// Solo en `list_context_pools()`.
     public let totals: PoolTotals?
 
@@ -73,6 +77,7 @@ public struct PoolAccount: Decodable, Sendable, Equatable, Identifiable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case resolvedAt = "resolved_at"
+        case metadata
         case totals
     }
 
@@ -92,6 +97,7 @@ public struct PoolAccount: Decodable, Sendable, Equatable, Identifiable {
         self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
         self.updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
         self.resolvedAt = try c.decodeIfPresent(Date.self, forKey: .resolvedAt)
+        self.metadata = try c.decodeIfPresent(JSONValue.self, forKey: .metadata)
         self.totals = try c.decodeIfPresent(PoolTotals.self, forKey: .totals)
     }
 
@@ -110,6 +116,7 @@ public struct PoolAccount: Decodable, Sendable, Equatable, Identifiable {
         createdAt: Date? = nil,
         updatedAt: Date? = nil,
         resolvedAt: Date? = nil,
+        metadata: JSONValue? = nil,
         totals: PoolTotals? = nil
     ) {
         self.poolAccountId = poolAccountId
@@ -126,10 +133,17 @@ public struct PoolAccount: Decodable, Sendable, Equatable, Identifiable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.resolvedAt = resolvedAt
+        self.metadata = metadata
         self.totals = totals
     }
 
     public var id: UUID { poolAccountId }
+
+    /// R.16.B — evento origen del bote (`metadata.source_event_id`). Se setea
+    /// al crear el bote desde el detalle de un evento (viaje ↔ bote).
+    public var sourceEventId: UUID? {
+        metadata?["source_event_id"]?.stringValue.flatMap(UUID.init(uuidString:))
+    }
 
     public var isOpen: Bool { status == "open" }
     public var isResolved: Bool { status == "resolved" }
@@ -179,6 +193,7 @@ public struct PoolAccount: Decodable, Sendable, Equatable, Identifiable {
             createdAt: createdAt,
             updatedAt: updatedAt,
             resolvedAt: resolvedAt ?? self.resolvedAt,
+            metadata: metadata,
             totals: totals ?? self.totals
         )
     }

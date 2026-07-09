@@ -37,6 +37,17 @@ informativas, tabs). Shipped en este slice:
 | Crear evento → detalle | `EventsListView` pasa `onCreated` y empuja `EventDetailView` (consistente con el "+" global) |
 | ActivityDetail deja de ser dead-end | sección "Ver relacionado" navega a gasto/evento/votación/recurso (patrón `subjectDestination` de MyActivityFeed) |
 
+## R.16 — Post-launch P1 completo (2026-07-08, founder: "has todas tus recomendaciones")
+
+| Feature | Detalle |
+|---|---|
+| **Pago externo** (P1 #8) | mig `r16_a`: `mark_obligation_paid_external(channel, note, client_id)` — solo el acreedor atestigua; settled + transaction `payment` + splits (ledger R.9.D) + compat con neteo R.2N (cierra el settlement_item 1:1 vivo); idempotente; acción `mark_paid_external` en `obligation_available_actions` (F.2X). iOS: sheet canal (Efectivo/Transferencia/Venmo/Otro) + nota en ObligationDetail vía availableActions. Validado: 3 asserts (deudor rechazado / settled+ledger / idempotencia) + 75/75 smokes |
+| **Viaje ↔ bote** (P1 #4) | mig `r16_b`: `list_context_pools` expone `metadata`. iOS: `CreatePoolInput.metadata`, ficha de viaje muestra "Bote del viaje" ligado (metadata.source_event_id) o CTA crear pre-llenado; badge "De este evento" en la sección de botes del evento |
+| **Invitados en split** (P1 #6) | Backend R.9.C ya ponderaba guests (deuda al anfitrión) — el gap era presentacional: el editor de reparto muestra +1s e invitados por nombre bajo su anfitrión, con copy honesta |
+| **Host inicial** (P1 #5) | Backend ya soportaba `p_host_actor_id` — picker "¿Quién organiza?" en CreateEventView (default Tú, incluye placeholders) |
+| **AI parser NL→evento** (P1 #7) | `EventDraftParserService` + `@Generable EventDraft` (calca EventSuggestionService); input de una línea en CreateEventView que pre-llena título/fecha/lugar/virtual; degradación limpia sin modelo on-device |
+| Diferido | Cron observability (P1 #9): requiere edge function + alertas Sentry — infra fuera del repo; sigue sprint 4 |
+
 **R.15.B (2026-07-08, mismo día)** — el backlog de abajo se ejecutó COMPLETO
 en 6 slices paralelos (commits R.15.B 1-6/6), con 3 excepciones honestas:
 (a) "Ver lo generado" en WhyDecisionResult requiere backend — `why_decision_result`

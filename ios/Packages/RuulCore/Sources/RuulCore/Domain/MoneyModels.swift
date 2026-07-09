@@ -404,6 +404,58 @@ public struct ObligationForgivenResult: Decodable, Sendable, Equatable {
     }
 }
 
+/// R.16.A — resultado de `mark_obligation_paid_external(p_obligation_id, p_channel, p_note?, p_client_id?)`.
+/// Backend retorna `{changed, obligation_id, status, transaction_id?, channel?,
+/// settlement_item_id?, batch_finalized?, idempotent_replay?, noop?}`.
+public struct ObligationPaidExternalResult: Decodable, Sendable, Equatable {
+    public let changed: Bool
+    public let obligationId: UUID?
+    public let status: String
+    public let transactionId: UUID?
+    public let channel: String?
+    public let idempotentReplay: Bool
+    public let noop: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case changed
+        case obligationId = "obligation_id"
+        case status
+        case transactionId = "transaction_id"
+        case channel
+        case idempotentReplay = "idempotent_replay"
+        case noop
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.changed = try c.decodeIfPresent(Bool.self, forKey: .changed) ?? false
+        self.obligationId = try c.decodeIfPresent(UUID.self, forKey: .obligationId)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status) ?? "settled"
+        self.transactionId = try c.decodeIfPresent(UUID.self, forKey: .transactionId)
+        self.channel = try c.decodeIfPresent(String.self, forKey: .channel)
+        self.idempotentReplay = try c.decodeIfPresent(Bool.self, forKey: .idempotentReplay) ?? false
+        self.noop = try c.decodeIfPresent(Bool.self, forKey: .noop) ?? false
+    }
+
+    public init(
+        changed: Bool,
+        obligationId: UUID? = nil,
+        status: String = "settled",
+        transactionId: UUID? = nil,
+        channel: String? = nil,
+        idempotentReplay: Bool = false,
+        noop: Bool = false
+    ) {
+        self.changed = changed
+        self.obligationId = obligationId
+        self.status = status
+        self.transactionId = transactionId
+        self.channel = channel
+        self.idempotentReplay = idempotentReplay
+        self.noop = noop
+    }
+}
+
 // MARK: - R.9.C Event weighted split (backend = autoridad)
 
 /// Un renglón del preview ponderado (`preview_event_split().splits[]`).

@@ -399,6 +399,8 @@ public struct EventDetailView: View {
             EventDetailTripSection(
                 event: event,
                 store: store,
+                context: context,
+                container: container,
                 onRecordExpense: { openExpenseSheet() }
             )
             // — Personas —
@@ -414,7 +416,7 @@ public struct EventDetailView: View {
                 store: store,
                 onRecordExpense: { openExpenseSheet() }
             )
-            EventDetailPoolsSection(context: context, container: container)
+            EventDetailPoolsSection(eventId: event.id, context: context, container: container)
             // — Votaciones / Reglas —
             EventDetailDecisionsSection(
                 eventActivity: eventActivity,
@@ -505,11 +507,21 @@ public struct EventDetailView: View {
         //   coincide). Si un guest fue invitado por alguien NO confirmado, ese
         //   peso se descarta (founder dropea el evento → su esposa también sale).
         var weights: [UUID: Int] = [:]
+        // R.9.GUESTS — plusCounts va aparte de weights: RecordExpenseView lo
+        // usa para pintar filas informativas "+N acompañantes" bajo el host.
+        var plusCounts: [UUID: Int] = [:]
         for participant in confirmed {
             weights[participant.participantActorId] = 1 + participant.plusCount
+            if participant.plusCount > 0 {
+                plusCounts[participant.participantActorId] = participant.plusCount
+            }
         }
+        // R.9.GUESTS — invitados externos con nombre → filas informativas
+        // asignadas a su anfitrión en el editor de reparto.
+        var guestInfos: [EventScope.GuestInfo] = []
         for guest in self.store.guests where participantIds.contains(guest.invitedByActorId) {
             weights[guest.invitedByActorId, default: 1] += guest.countShare
+            guestInfos.append(EventScope.GuestInfo(guest))
         }
         Task {
             await store.load(context: context)
@@ -517,7 +529,9 @@ public struct EventDetailView: View {
                 eventId: event.id,
                 eventTitle: event.title,
                 participantActorIds: participantIds,
-                weights: weights
+                weights: weights,
+                plusCounts: plusCounts,
+                guests: guestInfos
             )
         }
     }

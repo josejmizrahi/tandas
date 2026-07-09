@@ -86,9 +86,11 @@ struct EventDetailRulesSection: View {
     }
 }
 
-/// Botes abiertos del grupo (los pools viven a nivel contexto; no se inventa
-/// una relación evento→pool).
+/// Botes abiertos del grupo (los pools viven a nivel contexto). R.16.B: si un
+/// bote nació de ESTE evento (`metadata.source_event_id`), va primero y con
+/// badge "De este evento".
 struct EventDetailPoolsSection: View {
+    let eventId: UUID
     let context: AppContext
     let container: DependencyContainer
 
@@ -117,6 +119,10 @@ struct EventDetailPoolsSection: View {
                                     .foregroundStyle(Theme.Text.secondary)
                             }
                             Spacer()
+                            // R.16.B — bote ligado a este evento (viaje ↔ bote).
+                            if pool.sourceEventId == eventId {
+                                StatusBadge("De este evento", color: Theme.Tint.info)
+                            }
                         }
                     }
                 }
@@ -154,6 +160,12 @@ struct EventDetailPoolsSection: View {
         guard !didLoad else { return }
         didLoad = true
         let all = (try? await container.rpc.listContextPools(contextId: context.id)) ?? []
-        pools = all.filter { $0.status == "open" || $0.status == "target_reached" }
+        // R.16.B — los botes nacidos de este evento van primero; el resto
+        // conserva el orden del backend (status + created_at desc). Partición
+        // en vez de sorted(by:) porque el sort de Swift no garantiza
+        // estabilidad.
+        let visible = all.filter { $0.status == "open" || $0.status == "target_reached" }
+        pools = visible.filter { $0.sourceEventId == eventId }
+            + visible.filter { $0.sourceEventId != eventId }
     }
 }

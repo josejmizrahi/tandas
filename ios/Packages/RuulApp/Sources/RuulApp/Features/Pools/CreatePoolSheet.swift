@@ -6,6 +6,10 @@ import RuulCore
 public struct CreatePoolSheet: View {
     let context: AppContext
     let store: PoolsStore
+    /// R.16.B — metadata jsonb opcional que se pasa tal cual a `create_pool`.
+    /// EventDetailTripSection manda `{"source_event_id": "<uuid>"}` para ligar
+    /// el bote con el viaje. nil para los call sites existentes.
+    let metadata: JSONValue?
     /// Callback opcional con el `poolAccountId` recién creado. El parent
     /// (CreateIntentSheet) lo usa para auto-pushear a PoolDetailView vía
     /// `AttentionDestination.poolDetail`. MoneyHomeView ignora este callback
@@ -13,16 +17,24 @@ public struct CreatePoolSheet: View {
     var onCreated: ((UUID) -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
+    @State private var name: String
     @State private var policyKey = "winner_takes_all"
     @State private var targetAmountText = ""
     @State private var currency = "MXN"
     @State private var runner = ActionRunner()
 
-    public init(context: AppContext, store: PoolsStore, onCreated: ((UUID) -> Void)? = nil) {
+    public init(
+        context: AppContext,
+        store: PoolsStore,
+        initialName: String = "",
+        metadata: JSONValue? = nil,
+        onCreated: ((UUID) -> Void)? = nil
+    ) {
         self.context = context
         self.store = store
+        self.metadata = metadata
         self.onCreated = onCreated
+        _name = State(initialValue: initialName)
     }
 
     private var targetAmount: Double? {
@@ -152,6 +164,7 @@ public struct CreatePoolSheet: View {
                     policyKey: policyKey,
                     currency: currency,
                     targetAmount: targetAmount,
+                    metadata: metadata,
                     clientId: UUID().uuidString
                 ),
                 context: context

@@ -197,5 +197,7 @@ public enum ActionPresentationCatalog {
         "dispute":              .init(symbolName: "exclamationmark.bubble.fill", tint: .red),
         "forgive":              .init(symbolName: "heart.fill",             tint: .pink),
         "edit_obligation":      .init(symbolName: "pencil",                 tint: .green),
+        // R.16.A — el acreedor confirma pago recibido fuera de la app.
+        "mark_paid_external":   .init(symbolName: "banknote.fill",          tint: .green),
     ]
 }
