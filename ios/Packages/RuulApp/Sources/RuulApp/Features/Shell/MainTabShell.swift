@@ -100,6 +100,10 @@ public struct MainTabShell: View {
                 )
             }
         }
+        // WWDC26 — patrón MiniPlayer: al hacer scroll hacia abajo, el tab bar se
+        // minimiza y el accessory pasa a `inline` (compacto). Se restaura al
+        // tocar una tab o scrollear al tope.
+        .tabBarMinimizeBehavior(.onScrollDown)
         .sheet(isPresented: $isShowingCreateSheet) {
             CreateIntentSheet(container: container) { destination in
                 presentedAttention = destination

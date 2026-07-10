@@ -13,51 +13,82 @@ public struct AttentionBottomAccessoryView: View {
     let totalCount: Int
     let onTap: () -> Void
 
+    /// WWDC26 — el slot cambia entre `.inline` (tab bar minimizado, junto a la
+    /// barra, espacio reducido) y `.expanded` (sobre la barra, ancho completo).
+    /// Adaptamos el contenido en vez de renderizar siempre la fila completa.
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+
     public init(item: AttentionItem, totalCount: Int, onTap: @escaping () -> Void) {
         self.item = item
         self.totalCount = totalCount
         self.onTap = onTap
     }
 
+    private var isInline: Bool { placement == .inline }
+
     public var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
-                Image(systemName: AttentionPresentation.symbol(for: item.kind))
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(AttentionPresentation.tint(for: item.kind))
-                    .symbolEffect(
-                        .pulse,
-                        options: .repeating,
-                        isActive: item.derivedPriority == .critical
-                    )
-                    .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 28)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
+            HStack(spacing: isInline ? 8 : 12) {
+                icon
+                if isInline {
+                    Text(inlineLabel)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
                 }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, isInline ? 12 : 16)
+            .padding(.vertical, isInline ? 6 : 10)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("\(item.title), \(subtitle)"))
         .accessibilityHint(Text("Abrir atención pendiente"))
+    }
+
+    /// Ícono con badge de conteo cuando hay más de un pendiente — glanceable
+    /// tanto inline como expanded.
+    private var icon: some View {
+        Image(systemName: AttentionPresentation.symbol(for: item.kind))
+            .font(.title3)
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(AttentionPresentation.tint(for: item.kind))
+            .symbolEffect(.pulse, options: .repeating, isActive: item.derivedPriority == .critical)
+            .contentTransition(.symbolEffect(.replace))
+            .frame(width: 28)
+            .overlay(alignment: .topTrailing) {
+                if totalCount > 1 {
+                    Text("\(min(totalCount, 99))")
+                        .font(.caption2.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(AttentionPresentation.tint(for: item.kind), in: Capsule())
+                        .offset(x: 8, y: -6)
+                }
+            }
+    }
+
+    /// Inline: espacio reducido → título corto o el conteo total.
+    private var inlineLabel: String {
+        totalCount > 1 ? "\(totalCount) pendientes" : item.title
     }
 
     private var subtitle: String {
