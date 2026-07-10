@@ -168,8 +168,7 @@ public struct MeView: View {
                 }
             }
             .padding(.vertical, Theme.Spacing.xs)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            .ruulHeroRow()
         }
     }
 
