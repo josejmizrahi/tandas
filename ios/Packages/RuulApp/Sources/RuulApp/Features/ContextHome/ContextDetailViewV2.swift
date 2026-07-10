@@ -266,7 +266,13 @@ public struct ContextDetailViewV2: View {
         if visibleKeys.contains("people") {
             ContextDetailV2PeopleTab(descriptor: d, context: context, container: container)
         }
-        ContextDetailV2ResourcesSection(descriptor: d, context: context, container: container)
+        // Recursos: sólo si el backend marca la sección visible para este
+        // subtype (friend_group NO tiene 'resources' en el catálogo) o si ya
+        // hay recursos reales. Antes se renderizaba siempre → card "Crear el
+        // primer recurso" fantasma en contextos donde el dominio no aplica.
+        if visibleKeys.contains("resources") || !d.resourcesPreview.isEmpty {
+            ContextDetailV2ResourcesSection(descriptor: d, context: context, container: container)
+        }
         if visibleKeys.contains("money") || visibleKeys.contains("obligations") {
             ContextDetailV2MoneyTab(
                 descriptor: d,
