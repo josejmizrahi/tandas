@@ -278,11 +278,23 @@ public struct SettlementView: View {
                     itemRow(item, role: .creditor)
                 }
                 .buttonStyle(.plain)
+                // P1 — swipe directo: confirmar el pago sin abrir el sheet.
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    if item.isPendingConfirmation || item.isPending {
+                        Button {
+                            Task { await confirmPaid(item) }
+                        } label: {
+                            Label(item.isPendingConfirmation ? "Confirmar" : "Recibido",
+                                  systemImage: "checkmark.seal.fill")
+                        }
+                        .tint(Theme.Tint.success)
+                    }
+                }
             }
         } header: {
             Text("Te deben")
         } footer: {
-            Text("Toca un cobro para confirmar o reportar un problema con el pago.")
+            Text("Desliza para confirmar, o toca para reportar un problema.")
         }
     }
 
@@ -296,11 +308,22 @@ public struct SettlementView: View {
                     itemRow(item, role: .debtor)
                 }
                 .buttonStyle(.plain)
+                // P1 — swipe directo: marcar pagado en un gesto (el otro confirma).
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    if item.isPending {
+                        Button {
+                            Task { await markPaid(item) }
+                        } label: {
+                            Label("Pagué", systemImage: "checkmark.circle.fill")
+                        }
+                        .tint(Theme.Tint.success)
+                    }
+                }
             }
         } header: {
             Text("Debes")
         } footer: {
-            Text("Toca una deuda para marcarla como pagada. El otro lado confirma o reporta.")
+            Text("Desliza para marcar como pagado, o toca para ver el detalle. El otro lado confirma.")
         }
     }
 
