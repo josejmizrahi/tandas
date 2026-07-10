@@ -13,6 +13,7 @@ public struct NotificationCenterView: View {
     /// D2 (re-audit 2026-06-14) — sheet con el destino resuelto por el
     /// AttentionDispatcher cuando el usuario toca una notificación.
     @State private var presentedDestination: AttentionDestination?
+    @State private var query: String = ""
 
     public init(container: DependencyContainer) {
         self.container = container
@@ -63,8 +64,9 @@ public struct NotificationCenterView: View {
                 message: "Aquí verás avisos de tus espacios: decisiones nuevas, reglas que se dispararon y recordatorios."
             )
         } else {
+            let filtered = filter(store.notifications)
             List {
-                ForEach(store.notifications) { notification in
+                ForEach(filtered) { notification in
                     row(notification)
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
@@ -74,8 +76,27 @@ public struct NotificationCenterView: View {
                             }
                         }
                 }
+                if filtered.isEmpty {
+                    Section {
+                        Text("Sin coincidencias con \"\(query)\"")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 12)
+                    }
+                }
             }
             .listStyle(.insetGrouped)
+            .searchable(text: $query, prompt: "Buscar notificación")
+            .searchToolbarBehavior(.minimize)
+        }
+    }
+
+    private func filter(_ notifications: [RuulNotification]) -> [RuulNotification] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return notifications }
+        return notifications.filter { n in
+            n.title.lowercased().contains(q) || (n.body?.lowercased().contains(q) ?? false)
         }
     }
 

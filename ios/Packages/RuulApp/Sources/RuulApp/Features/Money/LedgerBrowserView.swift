@@ -15,6 +15,7 @@ public struct LedgerBrowserView: View {
     @State private var runner = ActionRunner()
     @State private var pendingVoid: MoneyTransaction?
     @State private var voidReason: String = ""
+    @State private var query: String = ""
 
     public init(context: AppContext, container: DependencyContainer) {
         self.context = context
@@ -60,23 +61,47 @@ public struct LedgerBrowserView: View {
                 message: "Aquí aparecen los gastos, pagos, liquidaciones y resultados de juego del grupo."
             )
         } else {
+            let posted = filter(store.posted)
+            let voided = filter(store.voided)
             List {
-                if !store.posted.isEmpty {
+                if !posted.isEmpty {
                     Section {
-                        ForEach(store.posted) { txn in row(txn) }
+                        ForEach(posted) { txn in row(txn) }
                     } header: {
-                        Text("Movimientos (\(store.posted.count))")
+                        Text("Movimientos (\(posted.count))")
                     } footer: {
                         Text("Toca un movimiento para anularlo si tienes permiso.")
                     }
                 }
-                if !store.voided.isEmpty {
-                    Section("Anulados (\(store.voided.count))") {
-                        ForEach(store.voided) { txn in row(txn) }
+                if !voided.isEmpty {
+                    Section("Anulados (\(voided.count))") {
+                        ForEach(voided) { txn in row(txn) }
+                    }
+                }
+                if posted.isEmpty && voided.isEmpty {
+                    Section {
+                        Text("Sin coincidencias con \"\(query)\"")
+                            .font(.callout)
+                            .foregroundStyle(Theme.Text.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, Theme.Spacing.md)
                     }
                 }
             }
             .listStyle(.insetGrouped)
+            .searchable(text: $query, prompt: "Buscar movimiento")
+            .searchToolbarBehavior(.minimize)
+        }
+    }
+
+    /// Filtro local por contraparte, tipo, nota y monto.
+    private func filter(_ txns: [MoneyTransaction]) -> [MoneyTransaction] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return txns }
+        return txns.filter { txn in
+            title(txn).lowercased().contains(q)
+                || subtitle(txn).lowercased().contains(q)
+                || txn.amount.currencyLabel(txn.currency).lowercased().contains(q)
         }
     }
 
