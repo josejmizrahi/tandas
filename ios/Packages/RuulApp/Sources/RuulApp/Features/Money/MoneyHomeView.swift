@@ -244,7 +244,7 @@ public struct MoneyHomeView: View {
                     Label("Registrar gasto", systemImage: "cart.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.large)
             } else {
                 // R.15 fix — sin permiso de registrar, la pantalla no debe
@@ -294,7 +294,7 @@ public struct MoneyHomeView: View {
                 Label("Ver cómo liquidar", systemImage: "creditcard.fill")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .controlSize(.large)
             .tint(Theme.Tint.critical)
         }
@@ -342,7 +342,7 @@ public struct MoneyHomeView: View {
                 Label("Ver cómo liquidar", systemImage: "creditcard.fill")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.glassProminent)
             .controlSize(.large)
         }
     }

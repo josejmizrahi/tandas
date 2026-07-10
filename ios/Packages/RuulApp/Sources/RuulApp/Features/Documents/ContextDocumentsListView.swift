@@ -188,7 +188,7 @@ public struct ContextDocumentsListView: View {
                     Label("Adjuntar documento", systemImage: "paperclip")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.large)
             }
             .ruulHeroRow()

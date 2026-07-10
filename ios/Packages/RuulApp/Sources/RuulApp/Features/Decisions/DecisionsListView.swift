@@ -155,7 +155,7 @@ public struct DecisionsListView: View {
                         Label("Proponer votación", systemImage: "plus")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .controlSize(.large)
                 }
             }

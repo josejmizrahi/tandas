@@ -73,7 +73,7 @@ public struct PoolsListView: View {
                 } label: {
                     Label("Crear bote", systemImage: "plus")
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.large)
             }
         } else {

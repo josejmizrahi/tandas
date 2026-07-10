@@ -108,7 +108,7 @@ public struct ResourceActionFormView: View {
                             Spacer()
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .tint(action.dangerous ? .red : .accentColor)
                     .disabled(isSubmitting)
                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))

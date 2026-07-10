@@ -164,7 +164,7 @@ public struct EventsListView: View {
                     Label("Ver evento", systemImage: "arrow.right.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .controlSize(.large)
             } else {
                 HStack(spacing: 12) {
@@ -188,7 +188,7 @@ public struct EventsListView: View {
                         Label("Crear evento", systemImage: "plus")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .controlSize(.large)
                 }
             }

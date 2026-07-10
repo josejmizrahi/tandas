@@ -91,6 +91,9 @@ public struct MainTabShell: View {
         // R.5Y.A3 — Attention Center cross-context pegado sobre el tab bar.
         // Liquid Glass nativo. Cuando el inbox está vacío, el ViewBuilder
         // colapsa a EmptyView y el accessory desaparece (iOS 26.0 baseline).
+        // Vacío → el ViewBuilder colapsa a EmptyView y el accessory se oculta
+        // (baseline iOS 26.0; `isEnabled:` es 26.1). topPriorityItem es nil
+        // cuando no hay pendientes.
         .tabViewBottomAccessory {
             if let top = container.attentionInboxStore.topPriorityItem {
                 AttentionBottomAccessoryView(

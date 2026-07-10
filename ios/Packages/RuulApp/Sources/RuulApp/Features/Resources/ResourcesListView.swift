@@ -284,7 +284,7 @@ public struct ResourcesListView: View {
                         Label("Crear recurso", systemImage: "plus")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .controlSize(.large)
                 }
             }

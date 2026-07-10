@@ -95,7 +95,7 @@ public struct RulesListView: View {
                             Label("Elegir preset", systemImage: "square.grid.2x2.fill")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.glassProminent)
                     }
                 }
             }
@@ -196,7 +196,7 @@ public struct RulesListView: View {
                         Label("Crear regla", systemImage: "plus")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .controlSize(.large)
                 }
             }

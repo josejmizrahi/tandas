@@ -165,7 +165,7 @@ public struct MembersListView: View {
                         Label("Invitar amigos", systemImage: "person.badge.plus")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
                     .controlSize(.large)
                 }
             }
