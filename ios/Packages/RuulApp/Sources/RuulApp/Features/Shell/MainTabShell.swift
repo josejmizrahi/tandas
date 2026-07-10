@@ -87,6 +87,9 @@ public struct MainTabShell: View {
                     onJoin: { isShowingJoinByCode = true }
                 )
             }
+            // WWDC26 — badge de no-leídas en el tab: glanceable sin abrir Ajustes.
+            // `.badge(0)` no muestra nada, así que se autolimpia.
+            .badge(container.notificationsStore.unreadCount)
         }
         // R.5Y.A3 — Attention Center cross-context pegado sobre el tab bar.
         // Liquid Glass nativo. Cuando el inbox está vacío, el ViewBuilder
@@ -459,12 +462,11 @@ private struct LaunchSettingsView: View {
                 isShowingNotifications = true
             } label: {
                 Label(
-                    container.notificationsStore.unreadCount > 0
-                    ? "Notificaciones (\(container.notificationsStore.unreadCount))"
-                    : "Notificaciones",
+                    "Notificaciones",
                     systemImage: container.notificationsStore.unreadCount > 0 ? "bell.badge.fill" : "bell"
                 )
             }
+            .badge(container.notificationsStore.unreadCount)
 
             Button {
                 isShowingMe = true
