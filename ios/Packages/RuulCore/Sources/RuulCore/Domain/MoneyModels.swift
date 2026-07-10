@@ -196,6 +196,9 @@ public struct ObligationDetail: Decodable, Sendable, Equatable {
     public let sourceRuleId: UUID?
     public let sourceReservationId: UUID?
     public let sourceDecisionId: UUID?
+    /// R.17 — si la obligación es un aporte a un bote, el id de ese bote
+    /// (`pool_basis_entries.pool_account_id`). NULL en el resto.
+    public let poolAccountId: UUID?
     public let metadata: JSONValue?
     public let availableActions: [AvailableAction]
     public let createdAt: Date?
@@ -220,6 +223,7 @@ public struct ObligationDetail: Decodable, Sendable, Equatable {
         case sourceRuleId = "source_rule_id"
         case sourceReservationId = "source_reservation_id"
         case sourceDecisionId = "source_decision_id"
+        case poolAccountId = "pool_account_id"
         case metadata
         case availableActions = "available_actions"
         case createdAt = "created_at"
@@ -246,6 +250,7 @@ public struct ObligationDetail: Decodable, Sendable, Equatable {
         self.sourceRuleId = try c.decodeIfPresent(UUID.self, forKey: .sourceRuleId)
         self.sourceReservationId = try c.decodeIfPresent(UUID.self, forKey: .sourceReservationId)
         self.sourceDecisionId = try c.decodeIfPresent(UUID.self, forKey: .sourceDecisionId)
+        self.poolAccountId = try c.decodeIfPresent(UUID.self, forKey: .poolAccountId)
         self.metadata = try c.decodeIfPresent(JSONValue.self, forKey: .metadata)
         self.availableActions = try c.decodeIfPresent([AvailableAction].self, forKey: .availableActions) ?? []
         self.createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
@@ -271,6 +276,7 @@ public struct ObligationDetail: Decodable, Sendable, Equatable {
         sourceRuleId: UUID? = nil,
         sourceReservationId: UUID? = nil,
         sourceDecisionId: UUID? = nil,
+        poolAccountId: UUID? = nil,
         metadata: JSONValue? = nil,
         availableActions: [AvailableAction] = [],
         createdAt: Date? = nil
@@ -294,6 +300,7 @@ public struct ObligationDetail: Decodable, Sendable, Equatable {
         self.sourceRuleId = sourceRuleId
         self.sourceReservationId = sourceReservationId
         self.sourceDecisionId = sourceDecisionId
+        self.poolAccountId = poolAccountId
         self.metadata = metadata
         self.availableActions = availableActions
         self.createdAt = createdAt

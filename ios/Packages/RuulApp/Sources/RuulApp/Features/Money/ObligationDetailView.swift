@@ -246,7 +246,7 @@ public struct ObligationDetailView: View {
             // bote se resuelve. Explicamos en vez de dejar la pantalla sin acción
             // (antes sólo se veía "Seguir" y confundía).
             if isPoolContribution(detail) {
-                poolContributionSection
+                poolContributionSection(detail)
             } else if shouldShowSettlePath(detail) {
                 settlePathSection
             }
@@ -307,7 +307,7 @@ public struct ObligationDetailView: View {
     }
 
     @ViewBuilder
-    private var poolContributionSection: some View {
+    private func poolContributionSection(_ detail: ObligationDetail) -> some View {
         Section {
             Label {
                 Text("Este es un aporte a un bote. El dinero queda retenido en el bote y se salda cuando el grupo lo resuelve — no se paga por separado.")
@@ -317,10 +317,18 @@ public struct ObligationDetailView: View {
                 Image(systemName: "tray.full.fill")
                     .foregroundStyle(Theme.Tint.info)
             }
+            // R.17 — link directo al bote (obligation_detail expone pool_account_id).
+            if let poolAccountId = detail.poolAccountId {
+                NavigationLink {
+                    PoolDetailView(poolAccountId: poolAccountId, context: context, container: container)
+                } label: {
+                    Label("Ver bote", systemImage: "tray.full")
+                }
+            }
         } header: {
             Text("Parte de un bote")
         } footer: {
-            Text("Ábrelo en Dinero → Botes. Al resolver el bote, este aporte se cierra automáticamente.")
+            Text("Al resolver el bote, este aporte se cierra automáticamente.")
         }
     }
 
