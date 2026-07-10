@@ -41,22 +41,15 @@ struct ContextDetailV2MoneyTab: View {
 
     @ViewBuilder
     private var moneyEmptyHero: some View {
+        // Empty state nativo canónico (RuulEmptyState → ContentUnavailableView)
+        // en vez del VStack a mano — consistente con el resto de la app.
         Section {
-            VStack(spacing: 12) {
-                Image(systemName: "dollarsign.circle")
-                    .font(.system(size: 44, weight: .light))
-                    .foregroundStyle(Theme.Tint.primary)
-                Text("Aún no hay actividad de dinero")
-                    .font(.headline)
-                    .foregroundStyle(Theme.Text.primary)
-                Text("Empezá registrando un gasto o asignando un compromiso. Las obligaciones, saldos y liquidaciones aparecerán acá.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.Text.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-            }
+            RuulEmptyState(
+                title: "Aún no hay actividad de dinero",
+                systemImage: "dollarsign.circle",
+                message: "Empezá registrando un gasto o asignando un compromiso. Las obligaciones, saldos y liquidaciones aparecerán acá."
+            )
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
         }
