@@ -205,12 +205,6 @@ public struct ObligationDetailView: View {
                 }
             }
 
-            SubscribeSection(
-                targetType: .obligation,
-                targetId: obligationId,
-                store: container.subscriptionsStore
-            )
-
             Section {
                 LabeledContent("Deudor", value: memberNamesById[detail.debtorActorId] ?? "—")
                 LabeledContent("Acreedor", value: memberNamesById[detail.creditorActorId] ?? "—")
@@ -248,7 +242,12 @@ public struct ObligationDetailView: View {
                 }
             }
 
-            if shouldShowSettlePath(detail) {
+            // Un aporte a un bote no se paga individualmente: se salda cuando el
+            // bote se resuelve. Explicamos en vez de dejar la pantalla sin acción
+            // (antes sólo se veía "Seguir" y confundía).
+            if isPoolContribution(detail) {
+                poolContributionSection
+            } else if shouldShowSettlePath(detail) {
                 settlePathSection
             }
 
@@ -289,8 +288,40 @@ public struct ObligationDetailView: View {
                     }
                 }
             }
+
+            // "Seguir" es una utilidad secundaria — va al fondo, no arriba del
+            // pago (antes dominaba la pantalla: "solo veo seguir esto").
+            SubscribeSection(
+                targetType: .obligation,
+                targetId: obligationId,
+                store: container.subscriptionsStore
+            )
         }
         .listStyle(.insetGrouped)
+    }
+
+    /// Una obligación de tipo `contribution` (o en estado `pending_pool`) es un
+    /// aporte a un bote: no tiene pago individual, se cierra al resolver el bote.
+    private func isPoolContribution(_ detail: ObligationDetail) -> Bool {
+        detail.obligationType == "contribution" || detail.status == "pending_pool"
+    }
+
+    @ViewBuilder
+    private var poolContributionSection: some View {
+        Section {
+            Label {
+                Text("Este es un aporte a un bote. El dinero queda retenido en el bote y se salda cuando el grupo lo resuelve — no se paga por separado.")
+                    .font(.callout)
+                    .foregroundStyle(Theme.Text.primary)
+            } icon: {
+                Image(systemName: "tray.full.fill")
+                    .foregroundStyle(Theme.Tint.info)
+            }
+        } header: {
+            Text("Parte de un bote")
+        } footer: {
+            Text("Ábrelo en Dinero → Botes. Al resolver el bote, este aporte se cierra automáticamente.")
+        }
     }
 
     /// FE.2 (doctrina founder 2026-06-11) — el pago de obligaciones money fluye
