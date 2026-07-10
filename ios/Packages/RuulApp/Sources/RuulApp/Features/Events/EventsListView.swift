@@ -122,17 +122,15 @@ public struct EventsListView: View {
         }
     }
 
-    // MARK: - Hero (R.17 — mismo lenguaje que el hero de Dinero:
-    // typography prominente plana, etiqueta semántica y botón de acción.
-    // Sin custom card ni glass flotante.)
+    // MARK: - Hero (R.17.1 — celda agrupada nativa, mismo lenguaje que el hero
+    // de Dinero y los detalles. Sin listRowBackground(.clear) ni inset leading:4
+    // que lo dejaban flotando/jammed a la izquierda — se veía "extraño".)
 
     @ViewBuilder
     private func heroSection(_ upcoming: [CalendarEvent]) -> some View {
         Section {
             heroContent(upcoming)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
+                .ruulHeroRow()
         }
     }
 

@@ -191,9 +191,7 @@ public struct ContextDocumentsListView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
             }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 12, leading: 4, bottom: 8, trailing: 4))
+            .ruulHeroRow()
         }
     }
 

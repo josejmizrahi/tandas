@@ -163,9 +163,7 @@ public struct HomeView: View {
                     .font(.largeTitle.weight(.bold))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 16, leading: 4, bottom: 8, trailing: 4))
+            .ruulHeroRow()
         }
     }
 
