@@ -416,7 +416,7 @@ public struct EventDetailView: View {
                 store: store,
                 onRecordExpense: { openExpenseSheet() }
             )
-            EventDetailPoolsSection(eventId: event.id, context: context, container: container)
+            EventDetailPoolsSection(eventId: event.id, eventTitle: event.title, context: context, container: container, store: store)
             // — Votaciones / Reglas —
             EventDetailDecisionsSection(
                 eventActivity: eventActivity,

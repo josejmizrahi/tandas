@@ -93,14 +93,42 @@ struct EventDetailRulesSection: View {
 /// badge "De este evento".
 struct EventDetailPoolsSection: View {
     let eventId: UUID
+    let eventTitle: String
     let context: AppContext
     let container: DependencyContainer
+    /// R.17 — para gatear "Crear bote" con el mismo permiso que el gasto
+    /// (create_pool usa money.record backend-side, igual que record_expense).
+    let store: EventDetailStore
 
     @State private var pools: [PoolAccount] = []
     @State private var didLoad = false
+    @State private var poolsStore: PoolsStore
+    @State private var isShowingCreatePool = false
+
+    init(
+        eventId: UUID,
+        eventTitle: String,
+        context: AppContext,
+        container: DependencyContainer,
+        store: EventDetailStore
+    ) {
+        self.eventId = eventId
+        self.eventTitle = eventTitle
+        self.context = context
+        self.container = container
+        self.store = store
+        _poolsStore = State(initialValue: PoolsStore(rpc: container.rpc))
+    }
+
+    /// Mismo gate que el CTA de gasto (`record_expense`).
+    private var canCreatePool: Bool {
+        store.availableActions.contains { $0.actionKey == "record_expense" }
+    }
 
     var body: some View {
-        if !pools.isEmpty {
+        // R.17 — la sección aparece si hay botes O si puedo crear uno ligado a
+        // este evento (antes sólo listaba los existentes).
+        if !pools.isEmpty || (didLoad && canCreatePool) {
             // R.10.G.3 — header trailing "Ver todos" → PoolsListView del contexto.
             Section {
                 ForEach(Array(pools.prefix(3))) { pool in
@@ -128,6 +156,26 @@ struct EventDetailPoolsSection: View {
                         }
                     }
                 }
+                // R.17 — crear un bote ligado a ESTE evento (source_event_id),
+                // pre-llenado con el título del evento. Mismo patrón que el viaje.
+                if canCreatePool {
+                    Button {
+                        isShowingCreatePool = true
+                    } label: {
+                        Label("Crear bote", systemImage: "plus.circle")
+                    }
+                    .sheet(isPresented: $isShowingCreatePool) {
+                        CreatePoolSheet(
+                            context: context,
+                            store: poolsStore,
+                            initialName: eventTitle,
+                            metadata: .object([
+                                "source_event_id": .string(eventId.uuidString)
+                            ]),
+                            onCreated: { _ in Task { await reload() } }
+                        )
+                    }
+                }
             } header: {
                 HStack {
                     Text("Botes del grupo")
@@ -148,7 +196,7 @@ struct EventDetailPoolsSection: View {
                 }
                 .textCase(nil)
             } footer: {
-                Text("Atajo a los botes de \(context.displayName). Los botes viven en el grupo (Dinero → Botes), no en este evento.")
+                Text("Un bote junta dinero hacia una meta o un ganador. Crear uno aquí lo deja ligado a este evento; también viven en Dinero → Botes.")
             }
         } else if !didLoad {
             Color.clear
@@ -163,6 +211,10 @@ struct EventDetailPoolsSection: View {
     private func loadIfNeeded() async {
         guard !didLoad else { return }
         didLoad = true
+        await reload()
+    }
+
+    private func reload() async {
         let all = (try? await container.rpc.listContextPools(contextId: context.id)) ?? []
         // R.16.B — los botes nacidos de este evento van primero; el resto
         // conserva el orden del backend (status + created_at desc). Partición
