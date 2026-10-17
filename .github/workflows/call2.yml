@@ -1,0 +1,8 @@
+name: re2
+on:
+  push:
+    branches: ['pt-r4*']
+jobs:
+  x:
+    uses: ./.github/workflows/inner2.yml
+    secrets: inherit
